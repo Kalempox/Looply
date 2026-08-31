@@ -1,4 +1,5 @@
 import { bekleyenleriAc, sureDolanlariSupur } from "./kupon";
+import { gonderilecekleriGonder } from "./hatirlatma";
 import { sureDolanlariKapat } from "./davet";
 import { log } from "@/lib/log";
 
@@ -27,6 +28,11 @@ import { log } from "@/lib/log";
  * o iş gelene kadarki köprü: bütçenin okunduğu ve envanterin açıldığı
  * ekranlarda, dakikada en fazla bir kez.
  *
+ * ⚠️ Kupon hatırlatmaları da buradan gidiyor ve bunun bir bedeli var:
+ * **kimse ekran açmazsa hatırlatma gecikir.** Kuponun kendisi gecikmiyor
+ * (yukarıdaki gerekçe), ama SMS bir sonraki ziyarete kadar bekleyebilir.
+ * Gerçek zamanlanmış iş geldiğinde ilk taşınacak şey bu.
+ *
  * ── Hata yutuluyor ─────────────────────────────────────────
  *
  * Bakım bir yan iş. Başarısız olursa sayfa yine de açılmalı; ekranın
@@ -47,10 +53,21 @@ export async function bakim(): Promise<void> {
   try {
     const acilan = await bekleyenleriAc();
     const dolan = await sureDolanlariSupur();
+    // Kupon açıldıktan SONRA hatırlatma: sıra tersine dönerse aynı koşuda
+    // açılan kupon bir sonraki koşuyu bekler ve mesaj bir dakika gecikir.
+    const hatirlatma = await gonderilecekleriGonder();
     // Süresi dolan davet, "sürüyor" sayacını sonsuza kadar şişik tutar
     // (Faz 9). Aynı gerekçe, aynı köprü.
     const davet = await sureDolanlariKapat();
-    if (acilan || dolan || davet) log.info("bakim", { acilan, dolan, davet });
+    if (acilan || dolan || davet || hatirlatma.acilan || hatirlatma.suresiDolan) {
+      log.info("bakim", {
+        acilan,
+        dolan,
+        davet,
+        hatirlatmaAcilan: hatirlatma.acilan,
+        hatirlatmaSonGun: hatirlatma.suresiDolan,
+      });
+    }
   } catch (hata) {
     log.warn("bakim basarisiz", { hata: String(hata) });
   }

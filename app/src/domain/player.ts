@@ -114,6 +114,12 @@ export async function kaydet(opts: {
       await rizaYaz(db, id, "commercial_message", ipHash, uaHash);
     }
 
+    // Ödül hatırlatmaları — rıza DEĞİL, hizmete ait bildirim tercihi.
+    // Kazanılan kuponun durumunu bildiriyor; kafe adı, ürün ve kampanya
+    // içermediği için G7'nin kapsamına girmiyor. Kayıtta açık başlıyor,
+    // oyuncu `/verilerim` ekranından kapatabiliyor.
+    await rizaYaz(db, id, "service_reminder", ipHash, uaHash);
+
     await audit(db, {
       actorType: "player",
       actorId: id,
@@ -134,7 +140,7 @@ export async function kaydet(opts: {
 async function rizaYaz(
   db: Db,
   playerId: string,
-  tur: "privacy_notice" | "explicit_consent" | "commercial_message",
+  tur: "privacy_notice" | "explicit_consent" | "commercial_message" | "service_reminder",
   ipHash: Buffer | null,
   uaHash: Buffer | null,
 ) {

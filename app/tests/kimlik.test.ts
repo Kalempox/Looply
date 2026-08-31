@@ -387,7 +387,14 @@ describe("oyuncu hesabı", () => {
     const rizalar = await withBypass("test: rızalar", (db) =>
       db.all<{ kind: string }>(`SELECT kind FROM player_consents WHERE player_id = $1`, [oyuncu.id]),
     );
-    assert.deepEqual(rizalar.map((r) => r.kind).sort(), ["commercial_message", "privacy_notice"]);
+    // `service_reminder` rıza DEĞİL, hizmete ait bildirim tercihi — kayıtta
+    // açık başlıyor. Ticari ileti izninin AYRI satır olması G7'nin şartı ve
+    // sınanan şey o: ikisi tek satırda birleşmiyor.
+    assert.deepEqual(rizalar.map((r) => r.kind).sort(), [
+      "commercial_message",
+      "privacy_notice",
+      "service_reminder",
+    ]);
   });
 
   test("izin verilmediğinde ticari ileti satırı yazılmıyor", async () => {
@@ -395,7 +402,13 @@ describe("oyuncu hesabı", () => {
     const rizalar = await withBypass("test: rızalar", (db) =>
       db.all<{ kind: string }>(`SELECT kind FROM player_consents WHERE player_id = $1`, [oyuncu.id]),
     );
-    assert.deepEqual(rizalar.map((r) => r.kind), ["privacy_notice"]);
+    // Ticari ileti satırı YOK — izin verilmedi. Hizmet bildirimi tercihi ise
+    // var: o bir rıza değil ve kampanya izniyle hiçbir ilişkisi yok.
+    assert.deepEqual(rizalar.map((r) => r.kind).sort(), ["privacy_notice", "service_reminder"]);
+    assert.ok(
+      !rizalar.some((r) => r.kind === "commercial_message"),
+      "izin verilmediği hâlde ticari ileti satırı yazılmış",
+    );
   });
 
   test("anonim kod her kafede farklı (G1)", async () => {

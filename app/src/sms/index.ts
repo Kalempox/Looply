@@ -15,7 +15,14 @@ import { defteriYaz } from "./gelistirme-defteri";
  * 🔴 Doğrulama kodu ne loga ne deftere yazılır. Yalnızca sağlayıcıya gider.
  */
 
-export type Sablon = "otp" | "phone_changed" | "new_device" | "account_deleted" | "incident";
+export type Sablon =
+  | "otp"
+  | "phone_changed"
+  | "new_device"
+  | "account_deleted"
+  | "incident"
+  | "coupon_active"
+  | "coupon_expiring";
 
 export type Mesaj = {
   telefon: string; // E.164
@@ -59,13 +66,40 @@ const SABLONLAR: Record<Sablon, (d: Record<string, string>) => string> = {
   new_device: () => `CafePlay hesabiniza yeni bir cihazdan giris yapildi. Siz degilseniz bize ulasin.`,
   account_deleted: () => `CafePlay hesabiniz silinme talebiniz alindi. 30 gun icinde vazgecebilirsiniz.`,
   incident: (d) => `CafePlay guvenlik bildirimi: ${d.mesaj ?? ""}`,
+
+  // ── Kupon hatırlatmaları ────────────────────────────────────
+  //
+  // Bu ikisi **hizmet bildirimi**: oyuncunun kendi kazandığı kuponun
+  // durumunu söylüyorlar. Kafe adı yok, ürün yok, kampanya yok, çağrı yok.
+  // Sınıflandırmayı ayakta tutan tek şey bu içerik disiplini ve
+  // `tests/hatirlatma.test.ts` metinleri tam olarak bu yüzden sınıyor —
+  // buraya "yeni tatlımızı dene" eklenirse mesaj ticari iletiye döner ve
+  // G7'nin izin + İYS kaydı şartı doğar.
+  coupon_active: () =>
+    `CafePlay odulunuz kullanima acildi. Oduller ekranindan kasada gosterebilirsiniz.`,
+  coupon_expiring: () =>
+    `CafePlay odulunuzun kullanim suresi yarin doluyor.`,
 };
+
+/**
+ * Şablonun son metnini üretir.
+ *
+ * Dışa veriliyor ki metin **sınanabilsin**: `tests/hatirlatma.test.ts`
+ * hatırlatma metinlerinde kafe adı, ürün, kampanya çağrısı ve link
+ * aramıyor olduğunu doğruluyor. O disiplin bozulursa mesaj hizmet
+ * bildirimi olmaktan çıkıp ticari iletiye döner (G7).
+ */
+export function sablonMetni(sablon: Sablon, degerler?: Record<string, string>): string {
+  return SABLONLAR[sablon](degerler ?? {});
+}
 
 const BILDIRIM_ADLARI: Partial<Record<Sablon, string>> = {
   phone_changed: "Bildirim — telefon numarası değişti",
   new_device: "Bildirim — yeni cihazdan giriş",
   account_deleted: "Bildirim — hesap silme talebi",
   incident: "Bildirim — güvenlik uyarısı",
+  coupon_active: "Hatırlatma — ödül kullanıma açıldı",
+  coupon_expiring: "Hatırlatma — ödülün süresi doluyor",
 };
 
 /** '0532 *** ** 67' — defterde ve ekranlarda yalnızca bu görünür. */
@@ -163,14 +197,24 @@ export async function tavanDurumu(): Promise<TavanDurumu> {
  * durur ama mevcut kullanıcının girişi devam eder. Saldırının hedefi kayıt
  * akışıdır; mevcut kullanıcıyı sistemden atmak saldırganın işini görür.
  */
+export type Amac = "kayit" | "giris" | "bildirim" | "hatirlatma";
+
 export async function gonder(
   mesaj: Mesaj,
-  amac: "kayit" | "giris" | "bildirim" = "bildirim",
+  amac: Amac = "bildirim",
 ): Promise<GonderimSonucu> {
   const durum = await tavanDurumu();
 
+  // Hatırlatma, **kayıtla aynı kademede** kesiliyor (%90) — girişten önce.
+  //
+  // Sebebi öncelik sırası: giriş SMS'i kapıda bekleyen bir insan, hatırlatma
+  // ise bir gün sonra da gidebilecek bir bilgi. Hatırlatmalar `bildirim`
+  // seviyesinde kalsaydı, günlük tavanı yiyip **girişleri kilitleyebilirlerdi**;
+  // yani rahatlık uğruna hizmetin kendisi durabilirdi.
   const engelli =
-    (amac === "kayit" && !durum.kayitAcik) || (amac !== "kayit" && !durum.girisAcik);
+    (amac === "kayit" || amac === "hatirlatma"
+      ? !durum.kayitAcik
+      : !durum.girisAcik);
 
   const id = newId("sms");
   const ortak = {
@@ -198,7 +242,7 @@ export async function gonder(
     return { durum: "engellendi", sebep: "global_cap" };
   }
 
-  const metin = SABLONLAR[mesaj.sablon](mesaj.degerler ?? {});
+  const metin = sablonMetni(mesaj.sablon, mesaj.degerler);
   const s = saglayici();
 
   try {

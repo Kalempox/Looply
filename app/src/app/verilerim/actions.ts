@@ -180,3 +180,62 @@ export async function adGorunurluguAyarla(acik: boolean): Promise<void> {
   revalidatePath("/verilerim");
   revalidatePath("/oyna");
 }
+
+/* ── Ödül hatırlatmaları ───────────────────────────────────── */
+
+/**
+ * Hatırlatma tercihi — ticari ileti izninden ayrı tutuluyor.
+ *
+ * Bu bir **rıza değil**: mesaj oyuncunun kendi kazandığı kuponun durumunu
+ * söylüyor ve hizmet ilişkisine ait. Ama kapatılabilir olması şart; kapatma
+ * anı `revoked_at` ile deftere düşüyor ki "ben bunu istememiştim" dendiğinde
+ * cevap verilebilsin.
+ */
+export async function hatirlatmayiKapat(): Promise<void> {
+  const o = await oyuncuOturumu();
+
+  await withBypass("hatırlatma kapatma", async (db) => {
+    await db.query(
+      `UPDATE player_consents SET revoked_at = now()
+        WHERE player_id = $1 AND kind = 'service_reminder' AND revoked_at IS NULL`,
+      [o.ozneId],
+    );
+    await audit(db, {
+      actorType: "player",
+      actorId: o.ozneId,
+      action: "consent.revoke",
+      targetType: "player",
+      targetId: o.ozneId,
+      detail: { tur: "service_reminder", surum: RIZA_SURUMU },
+    });
+  });
+
+  log.info("odul hatirlatmasi kapatildi");
+}
+
+export async function hatirlatmayiAc(): Promise<void> {
+  const o = await oyuncuOturumu();
+
+  await withBypass("hatırlatma açma", async (db) => {
+    const aktif = await db.one(
+      `SELECT 1 FROM player_consents
+        WHERE player_id = $1 AND kind = 'service_reminder' AND revoked_at IS NULL`,
+      [o.ozneId],
+    );
+    if (aktif) return;
+
+    await db.query(
+      `INSERT INTO player_consents (id, player_id, kind, text_version)
+       VALUES ($1,$2,'service_reminder',$3)`,
+      [newId("cns"), o.ozneId, RIZA_SURUMU],
+    );
+    await audit(db, {
+      actorType: "player",
+      actorId: o.ozneId,
+      action: "consent.grant",
+      targetType: "player",
+      targetId: o.ozneId,
+      detail: { tur: "service_reminder", surum: RIZA_SURUMU },
+    });
+  });
+}

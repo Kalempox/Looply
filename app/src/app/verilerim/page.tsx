@@ -7,6 +7,7 @@ import { Sayfa, Baslik, Uyari } from "@/components/ui";
 import {
   VeriIndirmeDugmesi,
   IzinAnahtari,
+  HatirlatmaAnahtari,
   HesapSilme,
   AdGorunurluguAnahtari,
 } from "./kontroller";
@@ -34,6 +35,11 @@ export default async function Verilerim() {
         WHERE player_id = $1 AND kind = 'commercial_message' AND revoked_at IS NULL`,
       [o.ozneId],
     );
+    const hatirlatma = await db.one(
+      `SELECT 1 FROM player_consents
+        WHERE player_id = $1 AND kind = 'service_reminder' AND revoked_at IS NULL`,
+      [o.ozneId],
+    );
     const kafeler = await db.all<{ kafe: string; kod: string }>(
       `SELECT c.name AS kafe, a.code AS kod
          FROM player_aliases a JOIN cafes c ON c.id = a.cafe_id
@@ -50,6 +56,7 @@ export default async function Verilerim() {
     );
     return {
       pazarlamaAcik: !!pazarlama,
+      hatirlatmaAcik: !!hatirlatma,
       adGorunur: !!adGorunur?.v,
       kafeler,
       silmeTarihi: silme?.deletion_requested_at ?? null,
@@ -119,6 +126,9 @@ export default async function Verilerim() {
 
       <Bolum baslik="Kampanya mesajları">
         <IzinAnahtari acik={durum.pazarlamaAcik} />
+        <div className="mt-3">
+          <HatirlatmaAnahtari acik={durum.hatirlatmaAcik} />
+        </div>
         <p className="mt-3 text-[13px] leading-relaxed text-yazi-sonuk">
           Bu izin hizmetin şartı değil — kapalıyken de oynayabilir, ödül kazanabilirsin.
         </p>

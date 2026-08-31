@@ -234,7 +234,7 @@ Yılda bir kez masabaşı tatbikat: gerçek bir senaryo okunur, adımlar sözlü
 ### Tarayıcı gerçekleri — plana etkisi
 
 - **Konum izni (K2)** her tarayıcıda kullanıcı onayı ister ve HTTPS zorunludur. Reddedilirse K2 alınamaz → o oturum düşük kanıt seviyesinde kalır, büyük ödül alamaz. Akış buna göre tasarlanacak
-- **iOS Safari'de bildirim**, ancak site ana ekrana eklenirse çalışır. Yani ertelenmiş kuponu hatırlatmanın güvenilir yolu bildirim değil, **SMS** — bu da hem maliyet hem İYS izni demek (G7). Faz 8 sonrası konusu
+- **iOS Safari'de bildirim**, ancak site ana ekrana eklenirse çalışır. Yani ertelenmiş kuponu hatırlatmanın güvenilir yolu bildirim değil, **SMS**. ✅ **Yazıldı (2026-08-31, Ü42):** kupon açıldığında ve son kullanıma 24 saat kala iki hatırlatma. İYS izni gerekmiyor — mesaj hizmet bildirimi olarak kurgulandı (kafe adı, ürün, kampanya ve link içermiyor); maliyet tarafı ise öncelik kademesiyle sınırlandı: hatırlatma, günlük tavanın %90'ında **girişten önce** kesiliyor
 - Karekod okutma cihazın kendi kamerasıyla yapılır; uygulama içi tarayıcılarda (Instagram, Facebook) kamera ve konum kısıtlı olabilir → **harici tarayıcıda aç** yönlendirmesi gerekebilir
 
 ## 3.1 · Sürekli entegrasyon (CI)

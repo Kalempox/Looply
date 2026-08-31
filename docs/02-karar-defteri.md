@@ -300,10 +300,18 @@ mevcut sistemle karşılaştırılması.
 | **Ü39** | **Erteleme 12 saat; eşik kafenin ayarı** | Ü28'i iki noktada değiştiriyor. **Süre:** "yarın 00:00" takvim gününe bağlıydı ve aynı kural iki oyuncuya on beş kat farklı davranıyordu — sabah 09:00'da kazanan 15 saat, akşam 23:00'te kazanan 1 saat bekliyordu. 12 saat herkese aynı pencereyi veriyor. **Eşik:** 51 TL platform sabitiydi; artık kafenin panelden değiştirdiği değer (varsayılan 50 TL, aralık 0–500 TL). Ödül ekonomisi kafeden kafeye değişiyor. ⚠️ **E6'nın kanıt kademesi bu ayardan etkilenmiyor** — kafe kendi ödülünün kanıt şartını gevşetebilseydi, en pahalı ödülü en zayıf kanıtla vermenin yolu açılırdı. | Ü28'in revizyonu |
 | **Ü40** | **Üçüncü ödül tipi: sabit tutarlı indirim** | Kafe "20 TL indirim" diyebilmeliydi. Teknik olarak bugün de yapılabiliyordu (`percent 100` + `cost_kurus 2000`) ama oyuncunun ekranında **"%100 indirim"** yazıyor ve "bedava" diye okunuyor; ödülün adı ne olduğunu söylemek zorunda. **Bu bakiye değil:** tek kullanımlık kupon, adisyondan bir kez düşüyor, kalanı saklanmıyor, devretmiyor — Ü18'in çekindiği kısmi kullanım, kalan takibi, iade akışı ve ödeme mevzuatı sınırı doğmuyor. Ü18 bu yüzden **değişmedi**, yanına bir tip eklendi. | `ödül kullanımı.txt` |
 | **Ü41** | **Platform geliri: kafeden abonelik** | `docs/06` §11'de "⚠️ Tanımsız" olarak duran ve Faz 8'den önce kapatılması gereken soru kapandı: **kafeler platforma abone olacak.** ⚠️ Bu karar, `01-proje-analizi.md` §95'teki *"kafe bedava girer — abonelik yok, satış görüşmesi yok"* gerekçesini geçersiz kılıyor **ama o gerekçe ortadan kalkmadı**: abonelik müşteri kazanım sürtünmesini artırıyor ve bu bedel bilerek kabul ediliyor. Fiyat ve faturalama akışı ayrı bir faz. | `kazandırma similasyonu.txt`, `Giyim butikleri…txt` |
+| **Ü42** | **Kupon hatırlatması: hizmet bildirimi** | Ü39 "eşiğin üstündeki ödül 12 saat sonra açılır" diyor ve amacı ertesi ziyaret; ama kupon sessizce açılıyordu — çağıran yoktu. İki SMS eklendi: kupon açıldığında ve son kullanıma 24 saat kala. **Ticari ileti değil hizmet bildirimi:** mesaj oyuncunun kendi kazandığı kuponun durumunu söylüyor, kafe adı/ürün/kampanya/link içermiyor; G7'nin izin + İYS kaydı şartı doğmuyor. Sınıflandırmayı ayakta tutan şey içerik disiplini ve `tests/hatirlatma.test.ts` metni bu yüzden sınıyor. İzin sorulmuyor ama **kapatılabiliyor** (`service_reminder`, `/verilerim`). ⚠️ Sınıflandırma S20'nin hukuk incelemesine girmeli. | `ödül açılma mekanızması.txt` |
 
 **Ü39'un uygulanışı:** eşik `cafe_config` anahtar-değer tablosunda (`domain/ayar.ts`),
 panelde *Ödül kataloğu → Gecikmeli açılma* bölümünde. Değişiklik `cafe.config_update`
 olarak denetim izine düşüyor — "kupon neden bugün açılmadı" sorusunun cevabı orada aranacak.
+
+**Ü42'nin bedeli ve sınırı:** hatırlatma, oyuncu başına SMS sayısını artırıyor —
+bugüne kadar yalnızca kayıt/giriş anında mesaj gidiyordu, artık kupon başına iki
+mesaj daha var. Öncelik sırası bu yüzden kodda: hatırlatma **kayıtla aynı kademede
+(%90) kesiliyor**, girişten önce. Ayrıca hatırlatmalar bakım köprüsünden gidiyor
+(`domain/bakim.ts`) ve o köprü ekran açıldığında çalışıyor — kimse ekran açmazsa
+**hatırlatma gecikir**. Gerçek zamanlanmış iş geldiğinde (Faz 10) ilk taşınacak şey bu.
 
 **Ü41'in henüz karşılığı olmayan tarafı:** `cafes` tablosunda abonelik durumu yok
 (`status` yalnızca pending/approved/suspended). Aboneliğin ürüne girmesi — durum,

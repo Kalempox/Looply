@@ -5,6 +5,8 @@ import {
   verileriIndir,
   pazarlamaIzniVer,
   pazarlamaIzniniGeriAl,
+  hatirlatmayiAc,
+  hatirlatmayiKapat,
   hesabiSil,
   silmeyiIptalEt,
   adGorunurluguAyarla,
@@ -66,6 +68,50 @@ export function IzinAnahtari({ acik }: { acik: boolean }) {
       <span className="text-[15px]">Kampanya mesajı almak istiyorum</span>
       <span
       className={`ml-3 shrink-0 border px-2.5 py-1 etiket-caps ${
+          durum ? "border-vurgu text-vurgu" : "border-cizgi text-yazi-sonuk"
+        }`}
+      >
+        {durum ? "açık" : "kapalı"}
+      </span>
+    </button>
+  );
+}
+
+/**
+ * Ödül hatırlatması anahtarı.
+ *
+ * Kampanya izninin **yanında ama ondan ayrı** duruyor: biri ticari ileti
+ * izni (G7, İYS kapsamında), diğeri hizmete ait bildirim tercihi. Aynı
+ * kutuda birleştirmek, KVKK'nın "farklı amaçları tek işlemle birleştirme"
+ * ilkesine aykırı olurdu — ve zaten farklı şeyler.
+ */
+export function HatirlatmaAnahtari({ acik }: { acik: boolean }) {
+  const [durum, setDurum] = useState(acik);
+  const [bekliyor, basla] = useTransition();
+
+  return (
+    <button
+      type="button"
+      disabled={bekliyor}
+      aria-pressed={durum}
+      onClick={() =>
+        basla(async () => {
+          const yeni = !durum;
+          setDurum(yeni);
+          if (yeni) await hatirlatmayiAc();
+          else await hatirlatmayiKapat();
+        })
+      }
+      className="flex w-full items-center justify-between rounded-lg border border-cizgi bg-cukur px-4 py-3.5 text-left disabled:opacity-50"
+    >
+      <span className="text-[15px]">
+        Ödülüm kullanıma açılınca haber ver
+        <span className="mt-0.5 block text-[13px] text-yazi-sonuk">
+          Yalnızca kendi kazandığın ödüller — kampanya mesajı değil.
+        </span>
+      </span>
+      <span
+        className={`ml-3 shrink-0 border px-2.5 py-1 etiket-caps ${
           durum ? "border-vurgu text-vurgu" : "border-cizgi text-yazi-sonuk"
         }`}
       >
