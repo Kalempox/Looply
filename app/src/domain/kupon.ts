@@ -34,14 +34,18 @@ import { idIleBul, odulKilidiBitis, takmaAdIle } from "./player";
  */
 
 /**
- * Ü28: bu tutarın üstündeki ödül **12 saat sonra** aktifleşir.
+ * Ü28: bu tutarın üstündeki ödül **24 saat sonra** aktifleşir.
  *
- * ── Neden 12 saat, neden "ertesi gün" değil ─────────────────
+ * ── Neden sabit süre, neden "ertesi gün" değil ──────────────
  *
  * İlk hâli "yarın 00:00" idi ve takvim gününe bağlıydı: sabah 09:00'da
  * kazanan 15 saat, akşam 23:00'te kazanan 1 saat bekliyordu. Aynı kural iki
- * oyuncuya on beş kat farklı davranıyordu. 12 saat herkese aynı pencereyi
- * veriyor — akşam kazanan ertesi sabah, sabah kazanan aynı akşam geliyor.
+ * oyuncuya on beş kat farklı davranıyordu. Sabit süre herkese aynı pencereyi
+ * veriyor.
+ *
+ * Süre 24 saat: ürün belgesinde ("Ödülün aktifleşme süresi: 24 saat") ve
+ * oradaki örnekte birebir bu yazıyor. Bir tur 12 saat denendi ve belgeyle
+ * çeliştiği görülünce geri alındı.
  *
  * ── Eşik neden kafenin ayarı ────────────────────────────────
  *
@@ -52,7 +56,7 @@ import { idIleBul, odulKilidiBitis, takmaAdIle } from "./player";
  * E6'nın kanıt kademesi bu ayardan **etkilenmiyor** — o platform kuralı ve
  * `katalog.kanitSeviyesi` içinde duruyor.
  */
-export const ERTELEME_SAAT = 12;
+export const ERTELEME_SAAT = 24;
 
 /** Kupon kaç gün geçerli (docs/06 §10). */
 export const GECERLILIK_GUN = 7;
@@ -123,7 +127,7 @@ async function kuponUret(
     return { ok: false, hata: "Bu kafenin bu haftaki ödül bütçesi doldu." };
   }
 
-  // Ü28: eşiğin üstündeki ödül 12 saat sonra aktifleşir; ziyareti geri
+  // Ü28: eşiğin üstündeki ödül 24 saat sonra aktifleşir; ziyareti geri
   // getiren şey bu. Eşik kafenin ayarı — 50 TL yalnızca varsayılan.
   const esik = await ayar.sayiOku(opts.cafeId, ayar.ANAHTARLAR.ertelemeEsigi);
   const ertelendi = tutar > esik;

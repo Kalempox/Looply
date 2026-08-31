@@ -20,7 +20,7 @@ import { audit } from "@/lib/audit";
  */
 
 export const ANAHTARLAR = {
-  /** Bu tutarın üstündeki ödül gecikmeli açılır (Ü28, kuruş). */
+  /** Bu tutarın üstündeki ödül 24 saat sonra açılır (Ü28, kuruş). */
   ertelemeEsigi: "erteleme_esigi_kurus",
 } as const;
 

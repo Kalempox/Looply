@@ -350,3 +350,123 @@ describe("denetim izi ve kiracı izolasyonu", () => {
     }
   });
 });
+
+/* ═══════════════════════════════════════════════════════════
+   Ü44 · Yeni ve tekrar gelen müşteri
+   ═══════════════════════════════════════════════════════════
+
+   Raporun en çok satış değeri taşıyan iki sayısı. Yanlış hesaplanırsa
+   kafeye olmayan bir şey satılmış olur, o yüzden ayrı ayrı sınanıyor.
+*/
+
+describe("yeni ve tekrar gelen müşteri (Ü44)", () => {
+  /** Bu blok kendi oyuncularını ve kendi geçmişini kuruyor. */
+  const kendiOyuncular: string[] = [];
+
+  async function gecmisliOyuncu(gunler: number[]) {
+    const { oyuncu } = await kaydet({
+      telefon: yeniTelefon(),
+      ad: "Buse",
+      soyad: "Tekrar",
+      dogumYili: 1992,
+      pazarlamaIzni: false,
+    });
+    kendiOyuncular.push(oyuncu.id);
+    oyuncular.push(oyuncu.id);
+
+    for (const gun of gunler) {
+      await yoneticiSorgu(
+        `INSERT INTO play_sessions
+           (id, cafe_id, table_id, player_id, device_id_hash, game_id, seed,
+            started_at, ended_at, server_score, proof_mask, proof_level,
+            business_date, status, is_qualified)
+         VALUES ($1,$2,NULL,$3,decode(md5($3),'hex'),'blok','tohum',
+                 now(), now(), 100, 3, 2,
+                 ($4::date + $5::int), 'completed', false)`,
+        [`oyn_tekrar_${oyuncu.id}_${gun}`, kafeA, oyuncu.id, aralik.baslangic, String(gun)],
+      );
+    }
+    return oyuncu.id;
+  }
+
+  after(async () => {
+    for (const id of kendiOyuncular) {
+      await yoneticiSorgu(`DELETE FROM play_sessions WHERE player_id = $1`, [id]);
+    }
+  });
+
+  test("ilk oyununu bu dönemde oynayan YENİ, önceden geleni TEKRAR sayılıyor", async () => {
+    const once = await rapor.ozet(kafeA, aralik);
+
+    // Beşer kişi: eşiğin (Ü30) altında kalıp gizlenmesinler
+    for (let i = 0; i < 5; i++) await gecmisliOyuncu([1]); // yalnızca bu dönem → yeni
+    for (let i = 0; i < 5; i++) await gecmisliOyuncu([-9, 1]); // önce de gelmiş → tekrar
+
+    const sonra = await rapor.ozet(kafeA, aralik);
+
+    assert.equal(
+      (sonra.yeniOyuncu ?? 0) - (once.yeniOyuncu ?? 0),
+      5,
+      "ilk oyununu bu dönemde oynayan beş kişi yeni sayılmalıydı",
+    );
+    assert.equal(
+      (sonra.tekrarGelenOyuncu ?? 0) - (once.tekrarGelenOyuncu ?? 0),
+      5,
+      "önceden de gelmiş beş kişi tekrar gelen sayılmalıydı",
+    );
+  });
+
+  /**
+   * Dönem içinde iki kez gelen kişi **iki kez sayılmamalı**: bu sayı ziyaret
+   * değil kişi sayıyor. Aksi hâlde kafeye "40 tekrar gelen" denip aslında
+   * 20 kişinin ikişer kez geldiği bir tablo gösterilirdi.
+   */
+  test("aynı kişi dönemde iki kez geldiyse bir kez sayılıyor", async () => {
+    const once = await rapor.ozet(kafeA, aralik);
+    for (let i = 0; i < 5; i++) await gecmisliOyuncu([1, 2, 3]);
+    const sonra = await rapor.ozet(kafeA, aralik);
+
+    assert.equal(
+      (sonra.yeniOyuncu ?? 0) - (once.yeniOyuncu ?? 0),
+      5,
+      "üç kez gelen beş kişi on beş değil beş sayılmalıydı",
+    );
+  });
+
+  /**
+   * Ü30: beşten az kişi içeren kırılım gizleniyor. Küçük bir kafede
+   * "bu hafta 2 yeni müşteri" satırı, işletmecinin hafızasıyla birleşince
+   * kişiyi işaret eder.
+   */
+  test("mahremiyet eşiği bu sayılarda da geçerli", async () => {
+    const bosAralik = { baslangic: "2019-01-07", bitis: "2019-01-14" };
+    const o = await rapor.ozet(kafeA, bosAralik);
+    assert.equal(o.yeniOyuncu, 0, "hiç kimse yoksa sıfır görünmeli, gizlenmemeli");
+    assert.equal(o.tekrarGelenOyuncu, 0);
+  });
+
+  /**
+   * G1: "bu kafedeki ilk oyun" hesabı kafe bazında. Oyuncunun başka
+   * kafedeki geçmişi buraya sızarsa, kafeler veriyi birleştirmiş olur.
+   */
+  test("başka kafedeki geçmiş bu kafenin sayısına karışmıyor", async () => {
+    const oyuncu = await gecmisliOyuncu([1]);
+
+    // Aynı oyuncu B kafesinde çok daha önce oynamış olsun
+    await yoneticiSorgu(
+      `INSERT INTO play_sessions
+         (id, cafe_id, table_id, player_id, device_id_hash, game_id, seed,
+          started_at, ended_at, server_score, proof_mask, proof_level,
+          business_date, status, is_qualified)
+       VALUES ($1,$2,NULL,$3,decode(md5($3),'hex'),'blok','tohum',
+               now(), now(), 100, 3, 2, ($4::date - 60), 'completed', false)`,
+      [`oyn_tekrar_b_${oyuncu}`, kafeB, oyuncu, aralik.baslangic],
+    );
+
+    const a = await rapor.ozet(kafeA, aralik);
+    assert.ok(
+      (a.yeniOyuncu ?? 0) > 0,
+      "B kafesindeki geçmiş, A kafesinde bu kişiyi 'tekrar gelen' yapmamalı",
+    );
+  });
+});

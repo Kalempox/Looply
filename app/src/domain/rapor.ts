@@ -66,6 +66,15 @@ export type RaporOzeti = {
   kullanilanIndirimKurus: number;
   kuponVerilen: number;
   kuponKullanilan: number;
+  /**
+   * Bu dönemde **ilk kez** gelen oyuncu — daha önce bu kafede hiç oynamamış.
+   *
+   * Ü30 eşiği burada da geçerli: küçük bir kafede "bu hafta 2 yeni müşteri"
+   * satırı, işletmecinin hafızasıyla birleşince kişiyi işaret eder.
+   */
+  yeniOyuncu: number | null;
+  /** Bu dönemde gelen ve **daha önce de** gelmiş oyuncu. */
+  tekrarGelenOyuncu: number | null;
 };
 
 export async function ozet(cafeId: string, aralik: Aralik): Promise<RaporOzeti> {
@@ -81,6 +90,8 @@ async function ozetIle(db: Db, aralik: Aralik): Promise<RaporOzeti> {
     kupon_kullanilan: string;
     kazanilan: string;
     kullanilan: string;
+    yeni: string;
+    tekrar: string;
   }>(
     `SELECT
        (SELECT count(*) FROM play_sessions
@@ -91,6 +102,29 @@ async function ozetIle(db: Db, aralik: Aralik): Promise<RaporOzeti> {
        (SELECT count(*) FROM play_sessions
          WHERE status = 'completed' AND business_date >= $1
            AND business_date < $2)                                            AS oyun,
+       -- ── Yeni ve tekrar gelen (Ü44)
+       --
+       -- Ayrım tek soruya iniyor: bu oyuncunun bu kafedeki İLK tamamlanmış
+       -- oyunu bu dönemin içinde mi, öncesinde mi. min(business_date)
+       -- oyuncu başına bir kez hesaplanıyor; dönem içinde iki kez gelen
+       -- kişi iki kez sayılmıyor.
+       --
+       -- Kafe süzgeci sorguda yok çünkü withCafe RLS'i açık: bu sorgu
+       -- yalnızca çağıran kafenin satırlarını görüyor. Yani "bu kafedeki
+       -- ilk oyun" doğal olarak kafe bazında hesaplanıyor — oyuncunun
+       -- başka kafedeki geçmişi buraya sızmıyor (G1).
+       (SELECT count(*) FILTER (WHERE ilk >= $1::date)
+          FROM (SELECT player_id, min(business_date) AS ilk
+                  FROM play_sessions WHERE status = 'completed'
+                 GROUP BY player_id) g
+         WHERE g.ilk < $2::date)                                              AS yeni,
+       (SELECT count(DISTINCT ps.player_id) FROM play_sessions ps
+         WHERE ps.status = 'completed'
+           AND ps.business_date >= $1 AND ps.business_date < $2
+           AND EXISTS (SELECT 1 FROM play_sessions o
+                        WHERE o.player_id = ps.player_id
+                          AND o.status = 'completed'
+                          AND o.business_date < $1))                          AS tekrar,
        (SELECT count(*) FROM coupons
          WHERE issued_at >= $1::date AND issued_at < $2::date)                AS kupon_verilen,
        (SELECT count(*) FROM coupons
@@ -112,6 +146,8 @@ async function ozetIle(db: Db, aralik: Aralik): Promise<RaporOzeti> {
     kuponKullanilan: Number(r?.kupon_kullanilan ?? 0),
     kazanilanIndirimKurus: Number(r?.kazanilan ?? 0),
     kullanilanIndirimKurus: Number(r?.kullanilan ?? 0),
+    yeniOyuncu: gizle(Number(r?.yeni ?? 0)),
+    tekrarGelenOyuncu: gizle(Number(r?.tekrar ?? 0)),
   };
 }
 

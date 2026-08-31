@@ -273,7 +273,7 @@ function SonucEkrani({
             <div className="mt-1.5 font-display text-lg font-bold">{kupon.baslik}</div>
             <p className="mt-1 text-[13px] leading-relaxed text-yazi-sonuk">
               {kupon.ertelendi
-                ? "12 saat sonra açılıyor. Ödüllerim ekranından takip edebilirsin."
+                ? "24 saat sonra açılıyor. Ödüllerim ekranından takip edebilirsin."
                 : "Ödüllerim ekranından kasada gösterebilirsin."}
             </p>
           </Link>

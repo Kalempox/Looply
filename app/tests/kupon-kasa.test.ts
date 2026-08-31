@@ -239,17 +239,17 @@ describe("kupon üretimi", () => {
     assert.equal(sonra.dagitilabilirKurus, once.dagitilabilirKurus - 1_500);
   });
 
-  test("eşiğin üstündeki ödül 12 saat ertelenir (Ü28)", async () => {
+  test("eşiğin üstündeki ödül 24 saat ertelenir (Ü28)", async () => {
     const s = await kuponAl(buyukOdulId);
     assert.equal(s.ertelendi, true, "büyük ödül hemen aktif oldu");
 
     const detay = await kuponDetayi(oyuncuId, s.kuponId);
     assert.equal(detay?.durum, "beklemede");
 
-    // 12 saat: takvim gününe değil oyuncunun kendi saatine bağlı. "Yarın
+    // 24 saat: takvim gününe değil oyuncunun kendi saatine bağlı. "Yarın
     // 00:00" olsaydı sabah kazanan 15 saat, akşam kazanan 1 saat beklerdi.
     const saat = (detay!.aktiflesme.getTime() - Date.now()) / 3_600_000;
-    assert.ok(saat > 11.5 && saat <= 12, `açılma 12 saat sonra olmalıydı (${saat.toFixed(1)} sa)`);
+    assert.ok(saat > 23.5 && saat <= 24, `açılma 24 saat sonra olmalıydı (${saat.toFixed(1)} sa)`);
   });
 
   test("eşiğin altındaki ödül hemen aktif olur", async () => {

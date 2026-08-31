@@ -9,7 +9,7 @@ import { gonder, type Sablon } from "@/sms";
  *
  * ── Neden var ───────────────────────────────────────────────
  *
- * Ü39 "eşiğin üstündeki ödül 12 saat sonra açılır" diyor ve bunun amacı
+ * Ü39 "eşiğin üstündeki ödül 24 saat sonra açılır" diyor ve bunun amacı
  * ertesi ziyaret. Ama kupon sessizce açılıyordu: oyuncuya hiçbir şey
  * gitmiyordu. "Yarın tekrar gel" mekaniği kurulmuş ama çağıran yoktu.
  *
@@ -33,10 +33,11 @@ import { gonder, type Sablon } from "@/sms";
 /**
  * Sessiz saatler — bu aralığın dışında hatırlatma gönderilmiyor.
  *
- * Ü39'un doğrudan yan etkisi: 14:00'te kazanılan ödül **02:00'de** açılıyor.
- * O saatte telefon çaldırmak, bildirimi hizmet olmaktan çıkarıp rahatsızlığa
- * çevirir. Vakti dışarıda kalan hatırlatma sıradaki pencereyi bekliyor —
- * kaybolmuyor, erteleniyor.
+ * Ü39'un doğrudan yan etkisi: erteleme 24 saat olduğu için kupon, kazanıldığı
+ * saatte açılıyor. Gece 23:00'te oynayan biri ertesi gece 23:00'te bildirim
+ * alırdı; o saatte telefon çaldırmak, bildirimi hizmet olmaktan çıkarıp
+ * rahatsızlığa çevirir. Vakti dışarıda kalan hatırlatma sıradaki pencereyi
+ * bekliyor — kaybolmuyor, erteleniyor.
  */
 export const PENCERE_BASI = 9;
 export const PENCERE_SONU = 21;

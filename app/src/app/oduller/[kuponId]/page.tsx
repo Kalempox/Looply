@@ -105,7 +105,7 @@ function durumBasligi(durum: string): string {
 
 function durumAciklamasi(kupon: { durum: string; aktiflesme: Date }): string {
   if (kupon.durum === "beklemede") {
-    return `Büyük ödüller kazanıldığı anda değil, 12 saat sonra açılır. ${kupon.aktiflesme.toLocaleString(
+    return `Büyük ödüller kazanıldığı anda değil, 24 saat sonra açılır. ${kupon.aktiflesme.toLocaleString(
       "tr-TR",
       { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" },
     )} sonrasında kasada kullanabilirsin.`;

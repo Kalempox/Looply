@@ -98,6 +98,47 @@ export default async function RaporSayfasi({
         </div>
       </Bolum>
 
+      {/* ── Tekrar gelen müşteri ───────────────────────────
+          Ü44: raporun en önemli iki sayısı. "Kaç oyun oynandı" bir
+          etkinlik ölçüsü; kafenin parasını ilgilendiren soru ise
+          "gelen bir daha geliyor mu". O yüzden ayrı bir bölümde ve
+          nitelikli oyuncunun hemen ardında duruyor. */}
+      <Bolum
+        baslik="Tekrar gelen müşteri"
+        alt="CafePlay'in asıl vaadi bu: oyun oynayan müşteri geri geliyor mu."
+      >
+        <div className="grid gap-px overflow-hidden rounded-2xl border border-cizgi bg-cizgi sm:grid-cols-2">
+          <div className="bg-yuzey px-5 py-5">
+            <div className="etiket-caps text-yazi-sonuk">Tekrar gelen</div>
+            <div className="mt-2 font-data text-2xl leading-none font-bold text-vurgu tabular">
+              {sayiYaz(ozet.tekrarGelenOyuncu)}
+            </div>
+            <p className="mt-2 text-[12px] leading-relaxed text-yazi-sonuk">
+              Bu dönemde gelen ve daha önce de gelmiş müşteri
+            </p>
+          </div>
+
+          <div className="bg-yuzey px-5 py-5">
+            <div className="etiket-caps text-yazi-sonuk">İlk kez gelen</div>
+            <div className="mt-2 font-data text-2xl leading-none font-bold text-yazi-sonuk tabular">
+              {sayiYaz(ozet.yeniOyuncu)}
+            </div>
+            <p className="mt-2 text-[12px] leading-relaxed text-yazi-sonuk">
+              Bu kafede ilk oyununu bu dönemde oynadı
+            </p>
+          </div>
+        </div>
+
+        {ozet.tekrarGelenOyuncu !== null && ozet.tekilOyuncu > 0 && (
+          <p className="mt-3 text-[13px] leading-relaxed text-yazi-sonuk">
+            Bu dönemde gelen{" "}
+            <strong className="text-yazi">{ozet.tekilOyuncu} kişinin</strong>{" "}
+            <strong className="text-yazi">{ozet.tekrarGelenOyuncu}&apos;i</strong> daha önce de
+            gelmişti.
+          </p>
+        )}
+      </Bolum>
+
       {/* ── İndirim ────────────────────────────────────── */}
       <Bolum baslik="İndirim" alt="Kazanılan ile kullanılan ayrı sayılır — ödediğin yalnızca ikincisi.">
         <div className="grid gap-px overflow-hidden rounded-2xl border border-cizgi bg-cizgi sm:grid-cols-2">
@@ -283,6 +324,17 @@ function gun(iso: string, ekle = 0): string {
   const d = new Date(`${iso}T00:00:00Z`);
   d.setUTCDate(d.getUTCDate() + ekle);
   return d.toLocaleDateString("tr-TR", { day: "numeric", month: "long", timeZone: "UTC" });
+}
+
+/**
+ * Ü30 eşiğinin altındaki sayı gizleniyor.
+ *
+ * Küçük bir kafede "bu hafta 2 yeni müşteri" satırı, işletmecinin o günkü
+ * hafızasıyla birleşince kişiyi işaret eder. Toplamlar bozulmuyor; yalnızca
+ * beşten az kişi içeren kırılım sayı yerine eşiği gösteriyor.
+ */
+function sayiYaz(deger: number | null): string {
+  return deger === null ? "<5" : String(deger);
 }
 
 function Sayi({ etiket, deger }: { etiket: string; deger: string }) {

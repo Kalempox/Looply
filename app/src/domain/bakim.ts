@@ -12,7 +12,7 @@ import { log } from "@/lib/log";
  * `bekleyenleriAc` ve `sureDolanlariSupur` Faz 7'de yazıldı ama **hiçbir
  * yerden çağrılmıyordu.** Sonucu iki gerçek arıza:
  *
- *   · Ertelenmiş kupon (Ü28: eşiğin üstündeki ödül 12 saat sonra açılır) satırda
+ *   · Ertelenmiş kupon (Ü28: eşiğin üstündeki ödül 24 saat sonra açılır) satırda
  *     sonsuza kadar `pending` kalıyordu.
  *   · Süresi dolan kuponun rezervasyonu bütçeye **hiç geri dönmüyordu** —
  *     kafenin dağıtılabilir bütçesi sessizce eriyordu (E11).

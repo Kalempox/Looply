@@ -58,7 +58,7 @@ export default async function OdullerSayfasi() {
           {e.bekleyen.length > 0 && (
             <Bolum
               baslik="Yakında açılıyor"
-              not="Büyük ödüller kazanıldığı anda değil, 12 saat sonra açılır."
+              not="Büyük ödüller kazanıldığı anda değil, 24 saat sonra açılır."
               kuponlar={e.bekleyen}
             />
           )}
