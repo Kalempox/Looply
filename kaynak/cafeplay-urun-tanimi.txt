@@ -1,0 +1,877 @@
+Evet. Burada henüz Lovable promptuna geçmeyelim. Önce **CafePlay'in ne olduğunu, her bölümün neden var olduğunu ve kullanıcıların bu sistemi nasıl kullanacağını**, hiç teknik bilgisi olmayan birine anlatılabilecek şekilde netleştirelim.
+
+## 1. Projenin adı: CafePlay
+
+**CafePlay**, kafelerde bulunan müşterilerin telefonlarından QR kod okutarak kısa ve eğlenceli oyunlar oynadığı; oyun karşılığında puan, rozet, ödül ve indirim kuponları kazanabildiği dijital bir platformdur.
+
+Temel amaç sadece oyun oynatmak değildir.
+
+CafePlay'in asıl amacı:
+
+**Oyuncuyu eğlendirmek → kafede daha fazla zaman geçirmesini sağlamak → ödül vermek → tekrar kafeye getirmek → kafeye müşteri ve satış kazandırmak → platforma reklam geliri oluşturmak.**
+
+Yani CafePlay aslında üç sistemi birleştirir:
+
+**Oyun + Sadakat + Reklam**
+
+Bu ayrım çok önemli. Çünkü biz bir oyun şirketi kurmuyoruz; **oyun kullanan bir müşteri kazanma ve sadakat platformu** kuruyoruz.
+
+---
+
+# 2. CafePlay nasıl çalışır?
+
+En basit örnek:
+
+Bir müşteri kafeye oturuyor.
+
+Masada CafePlay QR kodunu görüyor.
+
+QR'ı telefonuyla okutuyor.
+
+CafePlay açılıyor.
+
+Kafe müşteriye özel bir karşılama ekranı görüyor:
+
+> “Cafe X'e hoş geldin!”
+
+Ardından:
+
+> **Bugünün Challenge'ı**
+
+başlıyor.
+
+Müşteri 30 saniyelik oyunu oynuyor.
+
+Örneğin 4.250 puan kazanıyor.
+
+Bu puanla:
+
+> 🎁 %10 indirim kuponu
+
+kazanıyor.
+
+Kupon telefonunda saklanıyor.
+
+Müşteri kasaya gittiğinde kuponu gösteriyor.
+
+Kafe kuponu kullanılmış olarak işaretliyor.
+
+Böylece oyun gerçek dünyada **satışa dönüşmüş oluyor.**
+
+---
+
+# 3. Oyuncu kim?
+
+Oyuncu CafePlay'i kullanan son müşteridir.
+
+Oyuncunun amacı:
+
+* oyun oynamak
+* puan kazanmak
+* seviyesini yükseltmek
+* ödül kazanmak
+* kupon toplamak
+* leaderboard'da yükselmek
+* yeni kafeleri keşfetmek
+
+Oyuncunun CafePlay'e para ödemesi gerekmeyecek.
+
+Bizim için oyuncu **ürünün müşterisi değil, platformun değer üreten kullanıcısıdır.**
+
+Oyuncu ne kadar çok oynarsa:
+
+* daha fazla reklam gösterilebilir
+* daha fazla kampanya görülebilir
+* daha fazla kafe keşfedilebilir
+* daha fazla kupon kullanılabilir
+
+Dolayısıyla oyuncunun platformda kalması bizim için çok önemlidir.
+
+---
+
+# 4. Kafe işletmesi nedir?
+
+Kafe, CafePlay'in para kazandıran temel müşterilerinden biridir.
+
+Kafe CafePlay'i şu amaçlarla kullanır:
+
+**Müşteri çekmek**
+
+**Müşteriyi eğlendirmek**
+
+**Müşterinin tekrar gelmesini sağlamak**
+
+**Kampanya yapmak**
+
+**İndirim kuponu dağıtmak**
+
+**Müşteri sadakati oluşturmak**
+
+**Müşteri davranışlarını görmek**
+
+Örneğin kafe yöneticisi panelden:
+
+> “Bu hafta 684 kişi oyun oynadı.”
+
+> “217 kişi kupon kazandı.”
+
+> “94 kupon kullanıldı.”
+
+> “72 kişi tekrar geldi.”
+
+gibi sonuçları görebilecek.
+
+Böylece kafe, verdiği paranın karşılığını ölçebilecek.
+
+---
+
+# 5. Platform yöneticisi kim?
+
+Bu bizim sistemimizi yöneten taraftır.
+
+Platform yöneticisi:
+
+* kafeleri yönetir
+* oyuncuları yönetir
+* oyunları yönetir
+* reklamları yönetir
+* kampanyaları yönetir
+* ödülleri yönetir
+* sistem genelindeki istatistikleri görür
+* sorunları kontrol eder
+* gerektiğinde içerikleri onaylar
+
+Örneğin:
+
+100 kafe sisteme kayıtlıysa platform yöneticisi:
+
+> 100 aktif kafe
+> 42.000 oyuncu
+> 320.000 oyun
+> 18.400 kupon kullanımı
+> 85 reklam kampanyası
+
+gibi genel verileri görebilir.
+
+---
+
+# 6. Reklamveren kim?
+
+Reklamveren CafePlay üzerinde görünürlük satın alan markadır.
+
+Örneğin:
+
+* Coca-Cola
+* kahve markası
+* tatlı markası
+* yerel işletme
+* telefon mağazası
+* giyim mağazası
+
+gibi şirketler olabilir.
+
+Reklamveren:
+
+> “CafePlay'deki oyunculara ulaşmak istiyorum.”
+
+der.
+
+Sistem reklamı uygun oyunculara ve kafelere gösterir.
+
+Örneğin oyun bittiğinde:
+
+> **“Bugünün sponsorlu ödülü: X Markası'ndan %20 indirim”**
+
+gösterilebilir.
+
+Bu nedenle reklamveren de panel kullanacak.
+
+---
+
+# 7. Oyuncu ana sayfası
+
+Oyuncunun CafePlay'e girdiğinde gördüğü ana ekrandır.
+
+Burada karmaşık şeyler olmayacak.
+
+Ana ekranda temel olarak:
+
+**Hoş geldin**
+
+**Bugünün Challenge'ı**
+
+**Bugünkü puanın**
+
+**Aktif ödüllerin**
+
+**Yakınındaki kafeler**
+
+**Yeni kampanyalar**
+
+**Leaderboard**
+
+gibi bilgiler olacak.
+
+Amaç:
+
+> Oyuncunun uygulamayı açtığında ne yapacağını hemen anlaması.
+
+---
+
+# 8. Oyunlar
+
+Bu bölüm tüm oyunların bulunduğu alandır.
+
+İlk sürümde çok fazla oyun olmayacak.
+
+Örneğin:
+
+### Oyun 1
+
+**30 Saniye Challenge**
+
+Oyuncu 30 saniye içinde mümkün olduğunca yüksek skor yapmaya çalışır.
+
+### Oyun 2
+
+**Hafıza**
+
+Kartların eşlerini bulur.
+
+### Oyun 3
+
+**Şans Çarkı**
+
+Ödül kazanmak için çark çevirir.
+
+İlerleyen dönemlerde oyun sayısı artırılabilir.
+
+Burada önemli olan oyunların:
+
+* hızlı başlaması
+* mobilde çalışması
+* kısa sürmesi
+* tekrar oynanabilir olması
+* skor üretmesi
+
+---
+
+# 9. Günün Challenge'ı
+
+Bence CafePlay'in en önemli bölümlerinden biri bu.
+
+Çünkü sadece “oyun kütüphanesi” yaparsak kullanıcı bir kez oynayıp çıkabilir.
+
+Ama:
+
+> **Bugünün Challenge'ı**
+
+oluşturursak kullanıcı her gün geri gelebilir.
+
+Örneğin:
+
+Pazartesi → Hafıza
+
+Salı → Hız
+
+Çarşamba → Refleks
+
+Perşembe → Kelime
+
+Cuma → Büyük ödül
+
+Cumartesi → Özel Challenge
+
+Pazar → Haftalık final
+
+Bu yapı kullanıcıya:
+
+> “Bugün ne var?”
+
+merakı verir.
+
+---
+
+# 10. Puanlarım
+
+Oyuncunun biriktirdiği tüm puanları gösterir.
+
+Örneğin:
+
+**Toplam puan:** 12.840
+
+**Bugünkü puan:** 1.250
+
+**Haftalık puan:** 8.450
+
+**Seviye:** 7
+
+**XP:** 2.300
+
+Burada daha sonra:
+
+* seviye
+* XP
+* rozet
+* seri
+* başarımlar
+
+gibi oyunlaştırma özellikleri eklenebilir.
+
+---
+
+# 11. Ödüller
+
+Bu bölüm “puanım” bölümünden farklıdır.
+
+**Puan = sistemdeki oyun değerin.**
+
+**Ödül = kazandığın gerçek fayda.**
+
+Örneğin:
+
+🎁 %10 kahve indirimi
+🎁 ücretsiz tatlı
+🎁 50 TL kupon
+🎁 ücretsiz topping
+🎁 ikinci içecek %50 indirim
+
+Oyuncu puanlarını bazı ödüllere dönüştürebilir.
+
+Ayrıca oyun sonunda doğrudan ödül kazanabilir.
+
+---
+
+# 12. Kuponlarım
+
+Bu bölüm çok önemli.
+
+Çünkü kazanan ödülün gerçek hayatta kullanılması burada gerçekleşir.
+
+Örneğin:
+
+**Cafe X**
+
+%20 Tatlı İndirimi
+
+Kod:
+
+**CP-48291**
+
+Son kullanım:
+
+**28 Ağustos 2026**
+
+Durum:
+
+**Kullanılmadı**
+
+Kullanıldığında:
+
+**Kullanıldı**
+
+olur.
+
+Bu sistemin en önemli taraflarından biri **tek kullanımlık olmasıdır.**
+
+Bir kullanıcı aynı kuponu 5 kere kullanamamalı.
+
+---
+
+# 13. Leaderboard
+
+Oyuncuların rekabet edeceği sıralama ekranıdır.
+
+Örneğin:
+
+| Sıra | Oyuncu |   Puan |
+| ---- | ------ | -----: |
+| 1    | Mert   | 82.450 |
+| 2    | Ayşe   | 78.920 |
+| 3    | Can    | 74.110 |
+
+Ama sadece global leaderboard yapmak zorunda değiliz.
+
+Daha ilginç olan:
+
+**Kafe leaderboard**
+
+**Şehir leaderboard**
+
+**Haftalık leaderboard**
+
+**Aylık leaderboard**
+
+**Arkadaş leaderboard**
+
+olabilir.
+
+Örneğin:
+
+> Cafe X'te bu haftanın 1 numarası sensin.
+
+Bu, tekrar oynamayı ciddi şekilde teşvik eder.
+
+---
+
+# 14. Kafeler
+
+Bu bölüm oyuncunun çevresindeki CafePlay işletmelerini gösterir.
+
+Örneğin:
+
+**Yakınımdaki kafeler**
+
+☕ Cafe A
+☕ Cafe B
+☕ Cafe C
+
+Her kafenin:
+
+* adı
+* konumu
+* kampanyaları
+* ödülleri
+* aktif oyunları
+
+görülebilir.
+
+Böylece CafePlay bir süre sonra sadece “oyun sitesi” olmaktan çıkıp **kafe keşif platformuna** dönüşebilir.
+
+---
+
+# 15. Kampanyalar
+
+Burada kafelerin ve reklamverenlerin yaptığı kampanyalar bulunur.
+
+Örneğin:
+
+> “Cafe A'da bugün %20 indirim”
+
+> “ABC Coffee yeni müşterilere ücretsiz espresso”
+
+> “Bu haftanın Challenge'ını tamamla, 100 TL kupon kazan.”
+
+Bu bölüm zamanla CafePlay'in reklam sisteminin önemli parçalarından biri olur.
+
+---
+
+# 16. Kafe Dashboard'u
+
+Kafe yöneticisinin ana ekranıdır.
+
+Burada kafe yöneticisi tek bakışta:
+
+**Bugünkü oyun sayısı**
+
+**Aktif oyuncu**
+
+**Kazanılan kupon**
+
+**Kullanılan kupon**
+
+**Yeni müşteri**
+
+**Tekrar gelen müşteri**
+
+**Kampanya performansı**
+
+gibi bilgileri görür.
+
+Amaç:
+
+> “CafePlay bana ne kazandırıyor?”
+
+sorusunu cevaplamak.
+
+---
+
+# 17. Oyun yönetimi
+
+Kafe hangi oyunları müşterilerine gösterecek?
+
+Bunu buradan yönetir.
+
+Örneğin:
+
+✅ 30 Saniye Challenge
+
+✅ Hafıza
+
+❌ Şans Çarkı
+
+Kafe isterse bazı oyunları aktif/pasif yapabilir.
+
+İleride sponsorlu özel oyunlar da olabilir.
+
+---
+
+# 18. QR kodlar
+
+CafePlay'in fiziksel dünyaya açılan kapısı burasıdır.
+
+Kafe yöneticisi:
+
+**Masa 1**
+
+**Masa 2**
+
+**Masa 3**
+
+**Kasa**
+
+**Menü**
+
+**Fiş**
+
+için ayrı QR kod oluşturabilir.
+
+Örneğin masa QR'ı okutulduğunda sistem:
+
+> “Cafe X – Masa 12”
+
+şeklinde açılabilir.
+
+Bu ileride **hangi masadan kaç oyun oynandı** gibi ölçümler yapmamızı da sağlar.
+
+---
+
+# 19. Ödüller yönetimi
+
+Kafe hangi ödülleri verecek?
+
+Örneğin:
+
+* %10 kahve indirimi
+* ücretsiz su
+* %20 tatlı
+* 50 TL kupon
+
+Kafe bunları kendisi oluşturabilir.
+
+Ayrıca:
+
+> “Bu ödülü günde sadece 10 kişi kazanabilir.”
+
+gibi sınırlar konabilir.
+
+---
+
+# 20. Kupon yönetimi
+
+Kafe:
+
+* oluşturulan kuponları
+* kullanılan kuponları
+* süresi dolanları
+* aktif kuponları
+
+görebilir.
+
+En önemlisi:
+
+**Kuponun gerçekten kullanılıp kullanılmadığını anlayabilir.**
+
+Burası sistemin ticari tarafını güçlendiren bölümlerden biridir.
+
+---
+
+# 21. Müşteriler
+
+Kafe müşterileri bölümünde:
+
+* toplam oyuncu
+* yeni oyuncular
+* aktif oyuncular
+* tekrar gelen oyuncular
+* oyun oynama sıklığı
+* kupon kullanımı
+
+gibi bilgiler görülebilir.
+
+Burada kişisel verilerin gereksiz şekilde toplanmaması ve erişimlerin rol bazlı olması gerekir.
+
+---
+
+# 22. Reklamlar
+
+Kafe kendi reklamlarını veya platformun sunduğu reklamları yönetebilir.
+
+Örneğin:
+
+> “Oyunculara yeni tatlımızı göster.”
+
+Kafe ayrıca ileride:
+
+> “Yakındaki Cafe B'nin reklamı burada gösterilebilir.”
+
+modeline geçebilir.
+
+İşte burada **kafeler arası reklam ağı** oluşmaya başlar. Bu modelde en değerli taraflardan biri de bu. 
+
+---
+
+# 23. İstatistikler
+
+Kafenin en kritik bölümlerinden biri.
+
+Örneğin:
+
+**Bu ay**
+
+4.218 oyun
+1.326 oyuncu
+684 kupon
+417 kupon kullanımı
+238 tekrar ziyaret
+
+gibi sonuçları görebilir.
+
+Daha sonra:
+
+> CafePlay sayesinde kaç müşterim geldi?
+
+sorusuna da yaklaşabilmeliyiz. 
+
+---
+
+# 24. Platform Dashboard'u
+
+Bu ekran yalnızca CafePlay yöneticisine ait.
+
+Buradan bütün sistem görülür.
+
+Örneğin:
+
+**Aktif Kafe:** 1.245
+
+**Aktif Oyuncu:** 84.200
+
+**Bugünkü Oyun:** 31.520
+
+**Kupon Kullanımı:** 4.125
+
+**Aktif Kampanya:** 286
+
+**Reklam Geliri:** ₺...
+
+**Abonelik Geliri:** ₺...
+
+---
+
+# 25. Finans
+
+İlk aşamada aktif olmayacak.
+
+Ama mimaride yeri şimdiden hazırlanacak.
+
+Sonradan burada:
+
+* kafe abonelikleri
+* reklam ödemeleri
+* kampanya ödemeleri
+* platform komisyonları
+* faturalar
+* ödemeler
+
+yönetilecek.
+
+---
+
+# 26. Analitik
+
+Burada bütün platformun davranışını analiz edeceğiz.
+
+Örneğin:
+
+**Oyuncu oyunu açtı**
+
+→ oyunu başlattı
+
+→ 20 saniye oynadı
+
+→ kaybetti
+
+→ tekrar oynadı
+
+→ reklam gördü
+
+→ kupon kazandı
+
+→ kuponu kullandı
+
+Bu event mantığı, ekli örnekteki oyun analitiği yaklaşımının CafePlay tarafındaki karşılığı olacak. 
+
+---
+
+# 27. Hile / Fraud koruması
+
+Bu özelliği sonradan düşünmek hata olur.
+
+Örneğin kullanıcı:
+
+> “Ben 50.000 puan kazandım.”
+
+diyerek tarayıcıdaki veriyi değiştirmemeli.
+
+Bu nedenle:
+
+**oyun → skor doğrulama → puan → ödül → kupon**
+
+şeklinde güvenli bir akış oluşturacağız.
+
+Özellikle kuponun tek kullanımlık olması gerekiyor. 
+
+---
+
+# 28. Abonelik ve ödeme
+
+Bu sistemin para kazandıran tarafıdır.
+
+Kafeler aylık abonelik ödeyebilir.
+
+Örneğin daha sonra:
+
+**Starter**
+
+**Pro**
+
+**Business**
+
+paketleri çıkarabiliriz.
+
+Ancak ilk mimaride bunu **oluşturup çalıştırmayacağız**.
+
+Sadece ileride eklenebilecek şekilde hazırlayacağız.
+
+---
+
+# 29. Çoklu işletme ağı
+
+Bence CafePlay'i uzun vadede değerli yapan en önemli özelliklerden biri bu.
+
+Başlangıç:
+
+**1 kafe**
+
+Sonra:
+
+**10 kafe**
+
+Sonra:
+
+**100 kafe**
+
+Sonra:
+
+**1.000 kafe**
+
+Ve kullanıcı bir kafeden kazandığı puanı/XP'yi başka bir CafePlay işletmesinde de kullanabilmeye başlayabilir.
+
+Örneğin:
+
+> Cafe A'da kazandığın 2.000 XP ile Cafe B'de ödül aç.
+
+Bu noktada CafePlay:
+
+**oyun + sadakat + reklam + işletme ağı**
+
+haline gelir.
+
+---
+
+# 30. Temel kullanıcı akışı neden böyle?
+
+Bizim ana döngümüz:
+
+**QR kod**
+
+↓
+**Kafe sayfası**
+
+↓
+**Oyun**
+
+↓
+**Skor**
+
+↓
+**Ödül**
+
+↓
+**Kupon**
+
+↓
+**Kafede kullanım**
+
+↓
+**Tekrar ziyaret**
+
+Bu döngü CafePlay'in kalbidir. 
+
+Ama burada çok önemli bir ekleme var:
+
+**Tekrar ziyaret → tekrar oyun → daha fazla puan → daha değerli ödül**
+
+Böylece sistem kendi kendini besleyen bir **sadakat döngüsüne** dönüşür.
+
+---
+
+# 31. Tasarım anlayışı
+
+İki farklı yüzümüz olacak.
+
+### Oyuncu tarafı
+
+Eğlenceli:
+
+* büyük butonlar
+* animasyonlar
+* puanlar
+* rozetler
+* seviyeler
+* oyun kartları
+* ödül görselleri
+
+Burada kullanıcı “yazılım kullanıyorum” hissetmemeli.
+
+**Oyun oynuyorum** demeli.
+
+### İşletme tarafı
+
+Tam tersi.
+
+* sade
+* profesyonel
+* temiz
+* anlaşılır
+* grafik ve tablolar
+* net KPI'lar
+
+olmalı.
+
+Kafe sahibi oyundan değil, **sonuçtan** etkilenmeli.
+
+---
+
+## En önemli stratejik karar
+
+CafePlay'in merkezi **oyun değil**.
+
+Merkezi:
+
+> **Oyuncuyu kafeye geri getiren oyunlaştırılmış müşteri sadakat sistemi.**
+
+Oyun bunun motorudur.
+
+Ödül bunun teşvikidir.
+
+Kupon bunun gerçek dünyadaki sonucudur.
+
+Kafe bunun müşterisidir.
+
+Reklam bunun ikinci gelir kaynağıdır.
+
+Ve kafeler ağı oluştuğunda **network effect** başlar. 
+
+Bundan sonra bence sıradaki konumuz **“Oyuncu tam olarak nasıl kayıt olacak, QR ile nasıl ilişkilendirilecek, puan nasıl kazanacak, ödül nasıl kazanacak?”** olmalı. Çünkü bütün diğer ekranların veri mantığı bunun üzerine kurulacak.

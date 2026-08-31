@@ -1,0 +1,46 @@
+{
+  "name": "cafeplay",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "dev:https": "next dev --experimental-https -H 0.0.0.0",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "keys:generate": "tsx scripts/anahtar-uret.ts",
+    "kelime:uret": "tsx scripts/kelime-listesi-uret.ts",
+    "db:up": "docker compose up -d --wait",
+    "db:down": "docker compose down",
+    "db:reset": "docker compose down -v && docker compose up -d --wait",
+    "db:migrate": "tsx scripts/goc.ts",
+    "db:seed": "tsx scripts/tohum-gelistirme.ts",
+    "db:simule": "tsx scripts/simulasyon.ts",
+    "db:backup": "tsx scripts/yedek-al.ts",
+    "db:restore-drill": "tsx scripts/yedek-tatbikat.ts",
+    "test": "node --import tsx --test --test-concurrency=1 tests/*.test.ts",
+    "ci": "npm run typecheck && npm run lint && npm run test"
+  },
+  "dependencies": {
+    "next": "16.3.2",
+    "pg": "^8.23.0",
+    "qrcode-generator": "2.0.4",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/pg": "^8.23.1",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "dotenv": "^17.4.2",
+    "eslint": "^9",
+    "eslint-config-next": "16.3.2",
+    "tailwindcss": "^4",
+    "tsx": "^4.23.12",
+    "typescript": "^5"
+  }
+}

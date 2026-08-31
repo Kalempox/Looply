@@ -1,0 +1,85 @@
+# CafePlay — sürekli entegrasyon (G24)
+#
+# Güvenlik kapıları elle çalıştırılırsa er ya da geç unutulur.
+# Bu boru hattı onları her değişiklikte otomatik koşar; kırmızıysa dağıtım yok.
+#
+# Beş adım (docs/07 §3.1):
+#   1. Tip kontrolü ve lint
+#   2. Birim testler
+#   3. Çapraz kiracı erişim testi     ← Faz 2 güvenlik kapısı
+#   4. Loglarda kişisel veri taraması ← Faz 2 güvenlik kapısı
+#   5. Bağımlılık güvenlik taraması
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+defaults:
+  run:
+    working-directory: app
+
+jobs:
+  kalite:
+    runs-on: ubuntu-latest
+
+    services:
+      # CI'da gerçek PostgreSQL — RLS politikaları ancak burada sınanır.
+      # SQLite ile geçen bir test, izolasyon hakkında hiçbir şey söylemez.
+      db:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: cafeplay_admin
+          POSTGRES_PASSWORD: ci_ortami
+          POSTGRES_DB: cafeplay
+        ports: ["5433:5432"]
+        options: >-
+          --health-cmd "pg_isready -U cafeplay_admin -d cafeplay"
+          --health-interval 3s
+          --health-timeout 3s
+          --health-retries 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - name: Bağımlılıklar
+        run: npm ci
+
+      - name: Ortam anahtarları üret
+        # CI'da sırlar dosyada durmaz; her koşuda yeniden üretilir.
+        run: |
+          {
+            echo "APP_ENV=development"
+            echo "DATABASE_URL=postgresql://cafeplay_admin:ci_ortami@localhost:5433/cafeplay"
+            echo "APP_DATABASE_URL=postgresql://cafeplay_app:gelistirme_uygulama@localhost:5433/cafeplay"
+            for k in PII_ENC_KEY PHONE_INDEX_KEY OTP_PEPPER SESSION_HASH_KEY IDENTIFIER_HASH_KEY BACKUP_ENC_KEY; do
+              echo "$k=$(openssl rand -base64 32)"
+            done
+            echo "SMS_PROVIDER=console"
+          } > .env.local
+
+      - name: 1 · Tip kontrolü
+        run: npm run typecheck
+
+      - name: 1 · Lint
+        run: npm run lint
+
+      - name: Şema ve tohum verisi
+        run: |
+          npm run db:migrate
+          npm run db:seed
+
+      - name: 2·3·4 · Testler — kiracı izolasyonu ve log koruması
+        run: npm run test
+
+      - name: 5 · Bağımlılık güvenlik taraması
+        # Yüksek ve kritik açıklarda kırılır; düşük seviyeliler rapor edilir.
+        run: npm audit --audit-level=high

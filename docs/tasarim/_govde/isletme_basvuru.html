@@ -1,0 +1,89 @@
+<!-- baslik: İşletme başvurusu -->
+<!-- govde: bg-surface-alt text-text-charcoal font-body-md antialiased min-h-screen -->
+
+<!--
+  D1–D2 · /kafe/basvuru
+
+  İŞLETME YÜZEYİ — oyuncu tarafının tam tersi. Emoji yok, süs yok, renk vurgusu
+  yok. Her ekran bir muhasebe belgesi gibi okunmalı: "Kafe sahibi oyundan değil,
+  sonuçtan etkilenmeli."
+
+  Etiketler burada label-caps DEĞİL — cümle düzeninde 13px kalın. Küçük büyük
+  harf etiketler oyuncu tarafının dili.
+-->
+
+<main class="mx-auto w-full max-w-lg px-margin-mobile py-unit-8 sm:px-unit-8">
+
+  <header class="mb-unit-8 border-b border-border-noble pb-unit-6">
+    <div class="font-label-caps text-label-caps text-text-muted">CAFEPLAY</div>
+    <h1 class="mt-unit-2 font-headline-md text-[30px] leading-[34px] tracking-[-0.02em] text-text-charcoal font-bold">İşletme başvurusu</h1>
+    <p class="mt-unit-3 font-body-md text-body-md text-text-muted">
+      Vergi levhanla başvur. Ücretsiz — onaylanana kadar hiçbir karekod üretilmez.
+    </p>
+  </header>
+
+  <form class="flex flex-col gap-unit-4">
+
+    <label class="flex flex-col gap-unit-1">
+      <span class="text-[13px] font-semibold text-text-charcoal">İşletme adı</span>
+      <input class="rounded-lg border border-border-noble bg-surface px-unit-4 py-unit-3 font-body-md text-body-md text-text-charcoal focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" type="text"/>
+      <span class="text-sm text-text-muted">Müşterinin gördüğü ad</span>
+    </label>
+
+    <label class="flex flex-col gap-unit-1">
+      <span class="text-[13px] font-semibold text-text-charcoal">Ticari unvan</span>
+      <input class="rounded-lg border border-border-noble bg-surface px-unit-4 py-unit-3 font-body-md text-body-md text-text-charcoal focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" type="text"/>
+      <span class="text-sm text-text-muted">Vergi levhasındaki tam unvan</span>
+    </label>
+
+    <div class="grid gap-unit-4 sm:grid-cols-2">
+      <label class="flex flex-col gap-unit-1">
+        <span class="text-[13px] font-semibold text-text-charcoal">Vergi numarası</span>
+        <input class="tabular rounded-lg border border-border-noble bg-surface px-unit-4 py-unit-3 font-data-mono text-data-mono text-text-charcoal focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" inputmode="numeric" type="text"/>
+      </label>
+      <label class="flex flex-col gap-unit-1">
+        <span class="text-[13px] font-semibold text-text-charcoal">Şehir</span>
+        <input class="rounded-lg border border-border-noble bg-surface px-unit-4 py-unit-3 font-body-md text-body-md text-text-charcoal focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" type="text"/>
+      </label>
+    </div>
+
+    <label class="flex flex-col gap-unit-1">
+      <span class="text-[13px] font-semibold text-text-charcoal">Açık adres</span>
+      <textarea class="rounded-lg border border-border-noble bg-surface px-unit-4 py-unit-3 font-body-md text-body-md text-text-charcoal focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" rows="3"></textarea>
+    </label>
+
+    <div class="grid gap-unit-4 sm:grid-cols-2">
+      <label class="flex flex-col gap-unit-1">
+        <span class="text-[13px] font-semibold text-text-charcoal">Yetkili adı soyadı</span>
+        <input class="rounded-lg border border-border-noble bg-surface px-unit-4 py-unit-3 font-body-md text-body-md text-text-charcoal focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" type="text"/>
+      </label>
+      <label class="flex flex-col gap-unit-1">
+        <span class="text-[13px] font-semibold text-text-charcoal">Yetkili cep telefonu</span>
+        <input class="rounded-lg border border-border-noble bg-surface px-unit-4 py-unit-3 font-body-md text-body-md text-text-charcoal focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" placeholder="0532 123 45 67" type="tel"/>
+        <span class="text-sm text-text-muted">Panele bu numarayla girilir</span>
+      </label>
+    </div>
+
+    <label class="flex flex-col gap-unit-1">
+      <span class="text-[13px] font-semibold text-text-charcoal">Vergi levhası veya işletme belgesi</span>
+      <div class="flex items-center gap-unit-3 rounded-lg border border-border-noble bg-surface px-unit-4 py-unit-3">
+        <span class="rounded bg-text-charcoal px-unit-3 py-unit-1 text-[13px] text-white">Dosya seç</span>
+        <span class="text-sm text-text-muted">seçilmedi</span>
+      </div>
+      <span class="text-sm text-text-muted">PDF, JPG veya PNG · en fazla 8 MB · şifreli saklanır</span>
+    </label>
+
+    <!-- Hata varyantı -->
+    <label class="flex flex-col gap-unit-1">
+      <span class="text-[13px] font-semibold text-text-charcoal">Vergi numarası <span class="font-normal text-text-muted">— hata varyantı</span></span>
+      <input class="tabular rounded-lg border border-danger-red bg-surface px-unit-4 py-unit-3 font-data-mono text-data-mono text-text-charcoal" type="text" value="123"/>
+      <span class="text-sm text-danger-red">Vergi numarası 10 haneli olmalı.</span>
+    </label>
+
+    <div class="mt-unit-2 border-t border-border-noble pt-unit-6">
+      <button class="w-full rounded-lg bg-text-charcoal py-unit-3 font-title-sm text-title-sm text-white transition-opacity hover:opacity-90" type="button">
+        Başvuruyu gönder
+      </button>
+    </div>
+  </form>
+</main>

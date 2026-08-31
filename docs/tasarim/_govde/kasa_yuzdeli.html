@@ -1,0 +1,44 @@
+<!-- baslik: Kasa · yüzdeli kupon -->
+<!-- govde: bg-surface-alt text-text-charcoal font-body-md antialiased min-h-screen flex flex-col items-center px-margin-mobile py-unit-8 -->
+
+<!--
+  C4b · /kasa — yüzdeli kupon
+
+  E7: "Sistemin sahada ayakta kalıp kalmayacağını bu ekran belirler."
+  Menü yok, sekme yok, ayar yok. Tek iş, üç saniye.
+-->
+
+<header class="mb-unit-8 text-center">
+  <div class="font-label-caps text-label-caps tracking-[0.28em] text-primary">CAFEPLAY KASA</div>
+  <h1 class="mt-unit-1 font-headline-md text-headline-md text-text-charcoal">Kupon onayı</h1>
+</header>
+
+<div class="flex w-full max-w-md flex-col gap-unit-8">
+<div class="rounded-xl border-2 border-primary bg-surface p-unit-6">
+      <div class="font-label-caps text-label-caps text-primary">GEÇERLİ KUPON</div>
+      <h2 class="mt-unit-2 font-display-lg text-[30px] leading-[34px] tracking-[-0.04em] text-text-charcoal font-extrabold">Tatlıda indirim</h2>
+
+      <div class="mt-unit-4 flex items-baseline justify-between border-t border-border-noble pt-unit-4">
+        <span class="font-label-caps text-label-caps text-text-muted">%20 · EN FAZLA</span>
+        <span class="tabular font-data-mono text-[24px] font-bold text-reward-ink">60 TL</span>
+      </div>
+
+      <div class="mt-unit-2 flex items-baseline justify-between font-data-mono text-[11px] text-text-muted font-medium">
+        <span>Müşteri K-1907</span>
+        <span>son kullanım 3 Eylül</span>
+      </div>
+
+      <label class="mt-unit-6 flex flex-col gap-unit-2">
+        <span class="font-label-caps text-label-caps text-text-muted">ADİSYONDAKİ İNDİRİM (TL)</span>
+        <input
+          class="tabular w-full rounded-lg border-none bg-surface-sunk py-unit-3 text-center font-data-mono text-[24px] text-text-charcoal focus:outline-none focus:ring-2 focus:ring-primary font-medium"
+          inputmode="numeric"
+          type="text"
+          value="60"/>
+        <span class="text-sm text-text-muted">Tavanın üstü kabul edilmez. Aradaki fark bütçeye geri döner.</span>
+      </label>
+
+      <button class="mt-unit-6 w-full rounded-lg bg-primary py-unit-6 font-title-sm text-[20px] tracking-wide text-on-primary font-semibold" type="button">ONAYLA</button>
+      <button class="mt-unit-3 w-full py-unit-3 text-sm text-text-muted underline" type="button">Vazgeç</button>
+    </div>
+</div>

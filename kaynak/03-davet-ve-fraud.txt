@@ -1,0 +1,594 @@
+referral sistemini ortadan bir buton ekleyerek değil, CafePlay'in kullanıcı kimliği → davet → doğrulama → oyun → kafe → fraud → ödül zincirini baştan kurarak tasarlayalım.
+
+Üç dosyadaki mevcut yapıdan devam ediyorum; özellikle mevcut QR → oyun → ödül → kupon → kafe → tekrar ziyaret döngüsünü bozmayacağız.
+
+CafePlay — Güvenli Kullanıcı + Referral + Ödül Sistemi
+1. Önce kullanıcı kimliğini oluşturacağız
+
+CafePlay'te gerçek kullanıcı:
+
+Telefon numarası + doğrulanmış hesap
+
+olacak.
+
+Kullanıcı ilk geldiğinde:
+
+Telefon numaranı gir
+
+→ SMS gönder
+
+→ 6 haneli doğrulama kodu
+
+→ kodu gir
+
+→ telefon doğrulandı.
+
+SMS doğrulama kodunun amacı ve kullanım sonucu kullanıcıya açıkça anlatılmalı; KVKK'nın 2025/1072 sayılı ilke kararında SMS doğrulama kodunun farklı amaçları tek işlemle birleştirmek için kullanılmaması gerektiği özellikle belirtiliyor.
+
+Yani:
+
+SMS doğrulama = telefon doğrulama
+
+olarak kullanacağız.
+
+Pazarlama izni gibi başka şeyleri bunun içine gizlemeyeceğiz.
+
+2. Kullanıcı hesabı
+
+Telefon doğrulandıktan sonra:
+
+User
+├── user_id
+├── phone
+├── phone_verified
+├── created_at
+├── status
+└── risk_status
+
+oluşur.
+
+Telefon numarası:
+
+tek hesapla ilişkilendirilecek.
+
+Aynı numarayla 10 hesap açılamaz.
+
+3. Ama QR ile gelen kullanıcıyı da bilmemiz gerekiyor
+
+Örneğin müşteri:
+
+Cafe X
+
+masasındaki QR'ı okuttu.
+
+QR'dan:
+
+cafe_id
+table_id
+campaign_id
+session_token
+
+bilgileri gelir.
+
+Böylece daha kullanıcı kayıt olmadan:
+
+Bu kullanıcı Cafe X / Masa 12 üzerinden geldi.
+
+diyebiliriz.
+
+Ama bunu kullanıcı hesabıyla ancak doğrulama sonrasında kalıcılaştırırız.
+
+4. Referral burada devreye giriyor
+
+A kullanıcısı:
+
+Arkadaşını Davet Et
+
+der.
+
+Sunucu ona:
+
+benzersiz referral linki
+
+oluşturur.
+
+Örneğin:
+
+cafeplay.com/r/8KX92A
+
+HTML sadece bu bağlantıyı paylaşır.
+
+Referral'ın sahibi HTML değildir.
+
+Sunucudur.
+
+5. B kişisi linke tıklıyor
+
+B:
+
+cafeplay.com/r/8KX92A
+
+adresine gelir.
+
+Sunucu:
+
+Referral Visit
+----------------
+referrer = A
+token = 8KX92A
+timestamp = ...
+session = ...
+
+oluşturur.
+
+Henüz ödül yok.
+
+Henüz başarılı referral yok.
+
+Sadece:
+
+A'nın davet bağlantısından bir ziyaret geldi.
+
+6. B telefonunu doğruluyor
+
+B:
+
+05xx xxx xx xx
+
+girer.
+
+CafePlay SMS gönderir.
+
+B kodu girer.
+
+Sunucu:
+
+phone_verified = true
+
+yapar.
+
+Ve:
+
+Referral Visit → B kullanıcı hesabına bağlanır.
+
+Artık:
+
+A
+↓
+Referral
+↓
+B
+
+ilişkisini kesin olarak biliyoruz.
+
+7. Ama hâlâ ödül vermiyoruz
+
+Bu çok önemli.
+
+B'nin:
+
+telefon doğrulaması
+
+tek başına referral başarısı değildir.
+
+Çünkü kötü niyetli kullanıcı farklı numaralarla hesap üretmeye çalışabilir.
+
+Bu yüzden:
+
+Referral Status
+
+REGISTERED
+
+olur.
+
+Henüz:
+
+QUALIFIED
+
+değildir.
+
+8. B gerçek oyun oynuyor
+
+B:
+
+CafePlay Blocks
+
+oyununa giriyor.
+
+Sunucu bir:
+
+Game Session
+
+oluşturuyor.
+
+Örneğin:
+
+session_id
+user_id
+game_id
+cafe_id
+started_at
+completed_at
+score
+
+Oyun HTML olarak telefonda çalışabilir.
+
+Ama:
+
+ödül kararı HTML'de verilmez.
+
+9. Oyun sonucu sunucuya gider
+
+B:
+
+4.850 puan
+
+aldı.
+
+HTML:
+
+4.850 puan aldın.
+
+diyebilir.
+
+Ama sunucu ayrıca oyunun sonucunu doğrular.
+
+Böylece kullanıcı:
+
+“Ben 999.999 puan aldım.”
+
+diye tarayıcıyı değiştirerek ödül alamaz.
+
+Üçüncü dosyadaki:
+
+oyun → skor doğrulama → puan → ödül → kupon
+
+zincirini burada gerçek mimariye dönüştürüyoruz.
+
+10. CafePlay'in en güçlü fraud kontrolü: gerçek kafe etkileşimi
+
+Bence referral için bunu eklemeliyiz.
+
+B kullanıcı:
+
+Cafe X'e gidiyor.
+
+Kafenin QR'ını okutuyor.
+
+Sunucu görüyor:
+
+B
+↓
+Cafe X
+↓
+QR Session
+↓
+Game Session
+
+Artık elimizde:
+
+doğrulanmış telefon + gerçek oyun + kafe etkileşimi
+
+var.
+
+Bu, sahte referral üretmeyi ciddi şekilde zorlaştırır.
+
+11. Referral'ın “başarılı” olması
+
+Ben şu şartı koyarım:
+
+Qualified Referral
+
+B:
+
+telefonunu doğruladı
+yeni kullanıcı
+referral linkinden geldi
+oyunu gerçekten oynadı
+oyunu tamamladı
+minimum etkileşim şartını geçti
+kafe QR etkileşimi yaptı
+fraud kontrolünden geçti
+
+→
+
+QUALIFIED
+
+olur.
+
+12. Ondan sonra ödül
+
+A'nın ekranında:
+
+🎉 Arkadaşın CafePlay'e katıldı!
+
+Davetin başarıyla tamamlandı.
++100 XP
+
+B de:
+
+🎉 Hoş geldin!
++50 XP
+
+alabilir.
+
+Burada başlangıçta doğrudan:
+
+100 TL
+
+vermeyelim.
+
+Önce:
+
+XP / küçük ödül
+
+kullanalım.
+
+Çünkü referral sistemi daha yeni kurulurken para değerindeki ödüller fraud riskini gereksiz şekilde büyütür.
+
+13. Fraud Engine
+
+Şimdi asıl güvenlik katmanı.
+
+Her referral için:
+
+Kimlik
+telefon
+hesap yaşı
+telefonun daha önce kullanılıp kullanılmadığı
+Cihaz / oturum
+cihaz sinyalleri
+browser/session sinyalleri
+olağandışı hesap yoğunluğu
+Ağ
+IP
+çoklu hesap davranışı
+olağandışı trafik
+Davranış
+kayıt → oyun arasındaki süre
+oyun süresi
+skor davranışı
+tekrar oynama
+kafe etkileşimi
+Referral
+aynı kişinin çok sayıda referral üretmesi
+çok kısa sürede referral patlaması
+referral zincirleri
+
+incelenir.
+
+Tek bir sinyal kullanıcıyı otomatik suçlu ilan etmez.
+
+Bunlardan bir risk skoru çıkarırız.
+
+14. Referral durumları
+
+Sistemde açıkça:
+
+CLICKED
+REGISTERED
+PHONE_VERIFIED
+GAME_STARTED
+GAME_COMPLETED
+CAFE_VERIFIED
+QUALIFIED
+REWARDED
+REJECTED
+EXPIRED
+
+durumları olmalı.
+
+Böylece yönetici:
+
+“Bu referral neden ödül almadı?”
+
+sorusunun cevabını görebilir.
+
+15. Aynı kişi kendini davet ederse?
+
+Örneğin:
+
+A'nın hesabı var.
+
+Yeni telefonla B hesabı açıyor.
+
+Sistem:
+
+B'yi A davet etmiş
+
+olarak görüyor.
+
+Ama risk motoru:
+
+cihaz ilişkisi
+oturum davranışı
+kafe davranışı
+hesap davranışı
+
+gibi sinyaller nedeniyle şüphe oluşturabilir.
+
+Sonuç:
+
+Referral ödülü bekletilir / reddedilir.
+
+Ama B'nin normal CafePlay kullanıcısı olması gerekiyorsa, onu otomatik olarak platformdan atmak zorunda değiliz.
+
+Bu ayrım önemli:
+
+Fraud referral ≠ mutlaka fraud kullanıcı
+16. Referral ödülü ayrı bir Ledger'da tutulmalı
+
+Bu da ileride çok işimize yarayacak.
+
+Örneğin:
+
+Reward Ledger
+
+user_id
+source_type
+source_id
+reward_type
+reward_value
+status
+created_at
+
+Kaynak:
+
+REFERRAL
+
+olabilir.
+
+Başka kaynak:
+
+GAME
+
+olabilir.
+
+Başka:
+
+CAMPAIGN
+
+olabilir.
+
+Böylece oyuncunun:
+
+“Bu 250 TL değeri nereden geldi?”
+
+sorusunun cevabı sistemde vardır.
+
+17. Bu, az önce konuştuğumuz para/ödül sistemine de bağlanıyor
+
+Örneğin:
+
+Oyun
+
+50 TL Kafe Bakiyesi
+
+kazandırdı.
+
+Referral
+
+100 XP
+
+kazandırdı.
+
+Challenge
+
+1 Kahve — 80 TL değer
+
+kazandırdı.
+
+Oyuncunun hesabında hepsi ayrı kaynaklardan gelir.
+
+Ama ortak:
+
+Reward Engine
+
+tarafından yönetilir.
+
+18. Kafenin QR doğrulaması da aynı sisteme bağlanır
+
+Oyuncunun kazandığı kupon:
+
+QR
+
+olarak telefonda görünür.
+
+Kafe sahibi:
+
+CafePlay Kasa
+
+sayfasını telefonundan açar.
+
+QR'ı okutur.
+
+Sunucu:
+
+Kupon
+↓
+User
+↓
+Reward
+↓
+Cafe
+↓
+Expiry
+↓
+Usage Status
+↓
+Fraud
+
+kontrol eder.
+
+Sonra:
+
+✅ KUPON ONAYLANDI
+
+ve tek kullanımlık olarak:
+
+USED
+
+olur.
+
+Bu yapı uygulama gerektirmeden tamamen mobil web/PWA ile çalışabilir.
+
+19. Böylece CafePlay'in gerçek kullanıcı yaşam döngüsü artık şu
+QR / Referral Link
+        ↓
+CafePlay
+        ↓
+Telefon numarası
+        ↓
+SMS OTP
+        ↓
+Telefon doğrulama
+        ↓
+Kullanıcı hesabı
+        ↓
+Cafe QR
+        ↓
+Game Session
+        ↓
+HTML Browser Game
+        ↓
+Server Score Validation
+        ↓
+Reward Engine
+        ↓
+Reward / Balance / Coupon
+        ↓
+QR Coupon
+        ↓
+Cafe scans QR
+        ↓
+Server Validation
+        ↓
+USED
+        ↓
+Analytics
+        ↓
+Retention
+        ↓
+Referral
+        ↓
+Yeni kullanıcı
+
+Bu artık basit bir HTML oyun sistemi değil.
+
+CafePlay'in gerçek platform çekirdeği bu.
+
+20. Ve üç dosyadaki eksik parçaları böyle kapatıyoruz
+
+Mevcut dosyalarda:
+
+Oyun → ödül → kupon → tekrar ziyaret zaten var.
+
+Nitelikli oyuncu / oyuncu erişimi zaten var.
+
+Fraud koruması zaten gerekli olarak belirtilmiş.
+
+Ama bizim şimdi eklediğimiz:
+
+Telefon doğrulama → Referral Attribution → Game Session → Cafe Verification → Fraud Score → Qualified Referral → Reward Ledger
+
+zinciri, bu üç yapıyı birbirine bağlıyor.

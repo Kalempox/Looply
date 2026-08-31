@@ -1,0 +1,151 @@
+<!DOCTYPE html><html lang="tr"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>CafePlay · Tasarım dizini</title>
+<link href="https://fonts.googleapis.com" rel="preconnect">
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&amp;family=JetBrains+Mono:wght@400;500;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = { theme: { extend: {
+  colors: {
+    surface:"#FFFFFF", "surface-alt":"#FAFAFA", "surface-sunk":"#F2F2F2",
+    "border-noble":"#E5E5E5", "text-charcoal":"#1F1F1F", "text-muted":"#6B6B6B",
+    primary:"#0B57D0", "reward-gold":"#D4AF37", "reward-ink":"#856612", "danger-red":"#D93025"
+  },
+  borderRadius: { DEFAULT:"0.25rem", lg:"0.5rem", xl:"1rem" },
+  fontFamily: { sans:["Outfit"], mono:["JetBrains Mono"] }
+}}}
+</script>
+<style>
+  .cerceve { width: 390px; height: 720px; border: 0; background: #FAFAFA; }
+  .cerceve-genis { width: 1024px; height: 720px; border: 0; background: #FAFAFA; }
+  .kutu { transform-origin: top left; }
+</style>
+</head>
+<body class="bg-surface-sunk font-sans text-text-charcoal antialiased">
+
+<header class="sticky top-0 z-20 border-b border-border-noble bg-surface/95 px-6 py-4 backdrop-blur">
+  <div class="mx-auto flex max-w-[1400px] flex-wrap items-baseline gap-4">
+    <h1 class="text-[22px] font-extrabold tracking-[-0.03em]">CafePlay · Tasarım dizini</h1>
+    <span class="font-mono text-[12px] text-text-muted">Açık ve Asil · 40 ekran · ekranlar birbirine bağlı, tıklayarak gezinebilirsin</span>
+    <label class="ml-auto flex items-center gap-2 text-[13px] text-text-muted">
+      <input checked id="onizleme" type="checkbox" class="h-4 w-4 accent-primary">
+      Önizlemeleri göster
+    </label>
+  </div>
+</header>
+
+<main class="mx-auto max-w-[1400px] px-6 py-8" id="dizin"></main>
+
+<script>
+const EKRANLAR = [
+  ["A · Ortak kapı", [
+    ["A1","Giriş noktası","/","giri_noktas","dar","giris"],
+  ]],
+  ["B · Oyuncu — masadan kasaya", [
+    ["B1","Kayıt / giriş","/giris","kay_t_giri","dar",""],
+    ["B2","SMS doğrulama","/giris","sms_do_rulama","dar",""],
+    ["B3","Ana ekran","/oyna","ana_sayfa_oyna","dar",""],
+    ["B3b","Tüm oyunlar","/oyunlar","t_m_oyunlar","dar",""],
+    ["B4","Bölüm seçimi","/oyna/blok","b_l_m_se_imi_blok","dar",""],
+    ["B5","Oyun · Blok","/oyna/blok","oyun_blok","dar",""],
+    ["B5","Oyun · Kelime","/oyna/kelime","oyun_kelime","dar",""],
+    ["B5","Oyun · Düşen","/oyna/dusen","oyun_dusen","dar",""],
+    ["B6","Bölüm sonucu","—","b_l_m_sonucu","dar",""],
+    ["B7","Ödüllerim","/oduller","d_llerim","dar",""],
+    ["B8","Kuponu kullan","/oduller/{id}","kupon_kullan","dar","kritik"],
+    ["B8b","Kullanılamayan kuponlar","/oduller/{id}","kupon_durumlari","dar",""],
+    ["B9","Buradaki fırsatlar","/firsatlar","buradaki_f_rsatlar","dar",""],
+    ["B10","Profilim","/profil","profilim","dar",""],
+    ["B11","Verilerim","/verilerim","verilerim","dar",""],
+    ["F1","Aydınlatma metni","/aydinlatma","aydinlatma","dar",""],
+  ]],
+  ["C · Kasa — üç saniyelik akış", [
+    ["C1","Kasa girişi","/kasa/giris","kasa_giris","dar","giris"],
+    ["C2","Bekleme hâli","/kasa","kasa","dar",""],
+    ["C3","Kamera açık","/kasa","kasa_kamera","dar",""],
+    ["C4","Geçerli kupon","/kasa","kasa_gecerli","dar","kritik"],
+    ["C4b","Yüzdeli kupon","/kasa","kasa_yuzdeli","dar",""],
+    ["C5","Reddedildi","/kasa","kasa_red","dar",""],
+    ["C6","Onaylandı","/kasa","kasa_onaylandi","dar",""],
+  ]],
+  ["D · İşletme — başvurudan rapora", [
+    ["D1","Başvuru formu","/kafe/basvuru","isletme_basvuru","genis","giris"],
+    ["D2","Başvuru alındı","/kafe/basvuru","basvuru_alindi","genis",""],
+    ["D3","İşletme girişi","/kafe/giris","isletme_giris","genis","giris"],
+    ["D3b","İşletme girişi · kod","/kafe/giris","isletme_giris_kod","genis",""],
+    ["D4","İşletme paneli","/kafe/panel","isletme_panel","genis",""],
+    ["D5","Haftalık bütçe","/kafe/panel/butce","butce","genis",""],
+    ["D6","Ürünler","/kafe/panel/urunler","urunler","genis",""],
+    ["D7","Ödül kataloğu","/kafe/panel/oduller","oduller_katalog","genis",""],
+    ["D8","Kampanyalar","/kafe/panel/kampanyalar","kampanyalar","genis",""],
+    ["D9","Personel ve cihazlar","/kafe/panel/personel","personel","genis",""],
+    ["D10","Rapor","/kafe/panel/rapor","rapor","genis","kritik"],
+    ["D11","Masa karekodları","/kafe/panel/masalar","masa_karekodlari","genis",""],
+  ]],
+  ["E · Platform", [
+    ["E1","Platform girişi","/platform/giris","platform_giris","genis","giris"],
+    ["E1b","Platform girişi · kod","/platform/giris","platform_giris_kod","genis",""],
+    ["E2","Başvurular","/platform/basvurular","platform_basvurular","genis",""],
+    ["E3","Acil durdurma","/platform/acil","platform_acil","genis",""],
+  ]],
+];
+
+const ROZET = {
+  giris:  ['BURADAN BAŞLA','border-primary text-primary'],
+  kritik: ['KRİTİK','border-reward-gold text-reward-ink'],
+  fazla:  ['KAPSAM DIŞI','border-danger-red text-danger-red'],
+};
+
+const dizin = document.getElementById('dizin');
+let html = '';
+
+for (const [grup, satirlar] of EKRANLAR) {
+  html += `<section class="mb-12">
+    <h2 class="mb-4 border-b border-border-noble pb-2 font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-text-muted">${grup}</h2>
+    <div class="flex flex-wrap gap-6">`;
+
+  for (const [kod, ad, yol, klasor, en, tur] of satirlar) {
+    const rozet = ROZET[tur];
+    const genis = en === 'genis';
+    const olcek = genis ? 0.36 : 0.62;
+    const kutuG = Math.round((genis ? 1024 : 390) * olcek);
+    const kutuY = Math.round(720 * olcek);
+
+    html += `<article class="flex flex-col" style="width:${Math.max(kutuG, 240)}px">
+      <div class="mb-2 flex items-baseline gap-2">
+        <span class="font-mono text-[11px] font-bold text-text-charcoal">${kod}</span>
+        <span class="truncate text-[14px] font-semibold">${ad}</span>
+        ${rozet ? `<span class="ml-auto shrink-0 rounded border px-1.5 py-[1px] font-mono text-[9px] tracking-[0.06em] ${rozet[1]}">${rozet[0]}</span>` : ''}
+      </div>
+      <a class="block overflow-hidden rounded-xl border border-border-noble bg-surface" href="${klasor}/code.html" target="_blank"
+         style="width:${kutuG}px;height:${kutuY}px">
+        <iframe class="kutu ${genis ? 'cerceve-genis' : 'cerceve'}" data-src="${klasor}/code.html" loading="lazy"
+                style="transform:scale(${olcek})" title="${ad}"></iframe>
+      </a>
+      <div class="mt-2 flex items-baseline gap-2">
+        <code class="font-mono text-[11px] text-text-muted">${yol}</code>
+        <a class="ml-auto font-mono text-[11px] text-primary underline" href="${klasor}/code.html" target="_blank">aç ↗</a>
+      </div>
+    </article>`;
+  }
+  html += `</div></section>`;
+}
+
+dizin.innerHTML = html;
+
+// Önizlemeler isteğe bağlı — 31 iframe aynı anda ağır gelirse kapatılabilir.
+const kutu = document.getElementById('onizleme');
+function tazele() {
+  document.querySelectorAll('iframe[data-src]').forEach((f) => {
+    if (kutu.checked && !f.src) f.src = f.dataset.src;
+    if (!kutu.checked) { f.removeAttribute('src'); }
+    f.style.visibility = kutu.checked ? 'visible' : 'hidden';
+  });
+}
+kutu.addEventListener('change', tazele);
+tazele();
+</script>
+</body></html>

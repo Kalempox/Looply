@@ -1,0 +1,123 @@
+<!-- baslik: Personel ve cihazlar -->
+<!-- govde: bg-surface-alt text-text-charcoal font-body-md antialiased min-h-screen -->
+
+<!--
+  D9 · /kafe/panel/personel
+
+  Kasiyer telefonla değil PIN'le giriyor — vardiya değişiminde SMS beklemek
+  gerçekçi değil. PIN yalnızca kayıtlı cihazlarda çalışıyor: PIN'i bilen ama
+  cihazı olmayan biri kupon onaylayamıyor.
+-->
+
+<main class="mx-auto w-full max-w-4xl px-margin-mobile py-unit-8 sm:px-unit-8">
+
+  <header class="mb-unit-8 border-b border-border-noble pb-unit-6">
+    <div class="font-label-caps text-label-caps text-text-muted">İŞLETME PANELİ</div>
+    <h1 class="mt-unit-2 font-headline-md text-[30px] leading-[34px] tracking-[-0.02em] text-text-charcoal font-bold">Personel ve cihazlar</h1>
+    <p class="mt-unit-3 font-body-md text-body-md text-text-muted">
+      Kasada kupon onaylayacak kişileri ve cihazları buradan yönetirsin.
+    </p>
+  </header>
+
+  <!-- Kasiyerler -->
+  <section class="mb-unit-8">
+    <h2 class="text-[13px] font-semibold text-text-charcoal">Kasiyerler</h2>
+    <p class="mb-unit-4 font-body-md text-body-md leading-relaxed text-text-muted">
+      Kasiyer telefonla değil PIN'le giriyor — vardiya değişiminde SMS beklemek gerçekçi değil.
+      PIN yalnızca aşağıda kayıtlı cihazlarda çalışır ve 90 günde bir değiştirilmelidir.
+    </p>
+
+    <ul class="border-y border-border-noble">
+      <li class="flex items-center gap-unit-4 border-b border-border-noble py-unit-3">
+        <span class="min-w-0 flex-1">
+          <span class="block font-body-md text-body-md font-semibold text-text-charcoal">Elif Demir</span>
+          <span class="tabular block font-data-mono text-[11px] text-text-muted font-medium">PIN 12 gün önce değiştirildi</span>
+        </span>
+        <button class="rounded border border-border-noble px-unit-3 py-unit-1 text-sm text-text-muted transition-colors hover:bg-surface-sunk" type="button">PIN yenile</button>
+        <button class="rounded border border-border-noble px-unit-3 py-unit-1 text-sm text-text-muted transition-colors hover:bg-surface-sunk" type="button">Kapat</button>
+      </li>
+      <li class="flex items-center gap-unit-4 py-unit-3">
+        <span class="min-w-0 flex-1">
+          <span class="flex flex-wrap items-center gap-unit-2">
+            <span class="font-body-md text-body-md font-semibold text-text-charcoal">Kerem Uysal</span>
+            <span class="rounded border border-reward-gold px-unit-2 py-[2px] font-label-caps text-[10px] tracking-[0.05em] text-reward-ink font-semibold">PIN ESKİDİ</span>
+          </span>
+          <span class="tabular block font-data-mono text-[11px] text-text-muted font-medium">PIN 104 gün önce değiştirildi</span>
+        </span>
+        <button class="rounded border border-border-noble px-unit-3 py-unit-1 text-sm text-text-muted" type="button">PIN yenile</button>
+        <button class="rounded border border-border-noble px-unit-3 py-unit-1 text-sm text-text-muted" type="button">Kapat</button>
+      </li>
+    </ul>
+
+    <p class="mt-unit-4 rounded-lg border border-border-noble bg-surface px-unit-4 py-unit-6 text-center text-body-md text-text-muted">
+      boş varyant · Henüz kasiyer eklenmedi. Kupon onaylanabilmesi için en az bir kasiyer gerekiyor.
+    </p>
+
+    <div class="mt-unit-6 rounded-lg border border-border-noble bg-surface p-unit-6">
+      <h3 class="mb-unit-4 font-body-md text-body-md font-semibold text-text-charcoal">Kasiyer ekle</h3>
+      <div class="flex flex-col gap-unit-3 sm:flex-row sm:items-end">
+        <label class="flex flex-1 flex-col gap-unit-1">
+          <span class="text-[13px] font-semibold text-text-charcoal">Ad soyad</span>
+          <input class="rounded-lg border border-border-noble bg-surface px-unit-4 py-unit-3 font-body-md text-body-md focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" type="text"/>
+        </label>
+        <button class="rounded-lg bg-text-charcoal px-unit-6 py-unit-3 font-title-sm text-title-sm text-white" type="button">Ekle</button>
+      </div>
+
+      <!-- PIN gösterme durumu — bir kez görünür -->
+      <div class="mt-unit-6 border-t border-border-noble pt-unit-4">
+        <div class="font-label-caps text-label-caps text-text-muted">YENİ PIN</div>
+        <div class="tabular mt-unit-2 font-data-mono text-[30px] font-bold tracking-[0.3em] text-text-charcoal">4821</div>
+        <p class="mt-unit-2 text-sm text-text-muted">Bu PIN bir daha gösterilmez. Kasiyere şimdi ver.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Cihazlar -->
+  <section class="mb-unit-8">
+    <h2 class="text-[13px] font-semibold text-text-charcoal">Kayıtlı cihazlar</h2>
+    <p class="mb-unit-4 font-body-md text-body-md text-text-muted">
+      PIN yalnızca bu cihazlarda çalışır. Kayıtlı olmayan bir telefondan PIN denemek işe yaramaz.
+    </p>
+
+    <ul class="border-y border-border-noble">
+      <li class="flex items-center justify-between border-b border-border-noble py-unit-3">
+        <span class="font-body-md text-body-md text-text-charcoal">Kasa tableti</span>
+        <span class="tabular font-data-mono text-[11px] text-text-muted font-medium">14 Ağustos</span>
+      </li>
+      <li class="flex items-center justify-between py-unit-3">
+        <span class="font-body-md text-body-md text-text-charcoal">Bar telefonu</span>
+        <span class="tabular font-data-mono text-[11px] text-text-muted font-medium">19 Ağustos</span>
+      </li>
+    </ul>
+
+    <div class="mt-unit-6 rounded-lg border border-border-noble bg-surface p-unit-6">
+      <h3 class="font-body-md text-body-md font-semibold text-text-charcoal">Bu cihazı kaydet</h3>
+      <p class="mb-unit-4 text-sm text-text-muted">Kasada kullanacağın cihazdan bu sayfayı aç ve kaydet.</p>
+      <div class="flex flex-col gap-unit-3 sm:flex-row sm:items-end">
+        <label class="flex flex-1 flex-col gap-unit-1">
+          <span class="text-[13px] font-semibold text-text-charcoal">Cihaz adı</span>
+          <input class="rounded-lg border border-border-noble bg-surface px-unit-4 py-unit-3 font-body-md text-body-md focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" type="text"/>
+        </label>
+        <button class="rounded-lg bg-text-charcoal px-unit-6 py-unit-3 font-title-sm text-title-sm text-white" type="button">Kaydet</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Yöneticiler -->
+  <section class="mb-unit-8">
+    <h2 class="mb-unit-4 text-[13px] font-semibold text-text-charcoal">Yöneticiler</h2>
+    <ul class="border-y border-border-noble">
+      <li class="flex items-center justify-between py-unit-3">
+        <span>
+          <span class="block font-body-md text-body-md font-semibold text-text-charcoal">Mert Aydın</span>
+          <span class="tabular block font-data-mono text-[11px] text-text-muted font-medium">0532 *** ** 01</span>
+        </span>
+        <span class="rounded border border-border-noble px-unit-2 py-1 font-label-caps text-[10px] tracking-[0.05em] text-text-charcoal font-semibold">YÖNETİCİ</span>
+      </li>
+    </ul>
+  </section>
+
+  <nav class="border-t border-border-noble pt-unit-6">
+    <a class="font-body-md text-body-md text-text-muted underline" href="#">← Panele dön</a>
+  </nav>
+</main>

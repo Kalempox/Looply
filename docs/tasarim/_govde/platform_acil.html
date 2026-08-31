@@ -1,0 +1,144 @@
+<!-- baslik: Acil durdurma -->
+<!-- govde: bg-surface-alt text-text-charcoal font-body-md antialiased min-h-screen -->
+
+<!--
+  E3 · /platform/acil — G18.
+
+  "Bir sorun anlaşıldığında ilk yapılacak şey hasarı durdurmaktır. Bunun
+  tasarlanmış bir yeteneği olmalı — o an kod yazılarak yapılamaz."
+
+  Ekran bilerek sade ve TEK SAYFA: olay anında sekme aramak, menü gezmek ya da
+  doğru sayfayı hatırlamaya çalışmak istemiyoruz. Dört düğme, hepsi burada,
+  hepsi geri alınabilir, hepsi denetim izine düşüyor.
+
+  Kırmızı, işletme yüzeyinde YALNIZCA bu ekranda kullanılır.
+-->
+
+<main class="mx-auto w-full max-w-4xl px-margin-mobile py-unit-8 sm:px-unit-8">
+
+  <header class="mb-unit-8 border-b border-border-noble pb-unit-6">
+    <div class="font-label-caps text-label-caps text-text-muted">PLATFORM · ACİL DURDURMA</div>
+    <h1 class="mt-unit-2 font-headline-md text-[30px] leading-[34px] tracking-[-0.02em] text-text-charcoal font-bold">Hasarı durdur</h1>
+    <p class="mt-unit-3 font-body-md text-body-md text-text-muted">
+      Dördü de geri alınabilir ve her kullanım denetim izine düşer.
+    </p>
+  </header>
+
+  <!-- Uyarılar -->
+  <div class="mb-unit-8 flex flex-col gap-unit-3">
+    <div class="rounded-lg border border-reward-gold bg-surface px-unit-4 py-unit-3">
+      <p class="text-body-md text-text-charcoal">
+        Destek rolündesin: durumu görebilirsin ama durdurma yapamazsın. Acil durdurma yetkisi
+        yalnızca yöneticidedir.
+      </p>
+    </div>
+    <div class="rounded-lg border border-danger-red bg-danger-fixed px-unit-4 py-unit-3">
+      <p class="text-body-md text-text-charcoal">
+        Şu an açık bir durdurma var. Sistem yarı kapalı çalışıyor — sorun çözüldüyse geri açmayı
+        unutma.
+      </p>
+    </div>
+    <div class="rounded-lg border border-reward-gold bg-surface px-unit-4 py-unit-3">
+      <p class="text-body-md text-text-charcoal">
+        2 kafe askıda. Askıdaki kafede karekod çözülmüyor, panel açılmıyor, kupon üretilmiyor.
+      </p>
+    </div>
+  </div>
+
+  <!-- Akış durdurma -->
+  <section class="mb-unit-8">
+    <h2 class="text-[13px] font-semibold text-text-charcoal">Akış durdurma</h2>
+    <p class="mb-unit-4 text-sm text-text-muted">
+      Mevcut kayıtlara dokunmaz; yalnızca yeni işlem üretimini keser.
+    </p>
+
+    <div class="flex flex-col gap-unit-3">
+
+      <!-- Durdurulmuş: 2px kırmızı sol çizgi -->
+      <div class="flex items-start gap-unit-4 rounded-lg border border-border-noble border-l-2 border-l-danger-red bg-surface px-unit-4 py-unit-4">
+        <span class="min-w-0 flex-1">
+          <span class="block font-body-md text-body-md font-semibold text-text-charcoal">Kupon dağıtımını durdur</span>
+          <span class="mt-unit-1 block text-sm leading-relaxed text-text-muted">
+            Dağıtılmış kuponlar kasada kullanılmaya devam eder, yenisi üretilmez. Bütçe sızıntısı
+            şüphesinde ilk düğme bu.
+          </span>
+        </span>
+        <button class="shrink-0 rounded-lg bg-danger-red px-unit-4 py-unit-2 font-title-sm text-sm text-white" type="button">Açık — geri aç</button>
+      </div>
+
+      <div class="flex items-start gap-unit-4 rounded-lg border border-border-noble bg-surface px-unit-4 py-unit-4">
+        <span class="min-w-0 flex-1">
+          <span class="block font-body-md text-body-md font-semibold text-text-charcoal">SMS'i durdur</span>
+          <span class="mt-unit-1 block text-sm leading-relaxed text-text-muted">
+            Kayıt ve giriş durur; maliyet saldırısı kesilir.
+          </span>
+        </span>
+        <button class="shrink-0 rounded-lg border border-border-noble bg-surface px-unit-4 py-unit-2 font-title-sm text-sm text-text-charcoal transition-colors hover:bg-surface-sunk" type="button">Durdur</button>
+      </div>
+
+      <div class="flex items-start gap-unit-4 rounded-lg border border-border-noble bg-surface px-unit-4 py-unit-4">
+        <span class="min-w-0 flex-1">
+          <span class="block font-body-md text-body-md font-semibold text-text-charcoal">Oyunu durdur</span>
+          <span class="mt-unit-1 block text-sm leading-relaxed text-text-muted">
+            Yeni oyun oturumu açılmaz. Skor doğrulamasında açık bulunduğunda kazanım üretimini keser.
+          </span>
+        </span>
+        <button class="shrink-0 rounded-lg border border-border-noble bg-surface px-unit-4 py-unit-2 font-title-sm text-sm text-text-charcoal transition-colors hover:bg-surface-sunk" type="button">Durdur</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Kafe askıya alma -->
+  <section class="mb-unit-8">
+    <h2 class="text-[13px] font-semibold text-text-charcoal">Kafeyi askıya al</h2>
+    <p class="mb-unit-4 text-sm text-text-muted">
+      O kafede karekod, kupon ve panel — hepsi durur. Diğer kafeler etkilenmez.
+    </p>
+
+    <div class="flex flex-col gap-unit-3 sm:flex-row sm:items-center">
+      <select class="flex-1 rounded-lg border border-border-noble bg-surface px-unit-4 py-unit-3 font-body-md text-body-md sm:max-w-sm">
+        <option>Kahve Durağı — İstanbul</option>
+        <option>Tatlı Köşesi — İstanbul</option>
+      </select>
+      <button class="rounded-lg border border-danger-red bg-surface px-unit-6 py-unit-3 font-title-sm text-title-sm text-danger-red transition-colors hover:bg-danger-fixed" type="button">Askıya al</button>
+    </div>
+
+    <ul class="mt-unit-4 border-y border-border-noble">
+      <li class="flex items-center justify-between py-unit-3">
+        <span>
+          <span class="block font-body-md text-body-md font-semibold text-text-charcoal">Köşe Büfe</span>
+          <span class="tabular block font-data-mono text-[11px] text-text-muted font-medium">25 Ağustos 09:14'ten beri askıda</span>
+        </span>
+        <button class="rounded border border-border-noble px-unit-3 py-unit-1 text-sm text-text-muted transition-colors hover:bg-surface-sunk" type="button">Geri aç</button>
+      </li>
+    </ul>
+  </section>
+
+  <!-- Oturum iptali -->
+  <section class="mb-unit-8">
+    <h2 class="text-[13px] font-semibold text-text-charcoal">Tüm oturumları iptal et</h2>
+    <p class="mb-unit-4 text-sm text-text-muted">
+      Çalınan cihaz, sızdırılmış çerez, ayrılan personel — herkes çıkar.
+    </p>
+
+    <div class="tabular mb-unit-3 font-data-mono text-data-mono text-text-charcoal">412 açık oturum</div>
+    <button class="rounded-lg bg-danger-red px-unit-6 py-unit-3 font-title-sm text-title-sm text-white" type="button">Tüm oturumları iptal et</button>
+
+    <div class="mt-unit-4 rounded-lg border border-danger-red bg-danger-fixed p-unit-4">
+      <p class="font-body-md text-body-md text-text-charcoal">
+        412 oturum kapanacak. Herkes yeniden giriş yapmak zorunda kalır.
+      </p>
+      <div class="mt-unit-3 flex gap-unit-3">
+        <button class="rounded-lg border border-border-noble bg-surface px-unit-4 py-unit-2 text-sm text-text-charcoal" type="button">Vazgeç</button>
+        <button class="rounded-lg bg-danger-red px-unit-4 py-unit-2 text-sm text-white" type="button">Evet, iptal et</button>
+      </div>
+    </div>
+  </section>
+
+  <p class="border-l-2 border-border-noble pl-unit-4 text-sm leading-relaxed text-text-muted">
+    Bu ekran hasarı durdurur, olayı çözmez. KVKK bildirim süresi 72 saat.
+  </p>
+  <nav class="mt-unit-8 border-t border-border-noble pt-unit-6">
+    <a class="font-body-md text-body-md text-text-muted underline" href="#">← Başvurulara dön</a>
+  </nav>
+</main>

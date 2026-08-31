@@ -1,0 +1,312 @@
+Kafenin panelinde iki seçenek olur:
+
+1. Ürün / hizmet ödülü
+
+Kafe:
+
+☕ Kahve — 80 TL
+🍰 Tatlı — 150 TL
+🥤 İçecek — 70 TL
+🍔 Menü — 300 TL
+
+gibi ödüller tanımlar.
+
+Buradaki TL karşılığı sistemde kayıtlıdır.
+
+Oyuncu kahve kazandığında:
+
+🎁 1 Kahve
+Değer: 80 TL
+
+2. Para ödülü
+
+Kafe isterse:
+
+50 TL CafePlay Bakiyesi
+
+100 TL CafePlay Bakiyesi
+
+gibi doğrudan parasal ödül tanımlayabilir.
+
+Burada önemli bir ayrım yapalım:
+
+“Para ödülü”nün oyuncuya nasıl ve nerede harcanacağı ayrıca tanımlanmalı.
+
+Örneğin en güvenli ilk model:
+
+Kafe içi harcama bakiyesi
+
+Oyuncu 100 TL kazanır ve bunu aynı kafede harcayabilir.
+
+Asıl güzel tarafı: Oyuncunun tek bir “ödül bakiyesi” olabilir
+
+Örneğin oyuncunun hesabında:
+
+CafePlay Kazançlarım
+
+Toplam değer: 430 TL
+
+Bunun içinde:
+
+☕ Kahve ödülü → 80 TL
+🍰 Tatlı ödülü → 150 TL
+💰 Kullanılabilir bakiye → 200 TL
+
+bulunabilir.
+
+Ancak burada ürün ödülünü nakit bakiyeye çevirmemeliyiz.
+
+Yani:
+
+80 TL Kahve Ödülü ≠ 80 TL nakit
+
+Sadece sistemde ekonomik değer olarak:
+
+Reward Value = 80 TL
+
+tutulur.
+
+Bu ayrım çok önemli.
+
+Kafe istediğinde “ödül” seçer
+
+Örneğin kafe panelinde:
+
+Ödül oluştur
+
+Ödül tipi
+
+○ Ürün / Hizmet
+○ Kafe Bakiyesi
+
+Ürün:
+
+Kahve
+
+Değer:
+
+80 TL
+
+Günlük adet:
+
+20
+
+Kazanma koşulu:
+
+500 puan
+
+Son kullanım:
+
+3 gün
+
+Kafe istediğinde “para” seçer
+
+Örneğin:
+
+Ödül tipi: Kafe Bakiyesi
+
+Tutar: 50 TL
+
+Günlük adet: 10
+
+Toplam günlük değer: 500 TL
+
+Böylece kafe:
+
+“Ben ürün vermek istemiyorum, müşteriye 50 TL harcama hakkı vereyim.”
+
+diyebilir.
+
+Ama burada çok önemli bir kural koymalıyız
+
+Kafe:
+
+100 TL ödül
+
+tanımladığında sistem bunu gerçekten:
+
+100 TL yükümlülük
+
+olarak kaydetmeli.
+
+Örneğin:
+
+Günlük ödül bütçesi: 1.500 TL
+
+50 TL × 10 adet
+100 TL × 5 adet
+
+Toplam: 1.000 TL
+
+gibi.
+
+Ürün ödüllerinde de:
+
+20 Kahve × 80 TL
+= 1.600 TL ödül değeri
+
+olarak hesaplanır.
+
+Bu, daha önce konuştuğumuz 1.500 TL promosyon havuzu fikrini çok daha sağlam hale getiriyor.
+
+Bir de “kazanılan tutar” sistemi ekleyelim
+
+Bunu ayrı bir özellik olarak koyardım:
+
+CafePlay Bakiye
+
+Oyuncu:
+
++10 TL
+
++25 TL
+
++50 TL
+
+kazanabilir.
+
+Bu bakiye:
+
+Kafede harcanabilir.
+
+Örneğin:
+
+Oyuncunun bakiyesi:
+
+125 TL
+
+Kafede:
+
+200 TL hesap
+
+var.
+
+Oyuncu:
+
+125 TL CafePlay bakiyesi kullan
+
+der.
+
+Kalan:
+
+75 TL
+
+olur.
+
+Bu sistem ileride CafePlay'in çok güçlü bir sadakat mekanizmasına dönüşebilir.
+
+Fakat “para” konusunda bir ayrım yapalım
+
+Ben ilk sürümde nakit çekim / banka hesabına para gönderme özelliğini koymazdım.
+
+İlk model:
+
+CafePlay bakiyesi = CafePlay ekosisteminde harcanabilir değer
+
+olsun.
+
+Çünkü gerçek para transferi / nakit çekim modeli devreye girdiğinde ödeme, finansal mevzuat, KYC/AML, vergi ve benzeri yükümlülükler doğabilir. Bu nedenle bunu ileride ayrıca hukuki/ödeme altyapısı açısından değerlendirmek gerekir.
+
+Kupon sistemi de buna bağlanır
+
+Örneğin oyuncu:
+
+50 TL CafePlay Bakiyesi
+
+kazandı.
+
+Telefonunda:
+
+QR Kodu
+
+oluşur.
+
+Kafe sahibi QR'ı okutur.
+
+Sunucu:
+
+50 TL bakiye kullanımı
+
+olarak doğrular.
+
+Sonra:
+
+50 TL → kullanıldı
+
+olur.
+
+Bu da az önce konuştuğumuz uygulamasız QR kullanım sistemine doğrudan bağlanır.
+
+Böylece CafePlay'te 3 farklı ödül tipi oluşuyor
+🏆 Ürün Ödülü
+
+1 Kahve
+Değer: 80 TL
+
+💰 Kafe Bakiyesi
+
+50 TL
+Kafede harcanabilir
+
+🎟️ İndirim Kuponu
+
+%20 indirim
+Maksimum indirim: 100 TL
+
+Hepsinin ortak bir alanı olur:
+
+Reward Value (TL)
+
+Bu çok önemli.
+
+Çünkü CafePlay artık:
+
+“Kaç tane ödül dağıttık?”
+
+değil,
+
+“Bugün toplam kaç TL değerinde ödül ekonomisi oluşturduk?”
+
+diye de ölçebilir.
+
+Bence bunu CafePlay'in ana ekonomik motoruna ekleyelim
+
+Son yapı:
+
+Oyun
+
+↓
+
+Skor
+
+↓
+
+Reward Engine
+
+↓
+
+Ürün Ödülü / Kafe Bakiyesi / İndirim
+
+↓
+
+QR Kupon
+
+↓
+
+Kafe doğrulaması
+
+↓
+
+Kullanım
+
+↓
+
+Reward Ledger
+
+↓
+
+Kafe ROI + oyuncu davranışı
+
+Bu yapı, mevcut dosyalardaki ödül + kupon + promosyon havuzu + tekrar ziyaret modelini de bozmadan genişletiyor.
+
+Ben bunu CafePlay'in temel mimarisine kesinlikle dahil ederdim.

@@ -1,0 +1,114 @@
+<!-- baslik: Haftalık bütçe -->
+<!-- govde: bg-surface-alt text-text-charcoal font-body-md antialiased min-h-screen -->
+
+<!--
+  D5 · /kafe/panel/butce
+
+  Dört sayı da DEFTERİN TOPLAMI, kolon değil (E3). Kafenin bakması gereken tek
+  sayı "dağıtılabilir"; diğer üçü onun nereden geldiğini açıklıyor.
+
+  Ekranın taşıdığı satış cümlesi bir slogan değil, muhasebenin doğrudan sonucu:
+  kupon kasada onaylanana kadar HARCANDI'ya geçmiyor (Ü7).
+-->
+
+<main class="mx-auto w-full max-w-4xl px-margin-mobile py-unit-8 sm:px-unit-8">
+
+  <header class="mb-unit-8 border-b border-border-noble pb-unit-6">
+    <div class="font-label-caps text-label-caps text-text-muted">İŞLETME PANELİ</div>
+    <h1 class="mt-unit-2 font-headline-md text-[30px] leading-[34px] tracking-[-0.02em] text-text-charcoal font-bold">Haftalık bütçe</h1>
+    <p class="mt-unit-3 font-body-md text-body-md text-text-muted">Kullanılmayan kuponun maliyeti yok.</p>
+  </header>
+
+  <!-- Bu dönem -->
+  <section class="mb-unit-8">
+    <h2 class="text-[13px] font-semibold text-text-charcoal">Bu dönem</h2>
+    <p class="mb-unit-4 text-sm text-text-muted">24 Ağustos – 30 Ağustos · 7 gün</p>
+
+    <div class="overflow-hidden rounded-lg border border-border-noble">
+      <div class="grid grid-cols-2 gap-px bg-border-noble sm:grid-cols-4">
+        <div class="bg-surface px-unit-4 py-unit-6">
+          <div class="font-label-caps text-label-caps text-text-muted">DAĞITILABİLİR</div>
+          <div class="tabular mt-unit-2 font-data-mono text-[24px] font-bold leading-none text-text-charcoal">1.150<span class="ml-1 text-[11px] font-normal">TL</span></div>
+        </div>
+        <div class="bg-surface px-unit-4 py-unit-6">
+          <div class="font-label-caps text-label-caps text-text-muted">AÇIK KUPONLARDA</div>
+          <div class="tabular mt-unit-2 font-data-mono text-[24px] font-bold leading-none text-text-muted">820<span class="ml-1 text-[11px] font-normal">TL</span></div>
+        </div>
+        <div class="bg-surface px-unit-4 py-unit-6">
+          <div class="font-label-caps text-label-caps text-text-muted">KASADA HARCANAN</div>
+          <div class="tabular mt-unit-2 font-data-mono text-[24px] font-bold leading-none text-text-muted">430<span class="ml-1 text-[11px] font-normal">TL</span></div>
+        </div>
+        <div class="bg-surface px-unit-4 py-unit-6">
+          <div class="font-label-caps text-label-caps text-text-muted">BÜTÇEYE DÖNEN</div>
+          <div class="tabular mt-unit-2 font-data-mono text-[24px] font-bold leading-none text-text-muted">0<span class="ml-1 text-[11px] font-normal">TL</span></div>
+        </div>
+      </div>
+
+      <!-- Taahhüdün dağılımı — tek bakışta, gösterge yok -->
+      <div class="flex h-2 w-full bg-surface-sunk">
+        <span class="bg-text-charcoal" style="width:18%" title="Kasada harcanan"></span>
+        <span class="noble-stripe bg-reward-gold" style="width:34%" title="Açık kuponlarda"></span>
+      </div>
+
+      <div class="flex items-baseline justify-between px-unit-4 py-unit-3 text-sm text-text-muted">
+        <span>Taahhüt <strong class="tabular font-data-mono text-text-charcoal">2.400 TL</strong></span>
+        <span class="tabular font-data-mono">Alt sınır 1.500 TL</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Güncelleme -->
+  <section class="mb-unit-8">
+    <h2 class="text-[13px] font-semibold text-text-charcoal">Bütçeyi güncelle</h2>
+    <p class="mb-unit-4 text-sm text-text-muted">
+      Dağıtılmış kuponların altına indirilemez — verilen söz geri alınmaz.
+    </p>
+
+    <form class="flex flex-col gap-unit-3 sm:max-w-sm">
+      <label class="flex flex-col gap-unit-1">
+        <span class="text-[13px] font-semibold text-text-charcoal">Haftalık taahhüt (TL)</span>
+        <input class="tabular rounded-lg border border-border-noble bg-surface px-unit-4 py-unit-3 font-data-mono text-[18px] text-text-charcoal focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary font-medium" inputmode="numeric" type="text" value="2400"/>
+        <span class="text-sm text-text-muted">En az 1.500 TL</span>
+      </label>
+      <button class="rounded-lg bg-text-charcoal py-unit-3 font-title-sm text-title-sm text-white" type="button">Kaydet</button>
+    </form>
+
+    <p class="mt-unit-3 text-sm text-danger-red">
+      hata varyantı · Bütçe 1.500 TL'nin altına indirilemez.
+    </p>
+    <p class="mt-unit-2 text-sm text-text-muted">
+      ilk kez varyantı · başlık “Bütçeyi belirle”, alt satır “Bütçe, sisteme yatırdığın para
+      değil; dağıtacağını taahhüt ettiğin kendi ürününün değeri.”
+    </p>
+  </section>
+
+  <!-- Nasıl işliyor -->
+  <section class="mb-unit-8">
+    <h2 class="mb-unit-4 text-[13px] font-semibold text-text-charcoal">Nasıl işliyor</h2>
+    <ol class="flex flex-col gap-unit-3">
+      <li class="flex gap-unit-3">
+        <span class="font-data-mono text-[11px] text-text-muted font-medium">1</span>
+        <span class="text-body-md leading-relaxed text-text-muted">
+          <strong class="block text-text-charcoal">Kupon verildi</strong>
+          Tutar <strong class="text-text-charcoal">açık kuponlara</strong> geçer, dağıtılabilir bütçe azalır. Henüz hiçbir şey ödemedin.
+        </span>
+      </li>
+      <li class="flex gap-unit-3">
+        <span class="font-data-mono text-[11px] text-text-muted font-medium">2</span>
+        <span class="text-body-md leading-relaxed text-text-muted">
+          <strong class="block text-text-charcoal">Kasiyer onayladı</strong>
+          Tutar <strong class="text-text-charcoal">kasada harcanana</strong> geçer. Ödediğin an burasıdır.
+        </span>
+      </li>
+      <li class="flex gap-unit-3">
+        <span class="font-data-mono text-[11px] text-text-muted font-medium">3</span>
+        <span class="text-body-md leading-relaxed text-text-muted">
+          <strong class="block text-text-charcoal">Süresi doldu ya da iptal edildi</strong>
+          Tutar <strong class="text-text-charcoal">bütçeye döner</strong> ve o kadar yeni kupon çıkabilir.
+        </span>
+      </li>
+    </ol>
+  </section>
+
+  <a class="font-body-md text-body-md text-text-muted underline" href="#">Panele dön</a>
+</main>

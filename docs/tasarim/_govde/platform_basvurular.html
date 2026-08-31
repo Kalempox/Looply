@@ -1,0 +1,137 @@
+<!-- baslik: İşletme başvuruları -->
+<!-- govde: bg-surface-alt text-text-charcoal font-body-md antialiased min-h-screen -->
+
+<!--
+  E2 · /platform/basvurular — G5'in insan tarafı.
+
+  Sahte kafe kaydı, sisteme kupon üretebilecek yeni bir taraf sokmanın en ucuz
+  yolu. OTOMATİK ONAY YOK: her başvuru burada belgesiyle birlikte incelenip
+  elle karara bağlanıyor.
+
+  G9: onay yetkisi yalnızca YÖNETİCİDE. Destek rolü görür, karara bağlayamaz.
+  Tam telefon numarasını da yalnızca yönetici açabilir ve açması denetim izine
+  düşer.
+-->
+
+<main class="mx-auto w-full max-w-4xl px-margin-mobile py-unit-8 sm:px-unit-8">
+
+  <header class="mb-unit-8 border-b border-border-noble pb-unit-6">
+    <div class="font-label-caps text-label-caps text-text-muted">PLATFORM · YÖNETİCİ</div>
+    <h1 class="mt-unit-2 font-headline-md text-[30px] leading-[34px] tracking-[-0.02em] text-text-charcoal font-bold">İşletme başvuruları</h1>
+    <p class="mt-unit-3 font-body-md text-body-md text-text-muted">
+      Onaylanmadan hiçbir kafe karekod üretemez, kupon dağıtamaz.
+    </p>
+  </header>
+
+  <!-- Destek rolü varyantı -->
+  <div class="mb-unit-8 rounded-lg border border-reward-gold bg-surface px-unit-4 py-unit-3">
+    <p class="text-body-md text-text-charcoal">
+      Destek rolündesin: başvuruları görebilirsin ama karara bağlayamazsın. Onay yetkisi
+      yalnızca yöneticidedir.
+    </p>
+  </div>
+
+  <nav class="mb-unit-8 flex gap-unit-1 border-b border-border-noble">
+    <a class="border-b-2 border-text-charcoal px-unit-3 py-unit-3 font-body-md text-body-md font-semibold text-text-charcoal" href="#">Bekleyen</a>
+    <a class="border-b-2 border-transparent px-unit-3 py-unit-3 font-body-md text-body-md text-text-muted" href="#">Onaylı</a>
+    <a class="border-b-2 border-transparent px-unit-3 py-unit-3 font-body-md text-body-md text-text-muted" href="#">Reddedilen</a>
+  </nav>
+
+  <div class="flex flex-col gap-unit-6">
+
+    <!-- Bekleyen başvuru -->
+    <article class="overflow-hidden rounded-lg border border-border-noble bg-surface">
+      <header class="flex items-start justify-between gap-unit-4 border-b border-border-noble px-unit-6 py-unit-4">
+        <div class="min-w-0">
+          <h2 class="font-title-sm text-[20px] text-text-charcoal font-semibold">Tatlı Köşesi</h2>
+          <p class="text-sm text-text-muted">Tatlı Köşesi Gıda Ltd. Şti. · İstanbul</p>
+        </div>
+        <span class="shrink-0 rounded border border-reward-gold px-unit-2 py-[2px] font-label-caps text-[10px] tracking-[0.05em] text-reward-ink font-semibold">BEKLİYOR</span>
+      </header>
+
+      <dl class="px-unit-6">
+        <div class="flex items-baseline justify-between gap-unit-6 border-b border-border-noble py-unit-3">
+          <dt class="shrink-0 text-sm text-text-muted">Yetkili</dt>
+          <dd class="text-right font-body-md text-body-md text-text-charcoal">Mert Aydın</dd>
+        </div>
+        <div class="flex items-baseline justify-between gap-unit-6 border-b border-border-noble py-unit-3">
+          <dt class="shrink-0 text-sm text-text-muted">Telefon</dt>
+          <dd class="flex items-center gap-unit-3 text-right">
+            <span class="tabular font-data-mono text-data-mono text-text-charcoal">0532 *** ** 01</span>
+            <button class="rounded border border-border-noble px-unit-2 py-[2px] text-sm text-text-muted transition-colors hover:bg-surface-sunk" type="button">Tam numarayı aç</button>
+          </dd>
+        </div>
+        <div class="flex items-baseline justify-between gap-unit-6 border-b border-border-noble py-unit-3">
+          <dt class="shrink-0 text-sm text-text-muted">Adres</dt>
+          <dd class="text-right font-body-md text-body-md text-text-charcoal">Bağdat Cad. No 214/A, Kadıköy</dd>
+        </div>
+        <div class="flex items-baseline justify-between gap-unit-6 border-b border-border-noble py-unit-3">
+          <dt class="shrink-0 text-sm text-text-muted">Başvuru</dt>
+          <dd class="tabular text-right font-data-mono text-data-mono text-text-charcoal">24 Ağustos 14:12</dd>
+        </div>
+        <div class="flex items-baseline justify-between gap-unit-6 py-unit-3">
+          <dt class="shrink-0 text-sm text-text-muted">Belge</dt>
+          <dd class="text-right">
+            <span class="block font-body-md text-body-md text-text-charcoal">vergi-levhasi.pdf (412 KB)</span>
+            <span class="font-label-caps text-[10px] tracking-[0.05em] text-text-muted font-semibold">ŞİFRELİ SAKLANIR</span>
+          </dd>
+        </div>
+      </dl>
+
+      <!-- Karar şeridi — yalnızca yönetici -->
+      <div class="border-t border-border-noble bg-surface-sunk px-unit-6 py-unit-4">
+        <div class="flex flex-wrap gap-unit-3">
+          <button class="rounded-lg bg-text-charcoal px-unit-6 py-unit-3 font-title-sm text-title-sm text-white" type="button">Onayla</button>
+          <button class="rounded-lg border border-border-noble bg-surface px-unit-6 py-unit-3 font-title-sm text-title-sm text-text-charcoal" type="button">Reddet</button>
+        </div>
+
+        <!-- Onay teyidi — satır içi -->
+        <div class="mt-unit-4 rounded-lg border border-border-noble bg-surface p-unit-4">
+          <p class="font-body-md text-body-md text-text-charcoal">
+            Tatlı Köşesi onaylanacak. Onaylanınca yetkili numarasına giriş bilgisi gider.
+          </p>
+          <div class="mt-unit-3 flex gap-unit-3">
+            <button class="rounded-lg border border-border-noble bg-surface px-unit-4 py-unit-2 text-sm text-text-charcoal" type="button">Vazgeç</button>
+            <button class="rounded-lg bg-text-charcoal px-unit-4 py-unit-2 text-sm text-white" type="button">Evet, onayla</button>
+          </div>
+        </div>
+
+        <!-- Ret gerekçesi -->
+        <label class="mt-unit-4 flex flex-col gap-unit-1">
+          <span class="text-[13px] font-semibold text-text-charcoal">Ret gerekçesi</span>
+          <textarea class="rounded-lg border border-border-noble bg-surface px-unit-4 py-unit-3 font-body-md text-body-md" rows="2"></textarea>
+        </label>
+      </div>
+    </article>
+
+    <!-- Reddedilmiş başvuru -->
+    <article class="overflow-hidden rounded-lg border border-border-noble bg-surface">
+      <header class="flex items-start justify-between gap-unit-4 border-b border-border-noble px-unit-6 py-unit-4">
+        <div class="min-w-0">
+          <h2 class="font-title-sm text-[20px] text-text-charcoal font-semibold">Köşe Büfe</h2>
+          <p class="text-sm text-text-muted">Köşe Gıda · Ankara</p>
+        </div>
+        <span class="shrink-0 rounded border border-danger-red px-unit-2 py-[2px] font-label-caps text-[10px] tracking-[0.05em] text-danger-red font-semibold">REDDEDİLDİ</span>
+      </header>
+      <dl class="px-unit-6">
+        <div class="flex items-baseline justify-between gap-unit-6 border-b border-border-noble py-unit-3">
+          <dt class="shrink-0 text-sm text-text-muted">Belge</dt>
+          <dd class="text-right font-body-md text-body-md text-text-charcoal">yüklenmemiş</dd>
+        </div>
+        <div class="flex items-baseline justify-between gap-unit-6 py-unit-3">
+          <dt class="shrink-0 text-sm text-text-muted">Ret gerekçesi</dt>
+          <dd class="text-right font-body-md text-body-md text-text-charcoal">Vergi levhası okunamıyor</dd>
+        </div>
+      </dl>
+    </article>
+  </div>
+
+  <p class="mt-unit-6 rounded-lg border border-border-noble bg-surface px-unit-4 py-unit-8 text-center font-body-md text-body-md text-text-muted">
+    boş varyant · Bu listede başvuru yok.
+  </p>
+
+  <nav class="mt-unit-8 border-t border-border-noble pt-unit-6">
+    <a class="font-body-md text-body-md text-text-charcoal underline" href="#">Acil durdurma</a>
+    <button class="ml-unit-6 font-body-md text-body-md text-text-muted underline" type="button">Çıkış yap</button>
+  </nav>
+</main>

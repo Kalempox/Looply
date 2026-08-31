@@ -1,0 +1,97 @@
+import type { Db } from "@/db/context";
+import { redact } from "./log";
+
+/**
+ * Denetim izi — docs/08 §7.3.
+ *
+ * Parayla veya kişisel veriyle ilgili her işlem buraya yazılır ve
+ * silinemez (0004 göçü: uygulama rolünde UPDATE/DELETE yetkisi yok).
+ *
+ * `detail` alanı kişisel veri İÇERMEZ — yazmadan önce redact()'ten geçer,
+ * yani yasaklı bir alan geliştirme ortamında hata fırlatır.
+ */
+
+export type Islem =
+  // Para
+  | "coupon.issue"
+  | "coupon.redeem"
+  | "coupon.undo"
+  | "budget.create"
+  | "budget.update"
+  | "campaign.create"
+  | "campaign.publish"
+  | "campaign.stop"
+  | "happyhour.open"
+  | "happyhour.close"
+  | "product.create"
+  | "product.update"
+  | "reward.create"
+  | "reward.update"
+  // Kafenin ödül ekonomisini değiştiren ayarlar (erteleme eşiği gibi).
+  // Para başlığı altında: "kupon neden bugün açılmadı" sorusunun cevabı burada.
+  | "cafe.config_update"
+  | "table.create"
+  | "table.enable"
+  | "table.disable"
+  // Mahremiyet
+  | "pii.view"
+  | "report.view"
+  | "report.export"
+  // Yetki
+  | "cafe.location"
+  | "cafe.approve"
+  | "cafe.reject"
+  | "staff.create"
+  | "staff.disable"
+  | "staff.pin_reset"
+  | "session.revoke"
+  // Acil durdurma (G18) — dördü de geri alınabilir, hepsi kayıtlı
+  | "emergency.toggle"
+  | "emergency.cafe_suspend"
+  | "emergency.cafe_resume"
+  | "emergency.sessions_revoke"
+  // Davet ve fraud (Faz 9, Ü20) — kapı şartı: risk skoru ve ret gerekçesi
+  // denetim izine düşmeli. Ödüllenen davet de kayıtlı: ödül vermek de bir
+  // karardır ve sonradan sorulabilmelidir.
+  | "referral.rewarded"
+  | "referral.rejected"
+  // Oyuncu hesabı
+  | "player.password_set"
+  // Hukuki
+  | "consent.grant"
+  | "consent.revoke";
+
+export type AuditGirdi = {
+  actorType: "player" | "staff" | "platform" | "system";
+  actorId?: string;
+  cafeId?: string;
+  action: Islem;
+  targetType?: string;
+  targetId?: string;
+  detail?: Record<string, unknown>;
+  ipHash?: Buffer;
+  uaHash?: Buffer;
+};
+
+/**
+ * Denetim kaydını, işlemi yapan sorguyla **aynı transaction içinde** yazar.
+ * Ayrı yazılsaydı, işlem başarılı olup kaydın düşmediği durumlar oluşurdu.
+ */
+export async function audit(db: Db, girdi: AuditGirdi): Promise<void> {
+  await db.query(
+    `INSERT INTO audit_log
+       (actor_type, actor_id, cafe_id, action, target_type, target_id, detail, ip_hash, ua_hash)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+    [
+      girdi.actorType,
+      girdi.actorId ?? null,
+      girdi.cafeId ?? null,
+      girdi.action,
+      girdi.targetType ?? null,
+      girdi.targetId ?? null,
+      girdi.detail ? JSON.stringify(redact(girdi.detail)) : null,
+      girdi.ipHash ?? null,
+      girdi.uaHash ?? null,
+    ],
+  );
+}

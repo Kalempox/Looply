@@ -1,0 +1,172 @@
+@import "tailwindcss";
+
+/* ═══════════════════════════════════════════════════════════════
+   CafePlay — "Açık ve Asil" (Ü31)
+
+   Tek palet, üç yoğunluk. Önceki sürümde oyuncu koyu çini, işletme
+   kâğıt beyazıydı; iki palet iki ayrı ürün gibi okunuyordu. Artık
+   üç yüzey aynı dokuz rengi paylaşıyor ve **yoğunluk, süs ve ton**
+   ile ayrışıyor:
+
+   OYUNCU    geniş kart, büyük sayı, ekranda tek eylem
+   KASA      aynı sistem, sayaç için büyütülmüş: iri yazı, iri hedef
+   İŞLETME   tablo, çizgi, hizalı sayı — iyi dizilmiş bir fatura gibi
+
+   Renk seyrek kullanılır: ekranın büyük kısmı beyaz ve gri kalır,
+   mavi ile altın nadir göründüğü için anlam taşımaya devam eder.
+
+   Kaynak: docs/17-stitch-arayuz-promptu.md §1 ve §5
+   ═══════════════════════════════════════════════════════════════ */
+
+@theme {
+  /* Dokuz renk. Ekleme yok — onuncu renk paleti anlamsızlaştırır.
+     Tek istisna `--color-odul-koyu`: yeni bir renk değil, altının okunabilir
+     tonu. Gerekçesi aşağıda. */
+  --color-yuzey: #ffffff; /* kart ve yükseltilmiş yüzey */
+  --color-zemin: #fafafa; /* sayfa zemini */
+  --color-cukur: #f2f2f2; /* girdi, ilerleme yatağı, gömük alan */
+  --color-cizgi: #e5e5e5; /* her saç teli çizgi ve ayraç */
+  --color-yazi: #1f1f1f; /* birincil metin */
+  --color-yazi-sonuk: #6b6b6b; /* ikincil metin, mikro etiket, ipucu */
+  --color-vurgu: #0b57d0; /* birincil eylem, aktif durak, doğrulanmış hâl */
+  --color-odul: #d4af37; /* ödül rengi — çerçeve, dolgu, şerit, nokta */
+  --color-odul-koyu: #856612; /* aynı ödül rengi, METİN olarak okunabilir tonu */
+  --color-tehlike: #d93025; /* hata, ret, yıkıcı eylem */
+
+  /* ── Kontrast neden bu değerlerde ────────────────────────────
+     Sistemin kendi kuralı: "gövde metni ve mikro etiket 4.5:1'i geçmeli,
+     'sönük' okunmaz griye kaymamalı." Ölçünce iki değer kendi kuralını
+     tutturamıyordu:
+
+       #757575 sönük metin  →  zemin 4.41 · çukur 4.12   (kaldı)
+       #6B6B6B              →  zemin 5.11 · çukur 4.76   (geçti)
+
+       #D4AF37 METİN olarak →  beyaz 2.10 · çukur 1.88   (kaldı, hem de fena)
+       #856612              →  beyaz 5.38 · çukur 4.80   (geçti)
+
+     Altın **çerçeve, dolgu ve şerit olarak `#D4AF37` kalıyor** — ürünün
+     tanınır rengi orada. Değişen yalnızca altının yazı hâli: 2.10:1'de altın
+     bir mikro etiket, iyi gören bir gözde bile beyaz zeminde kayboluyor.
+
+     `#D93025` metin çukur zeminde 4.26'da kalıyordu; renk değil **zemin**
+     değişti — tehlike kutuları artık `bg-yuzey` üstünde (4.77). */
+
+  /* İki aile: Outfit her şeyde, JetBrains Mono yalnızca sayıda.
+     `font-display` ve `font-body` aynı aileye bakıyor — ayrım artık
+     ailede değil ağırlıkta: başlık sıkı ve ağır, gövde gevşek ve hafif. */
+  --font-display: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
+  --font-body: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
+  --font-data: var(--font-mono), ui-monospace, SFMono-Regular, monospace;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Taban font kuralı — hiçbir metin tarayıcı varsayılanına düşmesin.
+   Düğme ve girdi kendi ailesini miras almaz, açıkça yazılması gerekir. */
+html,
+body,
+button,
+input,
+select,
+textarea {
+  font-family: var(--font-body);
+}
+
+body {
+  background: var(--color-zemin);
+  color: var(--color-yazi);
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior-y: none;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-vurgu);
+  outline-offset: 3px;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* ── Mikro etiket (label-caps) ──────────────────────────────────
+   Outfit 600 · 12/16 · 0.05em · BÜYÜK HARF.
+
+   Bilerek monospace **değil**: bu sistemde mono yalnızca sayıya ait.
+   Etiket bir sayı değil, adı. Önceki sürümde etiketler de mono yazılıyordu
+   ve ekranlar arası "font farklı görünüyor" hissinin kaynaklarından biri
+   buydu (docs/17 §3.2).
+
+   `@layer components` içinde duruyor ki yoğun tablolarda `text-[10px]`
+   gibi bir yardımcı sınıf boyutu ezebilsin — Tailwind yardımcıları
+   `utilities` katmanında ve o katman bunun üstünde. */
+
+@layer components {
+  .etiket-caps {
+    font-family: var(--font-body);
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 16px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ── İmza doku: asil şerit ──────────────────────────────────────
+   İlerleme çubuklarının -45° çizgisi. Ürünün tanınır tek detayı;
+   oyuncu seviye çubuğunda, kafe bütçe çubuğunda ve kampanya
+   sayaçlarında görünür — başka hiçbir yerde.
+
+   Dolgu rengi `bg-vurgu` veya `bg-odul` ile ayrı verilir; bu sınıf
+   yalnızca dokuyu taşır. */
+
+.asil-serit {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    rgba(255, 255, 255, 0.15),
+    rgba(255, 255, 255, 0.15) 10px,
+    transparent 10px,
+    transparent 20px
+  );
+}
+
+/* ── Hareketler ─────────────────────────────────────────────── */
+
+@keyframes yukari {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.gir { animation: yukari 0.4s cubic-bezier(0.2, 0.7, 0.3, 1) both; }
+
+@keyframes nabiz {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.45; }
+}
+.nabiz { animation: nabiz 1.4s ease-in-out infinite; }
+
+@keyframes patla {
+  from { transform: scale(0.7); opacity: 0; }
+  60%  { transform: scale(1.06); opacity: 1; }
+  to   { transform: scale(1); opacity: 1; }
+}
+.patla { animation: patla 0.45s cubic-bezier(0.2, 0.9, 0.3, 1) both; }
+
+/* Oyun alanında metin seçimi ve uzun basma menüsü kapalı */
+.oyun-alani {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  touch-action: manipulation;
+}

@@ -1,0 +1,59 @@
+<!-- baslik: Kuponu kullan -->
+<!-- govde: bg-surface-alt text-text-charcoal font-body-md antialiased min-h-screen -->
+
+<!--
+  B8 · /oduller/{kuponId}
+
+  E9 — bu ekranın tek kuralı: TL DEĞERİ YOK, "GEÇERLİDİR" DAMGASI YOK.
+  Süresi dolmuş kupon burada geçerli olanla neredeyse aynı görünür. Geçerlilik
+  yalnızca kasiyerin ekranında, okutulduktan sonra ortaya çıkar. Bu bir eksiklik
+  değil, kasiyerin sistemi atlamasını tasarımla engelleyen önlem.
+-->
+
+<main class="mx-auto flex w-full max-w-md flex-col gap-unit-6 px-margin-mobile pt-unit-6 pb-unit-8">
+
+  <a class="flex w-fit items-center gap-unit-2 text-text-muted" href="#">
+    <span class="material-symbols-outlined text-[20px]">arrow_back</span>
+    <span class="font-label-caps text-label-caps">ÖDÜLLERİM</span>
+  </a>
+
+  <header class="flex flex-col gap-unit-1">
+    <span class="font-label-caps text-label-caps text-primary">KAHVE DURAĞI</span>
+    <h1 class="font-headline-md text-headline-md text-text-charcoal">Ücretsiz filtre kahve</h1>
+  </header>
+
+  <!-- Ana kart -->
+  <section class="flex flex-col items-center gap-unit-4 rounded-xl border border-reward-gold bg-surface p-unit-6">
+
+    <!-- Karekod: koyu modüller SAF BEYAZ zemin üstünde, sessiz alanıyla birlikte.
+         Sayfa zemini zaten açık ama okuyucular sessiz alanı arıyor. -->
+    <div class="rounded-lg bg-white p-unit-3">
+      <svg aria-label="Kupon karekodu" class="h-[200px] w-[200px]" role="img" shape-rendering="crispEdges" viewBox="0 0 25 25">
+        <rect fill="#FFFFFF" height="25" width="25"></rect>
+        <g fill="#1F1F1F">
+          <path d="M0 0h7v7H0z M1 1h5v5H1z" fill-rule="evenodd"></path><rect height="3" width="3" x="2" y="2"></rect>
+          <path d="M18 0h7v7h-7z M19 1h5v5h-5z" fill-rule="evenodd"></path><rect height="3" width="3" x="20" y="2"></rect>
+          <path d="M0 18h7v7H0z M1 19h5v5H1z" fill-rule="evenodd"></path><rect height="3" width="3" x="2" y="20"></rect>
+          <path d="M8 0h1v1h-1zM10 0h1v1h-1zM12 0h1v1h-1zM13 0h1v1h-1zM15 0h1v1h-1zM11 1h1v1h-1zM14 1h1v1h-1zM11 2h1v1h-1zM12 2h1v1h-1zM14 2h1v1h-1zM16 2h1v1h-1zM8 3h1v1h-1zM9 3h1v1h-1zM10 3h1v1h-1zM12 3h1v1h-1zM13 3h1v1h-1zM16 3h1v1h-1zM10 4h1v1h-1zM12 4h1v1h-1zM15 4h1v1h-1zM8 5h1v1h-1zM12 5h1v1h-1zM14 5h1v1h-1zM15 5h1v1h-1zM16 5h1v1h-1zM8 6h1v1h-1zM10 6h1v1h-1zM12 6h1v1h-1zM14 6h1v1h-1zM16 6h1v1h-1zM8 7h1v1h-1zM9 7h1v1h-1zM11 7h1v1h-1zM15 7h1v1h-1zM0 8h1v1h-1zM2 8h1v1h-1zM3 8h1v1h-1zM4 8h1v1h-1zM5 8h1v1h-1zM6 8h1v1h-1zM8 8h1v1h-1zM9 8h1v1h-1zM11 8h1v1h-1zM12 8h1v1h-1zM16 8h1v1h-1zM18 8h1v1h-1zM19 8h1v1h-1zM20 8h1v1h-1zM22 8h1v1h-1zM23 8h1v1h-1zM0 9h1v1h-1zM2 9h1v1h-1zM4 9h1v1h-1zM5 9h1v1h-1zM11 9h1v1h-1zM12 9h1v1h-1zM13 9h1v1h-1zM14 9h1v1h-1zM18 9h1v1h-1zM19 9h1v1h-1zM20 9h1v1h-1zM21 9h1v1h-1zM5 10h1v1h-1zM6 10h1v1h-1zM7 10h1v1h-1zM9 10h1v1h-1zM10 10h1v1h-1zM11 10h1v1h-1zM12 10h1v1h-1zM13 10h1v1h-1zM19 10h1v1h-1zM21 10h1v1h-1zM0 11h1v1h-1zM1 11h1v1h-1zM3 11h1v1h-1zM4 11h1v1h-1zM7 11h1v1h-1zM9 11h1v1h-1zM13 11h1v1h-1zM17 11h1v1h-1zM19 11h1v1h-1zM20 11h1v1h-1zM21 11h1v1h-1zM22 11h1v1h-1zM23 11h1v1h-1zM0 12h1v1h-1zM1 12h1v1h-1zM3 12h1v1h-1zM6 12h1v1h-1zM7 12h1v1h-1zM11 12h1v1h-1zM12 12h1v1h-1zM13 12h1v1h-1zM14 12h1v1h-1zM16 12h1v1h-1zM17 12h1v1h-1zM21 12h1v1h-1zM23 12h1v1h-1zM2 13h1v1h-1zM3 13h1v1h-1zM4 13h1v1h-1zM7 13h1v1h-1zM9 13h1v1h-1zM10 13h1v1h-1zM12 13h1v1h-1zM13 13h1v1h-1zM15 13h1v1h-1zM20 13h1v1h-1zM1 14h1v1h-1zM2 14h1v1h-1zM3 14h1v1h-1zM4 14h1v1h-1zM6 14h1v1h-1zM7 14h1v1h-1zM11 14h1v1h-1zM15 14h1v1h-1zM20 14h1v1h-1zM0 15h1v1h-1zM1 15h1v1h-1zM5 15h1v1h-1zM9 15h1v1h-1zM11 15h1v1h-1zM12 15h1v1h-1zM13 15h1v1h-1zM16 15h1v1h-1zM18 15h1v1h-1zM19 15h1v1h-1zM20 15h1v1h-1zM22 15h1v1h-1zM1 16h1v1h-1zM3 16h1v1h-1zM4 16h1v1h-1zM6 16h1v1h-1zM9 16h1v1h-1zM12 16h1v1h-1zM15 16h1v1h-1zM17 16h1v1h-1zM18 16h1v1h-1zM19 16h1v1h-1zM21 16h1v1h-1zM11 17h1v1h-1zM12 17h1v1h-1zM13 17h1v1h-1zM14 17h1v1h-1zM18 17h1v1h-1zM24 17h1v1h-1zM9 18h1v1h-1zM10 18h1v1h-1zM12 18h1v1h-1zM18 18h1v1h-1zM19 18h1v1h-1zM20 18h1v1h-1zM21 18h1v1h-1zM23 18h1v1h-1zM11 19h1v1h-1zM14 19h1v1h-1zM16 19h1v1h-1zM18 19h1v1h-1zM19 19h1v1h-1zM21 19h1v1h-1zM24 19h1v1h-1zM10 20h1v1h-1zM11 20h1v1h-1zM12 20h1v1h-1zM14 20h1v1h-1zM15 20h1v1h-1zM16 20h1v1h-1zM19 20h1v1h-1zM21 20h1v1h-1zM22 20h1v1h-1zM8 21h1v1h-1zM11 21h1v1h-1zM13 21h1v1h-1zM17 21h1v1h-1zM22 21h1v1h-1zM24 21h1v1h-1zM8 22h1v1h-1zM9 22h1v1h-1zM11 22h1v1h-1zM13 22h1v1h-1zM16 22h1v1h-1zM18 22h1v1h-1zM20 22h1v1h-1zM11 23h1v1h-1zM12 23h1v1h-1zM13 23h1v1h-1zM15 23h1v1h-1zM16 23h1v1h-1zM18 23h1v1h-1zM19 23h1v1h-1zM24 23h1v1h-1zM9 24h1v1h-1zM10 24h1v1h-1zM20 24h1v1h-1zM24 24h1v1h-1z"></path>
+        </g>
+      </svg>
+    </div>
+
+    <p class="text-center font-body-md text-body-md text-text-charcoal">Kasada bu kodu okut.</p>
+
+    <div class="flex w-full flex-col items-center gap-unit-2 border-t border-border-noble pt-unit-4">
+      <span class="font-label-caps text-label-caps text-text-muted">KAMERA ÇALIŞMAZSA</span>
+      <span class="tabular pl-[0.3em] font-data-mono text-[28px] font-bold tracking-[0.3em] text-reward-ink">K7M2X9</span>
+    </div>
+  </section>
+
+  <!-- E9: ekranın söylediği tek şey bu. "Geçerlidir" demiyor. -->
+  <p class="border-l-2 border-reward-gold pl-unit-4 text-sm leading-relaxed text-text-muted">
+    Kasada okutulmadan geçerli değildir. Kuponun kullanılıp kullanılmadığını yalnızca
+    kasiyerin ekranı gösterir.
+  </p>
+
+  <div class="tabular font-data-mono text-data-mono text-text-muted">Son kullanım 12 Eylül</div>
+
+  <a class="font-body-md text-body-md text-primary underline" href="#">Ödüllerime dön</a>
+</main>

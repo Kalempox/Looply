@@ -1,0 +1,684 @@
+import { withBypass, type Db } from "@/db/context";
+import { newId } from "@/lib/ids";
+import { randomToken, identifierHash } from "@/lib/crypto";
+import { isGunu } from "@/lib/tarih";
+import { log } from "@/lib/log";
+import { oyunBul, gununOyunu, tekrarOyna, EN_FAZLA_GIRDI } from "@/oyunlar";
+import * as masaOturumu from "./masa";
+import { K2 } from "./masa";
+import * as acil from "./acil";
+import * as davet from "./davet";
+import * as taht from "./taht";
+import { yazIle as puanYaz, OYUN_PUANI, BONUS_CARPANI, type PuanSonucu } from "./puan";
+import { yazIle as xpYaz } from "./xp";
+import { degerlendir } from "./rozet";
+import { anlikOdulVer } from "./kupon";
+
+/**
+ * Oyun oturumu — Faz 5'in çekirdeği.
+ *
+ * ── Değişmez kural #4 ───────────────────────────────────────
+ *
+ * *"Para değeri taşıyan hiçbir sayı istemciden kabul edilmez."*
+ *
+ * İstemcinin gönderdiği skor bu dosyada **hiçbir hesaba girmez**. Yalnızca
+ * `claimed_score` sütununa yazılır; oradaki değerin tek işi, sunucunun
+ * bulduğuyla karşılaştırıldığında hile denemesini görünür kılmaktır (S5).
+ *
+ * ── Neden tohum sunucuda üretiliyor ─────────────────────────
+ *
+ * Tohumu istemci seçseydi, oyuncu kolay parça dizisi veren tohumu arayıp
+ * bulur ve her seferinde onu kullanırdı. Tohum sunucuda üretilip oturuma
+ * yazılıyor; doğrulama da o tohumla yapılıyor.
+ */
+
+/** Açık bir oyun oturumunun en fazla yaşayabileceği süre. */
+const OTURUM_OMRU_SAAT = 2;
+
+/** Bir oyun tamamlandığında yazılan XP (docs/06 §2.1). */
+const XP_OYUN = 50;
+
+/**
+ * Cihaz kimliği vekili.
+ *
+ * `play_sessions.device_id_hash` NOT NULL ve **nitelikli oturum** benzersizlik
+ * indeksinin parçası: `(cafe_id, device_id_hash, business_date) WHERE is_qualified`
+ * — yani "1 nitelikli oturum / cihaz / kafe / gün" kuralı (docs/06 §5, S3).
+ *
+ * Bu akışta gerçek cihaz parmak izi toplanmıyor. Sütunu boş geçmek felaket
+ * olurdu: **bütün oyuncular aynı cihaz sayılır** ve kafedeki ilk oyuncudan
+ * sonra kimse nitelikli oturum üretemezdi. Yerine oyuncu kimliğinin hash'i
+ * konuyor; kural böylece "1 / oyuncu / kafe / gün" gibi davranıyor.
+ *
+ * Gerçek cihaz sinyali fraud motoruyla birlikte gelecek (Faz 9); o zaman
+ * kural asıl amacına — aynı cihazdan çok hesapla gelmeyi görmeye — kavuşur.
+ */
+export function cihazVekili(playerId: string): Buffer {
+  return identifierHash(playerId);
+}
+
+/* ── Ortak kazanım yolu ────────────────────────────────────────
+ *
+ * Aşağıdaki iki fonksiyonun **iki** çağıranı var:
+ *
+ *   · `bitir`            — normal oyun. Skoru az önce `tekrarOyna` hesapladı.
+ *   · `misafir.bozdur`   — kayıt öncesi oynanan oyun. Skoru yine sunucu
+ *                          hesapladı (oyun anında) ve imzalı talebe koydu.
+ *
+ * Ü35 "ürün kuralları gevşemiyor" diyor. Bu söz ancak iki yol AYNI koddan
+ * geçerse tutulabilir: ayrı ayrı yazılsalardı günlük tavan, nitelikli oturum,
+ * anlık ödül ve taht kurallarının bir kopyası er geç güncellenmeden kalırdı.
+ * Faz 7'de tohum betiğinin kendi PIN hash kopyası yüzünden kasiyer hiç giriş
+ * yapamamıştı — aynı hata iki kez yapılmıyor.
+ */
+
+/**
+ * "Nitelikli oturum" mu? (docs/06 §5, S3)
+ *
+ * Bölümün tamamlanması değil, **kafeye yapılan sayılabilir ziyaret**: günde
+ * bir kez, cihaz ve kafe başına. Sonraki oyunlar oynanır ve puan kazandırır
+ * ama ziyaret tekrar sayılmaz.
+ *
+ * `current_date` DEĞİL: o, veritabanı sunucusunun (UTC) günü. `business_date`
+ * İstanbul takvimiyle yazılıyor ve ikisi gece 00:00–03:00 arasında AYRIŞIYOR —
+ * kontrol yanlış güne bakar, aynı gün ikinci kez nitelikli işaretlenir ve
+ * benzersizlik kısıtı ihlal edilir.
+ */
+async function nitelikliMi(
+  db: Db,
+  opts: { playerId: string; cafeId: string | null; kazandirir: boolean; basarili: boolean },
+): Promise<boolean> {
+  if (!opts.kazandirir || !opts.basarili || !opts.cafeId) return false;
+
+  const varMi = await db.one(
+    `SELECT 1 FROM play_sessions
+      WHERE cafe_id = $1 AND device_id_hash = $2 AND business_date = $3
+        AND is_qualified
+      LIMIT 1`,
+    [opts.cafeId, cihazVekili(opts.playerId), isGunu()],
+  );
+  return !varMi;
+}
+
+export type Kazanim = {
+  puan: PuanSonucu | null;
+  xp: number;
+  kupon: { baslik: string; kod: string; ertelendi: boolean } | null;
+  taht: taht.DevirmeSonucu | null;
+};
+
+/**
+ * Puan, XP, anlık ödül ve taht — tek yerde.
+ *
+ * Ü3: kafe dışında hiçbir kazanım yok, puan da XP de. Kazanım ayrıca
+ * **başarılı** bölüm ister: bölümü yarıda bırakıp yeniden başlamak puan
+ * üretmemeli, yoksa en ucuz çiftlik yolu o olurdu.
+ */
+async function kazanimIsle(
+  db: Db,
+  opts: {
+    playerId: string;
+    cafeId: string | null;
+    tableId: string | null;
+    oyunId: string;
+    oturumId: string;
+    proofLevel: number;
+    skor: number;
+    basarili: boolean;
+    kazandirir: boolean;
+    bonusMu: boolean;
+  },
+): Promise<Kazanim> {
+  const bos: Kazanim = { puan: null, xp: 0, kupon: null, taht: null };
+  if (!opts.kazandirir || !opts.cafeId) return bos;
+
+  const sonuc: Kazanim = { ...bos };
+
+  if (opts.basarili) {
+    const kuponDurduruldu = await acil.durduruldu(acil.ANAHTARLAR.kupon);
+
+    if (!kuponDurduruldu) {
+      // E5: çarpanlar çarpışmaz. Şu an tek çarpan bonuslu oyun; fiş
+      // çarpanı (K4) Faz 7'de gelince en yükseği seçilecek.
+      const carpan = opts.bonusMu ? BONUS_CARPANI : 1;
+
+      sonuc.puan = await puanYaz(db, {
+        playerId: opts.playerId,
+        cafeId: opts.cafeId,
+        taban: OYUN_PUANI,
+        carpan,
+        sebep: "oyun",
+        refTipi: "play_session",
+        refId: opts.oturumId,
+        kanitSeviyesi: opts.proofLevel,
+      });
+
+      // XP tavansız (docs/06 §2.1) — hiçbir bütçeye dokunmuyor.
+      sonuc.xp = XP_OYUN * carpan;
+      await xpYaz(db, {
+        playerId: opts.playerId,
+        cafeId: opts.cafeId,
+        delta: sonuc.xp,
+        kaynak: "GAME",
+        kaynakId: opts.oturumId,
+      });
+
+      // E2: anlık ödül puan istemez ve günde bir kez düşer. İlk kez
+      // oynayanın puanı sıfırdır; eli boş çıkarsa bir daha gelmez.
+      // Ü27: hangi ödülün düşeceği kafenin sırasından, döngüsel.
+      const anlik = await anlikOdulVer(db, {
+        playerId: opts.playerId,
+        cafeId: opts.cafeId,
+        kanitSeviyesi: opts.proofLevel,
+        kaynakId: opts.oturumId,
+      });
+      if (anlik?.ok) {
+        sonuc.kupon = { baslik: anlik.baslik, kod: anlik.kod, ertelendi: anlik.ertelendi };
+      }
+    }
+  }
+
+  // ── Masa tahtı (Ö1) ────────────────────────────────────
+  //
+  // AYNI İŞLEMDE: biten oturumun yazımı henüz commit edilmedi; ayrı
+  // bağlantıdan sorulsa sorgu bu oyunu göremez ve oyuncu tahtı devirdiği
+  // hâlde "devirmedin" cevabı alırdı.
+  //
+  // Yalnızca **günün oyununda** anlamlı: taht tek oyun üzerinden tutuluyor
+  // ki skorlar karşılaştırılabilir olsun (Ö1). Yalnızca okuyor — taht
+  // hiçbir deftere yazmıyor, statüden ibaret.
+  if (opts.bonusMu) {
+    sonuc.taht = await taht.devirdiMiIle(db, {
+      cafeId: opts.cafeId,
+      tableId: opts.tableId,
+      oyunId: opts.oyunId,
+      playerId: opts.playerId,
+      skor: opts.skor,
+    });
+  }
+
+  return sonuc;
+}
+
+export type BaslatSonucu =
+  | {
+      ok: true;
+      oturumId: string;
+      tohum: string;
+      bolum: number;
+      /** Bu oturum puan/XP kazandırır mı? Kafe dışındaysa hayır (Ü3). */
+      kazandirir: boolean;
+      bonusMu: boolean;
+    }
+  | { ok: false; hata: string };
+
+/**
+ * Oyun oturumu açar ve tohumu döner.
+ *
+ * Kafe dışında da açılabiliyor — Ü3 oynamayı serbest bırakıyor, yalnızca
+ * kazanımı kapatıyor. `kazandirir` alanı ekranın bunu dürüstçe söylemesi için.
+ */
+export async function basla(opts: {
+  playerId: string;
+  oyunId: string;
+  bolum: number;
+}): Promise<BaslatSonucu> {
+  const oyun = oyunBul(opts.oyunId);
+  if (!oyun) return { ok: false, hata: "Böyle bir oyun yok." };
+  if (!Number.isInteger(opts.bolum) || opts.bolum < 1 || opts.bolum > oyun.bolumSayisi) {
+    return { ok: false, hata: "Böyle bir bölüm yok." };
+  }
+
+  if (await acil.durduruldu(acil.ANAHTARLAR.oyun)) {
+    return { ok: false, hata: "Oyunlar geçici olarak durduruldu. Birazdan tekrar dene." };
+  }
+
+  const masa = await masaOturumu.aktif(opts.playerId);
+  const kazandirir = !!masa && (masa.kanitMaskesi & K2) !== 0;
+  const bonusMu = gununOyunu(isGunu()).id === oyun.id;
+
+  const oturumId = newId("oyn");
+  const tohum = randomToken(16);
+
+  await withBypass("oyun oturumu açma", (db) =>
+    db.query(
+      `INSERT INTO play_sessions
+         (id, cafe_id, table_id, player_id, device_id_hash, game_id, level, seed,
+          table_session_id, proof_mask, proof_level, business_date, status)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'open')`,
+      [
+        oturumId,
+        masa?.cafeId ?? null,
+        masa?.tableId ?? null,
+        opts.playerId,
+        cihazVekili(opts.playerId),
+        oyun.id,
+        opts.bolum,
+        tohum,
+        masa?.id ?? null,
+        masa?.kanitMaskesi ?? 0,
+        masa?.kanitSeviyesi ?? 0,
+        isGunu(),
+      ],
+    ),
+  );
+
+  // Davet zinciri: "oyunu gerçekten oynadı" şartının ilk yarısı.
+  // Hata oyunu engellememeli — davet yan iş.
+  try {
+    await davet.ilerlet(opts.playerId, "game_started");
+  } catch (err) {
+    log.warn("davet ilerletme basarisiz", { hata: String(err) });
+  }
+
+  return { ok: true, oturumId, tohum, bolum: opts.bolum, kazandirir, bonusMu };
+}
+
+export type BitirSonucu =
+  | {
+      ok: true;
+      /** Sunucunun hesapladığı skor — istemcininki değil. */
+      skor: number;
+      basarili: boolean;
+      /** Kafe dışıysa veya başarısızsa null. */
+      puan: PuanSonucu | null;
+      xp: number;
+      kazandirir: boolean;
+      bonusMu: boolean;
+      /** Bu çağrıda kazanılan rozetler. */
+      yeniRozetler: string[];
+      /** E2: anlık ödül düştüyse. Oyuncuya TL değeri GÖSTERİLMEZ (E9). */
+      kupon: { baslik: string; kod: string; ertelendi: boolean } | null;
+      /**
+       * Bu oturum "kafeye yapılan sayılabilir ziyaret" olarak işaretlendi mi?
+       *
+       * Ekranda gösterilmiyor; davet zincirinin niteliklenme şartı bu (Faz 9,
+       * Ü20). Değeri burada taşınıyor ki işlem kapandıktan sonra çağrılan
+       * davet adımı oturumu ikinci kez okumak zorunda kalmasın.
+       */
+      nitelikliOldu: boolean;
+      /** Oturumun kafesi — kafe dışında null. */
+      cafeId: string | null;
+      /**
+       * Ö1: bu oyun masanın tahtını devirdi mi?
+       *
+       * Yalnızca günün oyununda anlamlı — taht tek oyun üzerinden tutuluyor
+       * ki skorlar karşılaştırılabilir olsun. Başka oyunda her zaman null.
+       */
+      taht: taht.DevirmeSonucu | null;
+    }
+  | { ok: false; hata: string; reddedildi?: boolean };
+
+/**
+ * Oyunu bitirir: girdi kaydını yeniden oynatır, skoru hesaplar, kazanımı yazar.
+ *
+ * ── Tekrar gönderim koruması ────────────────────────────────
+ *
+ * Oturum satırı işlemin başında `FOR UPDATE` ile kilitleniyor. İki istek
+ * aynı anda gelirse ikincisi birincinin bitmesini bekler ve durumu artık
+ * 'open' olmadığı için reddedilir. Puan iki kez yazılamaz.
+ */
+export async function bitir(opts: {
+  playerId: string;
+  oturumId: string;
+  girdiler: unknown;
+  iddiaEdilenSkor: number;
+}): Promise<BitirSonucu> {
+  return withBypass("oyun bitirme ve doğrulama", async (db) => {
+    // ── Oyuncu düzeyinde kilit ──────────────────────────────
+    //
+    // İki oyunu neredeyse aynı anda bitiren bir oyuncu, kilit olmadan iki
+    // yarış koşulu üretirdi:
+    //   · Günlük tavan: ikisi de "bugün 600" okur, ikisi de 300 yazar → 1200
+    //   · Nitelikli oturum: ikisi de "bugün nitelikli yok" görür, ikisi de
+    //     işaretlemeye çalışır → benzersizlik ihlali
+    //
+    // Oturum satırını kilitlemek yetmiyor çünkü satırlar farklı. Oyuncu
+    // satırı ortak; onu kilitlemek aynı oyuncunun bitirmelerini sıraya sokuyor.
+    await db.query(`SELECT id FROM players WHERE id = $1 FOR UPDATE`, [opts.playerId]);
+
+    const oturum = await db.one<{
+      id: string;
+      cafe_id: string | null;
+      table_id: string | null;
+      game_id: string;
+      level: number | null;
+      seed: string;
+      status: string;
+      started_at: Date;
+      proof_mask: number;
+      proof_level: number;
+      table_session_id: string | null;
+    }>(
+      `SELECT id, cafe_id, table_id, game_id, level, seed, status, started_at,
+              proof_mask, proof_level, table_session_id
+         FROM play_sessions
+        WHERE id = $1 AND player_id = $2
+        FOR UPDATE`,
+      [opts.oturumId, opts.playerId],
+    );
+
+    if (!oturum) return { ok: false as const, hata: "Oturum bulunamadı." };
+    if (oturum.status !== "open") {
+      // Aynı oturumu iki kez bitirme denemesi — Faz 5 güvenlik kapısı.
+      log.warn("oyun oturumu ikinci kez bitirilmeye calisildi", { durum: oturum.status });
+      return { ok: false as const, hata: "Bu oyun zaten bitmişti." };
+    }
+
+    const yas = Date.now() - oturum.started_at.getTime();
+    if (yas > OTURUM_OMRU_SAAT * 3_600_000) {
+      await db.query(
+        `UPDATE play_sessions SET status = 'abandoned', ended_at = now(),
+                reject_reason = 'süre aşımı' WHERE id = $1`,
+        [oturum.id],
+      );
+      return { ok: false as const, hata: "Bu oyunun süresi dolmuş." };
+    }
+
+    const oyun = oyunBul(oturum.game_id);
+    if (!oyun) return { ok: false as const, hata: "Oyun tanımı bulunamadı." };
+
+    // ── Sunucu skoru yeniden hesaplar (S5) ──────────────────
+    const sonuc = tekrarOyna(oyun, oturum.seed, oturum.level ?? 1, opts.girdiler);
+
+    const girdiSayisi = Array.isArray(opts.girdiler) ? opts.girdiler.length : 0;
+    const iddia = Number.isFinite(opts.iddiaEdilenSkor) ? Math.trunc(opts.iddiaEdilenSkor) : 0;
+
+    if (!sonuc.gecerli) {
+      await db.query(
+        `UPDATE play_sessions
+            SET status = 'rejected', ended_at = now(), duration_ms = $2,
+                claimed_score = $3, input_log = $4, reject_reason = $5
+          WHERE id = $1`,
+        [oturum.id, yas, iddia, JSON.stringify(sanitize(opts.girdiler)), sonuc.sebep.slice(0, 200)],
+      );
+      log.warn("oyun reddedildi", { sebep: sonuc.sebep, girdiSayisi });
+      return { ok: false as const, hata: "Oyun kaydı doğrulanamadı.", reddedildi: true };
+    }
+
+    // Bölüm bittikten sonra tek bir zaman işareti normal; fazlası istemcinin
+    // beklenmedik davrandığını gösterir ve fraud analizine girdi olur (Faz 9).
+    if (sonuc.kullanilmayan > 2) {
+      log.warn("oyun kaydinda artik girdi var", {
+        adet: sonuc.kullanilmayan,
+        oyun: oturum.game_id,
+      });
+    }
+
+    // İstemci farklı bir skor iddia ettiyse bu bir hile denemesi olabilir —
+    // oyun geçerli olduğu için reddedilmiyor ama kayda geçiyor (Faz 9 fraud).
+    if (iddia !== sonuc.skor) {
+      log.warn("iddia edilen skor sunucununkinden farkli", {
+        fark: iddia - sonuc.skor,
+        oyun: oturum.game_id,
+      });
+    }
+
+    const kazandirir = !!oturum.cafe_id && (oturum.proof_mask & K2) !== 0;
+
+    const nitelikli = await nitelikliMi(db, {
+      playerId: opts.playerId,
+      cafeId: oturum.cafe_id,
+      kazandirir,
+      basarili: sonuc.basarili,
+    });
+
+    await db.query(
+      `UPDATE play_sessions
+          SET status = 'completed', ended_at = now(), duration_ms = $2,
+              server_score = $3, claimed_score = $4, input_log = $5,
+              is_qualified = $6
+        WHERE id = $1 AND status = 'open'`,
+      [
+        oturum.id,
+        yas,
+        sonuc.skor,
+        iddia,
+        JSON.stringify(sanitize(opts.girdiler)),
+        nitelikli,
+      ],
+    );
+
+    const bonusMu = gununOyunu(isGunu()).id === oyun.id;
+
+    const kazanim = await kazanimIsle(db, {
+      playerId: opts.playerId,
+      cafeId: oturum.cafe_id,
+      tableId: oturum.table_id,
+      oyunId: oturum.game_id,
+      oturumId: oturum.id,
+      proofLevel: oturum.proof_level,
+      skor: sonuc.skor,
+      basarili: sonuc.basarili,
+      kazandirir,
+      bonusMu,
+    });
+
+    return {
+      ok: true as const,
+      skor: sonuc.skor,
+      basarili: sonuc.basarili,
+      puan: kazanim.puan,
+      xp: kazanim.xp,
+      kazandirir,
+      bonusMu,
+      // Rozetler işlemin dışında değerlendiriliyor; burada boş başlıyor.
+      yeniRozetler: [] as string[],
+      kupon: kazanim.kupon,
+      nitelikliOldu: nitelikli,
+      cafeId: oturum.cafe_id,
+      taht: kazanim.taht,
+    };
+  }).then(async (sonuc) => {
+    // Rozet değerlendirmesi işlemin DIŞINDA: idempotent ve hiçbir deftere
+    // dokunmuyor (Ü16), bu yüzden puan yazımıyla aynı işlemi uzatmasına
+    // gerek yok. Hata verirse oyunun sonucu bozulmamalı.
+    if (sonuc.ok && sonuc.kazandirir) {
+      try {
+        const masa = await masaOturumu.aktif(opts.playerId);
+        sonuc.yeniRozetler = await degerlendir(opts.playerId, masa?.cafeId);
+      } catch (err) {
+        log.warn("rozet degerlendirmesi basarisiz", { hata: String(err) });
+      }
+    }
+
+    // ── Davet zinciri (Faz 9, Ü20) ──────────────────────────
+    //
+    // İşlemin DIŞINDA: davet kendi satırlarını kilitliyor ve buradaki
+    // `players FOR UPDATE` kilidiyle aynı işlemde çalışması gereksiz bir
+    // kilit zinciri kurardı. Ayrıca hatası oyunun sonucunu bozmamalı —
+    // oyuncu bölümü bitirdi, puanı yazıldı; davet ayrı bir hikâye.
+    if (sonuc.ok) {
+      try {
+        await davet.ilerlet(opts.playerId, "game_completed");
+        if (sonuc.nitelikliOldu && sonuc.cafeId) {
+          await davet.niteliklendir({ inviteeId: opts.playerId, cafeId: sonuc.cafeId });
+        }
+      } catch (err) {
+        log.warn("davet ilerletme basarisiz", { hata: String(err) });
+      }
+    }
+    return sonuc;
+  });
+}
+
+/* ── Misafir talebinin bozdurulması (Ü35) ───────────────────── */
+
+export type MisafirYazSonucu =
+  | {
+      ok: true;
+      oturumId: string;
+      kazandirir: boolean;
+      bonusMu: boolean;
+      puan: PuanSonucu | null;
+      xp: number;
+      kupon: { baslik: string; kod: string; ertelendi: boolean } | null;
+      taht: taht.DevirmeSonucu | null;
+      nitelikliOldu: boolean;
+    }
+  | { ok: false; hata: string };
+
+/**
+ * Kayıt öncesi oynanan oyunu deftere yazar ve kazanımı işler.
+ *
+ * ── Skor neden yeniden oynatılmıyor ─────────────────────────
+ *
+ * Çünkü **zaten oynatıldı**. Misafir bölümü bitirdiğinde sunucu girdi
+ * kaydını `tekrarOyna` ile doğruladı ve bulduğu skoru imzalı talebe koydu.
+ * Buraya gelen sayı istemcinin iddiası değil, sunucunun kendi imzası —
+ * güvenilmesinin sebebi bu.
+ *
+ * Girdi kaydı taşınmıyor: Ü35 "kayıt öncesi oynanan oyun hiçbir deftere
+ * yazılmaz" diyor ve 5.000 hamlelik bir kaydı çereze sığdırmanın yolu da
+ * yok. Bu yüzden `input_log` NULL kalıyor — tamamlanmış bir satırdaki boş
+ * kayıt, o satırın misafir talebinden geldiğinin işareti.
+ *
+ * ── Kurallar gevşemiyor ─────────────────────────────────────
+ *
+ * Satır yazıldıktan sonrası normal oyunla **aynı fonksiyonlardan** geçiyor:
+ * K2, günlük tavan, nitelikli oturum, anlık ödül, taht ve davet zinciri.
+ * Yer değiştiren tek şey oynama anı ile kayıt anı.
+ */
+export async function misafirOyunuYaz(opts: {
+  playerId: string;
+  cafeId: string;
+  tableId: string;
+  oyunId: string;
+  bolum: number;
+  tohum: string;
+  skor: number;
+  basarili: boolean;
+  iddia: number;
+  sureMs: number;
+}): Promise<MisafirYazSonucu> {
+  const oyun = oyunBul(opts.oyunId);
+  if (!oyun) return { ok: false, hata: "Oyun tanımı bulunamadı." };
+
+  if (await acil.durduruldu(acil.ANAHTARLAR.oyun)) {
+    return { ok: false, hata: "Oyunlar geçici olarak durduruldu." };
+  }
+
+  // Masa oturumu kayıt sırasında açıldı; kanıt oradan okunuyor. Talebin
+  // kafesiyle eşleşmesi şart — A kafesinde oynanan oyun B kafesinin
+  // bütçesinden ödül yazdıramaz.
+  const masa = await masaOturumu.aktif(opts.playerId);
+  if (!masa || masa.cafeId !== opts.cafeId || masa.tableId !== opts.tableId) {
+    return { ok: false, hata: "Bu talep bu masaya ait değil." };
+  }
+
+  const sonuc = await withBypass("misafir talebi bozdurma", async (db) => {
+    // `bitir` ile aynı gerekçe: aynı oyuncunun eşzamanlı yazımlarını sıraya
+    // sokmak. Günlük tavan ve nitelikli oturum yarış koşuluna açık.
+    await db.query(`SELECT id FROM players WHERE id = $1 FOR UPDATE`, [opts.playerId]);
+
+    // ── Talep tek kullanımlık ───────────────────────────────
+    //
+    // Çerezi silmek yetmez: talep taşıyıcı bir jeton ve oyuncunun kendi
+    // tarayıcısında duruyor. Değerini kaydedip girişten sonra geri koyan
+    // biri, aynı oyunu ikinci kez bozdurabilirdi.
+    //
+    // Tohum bunu tek başına çözüyor: her misafir oyununun tohumu sunucuda
+    // üretilen 16 baytlık rastgele bir değer ve `play_sessions.seed`'e
+    // yazılıyor. Aynı tohumla ikinci bir satır varsa bu talep zaten
+    // bozdurulmuş demektir — kimin bozdurduğundan bağımsız olarak.
+    const bozduruldu = await db.one(`SELECT 1 FROM play_sessions WHERE seed = $1 LIMIT 1`, [
+      opts.tohum,
+    ]);
+    if (bozduruldu) {
+      log.warn("misafir talebi ikinci kez bozdurulmaya calisildi");
+      return { ok: false as const, hata: "Bu oyun zaten hesabına işlenmiş." };
+    }
+
+    const kazandirir = (masa.kanitMaskesi & K2) !== 0;
+    const bonusMu = gununOyunu(isGunu()).id === oyun.id;
+
+    const nitelikli = await nitelikliMi(db, {
+      playerId: opts.playerId,
+      cafeId: opts.cafeId,
+      kazandirir,
+      basarili: opts.basarili,
+    });
+
+    const oturumId = newId("oyn");
+    await db.query(
+      `INSERT INTO play_sessions
+         (id, cafe_id, table_id, player_id, device_id_hash, game_id, level, seed,
+          table_session_id, proof_mask, proof_level, business_date, status,
+          ended_at, duration_ms, server_score, claimed_score, is_qualified)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'completed',
+               now(),$13,$14,$15,$16)`,
+      [
+        oturumId,
+        opts.cafeId,
+        opts.tableId,
+        opts.playerId,
+        cihazVekili(opts.playerId),
+        oyun.id,
+        opts.bolum,
+        opts.tohum,
+        masa.id,
+        masa.kanitMaskesi,
+        masa.kanitSeviyesi,
+        isGunu(),
+        Math.max(0, Math.trunc(opts.sureMs)),
+        opts.skor,
+        opts.iddia,
+        nitelikli,
+      ],
+    );
+
+    const kazanim = await kazanimIsle(db, {
+      playerId: opts.playerId,
+      cafeId: opts.cafeId,
+      tableId: opts.tableId,
+      oyunId: oyun.id,
+      oturumId,
+      proofLevel: masa.kanitSeviyesi,
+      skor: opts.skor,
+      basarili: opts.basarili,
+      kazandirir,
+      bonusMu,
+    });
+
+    return {
+      ok: true as const,
+      oturumId,
+      kazandirir,
+      bonusMu,
+      puan: kazanim.puan,
+      xp: kazanim.xp,
+      kupon: kazanim.kupon,
+      taht: kazanim.taht,
+      nitelikliOldu: nitelikli,
+    };
+  });
+
+  if (!sonuc.ok) return sonuc;
+
+  // İşlemin DIŞINDA — `bitir` ile aynı gerekçe: davet kendi satırlarını
+  // kilitliyor ve hatası oyunun sonucunu bozmamalı.
+  try {
+    await davet.ilerlet(opts.playerId, "game_started");
+    await davet.ilerlet(opts.playerId, "game_completed");
+    if (sonuc.nitelikliOldu) {
+      await davet.niteliklendir({ inviteeId: opts.playerId, cafeId: opts.cafeId });
+    }
+  } catch (err) {
+    log.warn("davet ilerletme basarisiz", { hata: String(err) });
+  }
+
+  log.info("misafir talebi bozduruldu", { kazandirir: sonuc.kazandirir });
+  return sonuc;
+}
+
+/**
+ * Girdi kaydını saklamadan önce boyutunu sınırlar.
+ *
+ * Kayıt denetim ve fraud analizi için tutuluyor (Faz 9). Doğrulama zaten
+ * geçtiyse kaydın kendisi güvenli, ama veritabanına sınırsız veri yazmak
+ * için bir sebep yok.
+ */
+function sanitize(girdiler: unknown): unknown[] {
+  if (!Array.isArray(girdiler)) return [];
+  return girdiler.slice(0, EN_FAZLA_GIRDI);
+}

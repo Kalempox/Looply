@@ -1,0 +1,166 @@
+Oyuncu
+
+1. Oyunu oynar
+↓
+2. Ödülü kazanır
+↓
+3. “Kuponumu Kullan”
+↓
+4. Kupon ekranda QR kod olarak açılır
+
+Örneğin:
+
+🎁 Ücretsiz Kahve
+Cafe X
+Son kullanım: 28 Ağustos
+
+[ QR KOD ]
+
+Kasada QR kodunu göster.
+
+Kafe sahibi / çalışan
+
+Kafenin telefonunda:
+
+CafePlay Kasa Sayfası
+
+açılır.
+
+Çalışan:
+
+“Kupon Doğrula”
+
+butonuna basar.
+
+Telefonun kamerası açılır.
+
+Oyuncunun telefonundaki QR kodu okutur.
+
+Sistem anında sunucudan kontrol eder:
+
+QR
+ ↓
+Kupon ID
+ ↓
+Sunucu
+ ↓
+Kupon geçerli mi?
+ ↓
+Kullanılmış mı?
+ ↓
+Süresi geçmiş mi?
+ ↓
+Doğru kafeye mi ait?
+ ↓
+Ödül stokta mı?
+
+Geçerliyse:
+
+✅ KUPON ONAYLANDI
+
+Ücretsiz Kahve
+
+Cafe X
+
+Kupon başarıyla kullanıldı.
+
+ve kupon anında USED durumuna geçer.
+
+Buradaki çok önemli avantaj
+
+Kafe sahibinin:
+
+App Store'dan uygulama indirmesi yok
+Android uygulaması yok
+iPhone uygulaması yok
+özel QR okuyucu cihazı yok
+
+Sadece:
+
+Safari / Chrome → CafePlay Kasa
+
+yeterli.
+
+Modern telefonların kamerası tarayıcı üzerinden QR okuyabilir.
+
+Hatta daha da kolay yapabiliriz
+
+Kafe sahibi için özel bir URL:
+
+cafeplay.com/kasa
+
+Kendi telefonundan bir kere giriş yapar.
+
+Sonra:
+
+QR OKUT
+
+butonuna basar.
+
+Kamera açılır.
+
+QR'ı okutur.
+
+Sonuç gelir.
+
+Geçerli
+
+🟢 Kupon geçerli
+
+Kullanılmış
+
+🔴 Bu kupon daha önce kullanılmış
+
+Süresi geçmiş
+
+🟠 Kuponun kullanım süresi dolmuş
+
+Yanlış kafe
+
+🔴 Bu kupon bu işletmede geçerli değil
+
+Bir güvenlik önlemi daha ekleyelim
+
+QR'ın içine doğrudan:
+
+“%20 indirim”
+
+gibi bilgi koymayalım.
+
+QR sadece rastgele/tek kullanımlık bir kupon tokenı taşısın.
+
+Örneğin:
+
+CP-X7K92...
+
+Gerçek kupon bilgisi sunucudan gelsin.
+
+Böylece oyuncu QR'ın içeriğini değiştirerek:
+
+“100 TL yerine 1.000 TL kupon”
+
+yapamaz.
+
+Ayrıca kuponun USED durumuna geçirilmesi sunucu tarafında atomik işlem olmalı. İki telefon aynı anda okutursa kupon yalnızca bir kez kullanılabilmeli.
+
+Bir de güzel bir özellik ekleyebiliriz
+
+Kafe çalışanının telefonunda:
+
+“Kupon geçmişi”
+
+olabilir.
+
+Bugün:
+
+23 kupon kullanıldı
+8 kahve
+7 tatlı
+5 indirim
+3 diğer
+
+gibi.
+
+Bu da CafePlay'in kafe tarafındaki ölçüm sistemine bağlanır.
+
+Yani evet: CafePlay'i tamamen PWA/mobil web mantığında kurarak, hem oyuncunun hem kafenin telefonunda uygulama yüklemeden bu sistemi çalıştırabiliriz. Üçüncü dosyada da kuponun tek kullanımlık olması ve kafenin kullanım durumunu görebilmesi zaten temel gereksinim olarak tanımlanmış.

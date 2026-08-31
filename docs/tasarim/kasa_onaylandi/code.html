@@ -1,0 +1,137 @@
+<!DOCTYPE html><html lang="tr"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>CafePlay - Kasa · onaylandı</title>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect">
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&amp;family=JetBrains+Mono:wght@400;500;700&amp;display=swap" rel="stylesheet">
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+        darkMode: "class",
+        theme: {
+            extend: {
+                "colors": {
+                    "surface": "#FFFFFF",
+                    "surface-alt": "#FAFAFA",
+                    "surface-sunk": "#F2F2F2",
+                    "surface-container-highest": "#e5e2e1",
+                    "border-noble": "#E5E5E5",
+                    "outline-variant": "#c3c6d6",
+                    "text-charcoal": "#1F1F1F",
+                    "text-muted": "#6B6B6B",
+                    "on-surface": "#1b1b1c",
+                    "on-surface-variant": "#424654",
+                    "primary": "#0B57D0",
+                    "on-primary": "#ffffff",
+                    "on-primary-fixed-variant": "#0040a1",
+                    "primary-fixed": "#dae2ff",
+                    "reward-gold": "#D4AF37",
+                    "reward-ink": "#856612",
+                    "reward-fixed": "#FBF3DC",
+                    "danger-red": "#D93025",
+                    "danger-fixed": "#FDECEA"
+                },
+                "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "1rem",
+                    "full": "9999px"
+                },
+                "spacing": {
+                    "base": "4px",
+                    "unit-1": "4px",
+                    "unit-2": "8px",
+                    "unit-3": "12px",
+                    "unit-4": "16px",
+                    "unit-6": "24px",
+                    "unit-8": "32px",
+                    "margin-mobile": "20px",
+                    "gutter-mobile": "12px"
+                },
+                "fontFamily": {
+                    "display-lg": ["Outfit", "ui-sans-serif", "system-ui", "sans-serif"],
+                    "headline-md": ["Outfit", "ui-sans-serif", "system-ui", "sans-serif"],
+                    "title-sm": ["Outfit", "ui-sans-serif", "system-ui", "sans-serif"],
+                    "body-md": ["Outfit", "ui-sans-serif", "system-ui", "sans-serif"],
+                    "label-caps": ["Outfit", "ui-sans-serif", "system-ui", "sans-serif"],
+                    "data-mono": ["JetBrains Mono", "ui-monospace", "SFMono-Regular", "monospace"],
+                    "sans": ["Outfit", "ui-sans-serif", "system-ui", "sans-serif"],
+                    "mono": ["JetBrains Mono", "ui-monospace", "SFMono-Regular", "monospace"]
+                },
+                "fontSize": {
+                    "display-lg": ["48px", { "lineHeight": "52px", "letterSpacing": "-0.04em", "fontWeight": "800" }],
+                    "headline-md": ["24px", { "lineHeight": "30px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                    "title-sm": ["18px", { "lineHeight": "24px", "fontWeight": "600" }],
+                    "body-md": ["16px", { "lineHeight": "26px", "fontWeight": "400" }],
+                    "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                    "data-mono": ["14px", { "lineHeight": "20px", "fontWeight": "500" }]
+                }
+            }
+        }
+    }
+</script>
+<style>
+    /* Taban font — hiçbir metin tarayıcı varsayılanına düşmesin.
+       Ekranlar arası "font farklı görünüyor" sorununun ikinci kaynağı buydu. */
+    html, body, button, input, select, textarea {
+        font-family: "Outfit", ui-sans-serif, system-ui, sans-serif;
+    }
+    /* İmza doku: ilerleme çubuklarının -45° çizgisi. */
+    .noble-stripe {
+        background-image: repeating-linear-gradient(
+            -45deg,
+            rgba(255, 255, 255, 0.15),
+            rgba(255, 255, 255, 0.15) 10px,
+            transparent 10px,
+            transparent 20px
+        );
+    }
+    .tabular { font-variant-numeric: tabular-nums; }
+    ::-webkit-scrollbar { display: none; }
+    .pb-safe { padding-bottom: env(safe-area-inset-bottom, 16px); }
+    @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after {
+            animation-duration: .01ms !important;
+            transition-duration: .01ms !important;
+        }
+    }
+</style>
+</head>
+<body class="bg-surface-alt text-text-charcoal font-body-md antialiased min-h-screen flex flex-col items-center px-margin-mobile py-unit-8">
+<!--
+  C6 · /kasa — onay ve geri alma
+
+  E7: "Sistemin sahada ayakta kalıp kalmayacağını bu ekran belirler."
+  Menü yok, sekme yok, ayar yok. Tek iş, üç saniye.
+-->
+
+<header class="mb-unit-8 text-center">
+  <div class="font-label-caps text-label-caps tracking-[0.28em] text-primary">CAFEPLAY KASA</div>
+  <h1 class="mt-unit-1 font-headline-md text-headline-md text-text-charcoal">Kupon onayı</h1>
+</header>
+
+<div class="flex w-full max-w-md flex-col gap-unit-8">
+<div class="rounded-xl border-2 border-primary bg-surface p-unit-6 text-center">
+      <span class="material-symbols-outlined text-[44px] text-primary" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+      <p class="mt-unit-4 font-headline-md text-headline-md text-text-charcoal">Kupon onaylandı</p>
+      <p class="mt-unit-2 text-sm text-text-muted">Ücretsiz filtre kahve</p>
+      <p class="tabular mt-unit-1 font-data-mono text-[20px] font-bold text-reward-ink">45 TL</p>
+
+      <button class="mt-unit-6 w-full rounded-lg border border-danger-red bg-surface py-unit-4 font-title-sm text-title-sm text-danger-red" type="button">
+        Geri al · <span class="tabular">47</span> sn
+      </button>
+
+      <button class="mt-unit-3 w-full rounded-lg bg-primary py-unit-6 font-title-sm text-[18px] text-on-primary font-semibold" type="button">Sıradaki</button>
+    </div>
+
+    <p class="mt-unit-3 text-center font-data-mono text-[11px] text-text-muted font-medium">
+      varyant · süre dolunca düğme yerine: “Geri alma süresi doldu”
+    </p>
+</div>
+<script src="../gezinme.js"></script>
+</body></html>

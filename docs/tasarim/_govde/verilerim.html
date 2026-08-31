@@ -1,0 +1,127 @@
+<!-- baslik: Verilerim -->
+<!-- govde: bg-surface-alt text-text-charcoal font-body-md antialiased min-h-screen -->
+
+<!--
+  B11 · /verilerim — KVKK m.11 hakları (G25).
+
+  Alt gezinme burada BİLEREK yok: bu bir hak ekranı, gündelik gezinme değil.
+  Ana ekranın altındaki bağlantıdan açılıyor.
+-->
+
+<main class="mx-auto flex w-full max-w-md flex-col gap-unit-8 px-margin-mobile pt-unit-6 pb-unit-8">
+
+  <header class="flex flex-col gap-unit-1">
+    <span class="font-label-caps text-label-caps text-primary">KVKK</span>
+    <h1 class="font-display-lg text-[40px] leading-[44px] tracking-[-0.04em] text-text-charcoal font-extrabold">Verilerim</h1>
+  </header>
+
+  <!-- Silme talebi varsa -->
+  <div class="rounded-xl border border-reward-gold bg-reward-fixed p-unit-4">
+    <div class="flex items-start gap-unit-3">
+      <span class="material-symbols-outlined text-[20px] text-reward-ink">schedule</span>
+      <p class="text-sm leading-relaxed text-text-charcoal">
+        Hesabın silinmek üzere. Kişisel bilgilerin <strong>25 Eylül</strong> tarihinde geri
+        döndürülemez şekilde silinecek. O tarihe kadar vazgeçebilirsin.
+      </p>
+    </div>
+  </div>
+
+  <!-- Tutulan bilgiler -->
+  <section class="flex flex-col gap-unit-3">
+    <h2 class="font-label-caps text-label-caps text-text-muted">HAKKINDA TUTTUĞUMUZ BİLGİLER</h2>
+    <dl class="overflow-hidden rounded-xl border border-border-noble bg-surface">
+      <div class="flex items-baseline justify-between gap-unit-4 border-b border-border-noble px-unit-4 py-unit-3">
+        <dt class="text-sm text-text-muted">Ad soyad</dt>
+        <dd class="font-title-sm text-title-sm text-text-charcoal">Buse Yıldırım</dd>
+      </div>
+      <div class="flex items-baseline justify-between gap-unit-4 border-b border-border-noble px-unit-4 py-unit-3">
+        <dt class="text-sm text-text-muted">Telefon</dt>
+        <dd class="text-right">
+          <span class="tabular block font-data-mono text-data-mono text-text-charcoal">0532 *** ** 67</span>
+          <span class="font-label-caps text-[10px] tracking-[0.05em] text-text-muted font-semibold">ŞİFRELİ SAKLANIR</span>
+        </dd>
+      </div>
+      <div class="flex items-baseline justify-between gap-unit-4 px-unit-4 py-unit-3">
+        <dt class="text-sm text-text-muted">Kayıt tarihi</dt>
+        <dd class="tabular font-data-mono text-data-mono text-text-charcoal">14 Ağustos 2026</dd>
+      </div>
+    </dl>
+    <p class="text-sm leading-relaxed text-text-muted">
+      Bu bilgiler hesabın açık olduğu sürece tutulur, hesabını silmenden 30 gün sonra geri
+      döndürülemez şekilde silinir.
+    </p>
+  </section>
+
+  <!-- Kafelerin gördüğü -->
+  <section class="flex flex-col gap-unit-3">
+    <h2 class="font-label-caps text-label-caps text-text-muted">ÜYE İŞLETMELERİN GÖRDÜĞÜ</h2>
+    <ul class="overflow-hidden rounded-xl border border-border-noble bg-surface">
+      <li class="flex items-center justify-between border-b border-border-noble px-unit-4 py-unit-3">
+        <span class="font-body-md text-body-md text-text-charcoal">Kahve Durağı</span>
+        <span class="tabular font-data-mono text-data-mono text-primary">K-4821</span>
+      </li>
+      <li class="flex items-center justify-between px-unit-4 py-unit-3">
+        <span class="font-body-md text-body-md text-text-charcoal">Tatlı Köşesi</span>
+        <span class="tabular font-data-mono text-data-mono text-primary">K-1907</span>
+      </li>
+    </ul>
+    <p class="text-sm leading-relaxed text-text-muted">
+      Kafeler adını, soyadını veya telefonunu <strong class="text-text-charcoal">görmez</strong>.
+      Yalnızca yukarıdaki koda ve oyun hareketine bakarlar. Her kafede kodun farklıdır; iki kafe
+      kendi aralarında seni eşleştiremez.
+    </p>
+  </section>
+
+  <!-- Pazarlama izni -->
+  <section class="flex flex-col gap-unit-3">
+    <h2 class="font-label-caps text-label-caps text-text-muted">KAMPANYA MESAJLARI</h2>
+    <label class="flex cursor-pointer items-center justify-between rounded-xl border border-border-noble bg-surface px-unit-4 py-unit-4">
+      <span class="font-body-md text-body-md text-text-charcoal">Kampanya ve fırsat bildirimleri</span>
+      <span class="relative inline-flex h-7 w-12 shrink-0 items-center rounded-full bg-primary transition-colors">
+        <span class="ml-6 inline-block h-5 w-5 rounded-full bg-white transition-transform"></span>
+      </span>
+    </label>
+    <p class="text-sm leading-relaxed text-text-muted">
+      Bu izin hizmetin şartı değil — kapalıyken de oynayabilir, ödül kazanabilirsin.
+    </p>
+  </section>
+
+  <!-- Veri indirme -->
+  <section class="flex flex-col gap-unit-3">
+    <h2 class="font-label-caps text-label-caps text-text-muted">VERİLERİMİ İNDİR</h2>
+    <button class="flex w-full items-center justify-center gap-unit-2 rounded-lg border border-border-noble bg-surface py-unit-3 font-title-sm text-title-sm text-text-charcoal transition-colors hover:bg-surface-sunk" type="button">
+      <span class="material-symbols-outlined text-[20px]">download</span>
+      Verilerimi indir
+    </button>
+    <p class="text-sm leading-relaxed text-text-muted">
+      Hakkında tuttuğumuz her şeyi JSON dosyası olarak indirirsin: hesap bilgilerin, rızaların,
+      puan hareketlerin, kuponların ve sana gönderilen mesajların listesi.
+    </p>
+  </section>
+
+  <!-- Hesap silme -->
+  <section class="flex flex-col gap-unit-3">
+    <h2 class="font-label-caps text-label-caps text-text-muted">HESABIMI SİL</h2>
+    <button class="w-full rounded-lg border border-danger-red bg-surface py-unit-3 font-title-sm text-title-sm text-danger-red transition-colors hover:bg-danger-fixed" type="button">
+      Hesabımı sil
+    </button>
+    <p class="text-sm leading-relaxed text-text-muted">
+      Kişisel bilgilerin 30 gün içinde silinir. Kupon ve puan kayıtları ticari kayıt zorunluluğu
+      gereği kalır ama <strong class="text-text-charcoal">kimliğinle bağı kopar</strong>.
+    </p>
+
+    <!-- Onay durumu — yüzen pencere değil, satır içi blok -->
+    <div class="rounded-xl border border-danger-red bg-danger-fixed p-unit-4">
+      <p class="font-title-sm text-title-sm text-text-charcoal">Hesabını silmek istediğine emin misin?</p>
+      <div class="mt-unit-4 flex gap-unit-3">
+        <button class="flex-1 rounded-lg border border-border-noble bg-surface py-unit-3 font-title-sm text-title-sm text-text-charcoal" type="button">Vazgeç</button>
+        <button class="flex-1 rounded-lg bg-danger-red py-unit-3 font-title-sm text-title-sm text-white" type="button">Evet, sil</button>
+      </div>
+    </div>
+  </section>
+
+  <a class="flex items-center gap-unit-2 border-t border-border-noble pt-unit-6 font-body-md text-body-md text-primary" href="#">
+    <span class="material-symbols-outlined text-[20px]">arrow_back</span>
+    Ana ekrana dön
+  </a>
+</main>

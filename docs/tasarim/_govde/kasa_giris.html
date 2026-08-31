@@ -1,0 +1,44 @@
+<!-- baslik: Kasa girişi -->
+<!-- govde: bg-surface-alt text-text-charcoal font-body-md antialiased min-h-screen flex flex-col items-center justify-center px-unit-6 -->
+<!-- gelistirme: pin · 1234 · KASİYER PIN'İ -->
+
+<!--
+  C1 · /kasa/giris — kasadaki tablet.
+
+  Kasa yüzeyi oyuncu yüzeyiyle AYNI sistem, bir beden büyük: 36px PIN alanı,
+  24px dikey dolgu, tek elle erişilebilir. Loş kafede, kalabalık kasada,
+  üç saniyede.
+
+  Kasiyer hiçbir şey SEÇMİYOR — tabletini alıp dört hane giriyor. Kafe kimliği
+  cihazdan çözülüyor.
+-->
+
+<div class="mb-unit-8 flex flex-col items-center text-center">
+  <div class="font-label-caps text-label-caps tracking-[0.3em] text-primary">CAFEPLAY</div>
+  <h1 class="mt-unit-2 font-display-lg text-[36px] leading-[40px] tracking-[-0.04em] text-text-charcoal font-extrabold">Kasa</h1>
+  <p class="mt-unit-3 max-w-[288px] text-sm leading-relaxed text-text-muted">
+    Kupon onaylamak için personel PIN'inle gir. Oturum sekiz saat açık kalır.
+  </p>
+</div>
+
+<form class="flex w-full max-w-xs flex-col">
+
+  <label class="flex flex-col gap-unit-3">
+    <span class="text-center font-label-caps text-label-caps text-text-muted">PERSONEL PIN'İ</span>
+    <input
+      autocomplete="off"
+      class="tabular rounded-lg border-none bg-surface-sunk py-unit-6 text-center font-data-mono text-[36px] tracking-[0.5em] text-text-charcoal placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary font-medium"
+      inputmode="numeric"
+      maxlength="4"
+      placeholder="••••"
+      type="password"/>
+  </label>
+
+  <button class="mt-unit-6 w-full rounded-lg bg-primary py-unit-6 font-title-sm text-[18px] text-on-primary transition-transform active:scale-95 font-semibold" type="button">
+    Giriş
+  </button>
+</form>
+
+<p class="mt-unit-8 max-w-xs text-center text-sm leading-relaxed text-text-muted">
+  PIN yalnızca işletme yöneticisinin kaydettiği cihazlarda çalışır.
+</p>

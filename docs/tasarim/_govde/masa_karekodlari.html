@@ -1,0 +1,105 @@
+<!-- baslik: Masa karekodları -->
+<!-- govde: bg-surface-alt text-text-charcoal font-body-md antialiased min-h-screen -->
+
+<!--
+  D11 · /kafe/panel/masalar — henüz kodda YOK, tasarımı burada.
+
+  Basılı karekod masaya özel ve tahmin edilemez (qr_secret'tan türüyor).
+  Fotoğrafının paylaşılmasını bu katman durdurmaz; onu konum doğrulaması (K2)
+  karşılıyor — sayfa bunu açıkça söylüyor ki kafe yanlış beklentiye girmesin.
+-->
+
+<main class="mx-auto w-full max-w-4xl px-margin-mobile py-unit-8 sm:px-unit-8">
+
+  <header class="mb-unit-8 border-b border-border-noble pb-unit-6">
+    <div class="font-label-caps text-label-caps text-text-muted">İŞLETME PANELİ</div>
+    <h1 class="mt-unit-2 font-headline-md text-[30px] leading-[34px] tracking-[-0.02em] text-text-charcoal font-bold">Masa karekodları</h1>
+    <p class="mt-unit-3 font-body-md text-body-md text-text-muted">
+      Masalara yapıştırılacak kodlar. Kod basılıdır ve değişmez.
+    </p>
+  </header>
+
+  <!-- Masalar -->
+  <section class="mb-unit-8">
+    <h2 class="mb-unit-4 text-[13px] font-semibold text-text-charcoal">Masalar</h2>
+    <ul class="border-y border-border-noble">
+      <li class="flex items-center gap-unit-4 border-b border-border-noble py-unit-3">
+        <span class="min-w-0 flex-1">
+          <span class="block font-body-md text-body-md font-semibold text-text-charcoal">Masa 3</span>
+          <span class="tabular block font-data-mono text-[11px] text-text-muted font-medium">14 Ağustos'ta üretildi · 44 okutma</span>
+        </span>
+        <button class="rounded border border-border-noble px-unit-3 py-unit-1 text-sm text-text-muted transition-colors hover:bg-surface-sunk" type="button">Yazdır</button>
+        <button class="rounded border border-border-noble px-unit-3 py-unit-1 text-sm text-text-muted transition-colors hover:bg-surface-sunk" type="button">Kapat</button>
+      </li>
+      <li class="flex items-center gap-unit-4 border-b border-border-noble py-unit-3">
+        <span class="min-w-0 flex-1">
+          <span class="block font-body-md text-body-md font-semibold text-text-charcoal">Masa 7</span>
+          <span class="tabular block font-data-mono text-[11px] text-text-muted font-medium">14 Ağustos'ta üretildi · 31 okutma</span>
+        </span>
+        <button class="rounded border border-border-noble px-unit-3 py-unit-1 text-sm text-text-muted" type="button">Yazdır</button>
+        <button class="rounded border border-border-noble px-unit-3 py-unit-1 text-sm text-text-muted" type="button">Kapat</button>
+      </li>
+      <li class="flex items-center gap-unit-4 py-unit-3 opacity-55">
+        <span class="min-w-0 flex-1">
+          <span class="block font-body-md text-body-md font-semibold text-text-charcoal">Teras 2</span>
+          <span class="tabular block font-data-mono text-[11px] text-text-muted font-medium">kapalı</span>
+        </span>
+        <button class="rounded border border-border-noble px-unit-3 py-unit-1 text-sm text-text-muted" type="button">Geri aç</button>
+      </li>
+    </ul>
+
+    <div class="mt-unit-6 rounded-lg border border-border-noble bg-surface p-unit-6">
+      <div class="flex flex-col gap-unit-3 sm:flex-row sm:items-end">
+        <label class="flex flex-1 flex-col gap-unit-1">
+          <span class="text-[13px] font-semibold text-text-charcoal">Masa adı</span>
+          <input class="rounded-lg border border-border-noble bg-surface px-unit-4 py-unit-3 font-body-md text-body-md focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" placeholder="Masa 12" type="text"/>
+        </label>
+        <button class="rounded-lg bg-text-charcoal px-unit-6 py-unit-3 font-title-sm text-title-sm text-white" type="button">Masa ekle</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Yazdırma önizlemesi -->
+  <section class="mb-unit-8">
+    <h2 class="mb-unit-4 text-[13px] font-semibold text-text-charcoal">Yazdırılabilir sayfa</h2>
+
+    <div class="rounded-lg border border-border-noble bg-white p-unit-6">
+      <div class="grid grid-cols-2 gap-unit-4 sm:grid-cols-3">
+
+        <div class="flex flex-col items-center rounded-lg border border-border-noble p-unit-4 text-center">
+          <div class="font-label-caps text-label-caps text-text-muted">KAHVE DURAĞI</div>
+          <svg aria-label="Masa 3 karekodu" class="my-unit-3 h-28 w-28" role="img" shape-rendering="crispEdges" viewBox="0 0 25 25">
+            <rect fill="#FFFFFF" height="25" width="25"></rect>
+            <g fill="#1F1F1F">
+              <path d="M0 0h7v7H0z M1 1h5v5H1z" fill-rule="evenodd"></path><rect height="3" width="3" x="2" y="2"></rect>
+              <path d="M18 0h7v7h-7z M19 1h5v5h-5z" fill-rule="evenodd"></path><rect height="3" width="3" x="20" y="2"></rect>
+              <path d="M0 18h7v7H0z M1 19h5v5H1z" fill-rule="evenodd"></path><rect height="3" width="3" x="2" y="20"></rect>
+              <path d="M8 0h1v1h-1zM10 0h1v1h-1zM12 0h1v1h-1zM13 0h1v1h-1zM15 0h1v1h-1zM11 1h1v1h-1zM14 1h1v1h-1zM11 2h1v1h-1zM12 2h1v1h-1zM14 2h1v1h-1zM16 2h1v1h-1zM8 3h1v1h-1zM9 3h1v1h-1zM10 3h1v1h-1zM12 3h1v1h-1zM13 3h1v1h-1zM16 3h1v1h-1zM10 4h1v1h-1zM12 4h1v1h-1zM15 4h1v1h-1zM8 5h1v1h-1zM12 5h1v1h-1zM14 5h1v1h-1zM15 5h1v1h-1zM16 5h1v1h-1zM8 6h1v1h-1zM10 6h1v1h-1zM12 6h1v1h-1zM14 6h1v1h-1zM16 6h1v1h-1zM8 7h1v1h-1zM9 7h1v1h-1zM11 7h1v1h-1zM15 7h1v1h-1zM0 8h1v1h-1zM2 8h1v1h-1zM3 8h1v1h-1zM4 8h1v1h-1zM5 8h1v1h-1zM6 8h1v1h-1zM8 8h1v1h-1zM9 8h1v1h-1zM11 8h1v1h-1zM12 8h1v1h-1zM16 8h1v1h-1zM18 8h1v1h-1zM19 8h1v1h-1zM20 8h1v1h-1zM22 8h1v1h-1zM23 8h1v1h-1zM0 9h1v1h-1zM2 9h1v1h-1zM4 9h1v1h-1zM5 9h1v1h-1zM11 9h1v1h-1zM12 9h1v1h-1zM13 9h1v1h-1zM14 9h1v1h-1zM18 9h1v1h-1zM19 9h1v1h-1zM20 9h1v1h-1zM21 9h1v1h-1zM5 10h1v1h-1zM6 10h1v1h-1zM7 10h1v1h-1zM9 10h1v1h-1zM10 10h1v1h-1zM11 10h1v1h-1zM12 10h1v1h-1zM13 10h1v1h-1zM19 10h1v1h-1zM21 10h1v1h-1zM0 11h1v1h-1zM1 11h1v1h-1zM3 11h1v1h-1zM4 11h1v1h-1zM7 11h1v1h-1zM9 11h1v1h-1zM13 11h1v1h-1zM17 11h1v1h-1zM19 11h1v1h-1zM20 11h1v1h-1zM21 11h1v1h-1zM22 11h1v1h-1zM23 11h1v1h-1zM0 12h1v1h-1zM1 12h1v1h-1zM3 12h1v1h-1zM6 12h1v1h-1zM7 12h1v1h-1zM11 12h1v1h-1zM12 12h1v1h-1zM13 12h1v1h-1zM14 12h1v1h-1zM16 12h1v1h-1zM17 12h1v1h-1zM21 12h1v1h-1zM23 12h1v1h-1zM2 13h1v1h-1zM3 13h1v1h-1zM4 13h1v1h-1zM7 13h1v1h-1zM9 13h1v1h-1zM10 13h1v1h-1zM12 13h1v1h-1zM13 13h1v1h-1zM15 13h1v1h-1zM20 13h1v1h-1zM1 14h1v1h-1zM2 14h1v1h-1zM3 14h1v1h-1zM4 14h1v1h-1zM6 14h1v1h-1zM7 14h1v1h-1zM11 14h1v1h-1zM15 14h1v1h-1zM20 14h1v1h-1zM0 15h1v1h-1zM1 15h1v1h-1zM5 15h1v1h-1zM9 15h1v1h-1zM11 15h1v1h-1zM12 15h1v1h-1zM13 15h1v1h-1zM16 15h1v1h-1zM18 15h1v1h-1zM19 15h1v1h-1zM20 15h1v1h-1zM22 15h1v1h-1zM1 16h1v1h-1zM3 16h1v1h-1zM4 16h1v1h-1zM6 16h1v1h-1zM9 16h1v1h-1zM12 16h1v1h-1zM15 16h1v1h-1zM17 16h1v1h-1zM18 16h1v1h-1zM19 16h1v1h-1zM21 16h1v1h-1zM11 17h1v1h-1zM12 17h1v1h-1zM13 17h1v1h-1zM14 17h1v1h-1zM18 17h1v1h-1zM24 17h1v1h-1zM9 18h1v1h-1zM10 18h1v1h-1zM12 18h1v1h-1zM18 18h1v1h-1zM19 18h1v1h-1zM20 18h1v1h-1zM21 18h1v1h-1zM23 18h1v1h-1zM11 19h1v1h-1zM14 19h1v1h-1zM16 19h1v1h-1zM18 19h1v1h-1zM19 19h1v1h-1zM21 19h1v1h-1zM24 19h1v1h-1zM10 20h1v1h-1zM11 20h1v1h-1zM12 20h1v1h-1zM14 20h1v1h-1zM15 20h1v1h-1zM16 20h1v1h-1zM19 20h1v1h-1zM21 20h1v1h-1zM22 20h1v1h-1zM8 21h1v1h-1zM11 21h1v1h-1zM13 21h1v1h-1zM17 21h1v1h-1zM22 21h1v1h-1zM24 21h1v1h-1zM8 22h1v1h-1zM9 22h1v1h-1zM11 22h1v1h-1zM13 22h1v1h-1zM16 22h1v1h-1zM18 22h1v1h-1zM20 22h1v1h-1zM11 23h1v1h-1zM12 23h1v1h-1zM13 23h1v1h-1zM15 23h1v1h-1zM16 23h1v1h-1zM18 23h1v1h-1zM19 23h1v1h-1zM24 23h1v1h-1zM9 24h1v1h-1zM10 24h1v1h-1zM20 24h1v1h-1zM24 24h1v1h-1z"></path>
+            </g>
+          </svg>
+          <div class="font-title-sm text-title-sm text-text-charcoal">Masa 3</div>
+          <div class="mt-unit-1 text-sm text-text-muted">Okut, oyna, kazan.</div>
+        </div>
+
+        <div class="flex flex-col items-center justify-center rounded-lg border border-dashed border-border-noble p-unit-4 text-center">
+          <span class="font-label-caps text-label-caps text-text-muted">MASA 7</span>
+        </div>
+        <div class="flex flex-col items-center justify-center rounded-lg border border-dashed border-border-noble p-unit-4 text-center">
+          <span class="font-label-caps text-label-caps text-text-muted">MASA 8</span>
+        </div>
+      </div>
+    </div>
+
+    <button class="mt-unit-4 flex items-center gap-unit-2 rounded-lg border border-border-noble bg-surface px-unit-6 py-unit-3 font-title-sm text-title-sm text-text-charcoal transition-colors hover:bg-surface-sunk" type="button">
+      <span class="material-symbols-outlined text-[20px]">print</span>
+      Yazdırma sayfasını aç
+    </button>
+  </section>
+
+  <p class="mb-unit-8 text-sm leading-relaxed text-text-muted">
+    Karekod masaya özeldir ve tahmin edilemez. Fotoğrafı paylaşılsa bile oyuncunun konumu
+    kafede değilse kazanım açılmaz.
+  </p>
+
+  <a class="font-body-md text-body-md text-text-muted underline" href="#">Panele dön</a>
+</main>

@@ -1,0 +1,195 @@
+<!DOCTYPE html><html lang="tr"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>CafePlay - Bölüm seçimi</title>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect">
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&amp;family=JetBrains+Mono:wght@400;500;700&amp;display=swap" rel="stylesheet">
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+        darkMode: "class",
+        theme: {
+            extend: {
+                "colors": {
+                    "surface": "#FFFFFF",
+                    "surface-alt": "#FAFAFA",
+                    "surface-sunk": "#F2F2F2",
+                    "surface-container-highest": "#e5e2e1",
+                    "border-noble": "#E5E5E5",
+                    "outline-variant": "#c3c6d6",
+                    "text-charcoal": "#1F1F1F",
+                    "text-muted": "#6B6B6B",
+                    "on-surface": "#1b1b1c",
+                    "on-surface-variant": "#424654",
+                    "primary": "#0B57D0",
+                    "on-primary": "#ffffff",
+                    "on-primary-fixed-variant": "#0040a1",
+                    "primary-fixed": "#dae2ff",
+                    "reward-gold": "#D4AF37",
+                    "reward-ink": "#856612",
+                    "reward-fixed": "#FBF3DC",
+                    "danger-red": "#D93025",
+                    "danger-fixed": "#FDECEA"
+                },
+                "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "1rem",
+                    "full": "9999px"
+                },
+                "spacing": {
+                    "base": "4px",
+                    "unit-1": "4px",
+                    "unit-2": "8px",
+                    "unit-3": "12px",
+                    "unit-4": "16px",
+                    "unit-6": "24px",
+                    "unit-8": "32px",
+                    "margin-mobile": "20px",
+                    "gutter-mobile": "12px"
+                },
+                "fontFamily": {
+                    "display-lg": ["Outfit", "ui-sans-serif", "system-ui", "sans-serif"],
+                    "headline-md": ["Outfit", "ui-sans-serif", "system-ui", "sans-serif"],
+                    "title-sm": ["Outfit", "ui-sans-serif", "system-ui", "sans-serif"],
+                    "body-md": ["Outfit", "ui-sans-serif", "system-ui", "sans-serif"],
+                    "label-caps": ["Outfit", "ui-sans-serif", "system-ui", "sans-serif"],
+                    "data-mono": ["JetBrains Mono", "ui-monospace", "SFMono-Regular", "monospace"],
+                    "sans": ["Outfit", "ui-sans-serif", "system-ui", "sans-serif"],
+                    "mono": ["JetBrains Mono", "ui-monospace", "SFMono-Regular", "monospace"]
+                },
+                "fontSize": {
+                    "display-lg": ["48px", { "lineHeight": "52px", "letterSpacing": "-0.04em", "fontWeight": "800" }],
+                    "headline-md": ["24px", { "lineHeight": "30px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                    "title-sm": ["18px", { "lineHeight": "24px", "fontWeight": "600" }],
+                    "body-md": ["16px", { "lineHeight": "26px", "fontWeight": "400" }],
+                    "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                    "data-mono": ["14px", { "lineHeight": "20px", "fontWeight": "500" }]
+                }
+            }
+        }
+    }
+</script>
+<style>
+    /* Taban font — hiçbir metin tarayıcı varsayılanına düşmesin.
+       Ekranlar arası "font farklı görünüyor" sorununun ikinci kaynağı buydu. */
+    html, body, button, input, select, textarea {
+        font-family: "Outfit", ui-sans-serif, system-ui, sans-serif;
+    }
+    /* İmza doku: ilerleme çubuklarının -45° çizgisi. */
+    .noble-stripe {
+        background-image: repeating-linear-gradient(
+            -45deg,
+            rgba(255, 255, 255, 0.15),
+            rgba(255, 255, 255, 0.15) 10px,
+            transparent 10px,
+            transparent 20px
+        );
+    }
+    .tabular { font-variant-numeric: tabular-nums; }
+    ::-webkit-scrollbar { display: none; }
+    .pb-safe { padding-bottom: env(safe-area-inset-bottom, 16px); }
+    @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after {
+            animation-duration: .01ms !important;
+            transition-duration: .01ms !important;
+        }
+    }
+</style>
+</head>
+<body class="min-h-screen flex flex-col items-center pb-safe">
+<!-- Top Navigation (Shared Component Shell) - Suppressed as this is a sub-page with a "Back" intent -->
+<header class="w-full top-0 sticky bg-surface border-b border-border-noble z-40">
+<div class="flex justify-between items-center px-margin-mobile py-unit-3 w-full max-w-md mx-auto">
+<button aria-label="Geri Dön" class="text-text-muted hover:bg-surface-sunk transition-colors rounded-full p-2 active:scale-95 duration-200">
+<span class="material-symbols-outlined" data-icon="arrow_back">arrow_back</span>
+</button>
+<div class="font-headline-md text-headline-md font-bold text-primary">
+                CafePlay
+            </div>
+<div class="w-10"></div> <!-- Spacer for centering -->
+</div>
+</header>
+<!-- Main Canvas -->
+<main class="w-full max-w-md mx-auto px-margin-mobile pt-unit-8 pb-unit-8 flex flex-col gap-unit-8 flex-1">
+<!-- 1. Heading Block -->
+<section class="flex flex-col gap-unit-2 text-center items-center">
+<span class="font-label-caps text-label-caps text-primary tracking-widest uppercase">
+                OYUN
+            </span>
+<h1 class="font-display-lg text-display-lg text-text-charcoal">
+                Blok
+            </h1>
+</section>
+<!-- 2. Conditional Bonus Banner -->
+<section class="w-full">
+<div class="bg-surface-sunk border border-reward-gold rounded-lg p-unit-4 flex items-center justify-center gap-unit-2">
+<span class="material-symbols-outlined text-reward-ink" data-icon="star" data-weight="fill" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="font-label-caps text-label-caps text-reward-ink tracking-widest uppercase">
+                     BUGÜNÜN OYUNU · ×2 PUAN
+                 </span>
+</div>
+</section>
+<!-- 3 & 4. List Header & Stacked Cards -->
+<section class="flex flex-col gap-unit-4 w-full">
+<div class="font-label-caps text-label-caps text-text-muted tracking-widest uppercase pl-unit-2">
+                BÖLÜMLER
+            </div>
+<div class="flex flex-col gap-unit-3">
+<!-- Level 1 (Completed/Active) -->
+<button class="w-full bg-surface border border-border-noble rounded-lg p-unit-4 flex items-center justify-between hover:border-primary transition-colors group relative overflow-hidden active:scale-[0.98] duration-200">
+<div class="flex flex-col items-start gap-1 z-10">
+<span class="font-title-sm text-title-sm text-text-charcoal">1. bölüm</span>
+<span class="text-[13px] font-body-md text-text-muted leading-none font-normal">Parçaları yerleştir, satırları temizle</span>
+</div>
+<span class="material-symbols-outlined text-primary group-hover:translate-x-1 transition-transform z-10" data-icon="arrow_forward">arrow_forward</span>
+</button>
+<!-- Level 2 (Next/Playable) -->
+<button class="w-full bg-primary text-on-primary border border-primary rounded-lg p-unit-4 flex items-center justify-between hover:bg-primary transition-colors group relative overflow-hidden active:scale-[0.98] duration-200 shadow-[0px_4px_20px_rgba(0,65,162,0.15)]">
+<div class="absolute inset-0 noble-stripe opacity-20"></div>
+<div class="flex flex-col items-start gap-1 z-10">
+<span class="font-title-sm text-title-sm text-on-primary">2. bölüm</span>
+<span class="text-[13px] font-body-md text-on-primary leading-none font-normal">Parçaları yerleştir, satırları temizle</span>
+</div>
+<span class="material-symbols-outlined text-on-primary group-hover:translate-x-1 transition-transform z-10" data-icon="play_arrow" data-weight="fill" style="font-variation-settings: 'FILL' 1;">arrow_forward</span>
+</button>
+<!-- Level 3 (Locked) -->
+<button class="w-full bg-surface-sunk border border-transparent rounded-lg p-unit-4 flex items-center justify-between opacity-70 cursor-not-allowed" disabled="">
+<div class="flex flex-col items-start gap-1">
+<span class="font-title-sm text-title-sm text-text-muted">3. bölüm</span>
+<span class="text-[13px] font-body-md text-text-muted leading-none font-normal">Parçaları yerleştir, satırları temizle</span>
+</div>
+<span class="material-symbols-outlined text-text-muted" data-icon="lock">arrow_forward</span>
+</button>
+<!-- Level 4 (Locked) -->
+<button class="w-full bg-surface-sunk border border-transparent rounded-lg p-unit-4 flex items-center justify-between opacity-70 cursor-not-allowed" disabled="">
+<div class="flex flex-col items-start gap-1">
+<span class="font-title-sm text-title-sm text-text-muted">4. bölüm</span>
+<span class="text-[13px] font-body-md text-text-muted leading-none font-normal">Parçaları yerleştir, satırları temizle</span>
+</div>
+<span class="material-symbols-outlined text-text-muted" data-icon="lock">arrow_forward</span>
+</button>
+<!-- Level 5 (Locked) -->
+<button class="w-full bg-surface-sunk border border-transparent rounded-lg p-unit-4 flex items-center justify-between opacity-70 cursor-not-allowed" disabled="">
+<div class="flex flex-col items-start gap-1">
+<span class="font-title-sm text-title-sm text-text-muted">5. bölüm</span>
+<span class="text-[13px] font-body-md text-text-muted leading-none font-normal">Parçaları yerleştir, satırları temizle</span>
+</div>
+<span class="material-symbols-outlined text-text-muted" data-icon="lock">arrow_forward</span>
+</button>
+</div>
+</section>
+<!-- 5. Bottom Link -->
+<section class="mt-auto pt-unit-8 pb-unit-4 flex justify-center w-full">
+<a class="font-body-md text-body-md text-text-muted hover:text-primary transition-colors underline decoration-border-noble hover:decoration-primary underline-offset-4" href="#">
+                Ana ekrana dön
+            </a>
+</section>
+</main>
+<script src="../gezinme.js"></script>
+</body></html>

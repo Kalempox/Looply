@@ -1,0 +1,121 @@
+<!-- baslik: Oyna -->
+<!-- govde: bg-surface-alt font-body-md text-text-charcoal min-h-screen flex flex-col overflow-x-hidden selection:bg-primary/20 -->
+
+<!-- 1. STATUS STRIP (Sticky top) -->
+<header class="sticky top-0 w-full bg-surface/90 backdrop-blur-md z-40 border-b border-border-noble px-margin-mobile py-unit-3 flex justify-between items-center">
+<div class="font-label-caps text-label-caps text-text-muted">
+            KAHVE DURAĞI · MASA 3
+        </div>
+<div class="font-label-caps text-label-caps text-primary flex items-center gap-2">
+<span class="w-2 h-2 bg-primary rounded-full animate-pulse"></span>
+            Doğrulandı · 24 m
+        </div>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-1 flex flex-col gap-unit-8 px-margin-mobile pt-unit-6 pb-[100px]">
+<!-- 2. Identity Section -->
+<section class="flex flex-col gap-1">
+<span class="font-label-caps text-label-caps text-text-muted">MERHABA</span>
+<h1 class="font-display-lg text-display-lg text-text-charcoal leading-none">Buse</h1>
+</section>
+<!-- 3. Grid Cards (Bento style) -->
+<section class="grid grid-cols-2 gap-gutter-mobile">
+<!-- Points Card -->
+<div class="bg-surface border border-border-noble rounded-xl p-unit-4 flex flex-col justify-between min-h-[140px]">
+<span class="font-label-caps text-label-caps text-text-muted">BU KAFEDEKİ<br>PUANIN</span>
+<div class="flex items-end justify-between mt-4">
+<span class="font-headline-md text-headline-md font-extrabold text-primary leading-none">1.800</span>
+<span class="material-symbols-outlined text-primary/40 text-[32px]">stars</span>
+</div>
+</div>
+<!-- Coupon Card -->
+<div class="bg-surface border border-border-noble rounded-xl p-unit-4 flex flex-col justify-between min-h-[140px]">
+<span class="font-label-caps text-label-caps text-text-muted">KULLANILABİLİR<br>KUPON</span>
+<div class="flex items-end justify-between mt-4">
+<span class="font-headline-md text-headline-md font-extrabold text-reward-ink leading-none">2</span>
+<span class="material-symbols-outlined text-reward-ink/40 text-[32px]">local_activity</span>
+</div>
+</div>
+</section>
+<!-- 4. Level Strip -->
+<section class="bg-surface border border-border-noble rounded-xl p-unit-4 flex flex-col gap-unit-3">
+<div class="flex justify-between items-end">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">trending_up</span>
+<span class="font-title-sm text-title-sm text-text-charcoal">Seviye 4</span>
+</div>
+<!-- Ü14: seviyenin ölçüsü XP, puan değil. Puan harcanır, XP harcanmaz. -->
+<span class="font-label-caps text-label-caps text-text-muted">1.080 / 1.500 XP</span>
+</div>
+<!-- Progress Bar -->
+<div class="h-unit-2 w-full bg-surface-sunk rounded-full overflow-hidden">
+<div class="h-full w-[60%] bg-primary rounded-full relative noble-stripe transition-all duration-1000 ease-out"></div>
+</div>
+</section>
+
+<!-- 5. BUGÜNÜN OYUNU — E5, ×2 çarpan.
+     Ü10: kategori YOK. Üç oyun var, hepsi tek listede duruyor. -->
+<section class="flex flex-col gap-unit-3">
+<div class="flex items-baseline justify-between">
+<h2 class="font-label-caps text-label-caps text-reward-ink">BUGÜNÜN OYUNU</h2>
+<span class="font-data-mono text-[10px] font-medium text-reward-ink">×2 PUAN</span>
+</div>
+<div class="rounded-xl border border-reward-gold bg-surface p-unit-6">
+<span class="material-symbols-outlined text-[36px] text-reward-ink" style="font-variation-settings: 'FILL' 1;">grid_view</span>
+<h3 class="mt-unit-3 font-headline-md text-headline-md text-text-charcoal">Blok</h3>
+<p class="mt-unit-1 font-body-md text-body-md text-text-muted">Parçaları yerleştir, satırları temizle</p>
+<button class="mt-unit-4 w-full rounded-lg border border-reward-gold py-unit-3 font-title-sm text-title-sm text-reward-ink transition-transform active:scale-95" type="button">Oyna</button>
+</div>
+</section>
+
+<!-- 6. TÜM OYUNLAR — ana ekranda IZGARA YOK.
+     Oyunlar partiler hâlinde eklenecek (Ü10). Izgara burada dursa her yeni
+     oyun ana ekranı bir sıra daha uzatırdı ve "bugünün oyunu" kararı
+     kalabalıkta kaybolurdu. Liste ayrı ekranda; buradan tek satırla girilir. -->
+<a class="flex items-center gap-unit-4 rounded-xl border border-border-noble bg-surface p-unit-4" href="#">
+<span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-surface-sunk">
+<span class="material-symbols-outlined text-[24px] text-primary">apps</span>
+</span>
+<span class="min-w-0 flex-1">
+<span class="block font-title-sm text-title-sm text-text-charcoal">Tüm oyunlar</span>
+<span class="block font-body-md text-body-md text-text-muted">3 oyun · her biri 5 bölüm</span>
+</span>
+<span class="material-symbols-outlined text-[20px] text-primary">arrow_forward</span>
+</a>
+
+<!-- 7. BURADAKİ FIRSATLAR — yalnızca masa oturumu varken -->
+<a class="rounded-xl border border-border-noble bg-surface p-unit-4" href="#">
+<span class="block font-label-caps text-label-caps text-text-muted">KAHVE DURAĞI</span>
+<span class="mt-unit-2 flex items-baseline justify-between gap-unit-3">
+<span class="font-title-sm text-title-sm text-text-charcoal">Buradaki fırsatlar</span>
+<span class="material-symbols-outlined text-[20px] text-primary">arrow_forward</span>
+</span>
+<span class="mt-unit-1 block font-body-md text-body-md text-text-muted">Bu kafenin ödül kataloğu ve ürün indirimleri</span>
+</a>
+
+<!-- 8. Hesap bağlantıları -->
+<nav class="flex flex-col gap-unit-3 border-t border-border-noble pt-unit-6">
+<a class="font-body-md text-body-md text-primary underline" href="#">Verilerim ve hesap ayarlarım</a>
+<button class="text-left font-body-md text-body-md text-text-muted underline" type="button">Çıkış yap</button>
+</nav>
+</main>
+<!-- 6. Bottom Nav (Shared Component JSON Injected & Styled) -->
+<nav class="fixed bottom-0 w-full z-50 border-t border-border-noble bg-surface flex justify-around items-center h-20 px-margin-mobile pb-safe shadow-[0_-4px_20px_rgba(0,0,0,0.03)]">
+<!-- OYNA (Active State) -->
+<button class="flex flex-col items-center justify-center text-primary font-bold active:scale-90 duration-150 w-20 h-full relative">
+<div class="absolute -top-3 w-12 h-1 bg-primary rounded-b-full"></div>
+<span class="material-symbols-outlined text-[28px]" style="font-variation-settings: 'FILL' 1;">sports_esports</span>
+<span class="font-label-caps text-label-caps mt-1">Oyna</span>
+</button>
+<!-- ÖDÜLLERİM (Inactive State) -->
+<button class="flex flex-col items-center justify-center text-text-muted active:scale-90 duration-150 hover:bg-surface-sunk transition-all rounded-xl w-20 h-16">
+<span class="material-symbols-outlined text-[26px]">military_tech</span>
+<span class="font-label-caps text-label-caps mt-1">Ödüllerim</span>
+</button>
+<!-- PROFİLİM (Inactive State) -->
+<button class="flex flex-col items-center justify-center text-text-muted active:scale-90 duration-150 hover:bg-surface-sunk transition-all rounded-xl w-20 h-16">
+<span class="material-symbols-outlined text-[26px]">person</span>
+<span class="font-label-caps text-label-caps mt-1">Profilim</span>
+</button>
+</nav>
+<!-- Safe area padding helper for modern mobile devices -->

@@ -1,0 +1,100 @@
+<!-- baslik: Aydınlatma metni -->
+<!-- govde: bg-surface-alt text-text-charcoal font-body-md antialiased min-h-screen -->
+
+<!--
+  F1 · /aydinlatma — KVKK aydınlatma metni.
+
+  Kayıt formundaki ZORUNLU onay kutusu bu adrese bakıyor
+  (app/src/app/giris/form.tsx:95) ama sayfa henüz yazılmadı — yani kayıt
+  akışında kırık bağlantı var. Tasarımı burada.
+
+  Gövde metni yer tutucudur; asıl metin hukuk tarafından gelecek. Burada
+  belirlenen şey DÜZEN: uzun metin nasıl okunur hâlde durur.
+-->
+
+<main class="mx-auto w-full max-w-md px-margin-mobile py-unit-8">
+
+  <header class="mb-unit-8 border-b border-border-noble pb-unit-6">
+    <div class="font-label-caps text-label-caps text-primary">KVKK</div>
+    <h1 class="mt-unit-2 font-headline-md text-[30px] leading-[34px] tracking-[-0.02em] text-text-charcoal font-bold">Aydınlatma metni</h1>
+    <p class="tabular mt-unit-2 font-data-mono text-[11px] text-text-muted font-medium">Son güncelleme 26 Ağustos 2026</p>
+  </header>
+
+  <!-- Ana taahhüt — okuyanın aradığı cevap en üstte -->
+  <div class="mb-unit-8 rounded-xl border border-primary bg-surface p-unit-4">
+    <p class="font-body-md text-body-md leading-relaxed text-text-charcoal">
+      Telefon numaran şifreli saklanır ve üye işletmelerle paylaşılmaz. Kafeler seni yalnızca
+      sana özel anonim bir kodla görür.
+    </p>
+  </div>
+
+  <article class="flex flex-col gap-unit-8">
+
+    <section>
+      <h2 class="mb-unit-3 font-title-sm text-title-sm text-text-charcoal">Hangi verileri işliyoruz</h2>
+      <p class="font-body-md text-body-md leading-[1.7] text-text-muted">
+        Hesabını açarken ad, soyad, cep telefonu numaran ve doğum yılın alınır. Oynadıkça
+        oyun oturumların, kazandığın puan ve kuponlar, hangi kafede bulunduğun ve — izin
+        verirsen — konum doğrulaması sırasındaki mesafe bilgisi işlenir.
+      </p>
+      <ul class="mt-unit-3 flex flex-col gap-unit-2 font-body-md text-body-md leading-[1.7] text-text-muted">
+        <li class="flex gap-unit-3"><span class="mt-[10px] h-1 w-1 shrink-0 rounded-full bg-text-muted"></span><span>Kimlik: ad, soyad, doğum yılı</span></li>
+        <li class="flex gap-unit-3"><span class="mt-[10px] h-1 w-1 shrink-0 rounded-full bg-text-muted"></span><span>İletişim: cep telefonu numarası — şifrelenmiş olarak</span></li>
+        <li class="flex gap-unit-3"><span class="mt-[10px] h-1 w-1 shrink-0 rounded-full bg-text-muted"></span><span>İşlem: oyun oturumları, puan hareketleri, kuponlar</span></li>
+        <li class="flex gap-unit-3"><span class="mt-[10px] h-1 w-1 shrink-0 rounded-full bg-text-muted"></span><span>Konum: yalnızca kafeye yakınlık doğrulaması için, izin verirsen</span></li>
+      </ul>
+    </section>
+
+    <section>
+      <h2 class="mb-unit-3 font-title-sm text-title-sm text-text-charcoal">Neden işliyoruz</h2>
+      <p class="font-body-md text-body-md leading-[1.7] text-text-muted">
+        Hesabını açmak, kazandığın ödülü sana bağlamak ve kasada doğru kişiye teslim edildiğini
+        doğrulamak için. Konum bilgisi yalnızca ödülün gerçekten kafede kazanıldığını göstermek
+        için kullanılır; saklanan şey mesafedir, adres değil.
+      </p>
+    </section>
+
+    <section>
+      <h2 class="mb-unit-3 font-title-sm text-title-sm text-text-charcoal">Kimlerle paylaşıyoruz</h2>
+      <p class="font-body-md text-body-md leading-[1.7] text-text-muted">
+        Üye işletmelerle <strong class="text-text-charcoal">hiçbir kimlik bilgisi paylaşılmaz</strong>.
+        Kafe seni yalnızca o kafeye özel bir kodla görür ve bu kod her kafede farklıdır; iki kafe
+        kendi kayıtlarını birleştirip aynı kişiyi izleyemez. SMS gönderimi için yalnızca operatör
+        hizmet sağlayıcısıyla numaran paylaşılır.
+      </p>
+    </section>
+
+    <section>
+      <h2 class="mb-unit-3 font-title-sm text-title-sm text-text-charcoal">Ne kadar saklıyoruz</h2>
+      <p class="font-body-md text-body-md leading-[1.7] text-text-muted">
+        Kimlik ve iletişim bilgilerin hesabın açık olduğu sürece tutulur, hesabını silmenden
+        30 gün sonra geri döndürülemez şekilde silinir. Kupon ve puan kayıtları ticari kayıt
+        zorunluluğu gereği kalır ama kimliğinle bağı koparılır.
+      </p>
+    </section>
+
+    <section>
+      <h2 class="mb-unit-3 font-title-sm text-title-sm text-text-charcoal">Haklarınız</h2>
+      <p class="font-body-md text-body-md leading-[1.7] text-text-muted">
+        Hakkında tuttuğumuz verileri görme, dosya olarak indirme, düzeltme, silme ve verdiğin
+        izinleri geri alma hakkın var. Bunların hepsini uygulamadaki
+        <strong class="text-text-charcoal">Verilerim</strong> ekranından tek başına
+        kullanabilirsin — talep göndermene gerek yok.
+      </p>
+    </section>
+
+    <section>
+      <h2 class="mb-unit-3 font-title-sm text-title-sm text-text-charcoal">Bize nasıl ulaşırsınız</h2>
+      <p class="font-body-md text-body-md leading-[1.7] text-text-muted">
+        Veri sorumlusu: CafePlay. Sorularını ve taleplerini
+        <span class="font-data-mono text-data-mono text-text-charcoal">kvkk@cafeplay.com</span>
+        adresine iletebilirsin.
+      </p>
+    </section>
+  </article>
+
+  <a class="mt-unit-8 flex items-center gap-unit-2 border-t border-border-noble pt-unit-6 font-body-md text-body-md text-primary" href="#">
+    <span class="material-symbols-outlined text-[20px]">arrow_back</span>
+    Geri dön
+  </a>
+</main>

@@ -1,0 +1,132 @@
+<!-- baslik: Ödül kataloğu -->
+<!-- govde: bg-surface-alt text-text-charcoal font-body-md antialiased min-h-screen -->
+
+<!--
+  D7 · /kafe/panel/oduller
+
+  İki tip var (Ü18, Ü26): ürün ödülü ve TL tavanlı indirim kuponu.
+
+  Her ödülün yanında KANIT SEVİYESİ görünüyor ve düzenlenemiyor — E6 onu
+  tutardan hesaplıyor. Kafenin bilmesi gereken şey seviyenin ne olduğu değil,
+  ne anlama geldiği; o yüzden "K3" değil düz cümle yazıyor.
+-->
+
+<main class="mx-auto w-full max-w-4xl px-margin-mobile py-unit-8 sm:px-unit-8">
+
+  <header class="mb-unit-8 border-b border-border-noble pb-unit-6">
+    <div class="font-label-caps text-label-caps text-text-muted">İŞLETME PANELİ</div>
+    <h1 class="mt-unit-2 font-headline-md text-[30px] leading-[34px] tracking-[-0.02em] text-text-charcoal font-bold">Ödül kataloğu</h1>
+    <p class="mt-unit-3 font-body-md text-body-md text-text-muted">Oyuncunun puanıyla alabileceği şeyler.</p>
+  </header>
+
+  <div class="mb-unit-8 rounded-lg border border-reward-gold bg-surface px-unit-4 py-unit-3">
+    <p class="text-body-md text-text-charcoal">
+      Henüz ürün girmemişsin. Ödül tanımlayabilirsin ama ürüne bağlamak raporları çok daha
+      anlamlı yapar. <a class="underline" href="#">Ürünler</a>
+    </p>
+  </div>
+
+  <!-- Yeni ödül -->
+  <section class="mb-unit-8">
+    <h2 class="mb-unit-4 text-[13px] font-semibold text-text-charcoal">Yeni ödül</h2>
+    <div class="rounded-lg border border-border-noble bg-surface p-unit-6">
+
+      <!-- Tip seçici: iki kare radyo kartı, hap biçimli segment DEĞİL -->
+      <div class="mb-unit-6 grid gap-unit-3 sm:grid-cols-2">
+        <label class="cursor-pointer rounded-lg border border-text-charcoal bg-surface-sunk p-unit-4">
+          <span class="block font-body-md text-body-md font-semibold text-text-charcoal">Ürün ödülü</span>
+          <span class="mt-unit-1 block text-sm text-text-muted">Menüden bir ürün, TL değeriyle</span>
+        </label>
+        <label class="cursor-pointer rounded-lg border border-border-noble bg-surface p-unit-4">
+          <span class="block font-body-md text-body-md font-semibold text-text-charcoal">İndirim kuponu</span>
+          <span class="mt-unit-1 block text-sm text-text-muted">Yüzde indirim, TL tavanıyla</span>
+        </label>
+      </div>
+
+      <div class="grid gap-unit-4 sm:grid-cols-2">
+        <label class="flex flex-col gap-unit-1">
+          <span class="text-[13px] font-semibold text-text-charcoal">Başlık</span>
+          <input class="rounded-lg border border-border-noble bg-surface px-unit-4 py-unit-3 font-body-md text-body-md focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" type="text"/>
+        </label>
+        <label class="flex flex-col gap-unit-1">
+          <span class="text-[13px] font-semibold text-text-charcoal">Ürün</span>
+          <select class="rounded-lg border border-border-noble bg-surface px-unit-4 py-unit-3 font-body-md text-body-md">
+            <option>Filtre kahve</option><option>Americano</option><option>Tiramisu</option>
+          </select>
+        </label>
+        <label class="flex flex-col gap-unit-1">
+          <span class="text-[13px] font-semibold text-text-charcoal">Maliyet (TL)</span>
+          <input class="tabular rounded-lg border border-border-noble bg-surface px-unit-4 py-unit-3 font-data-mono text-data-mono" inputmode="numeric" type="text"/>
+        </label>
+        <label class="flex flex-col gap-unit-1">
+          <span class="text-[13px] font-semibold text-text-charcoal">Puan fiyatı</span>
+          <input class="tabular rounded-lg border border-border-noble bg-surface px-unit-4 py-unit-3 font-data-mono text-data-mono" inputmode="numeric" type="text"/>
+        </label>
+      </div>
+
+      <label class="mt-unit-4 flex cursor-pointer items-center gap-unit-3">
+        <input class="h-5 w-5 rounded border-border-noble text-primary focus:ring-primary" type="checkbox"/>
+        <span class="text-body-md text-text-charcoal">Puan istemez (anlık ödül)</span>
+      </label>
+
+      <button class="mt-unit-6 rounded-lg bg-text-charcoal px-unit-6 py-unit-3 font-title-sm text-title-sm text-white" type="button">Ödülü ekle</button>
+    </div>
+  </section>
+
+  <!-- Katalog -->
+  <section class="mb-unit-8">
+    <h2 class="mb-unit-4 text-[13px] font-semibold text-text-charcoal">Katalog · 6 yayında</h2>
+    <ul class="border-y border-border-noble">
+
+      <li class="flex items-start gap-unit-4 border-b border-border-noble py-unit-4">
+        <span class="min-w-0 flex-1">
+          <span class="flex flex-wrap items-center gap-unit-2">
+            <span class="font-body-md text-body-md font-semibold text-text-charcoal">Ücretsiz filtre kahve</span>
+          </span>
+          <span class="tabular mt-unit-1 block font-data-mono text-[12px] text-text-muted font-medium">45 TL · 6.000 puan · Filtre kahve</span>
+          <span class="mt-unit-1 block text-sm text-text-muted">Masada en az beş dakika kalmış oyunculara verilir</span>
+        </span>
+        <button class="shrink-0 rounded border border-border-noble px-unit-3 py-unit-1 text-sm text-text-muted transition-colors hover:bg-surface-sunk" type="button">Yayından kaldır</button>
+      </li>
+
+      <li class="flex items-start gap-unit-4 border-b border-border-noble py-unit-4">
+        <span class="min-w-0 flex-1">
+          <span class="flex flex-wrap items-center gap-unit-2">
+            <span class="font-body-md text-body-md font-semibold text-text-charcoal">+1 shot espresso</span>
+            <span class="rounded border border-primary px-unit-2 py-[2px] font-label-caps text-[10px] tracking-[0.05em] text-primary font-semibold">ANLIK</span>
+          </span>
+          <span class="tabular mt-unit-1 block font-data-mono text-[12px] text-text-muted font-medium">15 TL · puan istemez · Espresso</span>
+          <span class="mt-unit-1 block text-sm text-text-muted">Konumu doğrulanmış oyunculara verilir</span>
+        </span>
+        <button class="shrink-0 rounded border border-border-noble px-unit-3 py-unit-1 text-sm text-text-muted transition-colors hover:bg-surface-sunk" type="button">Yayından kaldır</button>
+      </li>
+
+      <li class="flex items-start gap-unit-4 border-b border-border-noble py-unit-4">
+        <span class="min-w-0 flex-1">
+          <span class="font-body-md text-body-md font-semibold text-text-charcoal">Tatlıda indirim</span>
+          <span class="tabular mt-unit-1 block font-data-mono text-[12px] text-text-muted font-medium">%20 · en fazla 60 TL · 4.000 puan</span>
+          <span class="mt-unit-1 block text-sm text-text-muted">Fiş kodu girilmiş oyunculara verilir</span>
+        </span>
+        <button class="shrink-0 rounded border border-border-noble px-unit-3 py-unit-1 text-sm text-text-muted transition-colors hover:bg-surface-sunk" type="button">Yayından kaldır</button>
+      </li>
+
+      <li class="flex items-start gap-unit-4 py-unit-4 opacity-55">
+        <span class="min-w-0 flex-1">
+          <span class="flex flex-wrap items-center gap-unit-2">
+            <span class="font-body-md text-body-md font-semibold text-text-charcoal">Ücretsiz kurabiye</span>
+            <span class="rounded border border-border-noble px-unit-2 py-[2px] font-label-caps text-[10px] tracking-[0.05em] text-text-muted font-semibold">YAYINDA DEĞİL</span>
+          </span>
+          <span class="tabular mt-unit-1 block font-data-mono text-[12px] text-text-muted font-medium">12 TL · 3.000 puan · Kurabiye</span>
+          <span class="mt-unit-1 block text-sm text-text-muted">Konumu doğrulanmış oyunculara verilir</span>
+        </span>
+        <button class="shrink-0 rounded border border-border-noble px-unit-3 py-unit-1 text-sm text-text-muted" type="button">Yayına al</button>
+      </li>
+    </ul>
+
+    <p class="mt-unit-4 text-sm text-text-muted">
+      boş varyant · “Katalog boş. Oyuncular puan biriktiriyor ama harcayacakları bir şey yok.”
+    </p>
+  </section>
+
+  <a class="font-body-md text-body-md text-text-muted underline" href="#">Panele dön</a>
+</main>

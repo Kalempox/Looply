@@ -1,0 +1,337 @@
+<!DOCTYPE html><html lang="tr"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>CafePlay - Rapor</title>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect">
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&amp;family=JetBrains+Mono:wght@400;500;700&amp;display=swap" rel="stylesheet">
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+        darkMode: "class",
+        theme: {
+            extend: {
+                "colors": {
+                    "surface": "#FFFFFF",
+                    "surface-alt": "#FAFAFA",
+                    "surface-sunk": "#F2F2F2",
+                    "surface-container-highest": "#e5e2e1",
+                    "border-noble": "#E5E5E5",
+                    "outline-variant": "#c3c6d6",
+                    "text-charcoal": "#1F1F1F",
+                    "text-muted": "#6B6B6B",
+                    "on-surface": "#1b1b1c",
+                    "on-surface-variant": "#424654",
+                    "primary": "#0B57D0",
+                    "on-primary": "#ffffff",
+                    "on-primary-fixed-variant": "#0040a1",
+                    "primary-fixed": "#dae2ff",
+                    "reward-gold": "#D4AF37",
+                    "reward-ink": "#856612",
+                    "reward-fixed": "#FBF3DC",
+                    "danger-red": "#D93025",
+                    "danger-fixed": "#FDECEA"
+                },
+                "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "1rem",
+                    "full": "9999px"
+                },
+                "spacing": {
+                    "base": "4px",
+                    "unit-1": "4px",
+                    "unit-2": "8px",
+                    "unit-3": "12px",
+                    "unit-4": "16px",
+                    "unit-6": "24px",
+                    "unit-8": "32px",
+                    "margin-mobile": "20px",
+                    "gutter-mobile": "12px"
+                },
+                "fontFamily": {
+                    "display-lg": ["Outfit", "ui-sans-serif", "system-ui", "sans-serif"],
+                    "headline-md": ["Outfit", "ui-sans-serif", "system-ui", "sans-serif"],
+                    "title-sm": ["Outfit", "ui-sans-serif", "system-ui", "sans-serif"],
+                    "body-md": ["Outfit", "ui-sans-serif", "system-ui", "sans-serif"],
+                    "label-caps": ["Outfit", "ui-sans-serif", "system-ui", "sans-serif"],
+                    "data-mono": ["JetBrains Mono", "ui-monospace", "SFMono-Regular", "monospace"],
+                    "sans": ["Outfit", "ui-sans-serif", "system-ui", "sans-serif"],
+                    "mono": ["JetBrains Mono", "ui-monospace", "SFMono-Regular", "monospace"]
+                },
+                "fontSize": {
+                    "display-lg": ["48px", { "lineHeight": "52px", "letterSpacing": "-0.04em", "fontWeight": "800" }],
+                    "headline-md": ["24px", { "lineHeight": "30px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                    "title-sm": ["18px", { "lineHeight": "24px", "fontWeight": "600" }],
+                    "body-md": ["16px", { "lineHeight": "26px", "fontWeight": "400" }],
+                    "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                    "data-mono": ["14px", { "lineHeight": "20px", "fontWeight": "500" }]
+                }
+            }
+        }
+    }
+</script>
+<style>
+    /* Taban font — hiçbir metin tarayıcı varsayılanına düşmesin.
+       Ekranlar arası "font farklı görünüyor" sorununun ikinci kaynağı buydu. */
+    html, body, button, input, select, textarea {
+        font-family: "Outfit", ui-sans-serif, system-ui, sans-serif;
+    }
+    /* İmza doku: ilerleme çubuklarının -45° çizgisi. */
+    .noble-stripe {
+        background-image: repeating-linear-gradient(
+            -45deg,
+            rgba(255, 255, 255, 0.15),
+            rgba(255, 255, 255, 0.15) 10px,
+            transparent 10px,
+            transparent 20px
+        );
+    }
+    .tabular { font-variant-numeric: tabular-nums; }
+    ::-webkit-scrollbar { display: none; }
+    .pb-safe { padding-bottom: env(safe-area-inset-bottom, 16px); }
+    @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after {
+            animation-duration: .01ms !important;
+            transition-duration: .01ms !important;
+        }
+    }
+</style>
+</head>
+<body class="bg-surface-alt text-text-charcoal font-body-md antialiased min-h-screen">
+<!--
+  D10 · /kafe/panel/rapor — Faz 8.
+
+  BAŞ SAYI: nitelikli oyuncu (Ü29). Rapor, satılan şeyin kanıtı. Satılan birim
+  nitelikli oyuncu olduğu için ekranın en üstünde o duruyor.
+
+  İKİNCİ SAYI: fiilen kullanılan indirim. "Kazanılan" ile "kullanılan" bilerek
+  ayrı ve ASIL SAYI İKİNCİSİ — kafenin ödediği tek şey kasada onaylanan tutar.
+
+  G1: ekranın hiçbir yerinde ad, soyad, telefon yok. Oyuncular kafeye özel
+  anonim kodla görünüyor ve o kod her kafede farklı.
+
+  Ü30: 5 kişiden az içeren gruplar sayı yerine "<5" gösterir.
+-->
+
+<main class="mx-auto w-full max-w-4xl px-margin-mobile py-unit-8 sm:px-unit-8">
+
+  <header class="mb-unit-8 border-b border-border-noble pb-unit-6">
+    <div class="font-label-caps text-label-caps text-text-muted">İŞLETME PANELİ</div>
+    <h1 class="mt-unit-2 font-headline-md text-[30px] leading-[34px] tracking-[-0.02em] text-text-charcoal font-bold">Rapor</h1>
+    <p class="mt-unit-3 font-body-md text-body-md text-text-muted">24 Ağustos – 30 Ağustos</p>
+  </header>
+
+  <!-- Sekmeler: hap değil, alt çizgi -->
+  <nav class="mb-unit-8 flex gap-unit-1 border-b border-border-noble">
+    <a class="border-b-2 border-text-charcoal px-unit-3 py-unit-3 font-body-md text-body-md font-semibold text-text-charcoal" href="#">Bu hafta</a>
+    <a class="border-b-2 border-transparent px-unit-3 py-unit-3 font-body-md text-body-md text-text-muted" href="#">Geçen hafta</a>
+  </nav>
+
+  <!-- Baş sayı -->
+  <section class="mb-unit-8">
+    <h2 class="text-[13px] font-semibold text-text-charcoal">Kafene gelen oyuncu</h2>
+    <p class="mb-unit-4 text-sm text-text-muted">
+      CafePlay üzerinden gelip oyunu tamamlayan, konumu doğrulanmış müşteriler.
+    </p>
+
+    <div class="rounded-lg border border-border-noble bg-surface px-unit-6 py-unit-6">
+      <div class="font-label-caps text-label-caps text-text-muted">NİTELİKLİ OYUNCU</div>
+      <div class="tabular mt-unit-2 font-data-mono text-[48px] font-bold leading-none text-text-charcoal">127</div>
+      <p class="mt-unit-3 text-sm leading-relaxed text-text-muted">
+        Günde bir kez, cihaz başına sayılır. Aynı müşterinin ikinci oyunu tekrar sayılmaz —
+        bu sayı ziyaret sayısı değil, <strong class="text-text-charcoal">gelen kişi</strong>.
+      </p>
+    </div>
+
+    <div class="mt-unit-3 grid grid-cols-1 gap-px overflow-hidden rounded-lg border border-border-noble bg-border-noble sm:grid-cols-3">
+      <div class="bg-surface px-unit-4 py-unit-4">
+        <div class="font-label-caps text-label-caps text-text-muted">TEKİL OYUNCU</div>
+        <div class="tabular mt-unit-1 font-data-mono text-[20px] font-bold text-text-charcoal">98</div>
+      </div>
+      <div class="bg-surface px-unit-4 py-unit-4">
+        <div class="font-label-caps text-label-caps text-text-muted">TAMAMLANAN OYUN</div>
+        <div class="tabular mt-unit-1 font-data-mono text-[20px] font-bold text-text-charcoal">412</div>
+      </div>
+      <div class="bg-surface px-unit-4 py-unit-4">
+        <div class="font-label-caps text-label-caps text-text-muted">VERİLEN KUPON</div>
+        <div class="tabular mt-unit-1 font-data-mono text-[20px] font-bold text-text-charcoal">63</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- İndirim: ikincisi ağır basmalı -->
+  <section class="mb-unit-8">
+    <h2 class="text-[13px] font-semibold text-text-charcoal">İndirim</h2>
+    <p class="mb-unit-4 text-sm text-text-muted">
+      Kazanılan ile kullanılan ayrı sayılır — ödediğin yalnızca ikincisi.
+    </p>
+
+    <div class="grid grid-cols-1 gap-px overflow-hidden rounded-lg border border-border-noble bg-border-noble sm:grid-cols-2">
+      <div class="bg-surface px-unit-6 py-unit-6">
+        <div class="font-label-caps text-label-caps text-text-muted">KAZANILAN</div>
+        <div class="tabular mt-unit-2 font-data-mono text-[24px] font-bold leading-none text-text-muted">2.180 <span class="text-[11px] font-normal">TL</span></div>
+        <p class="mt-unit-2 text-sm text-text-muted">Dağıtılan 63 kuponun toplam değeri</p>
+      </div>
+      <div class="bg-surface px-unit-6 py-unit-6">
+        <div class="font-label-caps text-label-caps text-text-muted">KASADA KULLANILAN</div>
+        <div class="tabular mt-unit-2 font-data-mono text-[24px] font-bold leading-none text-text-charcoal">740 <span class="text-[11px] font-normal">TL</span></div>
+        <p class="mt-unit-2 text-sm text-text-muted">41 kupon · <strong class="text-text-charcoal">ödediğin tutar</strong></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Saatlik -->
+  <section class="mb-unit-8">
+    <h2 class="text-[13px] font-semibold text-text-charcoal">Hangi saat doluyor</h2>
+    <p class="mb-unit-4 text-sm text-text-muted">Boş saatini doldurma iddiasının kanıtı burada.</p>
+
+    <ul class="flex flex-col gap-unit-1">
+      <li class="flex items-center gap-unit-3">
+        <span class="tabular w-12 shrink-0 font-data-mono text-[11px] text-text-muted font-medium">11:00</span>
+        <span class="h-3 flex-1 rounded-full bg-surface-sunk"><span class="block h-full rounded-full bg-text-charcoal" style="width:22%"></span></span>
+        <span class="tabular w-10 shrink-0 text-right font-data-mono text-[11px] text-text-charcoal font-medium">8</span>
+      </li>
+      <li class="flex items-center gap-unit-3">
+        <span class="tabular w-12 shrink-0 font-data-mono text-[11px] text-text-muted font-medium">13:00</span>
+        <span class="h-3 flex-1 rounded-full bg-surface-sunk"><span class="block h-full rounded-full bg-text-charcoal" style="width:56%"></span></span>
+        <span class="tabular w-10 shrink-0 text-right font-data-mono text-[11px] text-text-charcoal font-medium">21</span>
+      </li>
+      <li class="flex items-center gap-unit-3">
+        <span class="tabular w-12 shrink-0 font-data-mono text-[11px] text-text-muted font-medium">15:00</span>
+        <span class="h-3 flex-1 rounded-full bg-surface-sunk"><span class="block h-full rounded-full bg-text-charcoal" style="width:100%"></span></span>
+        <span class="tabular w-10 shrink-0 text-right font-data-mono text-[11px] text-text-charcoal font-medium">38</span>
+      </li>
+      <li class="flex items-center gap-unit-3">
+        <span class="tabular w-12 shrink-0 font-data-mono text-[11px] text-text-muted font-medium">17:00</span>
+        <span class="h-3 flex-1 rounded-full bg-surface-sunk"><span class="block h-full rounded-full bg-text-charcoal" style="width:71%"></span></span>
+        <span class="tabular w-10 shrink-0 text-right font-data-mono text-[11px] text-text-charcoal font-medium">27</span>
+      </li>
+      <!-- Ü30: eşiğin altındaki grup sayı yerine <5 -->
+      <li class="flex items-center gap-unit-3">
+        <span class="tabular w-12 shrink-0 font-data-mono text-[11px] text-text-muted font-medium">21:00</span>
+        <span class="h-3 flex-1 rounded-full bg-surface-sunk"><span class="block h-full rounded-full bg-text-charcoal" style="width:8%"></span></span>
+        <span class="tabular w-10 shrink-0 text-right font-data-mono text-[11px] text-text-muted font-medium">&lt;5</span>
+      </li>
+    </ul>
+
+    <p class="mt-unit-4 text-sm text-text-muted">boş varyant · “Bu dönemde henüz oyun oynanmadı.”</p>
+  </section>
+
+  <!-- Masa -->
+  <section class="mb-unit-8">
+    <h2 class="mb-unit-4 text-[13px] font-semibold text-text-charcoal">Masa hareketi</h2>
+    <ul class="border-y border-border-noble">
+      <li class="flex items-center gap-unit-4 border-b border-border-noble py-unit-3">
+        <span class="flex-1 font-body-md text-body-md font-semibold text-text-charcoal">Masa 3</span>
+        <span class="tabular font-data-mono text-[12px] text-text-muted font-medium">18 oyuncu · 44 oyun</span>
+      </li>
+      <li class="flex items-center gap-unit-4 border-b border-border-noble py-unit-3">
+        <span class="flex-1 font-body-md text-body-md font-semibold text-text-charcoal">Masa 7</span>
+        <span class="tabular font-data-mono text-[12px] text-text-muted font-medium">14 oyuncu · 31 oyun</span>
+      </li>
+      <li class="flex items-center gap-unit-4 py-unit-3">
+        <span class="flex-1 font-body-md text-body-md font-semibold text-text-charcoal">Bar 1</span>
+        <span class="tabular font-data-mono text-[12px] text-text-muted font-medium">&lt;5 oyuncu · 9 oyun</span>
+      </li>
+    </ul>
+  </section>
+
+  <!-- Kampanya -->
+  <section class="mb-unit-8">
+    <h2 class="mb-unit-4 text-[13px] font-semibold text-text-charcoal">Kampanya sonuçları</h2>
+    <ul class="border-y border-border-noble">
+      <li class="border-b border-border-noble py-unit-4">
+        <div class="flex items-center gap-unit-3">
+          <span class="flex-1 font-body-md text-body-md font-semibold text-text-charcoal">Tiramisu · %10</span>
+          <span class="rounded border border-border-noble px-unit-2 py-[2px] font-label-caps text-[10px] tracking-[0.05em] text-text-charcoal font-semibold">YAYINDA</span>
+        </div>
+        <div class="tabular mt-unit-1 font-data-mono text-[12px] text-text-muted font-medium">20 verildi · 14 kullanıldı · 310 TL</div>
+      </li>
+      <li class="py-unit-4">
+        <div class="flex items-center gap-unit-3">
+          <span class="flex-1 font-body-md text-body-md font-semibold text-text-charcoal">Kurabiye · %20</span>
+          <span class="rounded border border-border-noble px-unit-2 py-[2px] font-label-caps text-[10px] tracking-[0.05em] text-text-muted font-semibold">BİTTİ</span>
+        </div>
+        <div class="tabular mt-unit-1 font-data-mono text-[12px] text-text-muted font-medium">31 verildi · 22 kullanıldı · 190 TL</div>
+      </li>
+    </ul>
+  </section>
+
+  <!-- Doğrulama defteri -->
+  <section class="mb-unit-8">
+    <h2 class="text-[13px] font-semibold text-text-charcoal">Doğrulama defteri</h2>
+    <p class="mb-unit-4 text-sm text-text-muted">
+      Sayımızı satır satır denetleyebilirsin. Denetlenemeyen bir sayı, iddiadan ibarettir.
+    </p>
+
+    <div class="overflow-x-auto">
+      <table class="w-full min-w-[520px] text-body-md">
+        <thead>
+          <tr class="border-b border-border-noble text-left">
+            <th class="py-unit-2 pr-unit-4 font-label-caps text-[10px] tracking-[0.05em] text-text-muted font-semibold">MÜŞTERİ</th>
+            <th class="py-unit-2 pr-unit-4 font-label-caps text-[10px] tracking-[0.05em] text-text-muted font-semibold">ZAMAN</th>
+            <th class="py-unit-2 pr-unit-4 font-label-caps text-[10px] tracking-[0.05em] text-text-muted font-semibold">MASA</th>
+            <th class="py-unit-2 pr-unit-4 font-label-caps text-[10px] tracking-[0.05em] text-text-muted font-semibold">KANIT</th>
+            <th class="py-unit-2 font-label-caps text-[10px] tracking-[0.05em] text-text-muted font-semibold">OYUN</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="border-b border-border-noble">
+            <td class="py-unit-2 pr-unit-4 font-data-mono text-data-mono text-text-charcoal">K-4821</td>
+            <td class="tabular py-unit-2 pr-unit-4 font-data-mono text-[12px] text-text-muted font-medium">26 Ağu 14:32</td>
+            <td class="py-unit-2 pr-unit-4 text-sm text-text-muted">Masa 3</td>
+            <td class="py-unit-2 pr-unit-4"><span class="rounded border border-border-noble px-unit-2 py-[2px] font-label-caps text-[10px] tracking-[0.05em] text-text-charcoal font-semibold">NİTELİKLİ</span></td>
+            <td class="tabular py-unit-2 font-data-mono text-data-mono text-text-charcoal">3</td>
+          </tr>
+          <tr class="border-b border-border-noble">
+            <td class="py-unit-2 pr-unit-4 font-data-mono text-data-mono text-text-charcoal">K-1907</td>
+            <td class="tabular py-unit-2 pr-unit-4 font-data-mono text-[12px] text-text-muted font-medium">26 Ağu 15:08</td>
+            <td class="py-unit-2 pr-unit-4 text-sm text-text-muted">Masa 7</td>
+            <td class="py-unit-2 pr-unit-4"><span class="rounded border border-border-noble px-unit-2 py-[2px] font-label-caps text-[10px] tracking-[0.05em] text-text-charcoal font-semibold">NİTELİKLİ</span></td>
+            <td class="tabular py-unit-2 font-data-mono text-data-mono text-text-charcoal">1</td>
+          </tr>
+          <tr class="border-b border-border-noble">
+            <td class="py-unit-2 pr-unit-4 font-data-mono text-data-mono text-text-charcoal">K-2246</td>
+            <td class="tabular py-unit-2 pr-unit-4 font-data-mono text-[12px] text-text-muted font-medium">26 Ağu 15:41</td>
+            <td class="py-unit-2 pr-unit-4 text-sm text-text-muted">—</td>
+            <td class="py-unit-2 pr-unit-4 font-data-mono text-[11px] text-text-muted font-medium">K1</td>
+            <td class="tabular py-unit-2 font-data-mono text-data-mono text-text-charcoal">2</td>
+          </tr>
+          <tr>
+            <td class="py-unit-2 pr-unit-4 font-data-mono text-data-mono text-text-charcoal">K-0538</td>
+            <td class="tabular py-unit-2 pr-unit-4 font-data-mono text-[12px] text-text-muted font-medium">26 Ağu 16:12</td>
+            <td class="py-unit-2 pr-unit-4 text-sm text-text-muted">Masa 3</td>
+            <td class="py-unit-2 pr-unit-4"><span class="rounded border border-border-noble px-unit-2 py-[2px] font-label-caps text-[10px] tracking-[0.05em] text-text-charcoal font-semibold">NİTELİKLİ</span></td>
+            <td class="tabular py-unit-2 font-data-mono text-data-mono text-text-charcoal">5</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p class="mt-unit-4 text-sm leading-relaxed text-text-muted">
+      Müşteriler işletmene özel anonim kodla görünür. Ad, soyad ve telefon CafePlay'de kalır,
+      hiçbir ekranda gösterilmez.
+    </p>
+  </section>
+
+  <!-- Dışa aktar -->
+  <section class="mb-unit-8">
+    <h2 class="mb-unit-4 text-[13px] font-semibold text-text-charcoal">Dışa aktar</h2>
+    <button class="flex items-center gap-unit-2 rounded-lg border border-border-noble bg-surface px-unit-6 py-unit-3 font-title-sm text-title-sm text-text-charcoal transition-colors hover:bg-surface-sunk" type="button">
+      <span class="material-symbols-outlined text-[20px]">download</span>
+      CSV indir
+    </button>
+    <p class="mt-unit-3 text-sm text-text-muted">
+      Bu dönemin doğrulama defteri, masa hareketi ve kampanya sonuçları.
+    </p>
+  </section>
+
+  <a class="font-body-md text-body-md text-text-muted underline" href="#">Panele dön</a>
+</main>
+<script src="../gezinme.js"></script>
+</body></html>

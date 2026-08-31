@@ -1,0 +1,47 @@
+<!-- baslik: SMS doğrulama -->
+<!-- govde: bg-surface text-text-charcoal min-h-screen flex flex-col font-body-md antialiased selection:bg-primary-fixed selection:text-primary -->
+<!-- gelistirme: kod · 284913 · SMS GÖNDERİLMEDİ -->
+
+<!-- 
+      TRANSACTIONAL SCREEN: Navigation Shell (TopAppBar/BottomNavBar) is intentionally SUPPRESSED 
+      to focus user entirely on the verification task. 
+    -->
+<main class="flex-1 w-full max-w-md mx-auto px-margin-mobile pt-unit-8 flex flex-col h-full min-h-screen">
+<!-- Top Section: Badge & Heading (Inherited from B1 context) -->
+<header class="mb-unit-8 mt-unit-6">
+<div class="w-12 h-12 rounded-xl bg-primary-fixed flex items-center justify-center mb-unit-6 border border-border-noble">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">security</span>
+</div>
+<h1 class="font-display-lg text-display-lg text-text-charcoal mb-unit-2">Önce seni tanıyalım</h1>
+<p class="font-body-md text-body-md text-text-muted">0532 *** ** 67 numarasına gönderdiğimiz altı haneli kodu gir.</p>
+</header>
+<!-- Form Section -->
+<form class="flex flex-col gap-unit-6 flex-1">
+<!-- Input Field Group -->
+<div class="flex flex-col gap-unit-2 relative">
+<label class="font-label-caps text-label-caps text-text-muted ml-unit-2" for="verification_code">
+                    DOĞRULAMA KODU
+                </label>
+<!-- 
+                  ONE WIDE input: 
+                  - background #F2F2F2 (surface-sunk)
+                  - no border
+                  - 8px radius (rounded-lg)
+                  - monospace (font-data-mono)
+                  - centered text
+                  - tabular figures natively supported by JetBrains Mono
+                -->
+<input autocomplete="one-time-code" class="w-full bg-surface-sunk border-none rounded-lg h-[72px] text-center font-data-mono text-headline-md text-text-charcoal tracking-[0.5em] placeholder:tracking-normal placeholder:text-text-muted focus:ring-2 focus:ring-primary focus:outline-none" id="verification_code" inputmode="numeric" maxlength="6" placeholder="——————" type="text"/>
+</div>
+<!-- Solid Accent Button -->
+<button class="w-full h-14 mt-unit-2 bg-primary text-on-primary font-title-sm text-title-sm rounded-lg flex items-center justify-center hover:bg-primary transition-colors active:scale-[0.98] duration-200" type="button">
+                Doğrula ve gir
+            </button>
+</form>
+<!-- Bottom Link Section -->
+<footer class="mt-auto pb-unit-8 pt-unit-6 flex justify-center w-full border-t border-border-noble">
+<a class="font-body-md text-body-md text-text-muted underline hover:text-primary transition-colors focus:outline-none focus:ring-2 focus:ring-primary rounded-sm px-2 py-1" href="#">
+                Numarayı değiştir
+            </a>
+</footer>
+</main>

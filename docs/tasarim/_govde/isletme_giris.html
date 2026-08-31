@@ -1,0 +1,46 @@
+<!-- baslik: İşletme girişi -->
+<!-- govde: bg-surface-alt text-text-charcoal font-body-md antialiased min-h-screen -->
+
+<!--
+  D3 · /kafe/giris — iki adımlı OTP.
+
+  G27: kayıtsız numara girildiğinde ekran YİNE 2. adıma geçer ve hata
+  göstermez. "Bu numara kayıtlı değil" demek, saldırgana hangi numaraların
+  yetkili olduğunu söylemek olurdu. Bu sessizlik kasıtlı — hata durumu
+  tasarlanmayacak.
+-->
+
+<main class="mx-auto w-full max-w-lg px-margin-mobile py-unit-8 sm:px-unit-8">
+
+  <header class="mb-unit-8 border-b border-border-noble pb-unit-6">
+    <div class="font-label-caps text-label-caps text-text-muted">CAFEPLAY</div>
+    <h1 class="mt-unit-2 font-headline-md text-[30px] leading-[34px] tracking-[-0.02em] text-text-charcoal font-bold">İşletme girişi</h1>
+    <p class="mt-unit-3 font-body-md text-body-md text-text-muted">
+      Başvuru sırasında verdiğin yetkili numarasıyla gir.
+    </p>
+  </header>
+
+  <!-- ADIM 1 -->
+  <section class="mb-unit-8">
+    <p class="mb-unit-4 font-label-caps text-label-caps text-text-muted">ADIM 1 · NUMARA</p>
+    <form class="flex flex-col gap-unit-4">
+      <label class="flex flex-col gap-unit-1">
+        <span class="text-[13px] font-semibold text-text-charcoal">Yetkili cep telefonu</span>
+        <input class="rounded-lg border border-border-noble bg-surface px-unit-4 py-unit-3 font-body-md text-body-md text-text-charcoal focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" placeholder="0532 123 45 67" type="tel"/>
+        <span class="text-sm text-text-muted">Başvuruda bildirdiğin numara</span>
+      </label>
+      <button class="w-full rounded-lg bg-text-charcoal py-unit-3 font-title-sm text-title-sm text-white" type="button">
+        Doğrulama kodu gönder
+      </button>
+    </form>
+  </section>
+
+  <!-- ADIM 2 -->
+  
+
+  <nav class="mt-unit-8 border-t border-border-noble pt-unit-6">
+    <a class="font-body-md text-body-md text-text-charcoal underline" href="#">
+      Henüz başvurmadın mı? İşletme başvurusu
+    </a>
+  </nav>
+</main>

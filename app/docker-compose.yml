@@ -1,0 +1,29 @@
+# Yalnızca GELİŞTİRME veritabanı.
+#
+# Canlı ortam Türkiye'de bir sunucuda çalışacak (G3) ve bu dosyayla kurulmayacak.
+# Buradaki parola bir sır değildir — geliştirme makinesinde, ağa kapalı çalışır.
+# Canlı ortamın bağlantı bilgileri yalnızca sunucunun sır kasasında durur.
+
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: cafeplay-db
+    environment:
+      POSTGRES_USER: cafeplay_admin
+      POSTGRES_PASSWORD: gelistirme_ortami
+      POSTGRES_DB: cafeplay
+      # Türkçe sıralama ve karşılaştırma
+      LANG: tr_TR.utf8
+    ports:
+      # 5433 — makinede başka bir Postgres varsa çakışmasın
+      - "5433:5432"
+    volumes:
+      - cafeplay_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cafeplay_admin -d cafeplay"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  cafeplay_pgdata:

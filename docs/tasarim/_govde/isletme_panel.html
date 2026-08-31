@@ -1,0 +1,136 @@
+<!-- baslik: İşletme paneli -->
+<!-- govde: bg-surface-alt text-text-charcoal font-body-md antialiased min-h-screen -->
+
+<!--
+  D4 · /kafe/panel
+
+  Kenar çubuğu yok, ikon yok, gösterge paneli parçacığı yok, grafik yok.
+  Panel bir fatura gibi okunuyor: tek sütun, saç teli çizgi, hizalı sayı.
+-->
+
+<main class="mx-auto w-full max-w-4xl px-margin-mobile py-unit-8 sm:px-unit-8">
+
+  <header class="mb-unit-8 border-b border-border-noble pb-unit-6">
+    <div class="font-label-caps text-label-caps text-text-muted">İŞLETME PANELİ</div>
+    <h1 class="mt-unit-2 font-headline-md text-[30px] leading-[34px] tracking-[-0.02em] text-text-charcoal font-bold">Kahve Durağı</h1>
+    <p class="mt-unit-3 font-body-md text-body-md text-text-muted">İstanbul</p>
+  </header>
+
+  <!-- Kurulum durumu -->
+  <section class="mb-unit-8">
+    <h2 class="mb-unit-4 text-[13px] font-semibold text-text-charcoal">Kurulum durumu</h2>
+    <div class="grid grid-cols-3 gap-px overflow-hidden rounded-lg border border-border-noble bg-border-noble">
+      <div class="bg-surface px-unit-4 py-unit-6">
+        <div class="font-label-caps text-label-caps text-text-muted">MASA</div>
+        <div class="tabular mt-unit-2 font-data-mono text-[24px] font-bold text-text-charcoal">12</div>
+      </div>
+      <div class="bg-surface px-unit-4 py-unit-6">
+        <div class="font-label-caps text-label-caps text-text-muted">PERSONEL</div>
+        <div class="tabular mt-unit-2 font-data-mono text-[24px] font-bold text-text-charcoal">4</div>
+      </div>
+      <div class="bg-surface px-unit-4 py-unit-6">
+        <div class="font-label-caps text-label-caps text-text-muted">KAYITLI CİHAZ</div>
+        <div class="tabular mt-unit-2 font-data-mono text-[24px] font-bold text-text-charcoal">2</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Bütçe -->
+  <section class="mb-unit-8">
+    <h2 class="mb-unit-4 text-[13px] font-semibold text-text-charcoal">Bu dönemin bütçesi</h2>
+    <a class="block rounded-lg border border-border-noble bg-surface px-unit-4 py-unit-4 transition-colors hover:bg-surface-sunk" href="#">
+      <div class="flex items-baseline justify-between">
+        <span class="font-label-caps text-label-caps text-text-muted">DAĞITILABİLİR</span>
+        <span class="tabular font-data-mono text-[12px] text-text-muted font-medium">2.400 TL taahhüt</span>
+      </div>
+      <div class="tabular mt-unit-2 font-data-mono text-[30px] font-bold leading-none text-text-charcoal">
+        1.150<span class="ml-unit-1 text-[13px] font-normal">TL</span>
+      </div>
+      <div class="tabular mt-unit-2 font-data-mono text-[11px] text-text-muted font-medium">
+        820 TL açık kuponlarda · 430 TL kasada harcandı
+      </div>
+    </a>
+
+    <!-- Bütçesiz varyant -->
+    <div class="mt-unit-3 rounded-lg border border-reward-gold bg-surface px-unit-4 py-unit-3">
+      <p class="text-body-md text-text-charcoal">
+        Henüz bütçe belirlemedin. Bütçe olmadan hiçbir ödül dağıtılamaz.
+        <a class="underline" href="#">Bütçeyi belirle</a>
+      </p>
+    </div>
+  </section>
+
+  <!-- Kurulum listesi -->
+  <section class="mb-unit-8">
+    <h2 class="mb-unit-4 text-[13px] font-semibold text-text-charcoal">Kurulum</h2>
+    <ul class="border-y border-border-noble">
+      <li class="border-b border-border-noble last:border-0">
+        <a class="flex items-center gap-unit-4 py-unit-3 transition-colors hover:bg-surface-sunk" href="#">
+          <span class="min-w-0 flex-1">
+            <span class="block font-body-md text-body-md font-semibold text-text-charcoal">Personel ve PIN</span>
+            <span class="block text-sm text-text-muted">Kasiyer hesabı aç, PIN ver, kasa cihazını kaydet</span>
+          </span>
+          <span class="rounded border border-border-noble px-unit-2 py-1 font-label-caps text-[10px] tracking-[0.05em] text-text-charcoal font-semibold">AÇIK</span>
+        </a>
+      </li>
+      <li class="border-b border-border-noble">
+        <a class="flex items-center gap-unit-4 py-unit-3 transition-colors hover:bg-surface-sunk" href="#">
+          <span class="min-w-0 flex-1">
+            <span class="block font-body-md text-body-md font-semibold text-text-charcoal">Haftalık bütçe</span>
+            <span class="block text-sm text-text-muted">En az 1.500 TL — kullanılmayan kuponun maliyeti yok</span>
+          </span>
+          <span class="rounded border border-border-noble px-unit-2 py-1 font-label-caps text-[10px] tracking-[0.05em] text-text-charcoal font-semibold">AÇIK</span>
+        </a>
+      </li>
+      <li class="border-b border-border-noble">
+        <a class="flex items-center gap-unit-4 py-unit-3 transition-colors hover:bg-surface-sunk" href="#">
+          <span class="min-w-0 flex-1">
+            <span class="block font-body-md text-body-md font-semibold text-text-charcoal">Ürünler</span>
+            <span class="block text-sm text-text-muted">Menün — ödüllerin ve kampanyaların dayanağı</span>
+          </span>
+          <span class="rounded border border-border-noble px-unit-2 py-1 font-label-caps text-[10px] tracking-[0.05em] text-text-charcoal font-semibold">AÇIK</span>
+        </a>
+      </li>
+      <li class="border-b border-border-noble">
+        <a class="flex items-center gap-unit-4 py-unit-3 transition-colors hover:bg-surface-sunk" href="#">
+          <span class="min-w-0 flex-1">
+            <span class="block font-body-md text-body-md font-semibold text-text-charcoal">Ödül kataloğu</span>
+            <span class="block text-sm text-text-muted">Ürün ödülü ve TL tavanlı indirim kuponu</span>
+          </span>
+          <span class="rounded border border-border-noble px-unit-2 py-1 font-label-caps text-[10px] tracking-[0.05em] text-text-charcoal font-semibold">AÇIK</span>
+        </a>
+      </li>
+      <li class="border-b border-border-noble">
+        <a class="flex items-center gap-unit-4 py-unit-3 transition-colors hover:bg-surface-sunk" href="#">
+          <span class="min-w-0 flex-1">
+            <span class="block font-body-md text-body-md font-semibold text-text-charcoal">Ürün kampanyaları</span>
+            <span class="block text-sm text-text-muted">Yüzde indirimi — tavan, adet ve süre limitiyle</span>
+          </span>
+          <span class="rounded border border-border-noble px-unit-2 py-1 font-label-caps text-[10px] tracking-[0.05em] text-text-charcoal font-semibold">AÇIK</span>
+        </a>
+      </li>
+      <li class="border-b border-border-noble opacity-55">
+        <div class="flex items-center gap-unit-4 py-unit-3">
+          <span class="min-w-0 flex-1">
+            <span class="block font-body-md text-body-md font-semibold text-text-charcoal">Masa karekodları</span>
+            <span class="block text-sm text-text-muted">Masalara yapıştırılacak kodlar</span>
+          </span>
+          <span class="rounded border border-border-noble px-unit-2 py-1 font-label-caps text-[10px] tracking-[0.05em] text-text-muted font-semibold">YAKINDA</span>
+        </div>
+      </li>
+      <li>
+        <a class="flex items-center gap-unit-4 py-unit-3 transition-colors hover:bg-surface-sunk" href="#">
+          <span class="min-w-0 flex-1">
+            <span class="block font-body-md text-body-md font-semibold text-text-charcoal">Raporlar</span>
+            <span class="block text-sm text-text-muted">Gelen nitelikli oyuncu, fiilen kullanılan indirim, hangi saat doluyor</span>
+          </span>
+          <span class="rounded border border-border-noble px-unit-2 py-1 font-label-caps text-[10px] tracking-[0.05em] text-text-charcoal font-semibold">AÇIK</span>
+        </a>
+      </li>
+    </ul>
+  </section>
+
+  <nav class="border-t border-border-noble pt-unit-6">
+    <button class="font-body-md text-body-md text-text-muted underline" type="button">Çıkış yap</button>
+  </nav>
+</main>

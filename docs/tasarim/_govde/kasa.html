@@ -1,0 +1,60 @@
+<!-- baslik: Kasa · bekleme -->
+<!-- govde: bg-surface-alt text-text-charcoal font-body-md antialiased min-h-screen flex flex-col items-center px-margin-mobile py-unit-8 -->
+
+<!--
+  C2 · /kasa — bekleme hâli
+
+  E7: "Sistemin sahada ayakta kalıp kalmayacağını bu ekran belirler."
+  Menü yok, sekme yok, ayar yok. Tek iş, üç saniye.
+-->
+
+<header class="mb-unit-8 text-center">
+  <div class="font-label-caps text-label-caps tracking-[0.28em] text-primary">CAFEPLAY KASA</div>
+  <h1 class="mt-unit-1 font-headline-md text-headline-md text-text-charcoal">Kupon onayı</h1>
+</header>
+
+<div class="flex w-full max-w-md flex-col gap-unit-8">
+<button class="mb-unit-6 flex w-full items-center justify-center gap-unit-3 rounded-lg bg-primary py-unit-6 font-title-sm text-[20px] text-on-primary transition-transform active:scale-95 font-semibold" type="button">
+      <span class="material-symbols-outlined text-[28px]">qr_code_scanner</span>
+      QR okut
+    </button>
+
+    <label class="flex flex-col gap-unit-2">
+      <span class="font-label-caps text-label-caps text-text-muted">VEYA KUPON KODU</span>
+      <input
+        autocomplete="off"
+        class="tabular w-full rounded-lg border-none bg-surface-sunk py-unit-6 text-center font-data-mono text-[30px] uppercase tracking-[0.3em] text-text-charcoal placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary font-medium"
+        maxlength="6"
+        placeholder="——————"
+        type="text"/>
+    </label>
+
+    <button class="mt-unit-4 w-full rounded-lg border border-primary bg-surface py-unit-4 font-title-sm text-title-sm text-primary transition-transform active:scale-95" type="button">
+      Kontrol et
+    </button>
+
+<section class="border-t border-border-noble pt-unit-6">
+    <h2 class="font-label-caps text-label-caps text-text-muted">BUGÜN</h2>
+
+    <div class="mt-unit-3 flex items-baseline gap-unit-3">
+      <span class="tabular font-data-mono text-[30px] font-bold text-primary">14</span>
+      <span class="text-sm text-text-muted">kupon · 620 TL</span>
+    </div>
+
+    <ul class="mt-unit-4 flex flex-col gap-unit-2">
+      <li class="flex items-baseline justify-between text-sm text-text-muted">
+        <span>Ücretsiz filtre kahve</span><span class="tabular font-data-mono">6</span>
+      </li>
+      <li class="flex items-baseline justify-between text-sm text-text-muted">
+        <span>Ücretsiz kurabiye</span><span class="tabular font-data-mono">5</span>
+      </li>
+      <li class="flex items-baseline justify-between text-sm text-text-muted">
+        <span>Tatlıda indirim</span><span class="tabular font-data-mono">3</span>
+      </li>
+    </ul>
+
+    <p class="mt-unit-4 text-sm text-text-muted">boş varyant: “Bugün henüz kupon kullanılmadı.”</p>
+
+    <button class="mt-unit-8 w-full py-unit-3 text-sm text-text-muted underline" type="button">Vardiyayı kapat</button>
+  </section>
+</div>

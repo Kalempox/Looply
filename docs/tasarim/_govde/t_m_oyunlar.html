@@ -1,0 +1,119 @@
+<!-- baslik: Tüm oyunlar -->
+<!-- govde: bg-surface-alt text-text-charcoal font-body-md antialiased min-h-screen pb-24 -->
+
+<!--
+  B3b · /oyunlar — oyun listesi.
+
+  Ana ekrandan AYRI duruyor çünkü oyun sayısı artacak. Ana ekranın tek kararı
+  "bugünün oyunu"; katalog burada. Ü10: kategori YOK — filtre sekmesi, "popüler",
+  "strateji" gibi ayrımlar ilk sürümde yapılmayacak. Liste düz ve tek eksenli,
+  üç oyunda da otuz oyunda da aynı biçimde okunuyor.
+
+  Arama alanı liste uzadığında işe yarıyor; kategori değil, aynı listenin
+  daraltılmış hâli.
+-->
+
+<main class="mx-auto flex w-full max-w-md flex-col gap-unit-6 px-margin-mobile pt-unit-6">
+
+  <a class="flex w-fit items-center gap-unit-2 text-text-muted" href="#">
+    <span class="material-symbols-outlined text-[20px]">arrow_back</span>
+    <span class="font-label-caps text-label-caps">OYNA</span>
+  </a>
+
+  <header class="flex flex-col gap-unit-1">
+    <span class="font-label-caps text-label-caps text-text-muted">OYUNLAR</span>
+    <h1 class="font-display-lg text-[40px] font-extrabold leading-[44px] tracking-[-0.04em] text-text-charcoal">Tüm oyunlar</h1>
+  </header>
+
+  <!-- Arama — liste uzadıkça anlamlanıyor -->
+  <div class="flex items-center gap-unit-3 rounded-lg bg-surface-sunk px-unit-4 py-unit-3">
+    <span class="material-symbols-outlined text-[20px] text-text-muted">search</span>
+    <input class="w-full border-none bg-transparent p-0 font-body-md text-body-md text-text-charcoal placeholder:text-text-muted focus:ring-0" placeholder="Oyun ara" type="text"/>
+  </div>
+
+  <!-- Bugünün oyunu listenin başında, altın çerçeveyle -->
+  <section class="flex flex-col gap-unit-3">
+    <div class="flex items-baseline justify-between">
+      <h2 class="font-label-caps text-label-caps text-reward-ink">BUGÜNÜN OYUNU</h2>
+      <span class="font-data-mono text-[10px] font-medium text-reward-ink">×2 PUAN</span>
+    </div>
+    <button class="flex w-full items-center gap-unit-4 rounded-xl border border-reward-gold bg-surface p-unit-4 text-left transition-transform active:scale-[0.98]" type="button">
+      <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-reward-fixed">
+        <span class="material-symbols-outlined text-[24px] text-reward-ink" style="font-variation-settings: 'FILL' 1;">grid_view</span>
+      </span>
+      <span class="min-w-0 flex-1">
+        <span class="block font-title-sm text-title-sm text-text-charcoal">Blok</span>
+        <span class="block font-body-md text-body-md text-text-muted">Parçaları yerleştir, satırları temizle</span>
+        <span class="mt-unit-1 block font-label-caps text-label-caps text-text-muted">5 BÖLÜM</span>
+      </span>
+      <span class="material-symbols-outlined text-[20px] text-reward-ink">arrow_forward</span>
+    </button>
+  </section>
+
+  <!-- Katalog — tek eksenli liste, oyun sayısı arttıkça uzar -->
+  <section class="flex flex-col gap-unit-3">
+    <h2 class="font-label-caps text-label-caps text-text-muted">HEPSİ · 3 OYUN</h2>
+
+    <ul class="overflow-hidden rounded-xl border border-border-noble bg-surface">
+      <li class="border-b border-border-noble">
+        <button class="flex w-full items-center gap-unit-4 p-unit-4 text-left transition-colors hover:bg-surface-sunk" type="button">
+          <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-surface-sunk">
+            <span class="material-symbols-outlined text-[24px] text-primary">grid_view</span>
+          </span>
+          <span class="min-w-0 flex-1">
+            <span class="block font-title-sm text-title-sm text-text-charcoal">Blok</span>
+            <span class="block font-body-md text-body-md text-text-muted">Parçaları yerleştir, satırları temizle</span>
+          </span>
+          <span class="font-label-caps text-label-caps text-text-muted">5 BÖLÜM</span>
+        </button>
+      </li>
+
+      <li class="border-b border-border-noble">
+        <button class="flex w-full items-center gap-unit-4 p-unit-4 text-left transition-colors hover:bg-surface-sunk" type="button">
+          <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-surface-sunk">
+            <span class="material-symbols-outlined text-[24px] text-primary">abc</span>
+          </span>
+          <span class="min-w-0 flex-1">
+            <span class="block font-title-sm text-title-sm text-text-charcoal">Kelime</span>
+            <span class="block font-body-md text-body-md text-text-muted">Harflerden kelime çıkar</span>
+          </span>
+          <span class="font-label-caps text-label-caps text-text-muted">5 BÖLÜM</span>
+        </button>
+      </li>
+
+      <li>
+        <button class="flex w-full items-center gap-unit-4 p-unit-4 text-left transition-colors hover:bg-surface-sunk" type="button">
+          <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-surface-sunk">
+            <span class="material-symbols-outlined text-[24px] text-primary">stacked_bar_chart</span>
+          </span>
+          <span class="min-w-0 flex-1">
+            <span class="block font-title-sm text-title-sm text-text-charcoal">Düşen</span>
+            <span class="block font-body-md text-body-md text-text-muted">İnen parçalarla satır doldur</span>
+          </span>
+          <span class="font-label-caps text-label-caps text-text-muted">5 BÖLÜM</span>
+        </button>
+      </li>
+    </ul>
+
+    <p class="text-sm leading-relaxed text-text-muted">
+      Oyunlar partiler hâlinde eklenir. Yeni oyun geldiğinde bu listeye düşer —
+      ana ekranın düzeni değişmez.
+    </p>
+  </section>
+</main>
+
+<!-- Alt gezinme — üç durak -->
+<nav class="fixed bottom-0 left-0 z-50 flex w-full items-center justify-around border-t border-border-noble bg-surface px-unit-4 py-unit-3 pb-safe">
+  <a class="flex flex-col items-center justify-center rounded-lg p-2 font-bold text-primary" href="#">
+    <span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 1;">games</span>
+    <span class="font-label-caps text-label-caps text-[10px] font-semibold tracking-[0.05em]">Oyna</span>
+  </a>
+  <a class="flex flex-col items-center justify-center rounded-lg p-2 text-text-muted transition-colors hover:bg-surface-sunk" href="#">
+    <span class="material-symbols-outlined mb-1">card_giftcard</span>
+    <span class="font-label-caps text-label-caps text-[10px] font-semibold tracking-[0.05em]">Ödüllerim</span>
+  </a>
+  <a class="flex flex-col items-center justify-center rounded-lg p-2 text-text-muted transition-colors hover:bg-surface-sunk" href="#">
+    <span class="material-symbols-outlined mb-1">person</span>
+    <span class="font-label-caps text-label-caps text-[10px] font-semibold tracking-[0.05em]">Profilim</span>
+  </a>
+</nav>

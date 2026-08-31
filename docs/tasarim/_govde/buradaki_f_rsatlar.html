@@ -1,0 +1,149 @@
+<!-- baslik: Buradaki fırsatlar -->
+<!-- govde: bg-surface-alt text-text-charcoal font-body-md antialiased pb-24 md:pb-0 pt-14 selection:bg-primary-fixed selection:text-primary -->
+
+<!-- TopAppBar -->
+<!-- Main Canvas -->
+<main class="w-full max-w-lg mx-auto px-margin-mobile flex flex-col gap-unit-8 mt-unit-6 md:mt-unit-8">
+<!-- Header Section -->
+<section class="flex flex-col items-start gap-unit-2">
+<div class="flex items-center gap-unit-2">
+<span class="font-label-caps text-label-caps text-primary uppercase tracking-widest bg-primary-fixed/30 px-3 py-1 rounded-full border border-primary-fixed">FIRSATLAR</span>
+</div>
+<h1 class="font-display-lg text-display-lg text-text-charcoal text-balance">Buradaki fırsatlar</h1>
+<div class="inline-flex items-center gap-2 bg-surface-alt border border-border-noble rounded-lg px-unit-3 py-2 mt-unit-2">
+<span class="material-symbols-outlined text-text-muted text-sm">storefront</span>
+<span class="font-title-sm text-title-sm text-text-charcoal">Kahve Durağı <span class="text-text-muted font-normal mx-1">·</span> Masa 3</span>
+</div>
+</section>
+<!-- Points Card (Hero) -->
+<section>
+<div class="bg-surface border border-border-noble rounded-xl p-unit-6 flex flex-col items-center text-center gap-unit-4 relative overflow-hidden group">
+<div class="relative z-10 flex flex-col items-center">
+<span class="font-label-caps text-label-caps text-text-muted uppercase mb-unit-1">BU KAFEDEKİ PUANIN</span>
+<div class="flex items-baseline gap-2">
+<span class="material-symbols-outlined text-primary text-3xl" style="font-variation-settings: 'FILL' 1;">stars</span>
+<span class="font-display-lg text-display-lg text-primary font-data-mono">1.800</span>
+</div>
+</div>
+<!-- Progress Indicator -->
+<div class="w-full relative z-10 mt-unit-2">
+<div class="h-3 w-full bg-surface-sunk rounded-full overflow-hidden border border-border-noble/50 shadow-inner">
+<div class="h-full bg-reward-gold w-[30%] relative">
+<!-- Subtle stripe pattern for progress -->
+<div class="absolute inset-0 opacity-20" style="background-image: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255,255,255,0.5) 10px, rgba(255,255,255,0.5) 20px);"></div>
+</div>
+</div>
+<div class="flex justify-between mt-unit-1 px-1">
+<span class="font-data-mono text-data-mono text-text-muted text-xs">0</span>
+<span class="font-data-mono text-data-mono text-text-muted text-xs">Sıradaki Ödül: 6.000</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Product Discounts Bento Grid -->
+<section class="flex flex-col gap-unit-4">
+<h2 class="font-title-sm text-title-sm text-text-charcoal">Ürün indirimleri</h2>
+<div class="grid grid-cols-2 gap-unit-4">
+<!-- Discount Card 1 -->
+<button class="bg-surface border border-border-noble rounded-xl p-unit-4 flex flex-col gap-unit-3 text-left hover:bg-surface-sunk transition-colors duration-200 active:scale-[0.98]">
+<div class="flex justify-between items-start">
+<!-- İndirim bir HATA değil. Kırmızı `danger` rengi; yüzde `reward-gold` taşır. -->
+<div class="bg-reward-fixed text-reward-ink font-title-sm text-title-sm px-2 py-1 rounded-md inline-block">
+<span class="font-data-mono">%10</span>
+</div>
+<span class="material-symbols-outlined text-text-muted">local_cafe</span>
+</div>
+<div class="mt-auto">
+<h3 class="font-title-sm text-title-sm text-text-charcoal leading-tight">Tüm Filtre Kahveler</h3>
+<p class="font-body-md text-body-md text-text-muted text-sm mt-1">Bugüne özel</p>
+</div>
+</button>
+<!-- Discount Card 2 -->
+<button class="bg-surface border border-border-noble rounded-xl p-unit-4 flex flex-col gap-unit-3 text-left hover:bg-surface-sunk transition-colors duration-200 active:scale-[0.98]">
+<div class="flex justify-between items-start">
+<div class="bg-reward-fixed text-reward-ink font-title-sm text-title-sm px-2 py-1 rounded-md inline-block">
+<span class="font-data-mono">%15</span>
+</div>
+<span class="material-symbols-outlined text-text-muted">cake</span>
+</div>
+<div class="mt-auto">
+<h3 class="font-title-sm text-title-sm text-text-charcoal leading-tight">Tatlı Çeşitleri</h3>
+<p class="font-body-md text-body-md text-text-muted text-sm mt-1">İkinci üründe</p>
+</div>
+</button>
+</div>
+</section>
+<!-- Reward Catalog List -->
+<section class="flex flex-col gap-unit-4 mb-unit-8">
+<div class="flex items-center justify-between">
+<h2 class="font-title-sm text-title-sm text-text-charcoal">Ödül kataloğu</h2>
+<span class="font-label-caps text-label-caps text-text-muted">PUANLA ALINIR</span>
+</div>
+<div class="bg-surface border border-border-noble rounded-xl overflow-hidden divide-y divide-border-noble">
+<!-- Catalog Item 1 -->
+<div class="p-unit-4 flex items-center justify-between hover:bg-surface-alt transition-colors">
+<div class="flex items-center gap-unit-3">
+<div class="w-12 h-12 bg-surface-sunk rounded-lg flex items-center justify-center border border-border-noble">
+<span class="material-symbols-outlined text-text-muted">coffee</span>
+</div>
+<div class="flex flex-col">
+<span class="font-title-sm text-title-sm text-text-charcoal">Americano</span>
+<span class="font-body-md text-body-md text-text-muted text-sm">Sıcak veya Soğuk</span>
+</div>
+</div>
+<div class="flex flex-col items-end">
+<span class="font-data-mono text-data-mono text-reward-ink font-bold">6.000</span>
+<span class="font-label-caps text-label-caps text-text-muted text-[10px] font-semibold tracking-[0.05em]">PUAN</span>
+</div>
+</div>
+<!-- Catalog Item 2 -->
+<div class="p-unit-4 flex items-center justify-between hover:bg-surface-alt transition-colors opacity-60">
+<div class="flex items-center gap-unit-3">
+<div class="w-12 h-12 bg-surface-sunk rounded-lg flex items-center justify-center border border-border-noble">
+<span class="material-symbols-outlined text-text-muted">bakery_dining</span>
+</div>
+<div class="flex flex-col">
+<span class="font-title-sm text-title-sm text-text-charcoal">Kruvasan</span>
+<span class="font-body-md text-body-md text-text-muted text-sm">Tereyağlı</span>
+</div>
+</div>
+<div class="flex flex-col items-end">
+<span class="font-data-mono text-data-mono text-text-muted font-bold">12.000</span>
+<span class="font-label-caps text-label-caps text-text-muted text-[10px] font-semibold tracking-[0.05em]">PUAN</span>
+</div>
+</div>
+<!-- Catalog Item 3 -->
+<div class="p-unit-4 flex items-center justify-between hover:bg-surface-alt transition-colors opacity-60">
+<div class="flex items-center gap-unit-3">
+<div class="w-12 h-12 bg-surface-sunk rounded-lg flex items-center justify-center border border-border-noble">
+<span class="material-symbols-outlined text-text-muted">local_drink</span>
+</div>
+<div class="flex flex-col">
+<span class="font-title-sm text-title-sm text-text-charcoal">Soğuk İçecekler</span>
+<span class="font-body-md text-body-md text-text-muted text-sm">Tüm Çeşitler</span>
+</div>
+</div>
+<div class="flex flex-col items-end">
+<span class="font-data-mono text-data-mono text-text-muted font-bold">15.000</span>
+<span class="font-label-caps text-label-caps text-text-muted text-[10px] font-semibold tracking-[0.05em]">PUAN</span>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-3 bg-surface border-t border-border-noble md:hidden">
+<!-- Fırsatlar /oyna altından açılıyor — aktif durak "Oyna". -->
+<a class="flex flex-col items-center justify-center text-primary font-bold hover:bg-surface-sunk transition-colors duration-200 scale-95 active:scale-90 p-2 rounded-lg" href="#">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 1;">games</span>
+<span class="font-label-caps text-label-caps text-[10px] font-semibold tracking-[0.05em]">Oyna</span>
+</a>
+<a class="flex flex-col items-center justify-center text-text-muted hover:bg-surface-sunk transition-colors duration-200 scale-95 active:scale-90 p-2 rounded-lg" href="#">
+<span class="material-symbols-outlined mb-1">card_giftcard</span>
+<span class="font-label-caps text-label-caps text-[10px] font-semibold tracking-[0.05em]">Ödüllerim</span>
+</a>
+<a class="flex flex-col items-center justify-center text-text-muted hover:bg-surface-sunk transition-colors duration-200 scale-95 active:scale-90 p-2 rounded-lg" href="#">
+<span class="material-symbols-outlined mb-1">person</span>
+<span class="font-label-caps text-label-caps text-[10px] font-semibold tracking-[0.05em]">Profilim</span>
+</a>
+</nav>

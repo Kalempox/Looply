@@ -1,0 +1,132 @@
+<!-- baslik: Ürün kampanyaları -->
+<!-- govde: bg-surface-alt text-text-charcoal font-body-md antialiased min-h-screen -->
+
+<!--
+  D8 · /kafe/panel/kampanyalar — Ö4.
+
+  Katalogdaki yüzdeli ödülden farkı: bu PUAN İSTEMEZ ve kafenin itmek istediği
+  ürüne bağlıdır. "Kafede tiramisu satılmıyor — tiramisuda %10, günde en fazla
+  20 adet, bir hafta."
+
+  Canlı sayaç her satırda: kampanyanın ne kadarının kullanıldığı görünmeden
+  limit koymanın anlamı olmaz.
+-->
+
+<main class="mx-auto w-full max-w-4xl px-margin-mobile py-unit-8 sm:px-unit-8">
+
+  <header class="mb-unit-8 border-b border-border-noble pb-unit-6">
+    <div class="font-label-caps text-label-caps text-text-muted">İŞLETME PANELİ</div>
+    <h1 class="mt-unit-2 font-headline-md text-[30px] leading-[34px] tracking-[-0.02em] text-text-charcoal font-bold">Ürün kampanyaları</h1>
+    <p class="mt-unit-3 font-body-md text-body-md text-text-muted">Boş saatini doldur, istediğin ürünü sattır.</p>
+  </header>
+
+  <section class="mb-unit-8">
+    <h2 class="text-[13px] font-semibold text-text-charcoal">Yeni kampanya</h2>
+    <p class="mb-unit-4 text-sm text-text-muted">
+      TL tavanı, günlük adet ve süre — üçü de zorunlu. Yüzde tek başına açık uçlu bir borçtur.
+    </p>
+
+    <div class="rounded-lg border border-border-noble bg-surface p-unit-6">
+      <label class="mb-unit-4 flex flex-col gap-unit-1">
+        <span class="text-[13px] font-semibold text-text-charcoal">Ürün</span>
+        <select class="rounded-lg border border-border-noble bg-surface px-unit-4 py-unit-3 font-body-md text-body-md sm:max-w-xs">
+          <option>Tiramisu — 120 TL</option><option>Soğuk demleme — 65 TL</option>
+        </select>
+      </label>
+
+      <div class="grid gap-unit-4 sm:grid-cols-4">
+        <label class="flex flex-col gap-unit-1">
+          <span class="text-[13px] font-semibold text-text-charcoal">Yüzde</span>
+          <input class="tabular rounded-lg border border-border-noble bg-surface px-unit-4 py-unit-3 font-data-mono text-data-mono" inputmode="numeric" type="text" value="10"/>
+        </label>
+        <label class="flex flex-col gap-unit-1">
+          <span class="text-[13px] font-semibold text-text-charcoal">TL tavanı</span>
+          <input class="tabular rounded-lg border border-border-noble bg-surface px-unit-4 py-unit-3 font-data-mono text-data-mono" inputmode="numeric" type="text" value="25"/>
+        </label>
+        <label class="flex flex-col gap-unit-1">
+          <span class="text-[13px] font-semibold text-text-charcoal">Günlük adet</span>
+          <input class="tabular rounded-lg border border-border-noble bg-surface px-unit-4 py-unit-3 font-data-mono text-data-mono" inputmode="numeric" type="text" value="20"/>
+        </label>
+        <label class="flex flex-col gap-unit-1">
+          <span class="text-[13px] font-semibold text-text-charcoal">Bitiş tarihi</span>
+          <input class="tabular rounded-lg border border-border-noble bg-surface px-unit-4 py-unit-3 font-data-mono text-data-mono" type="date"/>
+        </label>
+      </div>
+
+      <label class="mt-unit-4 flex flex-col gap-unit-1 sm:max-w-xs">
+        <span class="text-[13px] font-semibold text-text-charcoal">Toplam adet <span class="font-normal text-text-muted">— isteğe bağlı</span></span>
+        <input class="tabular rounded-lg border border-border-noble bg-surface px-unit-4 py-unit-3 font-data-mono text-data-mono" inputmode="numeric" type="text"/>
+      </label>
+
+      <button class="mt-unit-6 rounded-lg bg-text-charcoal px-unit-6 py-unit-3 font-title-sm text-title-sm text-white" type="button">Kampanyayı oluştur</button>
+    </div>
+  </section>
+
+  <section class="mb-unit-8">
+    <h2 class="mb-unit-4 text-[13px] font-semibold text-text-charcoal">Kampanyalar · 2 yayında</h2>
+    <ul class="border-y border-border-noble">
+
+      <li class="flex items-start gap-unit-4 border-b border-border-noble py-unit-4">
+        <span class="min-w-0 flex-1">
+          <span class="flex flex-wrap items-center gap-unit-2">
+            <span class="font-body-md text-body-md font-semibold text-text-charcoal">Tiramisu · %10</span>
+            <span class="rounded border border-border-noble px-unit-2 py-[2px] font-label-caps text-[10px] tracking-[0.05em] text-text-charcoal font-semibold">YAYINDA</span>
+          </span>
+          <span class="tabular mt-unit-1 block font-data-mono text-[12px] text-text-muted font-medium">
+            en fazla 25 TL · günde 20 adet · toplam 100 · 3 Eylül tarihine kadar
+          </span>
+          <span class="mt-unit-2 block">
+            <span class="tabular flex items-baseline justify-between font-data-mono text-[11px] text-text-muted font-medium">
+              <span>Bugün 7/20</span><span>toplam 43</span>
+            </span>
+            <span class="mt-unit-1 block h-1 w-full rounded-full bg-surface-sunk">
+              <span class="noble-stripe block h-full rounded-full bg-text-charcoal" style="width:35%"></span>
+            </span>
+          </span>
+        </span>
+        <span class="flex shrink-0 gap-unit-2">
+          <button class="rounded border border-border-noble px-unit-3 py-unit-1 text-sm text-text-muted transition-colors hover:bg-surface-sunk" type="button">Duraklat</button>
+          <button class="rounded border border-border-noble px-unit-3 py-unit-1 text-sm text-text-muted transition-colors hover:bg-surface-sunk" type="button">Bitir</button>
+        </span>
+      </li>
+
+      <li class="flex items-start gap-unit-4 border-b border-border-noble py-unit-4">
+        <span class="min-w-0 flex-1">
+          <span class="flex flex-wrap items-center gap-unit-2">
+            <span class="font-body-md text-body-md font-semibold text-text-charcoal">Soğuk demleme · %15</span>
+            <span class="rounded border border-reward-gold px-unit-2 py-[2px] font-label-caps text-[10px] tracking-[0.05em] text-reward-ink font-semibold">DURAKLATILDI</span>
+          </span>
+          <span class="tabular mt-unit-1 block font-data-mono text-[12px] text-text-muted font-medium">
+            en fazla 12 TL · günde 15 adet · 10 Eylül tarihine kadar
+          </span>
+          <span class="mt-unit-2 block">
+            <span class="tabular flex items-baseline justify-between font-data-mono text-[11px] text-text-muted font-medium">
+              <span>Bugün 0/15</span><span>toplam 18</span>
+            </span>
+            <span class="mt-unit-1 block h-1 w-full rounded-full bg-surface-sunk">
+              <span class="noble-stripe block h-full rounded-full bg-text-charcoal" style="width:0%"></span>
+            </span>
+          </span>
+        </span>
+        <span class="flex shrink-0 gap-unit-2">
+          <button class="rounded border border-border-noble px-unit-3 py-unit-1 text-sm text-text-muted" type="button">Sürdür</button>
+          <button class="rounded border border-border-noble px-unit-3 py-unit-1 text-sm text-text-muted" type="button">Bitir</button>
+        </span>
+      </li>
+
+      <li class="flex items-start gap-unit-4 py-unit-4 opacity-55">
+        <span class="min-w-0 flex-1">
+          <span class="flex flex-wrap items-center gap-unit-2">
+            <span class="font-body-md text-body-md font-semibold text-text-charcoal">Kurabiye · %20</span>
+            <span class="rounded border border-border-noble px-unit-2 py-[2px] font-label-caps text-[10px] tracking-[0.05em] text-text-muted font-semibold">BİTTİ</span>
+          </span>
+          <span class="tabular mt-unit-1 block font-data-mono text-[12px] text-text-muted font-medium">en fazla 10 TL · 20 Ağustos tarihinde bitti</span>
+        </span>
+      </li>
+    </ul>
+
+    <p class="mt-unit-4 text-sm text-text-muted">boş varyant · “Henüz kampanya yok.”</p>
+  </section>
+
+  <a class="font-body-md text-body-md text-text-muted underline" href="#">Panele dön</a>
+</main>

@@ -1,0 +1,149 @@
+<!-- baslik: Oyun — Blok -->
+<!-- govde: bg-surface-alt text-text-charcoal h-screen w-full flex flex-col select-none overflow-hidden font-body-md text-body-md -->
+
+<!-- Header Chrome -->
+<header class="flex justify-between items-center px-margin-mobile py-unit-3 w-full border-b border-border-noble bg-surface">
+<div class="flex items-center gap-unit-2">
+<span class="material-symbols-outlined text-primary cursor-pointer active:scale-95 duration-200" data-icon="arrow_back">arrow_back</span>
+<div class="font-label-caps text-label-caps text-text-muted tracking-widest uppercase">BLOK · 1. BÖLÜM</div>
+</div>
+<div class="flex items-center gap-unit-3">
+<div class="flex flex-col items-end">
+<span class="font-data-mono text-data-mono text-primary font-bold">1.250</span>
+<span class="font-label-caps text-label-caps text-text-muted text-[10px] font-semibold tracking-[0.05em]">SKOR</span>
+</div>
+<span class="material-symbols-outlined text-reward-ink" data-icon="stars" style="font-variation-settings: 'FILL' 1;">stars</span>
+</div>
+</header>
+<!-- Main Game Area (Player View Lens: dynamic, vertical stacks, large padding) -->
+<main class="flex-1 flex flex-col items-center justify-start pt-unit-8 px-margin-mobile relative">
+<!-- Score / Stats above grid -->
+<div class="w-full max-w-[340px] flex justify-between items-end mb-unit-6 px-unit-2">
+<div>
+<div class="font-label-caps text-label-caps text-text-muted mb-1">HEDEF</div>
+<div class="font-data-mono text-data-mono text-text-charcoal">3.000</div>
+</div>
+<!-- Ü21: Blok'ta ZAMAN YOK. Girdi kaydı (teklif, satır, sütun) üçlülerinden
+     ibaret; sunucu tohumdan aynı parçaları üretip hamleleri tekrar oynuyor.
+     Süre sayacı, doğrulamanın hiç bakmadığı bir şeyi vaat ederdi.
+     Yerinde duran şey oyunun gerçek ölçüsü: temizlenen satır. -->
+<div class="text-right">
+<div class="font-label-caps text-label-caps text-text-muted mb-1">TEMİZLENEN</div>
+<div class="tabular font-data-mono text-data-mono text-text-charcoal">6</div>
+</div>
+</div>
+<!-- 8x8 Game Board Grid -->
+<div class="bg-surface p-unit-2 rounded-lg border border-border-noble mb-unit-8 touch-none">
+<div class="grid grid-cols-8 grid-rows-8 gap-base w-[320px] h-[320px]">
+<!-- Row 1 -->
+<div class="bg-surface-sunk border border-border-noble/50 rounded-sm"></div>
+<div class="bg-surface-sunk border border-border-noble/50 rounded-sm"></div>
+<div class="bg-primary noble-stripe rounded-sm shadow-[inset_0_1px_3px_rgba(255,255,255,0.3)]"></div>
+<div class="bg-primary noble-stripe rounded-sm shadow-[inset_0_1px_3px_rgba(255,255,255,0.3)]"></div>
+<div class="bg-surface-sunk border border-border-noble/50 rounded-sm"></div>
+<div class="bg-surface-sunk border border-border-noble/50 rounded-sm"></div>
+<div class="bg-surface-sunk border border-border-noble/50 rounded-sm"></div>
+<div class="bg-surface-sunk border border-border-noble/50 rounded-sm"></div>
+<!-- Row 2 -->
+<div class="bg-surface-sunk border border-border-noble/50 rounded-sm"></div>
+<div class="bg-surface-sunk border border-border-noble/50 rounded-sm"></div>
+<div class="bg-primary noble-stripe rounded-sm shadow-[inset_0_1px_3px_rgba(255,255,255,0.3)]"></div>
+<div class="bg-surface-sunk border border-border-noble/50 rounded-sm"></div>
+<div class="bg-surface-sunk border border-border-noble/50 rounded-sm"></div>
+<div class="bg-surface-sunk border border-border-noble/50 rounded-sm"></div>
+<div class="bg-reward-gold noble-stripe rounded-sm shadow-[inset_0_1px_3px_rgba(255,255,255,0.4)]"></div>
+<div class="bg-reward-gold noble-stripe rounded-sm shadow-[inset_0_1px_3px_rgba(255,255,255,0.4)]"></div>
+<!-- Row 3 -->
+<div class="bg-reward-gold rounded-sm shadow-[inset_0_1px_2px_rgba(255,255,255,0.5)]"></div>
+<div class="bg-reward-gold rounded-sm shadow-[inset_0_1px_2px_rgba(255,255,255,0.5)]"></div>
+<div class="bg-reward-gold rounded-sm shadow-[inset_0_1px_2px_rgba(255,255,255,0.5)]"></div>
+<div class="bg-surface-sunk border border-border-noble/50 rounded-sm"></div>
+<div class="bg-surface-sunk border border-border-noble/50 rounded-sm"></div>
+<div class="bg-surface-sunk border border-border-noble/50 rounded-sm"></div>
+<div class="bg-reward-gold noble-stripe rounded-sm shadow-[inset_0_1px_3px_rgba(255,255,255,0.4)]"></div>
+<div class="bg-surface-sunk border border-border-noble/50 rounded-sm"></div>
+<!-- Row 4 -->
+<div class="bg-reward-gold rounded-sm shadow-[inset_0_1px_2px_rgba(255,255,255,0.5)]"></div>
+<div class="bg-surface-sunk border border-border-noble/50 rounded-sm"></div>
+<div class="bg-surface-sunk border border-border-noble/50 rounded-sm"></div>
+<div class="bg-surface-sunk border border-border-noble/50 rounded-sm"></div>
+<div class="bg-surface-sunk border border-border-noble/50 rounded-sm"></div>
+<div class="bg-surface-sunk border border-border-noble/50 rounded-sm"></div>
+<div class="bg-surface-sunk border border-border-noble/50 rounded-sm"></div>
+<div class="bg-surface-sunk border border-border-noble/50 rounded-sm"></div>
+<!-- Row 5 -->
+<div class="bg-surface-sunk border border-border-noble/50 rounded-sm"></div>
+<div class="bg-surface-sunk border border-border-noble/50 rounded-sm"></div>
+<div class="bg-surface-sunk border border-border-noble/50 rounded-sm"></div>
+<div class="bg-surface-sunk border border-border-noble/50 rounded-sm"></div>
+<div class="bg-surface-sunk border border-border-noble/50 rounded-sm"></div>
+<div class="bg-surface-sunk border border-border-noble/50 rounded-sm"></div>
+<div class="bg-surface-sunk border border-border-noble/50 rounded-sm"></div>
+<div class="bg-surface-sunk border border-border-noble/50 rounded-sm"></div>
+<!-- Row 6 -->
+<div class="bg-surface-sunk border border-border-noble/50 rounded-sm"></div>
+<div class="bg-primary rounded-sm shadow-[inset_0_1px_2px_rgba(255,255,255,0.3)]"></div>
+<div class="bg-primary rounded-sm shadow-[inset_0_1px_2px_rgba(255,255,255,0.3)]"></div>
+<div class="bg-surface-sunk border border-border-noble/50 rounded-sm"></div>
+<div class="bg-surface-sunk border border-border-noble/50 rounded-sm"></div>
+<div class="bg-surface-sunk border border-border-noble/50 rounded-sm"></div>
+<div class="bg-surface-sunk border border-border-noble/50 rounded-sm"></div>
+<div class="bg-surface-sunk border border-border-noble/50 rounded-sm"></div>
+<!-- Row 7 -->
+<div class="bg-surface-sunk border border-border-noble/50 rounded-sm"></div>
+<div class="bg-primary rounded-sm shadow-[inset_0_1px_2px_rgba(255,255,255,0.3)]"></div>
+<div class="bg-primary rounded-sm shadow-[inset_0_1px_2px_rgba(255,255,255,0.3)]"></div>
+<div class="bg-surface-sunk border border-border-noble/50 rounded-sm"></div>
+<div class="bg-reward-gold rounded-sm shadow-[inset_0_1px_2px_rgba(255,255,255,0.3)]"></div>
+<div class="bg-reward-gold rounded-sm shadow-[inset_0_1px_2px_rgba(255,255,255,0.3)]"></div>
+<div class="bg-reward-gold rounded-sm shadow-[inset_0_1px_2px_rgba(255,255,255,0.3)]"></div>
+<div class="bg-surface-sunk border border-border-noble/50 rounded-sm"></div>
+<!-- Row 8 -->
+<div class="bg-surface-sunk border border-border-noble/50 rounded-sm"></div>
+<div class="bg-surface-sunk border border-border-noble/50 rounded-sm"></div>
+<div class="bg-surface-sunk border border-border-noble/50 rounded-sm"></div>
+<div class="bg-surface-sunk border border-border-noble/50 rounded-sm"></div>
+<div class="bg-surface-sunk border border-border-noble/50 rounded-sm"></div>
+<div class="bg-surface-sunk border border-border-noble/50 rounded-sm"></div>
+<div class="bg-surface-sunk border border-border-noble/50 rounded-sm"></div>
+<div class="bg-surface-sunk border border-border-noble/50 rounded-sm"></div>
+</div>
+</div>
+<!-- Piece Tray (Three offered pieces on separate cards) -->
+<div class="w-full max-w-[340px] flex justify-between gap-unit-2 mb-unit-4">
+<!-- Piece 1 (L shape) -->
+<div class="flex-1 bg-surface border border-border-noble rounded-lg h-24 flex items-center justify-center cursor-pointer active:scale-95 transition-transform">
+<div class="grid grid-cols-2 grid-rows-3 gap-[2px] scale-[0.6] origin-center">
+<div class="w-6 h-6 bg-primary rounded-[2px]"></div>
+<div class="w-6 h-6"></div>
+<div class="w-6 h-6 bg-primary rounded-[2px]"></div>
+<div class="w-6 h-6"></div>
+<div class="w-6 h-6 bg-primary rounded-[2px]"></div>
+<div class="w-6 h-6 bg-primary rounded-[2px]"></div>
+</div>
+</div>
+<!-- Piece 2 (2x2 square) -->
+<div class="flex-1 bg-surface border border-border-noble rounded-lg h-24 flex items-center justify-center cursor-pointer active:scale-95 transition-transform">
+<div class="grid grid-cols-2 grid-rows-2 gap-[2px] scale-[0.7] origin-center">
+<div class="w-6 h-6 bg-primary rounded-[2px]"></div>
+<div class="w-6 h-6 bg-primary rounded-[2px]"></div>
+<div class="w-6 h-6 bg-primary rounded-[2px]"></div>
+<div class="w-6 h-6 bg-primary rounded-[2px]"></div>
+</div>
+</div>
+<!-- Piece 3 (1x3 line) -->
+<div class="flex-1 bg-surface border border-border-noble rounded-lg h-24 flex items-center justify-center cursor-pointer active:scale-95 transition-transform opacity-40 grayscale pointer-events-none">
+<div class="grid grid-cols-3 grid-rows-1 gap-[2px] scale-[0.7] origin-center">
+<div class="w-6 h-6 bg-reward-gold rounded-[2px]"></div>
+<div class="w-6 h-6 bg-reward-gold rounded-[2px]"></div>
+<div class="w-6 h-6 bg-reward-gold rounded-[2px]"></div>
+</div>
+</div>
+</div>
+</main>
+<!-- Footer: Server verification text -->
+<footer class="w-full text-center py-unit-3 px-margin-mobile bg-surface-alt mt-auto">
+<div class="font-data-mono text-[11px] text-text-muted opacity-80 animate-pulse font-medium">
+            Sunucu skorunu doğruluyor…
+        </div>
+</footer>
