@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { OyunEkrani } from "@/oyunlar/arayuz";
-import { KoyuKart } from "@/components/oyuncu";
+import { RENK, oyunRengi } from "@/components/oyuncu-renk";
+import { OyunIkonu, HediyeIkonu, TacIkonu } from "@/components/oyuncu-ikon";
 import { baslaEylemi, bitirEylemi, type BitirCevabi } from "./actions";
 
 /**
@@ -16,14 +17,15 @@ import { baslaEylemi, bitirEylemi, type BitirCevabi } from "./actions";
  * Tohum **sunucudan** geliyor. İstemci tohum seçebilseydi, kolay dizi veren
  * tohumu arayıp her seferinde onu oynardı.
  *
- * ── Görsel dil (Ü64) ────────────────────────────────────────
+ * ── Renk oyunun kendi rengi (Ü65) ───────────────────────────
  *
- * Kabuğun iki ekranı da (bölüm seçimi ve sonuç) koyu: burası oyunun
- * kendisi, uygulamanın en heyecanlı yeri. Aradaki **oyun alanı** koyu
- * değil — oyunun kendi görünümü var ve kabuk onun üstüne renk basmıyor.
+ * Ü64'te kabuğun iki ekranı da koyu mordu ve üç oyun birbirinden
+ * ayırt edilemiyordu. Şimdi her oyun kendi renginde — Blok gök, Kelime
+ * menekşe, Düşen gül — ve bu renk ana ekrandaki karodan başlayıp oyun
+ * sonu ekranına kadar sürüyor.
  *
- * Tek istisna hata ekranı: "kayıt doğrulanamadı" kutlanacak bir şey
- * değil, sakin ve okunur kalıyor.
+ * Aradaki **oyun alanı** renklenmiyor: oyunun kendi görünümü var ve
+ * kabuk onun üstüne renk basmıyor.
  */
 
 type Ayar = {
@@ -58,6 +60,7 @@ export function OyunKabugu(ayar: Ayar) {
   const [hata, setHata] = useState<string | null>(null);
   const [bekliyor, basla] = useTransition();
   const otomatikBasladi = useRef(false);
+  const r = RENK[oyunRengi(ayar.oyunId)];
 
   const bolumBaslat = useCallback(
     (bolum: number) => {
@@ -96,9 +99,12 @@ export function OyunKabugu(ayar: Ayar) {
     return (
       <div>
         <div className="mb-4 flex items-center justify-between gap-3">
-          <h1 className="inline-flex items-center gap-2 rounded-full bg-cukur px-3 py-1.5">
-            <span aria-hidden>{ayar.emoji}</span>
-            <span className="etiket-caps text-yazi-sonuk">
+          <h1
+            className="inline-flex items-center gap-2 rounded-full px-3 py-1.5"
+            style={{ background: r.zemin }}
+          >
+            <OyunIkonu oyunId={ayar.oyunId} boy={16} />
+            <span className="etiket-caps" style={{ color: r.koyu }}>
               {ayar.ad} · {durum.bolum}. bölüm
             </span>
           </h1>
@@ -148,7 +154,7 @@ export function OyunKabugu(ayar: Ayar) {
         </div>
       )}
 
-      {/* Uyarı koyu kartın ÜSTÜNDE: altına konsaydı oyuncu bölüme
+      {/* Uyarı renkli kartın ÜSTÜNDE: altına konsaydı oyuncu bölüme
           dokunduktan sonra okurdu. */}
       {!ayar.kazandirir && (
         <div className="mb-5 border-l-2 border-odul pl-4 text-[13px] leading-relaxed text-yazi-sonuk">
@@ -158,43 +164,48 @@ export function OyunKabugu(ayar: Ayar) {
         </div>
       )}
 
-      <KoyuKart>
+      <div
+        className="overflow-hidden rounded-3xl px-5 py-6"
+        style={{ background: r.zemin, border: `1px solid ${r.canli}` }}
+      >
         <div className="flex items-start gap-3.5">
-          <span
-            className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-white/12 text-2xl leading-none"
-            aria-hidden
-          >
-            {ayar.emoji}
+          <span className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-yuzey shadow-sm">
+            <OyunIkonu oyunId={ayar.oyunId} boy={34} />
           </span>
           <div className="min-w-0 flex-1">
             <h1 className="font-display text-2xl leading-tight font-extrabold tracking-tight">
               {ayar.ad}
             </h1>
-            <p className="mt-1 text-[13px] leading-relaxed text-white/60">{ayar.ozet}</p>
+            <p className="mt-1 text-[13px] leading-relaxed" style={{ color: r.koyu }}>
+              {ayar.ozet}
+            </p>
           </div>
         </div>
 
         {ayar.bonusMu && ayar.kazandirir && (
-          <div className="mt-4 inline-block rounded-full border border-odul/50 bg-odul/[0.14] px-3 py-1 etiket-caps text-[10px] text-odul">
+          <div className="mt-4 inline-block rounded-full border border-odul bg-yuzey px-3 py-1 etiket-caps text-[10px] text-odul-koyu">
             Bugünün oyunu · ×2 puan
           </div>
         )}
 
         <div className="mt-6">
-          <div className="etiket-caps text-white/55">Bölüm seç</div>
+          <div className="etiket-caps" style={{ color: r.ana }}>
+            Bölüm seç
+          </div>
           <ul className="mt-2.5 grid grid-cols-3 gap-2.5">
             {Array.from({ length: ayar.bolumSayisi }, (_, i) => i + 1).map((bolum) => (
               <li key={bolum}>
                 <BolumKutusu
                   bolum={bolum}
                   bekliyor={bekliyor}
+                  oyunId={ayar.oyunId}
                   onSec={() => bolumBaslat(bolum)}
                 />
               </li>
             ))}
           </ul>
         </div>
-      </KoyuKart>
+      </div>
 
       <Link href="/oyna" className="mt-7 inline-block text-[14px] text-vurgu underline">
         Ana ekrana dön
@@ -218,21 +229,28 @@ export function OyunKabugu(ayar: Ayar) {
 function BolumKutusu({
   bolum,
   bekliyor,
+  oyunId,
   onSec,
 }: {
   bolum: number;
   bekliyor: boolean;
+  oyunId: string;
   onSec: () => void;
 }) {
+  const r = RENK[oyunRengi(oyunId)];
+
   return (
     <button
       type="button"
       disabled={bekliyor}
       onClick={onSec}
-      className="flex aspect-square w-full flex-col items-center justify-center rounded-2xl border border-white/15 bg-white/10 transition-all hover:border-odul hover:bg-white/[0.18] active:scale-95 disabled:opacity-40"
+      className="flex aspect-square w-full flex-col items-center justify-center rounded-2xl bg-yuzey shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md active:scale-95 disabled:opacity-40"
+      style={{ border: `1px solid ${r.canli}` }}
     >
-      <span className="font-data text-2xl leading-none font-bold text-white tabular">{bolum}</span>
-      <span className="mt-1 etiket-caps text-[9px] text-white/50">bölüm</span>
+      <span className="font-data text-2xl leading-none font-bold tabular" style={{ color: r.ana }}>
+        {bolum}
+      </span>
+      <span className="mt-1 etiket-caps text-[9px] text-yazi-sonuk">bölüm</span>
     </button>
   );
 }
@@ -270,7 +288,7 @@ function SonucEkrani({
             )}
           </p>
         </div>
-        <Dugmeler tekrar={tekrar} geri={geri} />
+        <Dugmeler tekrar={tekrar} geri={geri} oyunId={ayar.oyunId} />
       </div>
     );
   }
@@ -332,19 +350,6 @@ function SonucEkrani({
     });
   }
 
-  // Ö1: taht statüden ibaret — puan, kupon veya çarpan vermiyor. Satır
-  // bu yüzden bir kazanım değil, bir haber.
-  if (taht?.devirdi) {
-    satirlar.push({
-      baslik: taht.eskiSkor === null ? "Tahta oturdun" : "Tahtı devirdin",
-      aciklama:
-        taht.eskiSkor === null
-          ? "Bu masada ilk skoru sen yazdın. Devrilene kadar kral sensin."
-          : `Önceki kral ${taht.eskiSkor.toLocaleString("tr-TR")} yapmıştı. Adın bu masada kalıyor.`,
-      vurgu: true,
-    });
-  }
-
   if (yeniRozetler.length > 0) {
     satirlar.push({
       baslik: `${yeniRozetler.length} yeni rozet`,
@@ -353,11 +358,19 @@ function SonucEkrani({
     });
   }
 
+  const r = RENK[oyunRengi(ayar.oyunId)];
+
   return (
     <div>
-      <KoyuKart>
-        <div className="etiket-caps text-white/55">
-          {ayar.ad} · {bolum}. bölüm
+      <div
+        className="overflow-hidden rounded-3xl px-5 py-6"
+        style={{ background: r.zemin, border: `1px solid ${r.canli}` }}
+      >
+        <div className="flex items-center gap-2">
+          <OyunIkonu oyunId={ayar.oyunId} boy={16} />
+          <span className="etiket-caps" style={{ color: r.ana }}>
+            {ayar.ad} · {bolum}. bölüm
+          </span>
         </div>
         <h1 className="mt-1.5 font-display text-3xl leading-none font-extrabold tracking-tight">
           {basarili ? "Bölüm tamam" : "Bölüm bitti"}
@@ -365,20 +378,41 @@ function SonucEkrani({
 
         {/* Skor tek başına ortada: ekranın tek büyük sayısı o. */}
         <div className="mt-6 text-center">
-          <div className="etiket-caps text-white/55">Skor</div>
+          <div className="etiket-caps text-yazi-sonuk">Skor</div>
           <div
-            className={`patla mt-1 font-data text-6xl leading-none font-bold tabular ${
-              basarili ? "text-odul" : "text-white"
-            }`}
+            className="patla mt-1 font-data text-6xl leading-none font-bold tabular"
+            style={{ color: basarili ? r.ana : "var(--color-yazi)" }}
           >
             {skor.toLocaleString("tr-TR")}
           </div>
-          <div className="mt-2 font-data text-[9px] text-white/40">sunucuda doğrulandı</div>
+          <div className="mt-2 font-data text-[9px] text-yazi-sonuk">sunucuda doğrulandı</div>
         </div>
 
         <div className="mt-6 flex flex-col gap-2">
+          {/* Ö1: taht statüden ibaret — puan, kupon veya çarpan
+              vermiyor. Ama ekranın en gurur verici satırı o, bu yüzden
+              diğer kazanımların üstünde ve tek başına duruyor. */}
+          {taht?.devirdi && (
+            <div
+              className="gir flex items-center gap-3 rounded-2xl bg-yuzey px-4 py-3.5 shadow-sm"
+              style={{ animationDelay: "100ms", border: "1px solid var(--color-odul)" }}
+            >
+              <TacIkonu boy={30} />
+              <span className="min-w-0 flex-1">
+                <span className="block font-display text-[16px] leading-tight font-bold text-odul-koyu">
+                  {taht.eskiSkor === null ? "Tahta oturdun" : "Tahtı devirdin"}
+                </span>
+                <span className="mt-0.5 block text-[13px] leading-relaxed text-yazi-sonuk">
+                  {taht.eskiSkor === null
+                    ? "Bu masada ilk skoru sen yazdın. Devrilene kadar kral sensin."
+                    : `Önceki kral ${taht.eskiSkor.toLocaleString("tr-TR")} yapmıştı. Adın bu masada kalıyor.`}
+                </span>
+              </span>
+            </div>
+          )}
+
           {satirlar.map((s, i) => (
-            <KazanimSatiri key={s.baslik} {...s} gecikme={150 + i * 90} />
+            <KazanimSatiri key={s.baslik} {...s} renk={r.ana} gecikme={190 + i * 90} />
           ))}
 
           {/* E2: anlık ödül. Oyuncuya ödülün ADI söyleniyor, TL değeri
@@ -388,24 +422,35 @@ function SonucEkrani({
           {kupon && (
             <Link
               href="/oduller"
-              className="gir block rounded-xl border border-odul bg-odul/[0.16] px-4 py-4 transition-colors hover:bg-odul/25"
-              style={{ animationDelay: `${150 + satirlar.length * 90}ms` }}
+              className="gir flex items-center gap-3 rounded-2xl bg-odul-zemin px-4 py-4 transition-colors hover:brightness-95"
+              style={{
+                animationDelay: `${190 + satirlar.length * 90}ms`,
+                border: "1px solid var(--color-odul)",
+              }}
             >
-              <div className="etiket-caps text-odul">Ödül kazandın</div>
-              <div className="mt-1.5 font-display text-lg leading-tight font-bold text-white">
-                {kupon.baslik}
-              </div>
-              <p className="mt-1 text-[13px] leading-relaxed text-white/60">
-                {kupon.ertelendi
-                  ? "24 saat sonra açılıyor. Ödüllerim ekranından takip edebilirsin."
-                  : "Ödüllerim ekranından kasada gösterebilirsin."}
-              </p>
+              <HediyeIkonu boy={36} />
+              <span className="min-w-0 flex-1">
+                <span className="block etiket-caps text-odul-koyu">Ödül kazandın</span>
+                <span className="mt-1 block font-display text-lg leading-tight font-bold">
+                  {kupon.baslik}
+                </span>
+                <span className="mt-0.5 block text-[13px] leading-relaxed text-yazi-sonuk">
+                  {kupon.ertelendi
+                    ? "24 saat sonra açılıyor. Ödüllerim ekranından takip edebilirsin."
+                    : "Ödüllerim ekranından kasada gösterebilirsin."}
+                </span>
+              </span>
             </Link>
           )}
         </div>
-      </KoyuKart>
+      </div>
 
-      <Dugmeler tekrar={tekrar} sonraki={basarili ? sonraki : undefined} geri={geri} />
+      <Dugmeler
+        tekrar={tekrar}
+        sonraki={basarili ? sonraki : undefined}
+        geri={geri}
+        oyunId={ayar.oyunId}
+      />
     </div>
   );
 }
@@ -414,23 +459,27 @@ function KazanimSatiri({
   baslik,
   aciklama,
   vurgu,
+  renk,
   gecikme,
 }: {
   baslik: string;
   aciklama: string;
   vurgu?: boolean;
+  renk: string;
   gecikme: number;
 }) {
   return (
-    <div className="gir rounded-xl bg-white/10 px-4 py-3" style={{ animationDelay: `${gecikme}ms` }}>
+    <div
+      className="gir rounded-2xl bg-yuzey px-4 py-3 shadow-sm"
+      style={{ animationDelay: `${gecikme}ms` }}
+    >
       <div
-        className={`font-display text-[16px] leading-tight font-bold ${
-          vurgu ? "text-odul" : "text-white/70"
-        }`}
+        className="font-display text-[16px] leading-tight font-bold"
+        style={{ color: vurgu ? renk : "var(--color-yazi-sonuk)" }}
       >
         {baslik}
       </div>
-      <p className="mt-1 text-[13px] leading-relaxed text-white/60">{aciklama}</p>
+      <p className="mt-1 text-[13px] leading-relaxed text-yazi-sonuk">{aciklama}</p>
     </div>
   );
 }
@@ -439,18 +488,23 @@ function Dugmeler({
   tekrar,
   sonraki,
   geri,
+  oyunId,
 }: {
   tekrar: () => void;
   sonraki?: () => void;
   geri: () => void;
+  oyunId: string;
 }) {
+  const r = RENK[oyunRengi(oyunId)];
+
   return (
     <div className="mt-6 flex flex-col gap-2.5">
       {sonraki && (
         <button
           type="button"
           onClick={sonraki}
-          className="rounded-lg bg-vurgu py-4 font-display text-[16px] font-bold text-white"
+          className="rounded-xl py-4 font-display text-[16px] font-bold text-white transition-transform active:scale-[0.99]"
+          style={{ background: r.ana }}
         >
           Sonraki bölüm
         </button>
@@ -458,7 +512,7 @@ function Dugmeler({
       <button
         type="button"
         onClick={tekrar}
-        className="rounded-lg border border-cizgi py-4 font-display text-[16px] text-yazi"
+        className="rounded-xl border border-cizgi py-4 font-display text-[16px] text-yazi"
       >
         Tekrar oyna
       </button>

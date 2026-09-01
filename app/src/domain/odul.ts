@@ -27,10 +27,21 @@ export type KuponDurumu =
   | "suresi_doldu"
   | "geri_alindi";
 
+/**
+ * Kuponun cinsi — ekranda **renk** olarak kullanılıyor (Ü65).
+ *
+ * Değer değil cins: E9 kuponun TL karşılığını gizliyor, ne olduğunu
+ * değil. "Ücretsiz filtre kahve" ile "%10 indirim" zaten adlarından
+ * ayrılıyor; cins bilgisi yalnızca beş kuponun beşinin aynı renkte
+ * olmasını engelliyor.
+ */
+export type KuponTuru = "urun" | "yuzde" | "tutar";
+
 export type EnvanterKuponu = {
   id: string;
   /** Ödülün adı — "1 Filtre Kahve" veya "%20 · Latte". TL yok (E9). */
   baslik: string;
+  tur: KuponTuru;
   cafeId: string;
   cafeAdi: string;
   durum: KuponDurumu;
@@ -55,6 +66,7 @@ type Satir = {
   activates_at: Date;
   expires_at: Date;
   odul_adi: string | null;
+  odul_tipi: string | null;
   kampanya_yuzde: number | null;
   urun_adi: string | null;
 };
@@ -92,12 +104,28 @@ function baslikYaz(r: Satir): string {
   return "Ödül";
 }
 
+/**
+ * Kuponun cinsi.
+ *
+ * Yüzde kampanyası kuponları `rewards` tablosuna hiç uğramıyor
+ * (`reward_id` boş, `campaign_id` dolu); bu yüzden kampanya kontrolü
+ * ödül tipinden önce geliyor. Tanınmayan tip "tutar" sayılıyor —
+ * yalnızca renk seçiyor, yanlış olması bir hak kaybına yol açmıyor.
+ */
+function turBelirle(r: Satir): KuponTuru {
+  if (r.kampanya_yuzde != null) return "yuzde";
+  if (r.odul_tipi === "product") return "urun";
+  if (r.odul_tipi === "percent") return "yuzde";
+  return "tutar";
+}
+
 export async function envanter(playerId: string): Promise<Envanter> {
   const satirlar = await withBypass("ödül envanteri — kafe ve ödül adları", (db) =>
     db.all<Satir>(
       `SELECT k.id, k.cafe_id, c.name AS cafe_adi, k.status,
               k.activates_at, k.expires_at,
               r.title    AS odul_adi,
+              r.reward_type AS odul_tipi,
               pc.percent AS kampanya_yuzde,
               p.name     AS urun_adi
          FROM coupons k
@@ -119,6 +147,7 @@ export async function envanter(playerId: string): Promise<Envanter> {
     const kupon: EnvanterKuponu = {
       id: r.id,
       baslik: baslikYaz(r),
+      tur: turBelirle(r),
       cafeId: r.cafe_id,
       cafeAdi: r.cafe_adi,
       durum,
@@ -139,6 +168,7 @@ export async function envanter(playerId: string): Promise<Envanter> {
 export type KuponDetayi = {
   id: string;
   baslik: string;
+  tur: KuponTuru;
   cafeAdi: string;
   durum: KuponDurumu;
   /** Kasiyerin okutacağı QR jetonu. İçinde ödül bilgisi yok (Ü19). */
@@ -164,6 +194,7 @@ export async function kuponDetayi(playerId: string, kuponId: string): Promise<Ku
       `SELECT k.id, k.cafe_id, c.name AS cafe_adi, k.status,
               k.activates_at, k.expires_at, k.qr_token, k.code,
               r.title    AS odul_adi,
+              r.reward_type AS odul_tipi,
               pc.percent AS kampanya_yuzde,
               p.name     AS urun_adi
          FROM coupons k
@@ -181,6 +212,7 @@ export async function kuponDetayi(playerId: string, kuponId: string): Promise<Ku
   return {
     id: r.id,
     baslik: baslikYaz(r),
+    tur: turBelirle(r),
     cafeAdi: r.cafe_adi,
     durum: durumBelirle(r, Date.now()),
     jeton: r.qr_token,

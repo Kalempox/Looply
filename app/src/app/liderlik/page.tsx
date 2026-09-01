@@ -6,7 +6,9 @@ import * as liderlik from "@/domain/liderlik";
 import { gununOyunu } from "@/oyunlar";
 import { isGunu } from "@/lib/tarih";
 import { Sayfa, Baslik } from "@/components/ui";
-import { KoyuKart, CamKutu, OyuncuBolum, SiraJetonu, MADALYA } from "@/components/oyuncu";
+import { SayfaBasi, Sayac, OyuncuBolum, SiraJetonu, MADALYA } from "@/components/oyuncu";
+import { RENK, oyunRengi, type OyuncuRengi } from "@/components/oyuncu-renk";
+import { KupaIkonu, TacIkonu, OyunIkonu } from "@/components/oyuncu-ikon";
 import { OyuncuNav, NavBosluk } from "@/components/oyuncu-nav";
 
 export const dynamic = "force-dynamic";
@@ -33,15 +35,19 @@ export const metadata = { title: "Liderlik · CafePlay" };
  * Sıralama kafeye ait. Masası olmayan oyuncuya gösterilecek bir liste yok
  * — hangi kafenin sıralaması olduğu belirsiz kalırdı.
  *
- * ── Görsel dil (Ü64) ────────────────────────────────────────
+ * ── Kürsü (Ü64, Ü65) ────────────────────────────────────────
  *
- * Sıralama oyuncu tarafının en "yarışma" hissi veren ekranı; on satırlık
- * düz bir liste bunu tamamen öldürüyordu. Bugünün ilk üçü artık koyu
- * kartın içinde **kürsüde** duruyor, geri kalanı sakin listede.
+ * On satırlık düz bir liste yarışma hissini tamamen öldürüyordu.
+ * Bugünün ilk üçü kürsüde duruyor; geri kalanı sakin listede.
+ *
+ * Kürsü **koyu değil, günün oyununun renginde**. Ü64'te koyu mordu ve
+ * ürün sahibi haklı olarak her ekranda aynı morun tekrarlanmasına
+ * itiraz etti. Günün oyununun rengini almasının ayrıca bir faydası
+ * var: liste hangi oyunun sıralaması olduğunu başlıkta bir kez
+ * söylüyor, renk onu kürsü boyunca tekrarlıyor.
  *
  * Kürsü yalnızca **bugün** için var: tüm zamanlar listesi bir anlık
- * yarış değil, aylara yayılan bir birikim. Onu da kürsüye çıkarmak
- * "bugün kim önde" sorusunu görünmez kılardı.
+ * yarış değil, aylara yayılan bir birikim.
  */
 export default async function LiderlikSayfasi() {
   const o = await oturum.oku();
@@ -65,6 +71,7 @@ export default async function LiderlikSayfasi() {
   }
 
   const oyun = gununOyunu(isGunu());
+  const renk = oyunRengi(oyun.id);
   const [bugun, tum] = await Promise.all([
     liderlik.bugun({ cafeId: masa.cafeId, oyunId: oyun.id, bakanId: o.ozneId }),
     liderlik.tumZamanlar({ cafeId: masa.cafeId, bakanId: o.ozneId }),
@@ -73,61 +80,36 @@ export default async function LiderlikSayfasi() {
   // Kürsüde duran üç kişi listede tekrar edilmiyor.
   const kursu = bugun.satirlar.slice(0, 3);
   const kalan = bugun.satirlar.slice(3);
-  const benimBugunSiram = benimSiram(bugun);
+  const benim = benimSiram(bugun);
 
   return (
     <Sayfa>
-      <section className="mb-9">
-        <KoyuKart>
-          <p className="etiket-caps text-white/60">{masa.cafeAdi}</p>
-          <h1 className="mt-1 font-display text-3xl leading-none font-extrabold tracking-tight">
-            Sıralama
-          </h1>
-          <p className="mt-2 font-data text-[11px] text-white/55">
-            Bugün · {oyun.ad}
-          </p>
+      <SayfaBasi ust={masa.cafeAdi} baslik="Sıralama" renk={renk} ikon={<KupaIkonu boy={130} />}>
+        <div className="grid grid-cols-2 gap-2.5">
+          <Sayac
+            etiket={`Bugün · ${oyun.ad}`}
+            deger={String(bugun.satirlar.length)}
+            renk={renk}
+            alt={bugun.satirlar.length === 0 ? "ilk sen ol" : "oyuncu"}
+          />
+          <Sayac
+            etiket="Senin sıran"
+            deger={benim ? `${benim}.` : "—"}
+            renk={benim != null && benim <= 3 ? "amber" : undefined}
+            alt={benim ? undefined : "bugün oynamadın"}
+          />
+        </div>
+      </SayfaBasi>
 
-          {kursu.length >= 3 ? (
-            <Kursu satirlar={kursu} />
-          ) : (
-            <div className="mt-5 grid grid-cols-2 gap-2.5">
-              <CamKutu
-                etiket="Bugün oynayan"
-                deger={String(bugun.satirlar.length)}
-                alt={bugun.satirlar.length === 0 ? "ilk sen ol" : undefined}
-              />
-              <CamKutu
-                etiket="Senin sıran"
-                deger={benimBugunSiram ? `${benimBugunSiram}.` : "—"}
-                altin={benimBugunSiram != null && benimBugunSiram <= 3}
-                alt={benimBugunSiram ? undefined : "bugün oynamadın"}
-              />
-            </div>
-          )}
-
-          {/* Kürsüye çıkamayan için "—" bir cevap değil. Sıra varsa sayı,
-              yoksa neden olmadığı yazıyor. */}
-          {kursu.length >= 3 && (
-            <div className="mt-5 border-t border-white/15 pt-3.5 text-center">
-              {benimBugunSiram ? (
-                <>
-                  <span className="etiket-caps text-white/55">Senin sıran </span>
-                  <span className="font-data text-[13px] font-bold text-odul tabular">
-                    {benimBugunSiram}.
-                  </span>
-                </>
-              ) : (
-                <span className="etiket-caps text-white/55">
-                  Bugün henüz oynamadın
-                </span>
-              )}
-            </div>
-          )}
-        </KoyuKart>
-      </section>
+      {kursu.length >= 3 && (
+        <section className="mb-9">
+          <Kursu satirlar={kursu} renk={renk} oyunId={oyun.id} oyunAdi={oyun.ad} />
+        </section>
+      )}
 
       <OyuncuBolum
         baslik={kursu.length >= 3 ? "Bugün · devamı" : "Bugün"}
+        renk={renk}
         not="en yüksek skor"
       >
         <Liste
@@ -184,13 +166,37 @@ function benimSiram(l: liderlik.Liste): number | null {
  * 5 ile 5000 arasında olabiliyor ve orantılı bir kürsüde ikinci ile
  * üçüncü çoğu gün aynı yükseklikte çıkardı.
  */
-function Kursu({ satirlar }: { satirlar: liderlik.LiderSatiri[] }) {
+function Kursu({
+  satirlar,
+  renk,
+  oyunId,
+  oyunAdi,
+}: {
+  satirlar: liderlik.LiderSatiri[];
+  renk: OyuncuRengi;
+  oyunId: string;
+  oyunAdi: string;
+}) {
+  const r = RENK[renk];
   const [birinci, ikinci, ucuncu] = satirlar;
+
   return (
-    <div className="mt-6 grid grid-cols-3 items-end gap-2">
-      <Basamak satir={ikinci} yukseklik="h-14" />
-      <Basamak satir={birinci} yukseklik="h-20" sampiyon />
-      <Basamak satir={ucuncu} yukseklik="h-10" />
+    <div
+      className="relative overflow-hidden rounded-3xl px-4 pt-5 pb-0"
+      style={{
+        background: `linear-gradient(160deg, ${r.canli} 0%, ${r.ana} 55%, ${r.koyu} 100%)`,
+      }}
+    >
+      <div className="flex items-center justify-center gap-2">
+        <OyunIkonu oyunId={oyunId} boy={18} />
+        <span className="etiket-caps text-white/75">Bugünün kürsüsü · {oyunAdi}</span>
+      </div>
+
+      <div className="mt-5 grid grid-cols-3 items-end gap-2">
+        <Basamak satir={ikinci} yukseklik="h-16" />
+        <Basamak satir={birinci} yukseklik="h-24" sampiyon />
+        <Basamak satir={ucuncu} yukseklik="h-11" />
+      </div>
     </div>
   );
 }
@@ -204,19 +210,19 @@ function Basamak({
   yukseklik: string;
   sampiyon?: boolean;
 }) {
-  const renk = MADALYA[satir.sira - 1] ?? MADALYA[2];
+  const madalya = MADALYA[satir.sira - 1] ?? MADALYA[2];
 
   return (
     <div className="flex flex-col items-center">
       {sampiyon && (
-        <span className="mb-1 text-lg leading-none" aria-hidden>
-          👑
+        <span className="mb-1">
+          <TacIkonu boy={26} />
         </span>
       )}
 
       <span
-        className="flex size-9 items-center justify-center rounded-full font-data text-[13px] font-bold tabular"
-        style={{ background: renk, color: "#1b0e38" }}
+        className="flex size-9 items-center justify-center rounded-full font-data text-[13px] font-bold tabular shadow-sm"
+        style={{ background: madalya, color: "#1b0e38" }}
       >
         {satir.sira}
       </span>
@@ -225,24 +231,25 @@ function Basamak({
           adı kolonun üçte birine sığmıyor ve `truncate` çoğu adı
           "Abdulkadi…" hâline getiriyordu. */}
       <span
-        className={`mt-1.5 w-full text-center font-display text-[12px] leading-tight font-bold break-words hyphens-auto ${
-          satir.benMiyim ? "text-odul" : "text-white"
+        className={`mt-1.5 w-full text-center font-display text-[12px] leading-tight font-bold break-words ${
+          satir.benMiyim ? "text-[#ffcf3f]" : "text-white"
         }`}
       >
         {satir.benMiyim ? "Sen" : satir.gorunenAd}
       </span>
 
-      <span className="font-data text-[11px] text-white/60 tabular">
+      <span className="font-data text-[11px] text-white/70 tabular">
         {satir.deger.toLocaleString("tr-TR")}
       </span>
 
-      {/* Basamağın kendisi: üstü aydınlık, altı kartın zeminine karışıyor. */}
+      {/* Basamağın kendisi. Alt köşeleri yuvarlanmıyor ve kartın
+          dibine oturuyor — havada duran bir kürsü basamağı değil. */}
       <div
         className={`mt-1.5 w-full rounded-t-lg ${yukseklik} ${
-          satir.benMiyim ? "border-t-2 border-odul" : ""
+          satir.benMiyim ? "border-t-[3px] border-[#ffcf3f]" : ""
         }`}
         style={{
-          background: "linear-gradient(180deg, rgba(255,255,255,0.22), rgba(255,255,255,0.04))",
+          background: "linear-gradient(180deg, rgba(255,255,255,0.38), rgba(255,255,255,0.10))",
         }}
       />
     </div>

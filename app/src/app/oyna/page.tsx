@@ -12,7 +12,9 @@ import * as seri from "@/domain/seri";
 import { withBypass } from "@/db/context";
 import * as happy from "@/domain/happy";
 import { isGunu } from "@/lib/tarih";
-import { KoyuKart, CamKutu, SiraJetonu } from "@/components/oyuncu";
+import { KoyuKart, CamKutu, SiraJetonu, RenkliKart } from "@/components/oyuncu";
+import { RENK, oyunRengi } from "@/components/oyuncu-renk";
+import { OyunIkonu, CarkIkonu, AlevIkonu, KupaIkonu } from "@/components/oyuncu-ikon";
 import { OyuncuNav, NavBosluk } from "@/components/oyuncu-nav";
 import { kodEkrandaGosterilir } from "@/sms";
 import { DurumSeridi, type SeritDurumu } from "./durum-seridi";
@@ -118,34 +120,42 @@ export default async function OynaSayfasi() {
         {/* ── Günün oyunu ───────────────────────────────── */}
         <section className="mb-10">
           <div className="mb-3 flex items-baseline justify-between">
-            <h2 className="etiket-caps text-odul-koyu">
+            <h2 className="etiket-caps" style={{ color: RENK[oyunRengi(bonus.id)].ana }}>
               Bugünün oyunu
             </h2>
             <span className="font-data text-[10px] tracking-[0.14em] text-odul-koyu">×2 PUAN</span>
           </div>
 
-          {/* Ekranın birincil eylemi. Düğme çerçeveliyken "ikincil bir
-              bağlantı" gibi okunuyordu — oysa ana ekranda oyuncunun
-              yapması istenen tek şey bu. Artık dolu altın. */}
-          <div className="rounded-2xl border border-odul bg-odul-zemin px-6 py-7">
-            <div
-              className="flex size-14 items-center justify-center rounded-2xl bg-yuzey text-3xl leading-none shadow-sm"
-              aria-hidden
-            >
-              {bonus.emoji}
+          {/* Ekranın birincil eylemi ve kartın rengi oyunun kendi rengi
+              (Ü65): aşağıdaki karolarla aynı renk ailesi, böylece
+              "bugünün oyunu" ile "tüm oyunlar" aynı ürünün parçası
+              olarak okunuyor. */}
+          <RenkliKart renk={oyunRengi(bonus.id)} className="px-6 py-7">
+            <div className="flex items-start gap-4">
+              <span className="flex size-16 shrink-0 items-center justify-center rounded-2xl bg-yuzey shadow-sm">
+                <OyunIkonu oyunId={bonus.id} boy={38} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block font-display text-2xl leading-tight font-extrabold tracking-tight">
+                  {bonus.ad}
+                </span>
+                <span
+                  className="mt-1.5 block text-[14px] leading-relaxed"
+                  style={{ color: RENK[oyunRengi(bonus.id)].koyu }}
+                >
+                  {bonus.ozet}
+                </span>
+              </span>
             </div>
-            <h3 className="mt-4 font-display text-2xl leading-tight font-extrabold tracking-tight">
-              {bonus.ad}
-            </h3>
-            <p className="mt-1.5 text-[14px] leading-relaxed text-yazi-sonuk">{bonus.ozet}</p>
 
             <Link
               href={`/oyna/${bonus.id}?basla=1`}
-              className="mt-5 block w-full rounded-lg bg-odul py-3.5 text-center font-display text-[16px] font-bold text-yazi transition-transform active:scale-[0.99]"
+              className="mt-5 block w-full rounded-xl py-3.5 text-center font-display text-[16px] font-bold text-white transition-transform active:scale-[0.99]"
+              style={{ background: RENK[oyunRengi(bonus.id)].ana }}
             >
               Oyna
             </Link>
-          </div>
+          </RenkliKart>
         </section>
 
         {/* ── Oyun listesi ──────────────────────────────── */}
@@ -396,35 +406,45 @@ function SeriKarti({ seri: s }: { seri: seri.Seri }) {
 
   return (
     <section className="mb-10">
-      <h2 className="etiket-caps mb-3 text-yazi-sonuk">Günlük seri</h2>
+      <h2 className="etiket-caps mb-3" style={{ color: RENK.amber.ana }}>
+        Günlük seri
+      </h2>
 
-      <div
-        className={`rounded-2xl border px-5 py-5 ${
-          s.riskte ? "border-odul bg-cukur" : "border-cizgi bg-yuzey"
-        }`}
-      >
-        <div className="flex items-center gap-4">
-          <span
-            className={`flex size-11 shrink-0 items-center justify-center rounded-full text-2xl leading-none ${
-              s.riskte ? "bg-odul-zemin" : "bg-cukur"
-            }`}
-            aria-hidden
-          >
-            🔥
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block font-display text-lg leading-tight font-bold">
-              {s.gun} gün üst üste
-            </span>
-            <span className="mt-1 block text-[13px] leading-relaxed text-yazi-sonuk">
-              {s.riskte
-                ? `Bugün oynamazsan seri sıfırlanır. Oynarsan ${bonus} puan bonus.`
-                : `Bugün sayıldı. Yarın da gelirsen ${bonus} puan bonus.`}
-            </span>
-          </span>
+      {/* Riskteyken pastel amber kart, güvendeyken sakin beyaz: rengin
+          işi burada "bugün bir şey yapman gerekiyor" demek. */}
+      {s.riskte ? (
+        <RenkliKart renk="amber">
+          <SeriGovdesi seri={s} bonus={bonus} />
+        </RenkliKart>
+      ) : (
+        <div className="rounded-3xl border border-cizgi bg-yuzey px-5 py-5">
+          <SeriGovdesi seri={s} bonus={bonus} />
         </div>
-      </div>
+      )}
     </section>
+  );
+}
+
+function SeriGovdesi({ seri: s, bonus }: { seri: seri.Seri; bonus: number }) {
+  return (
+    <div className="flex items-center gap-4">
+      <span className="shrink-0">
+        <AlevIkonu boy={40} />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block font-display text-lg leading-tight font-bold">
+          {s.gun} gün üst üste
+        </span>
+        <span
+          className="mt-1 block text-[13px] leading-relaxed"
+          style={{ color: s.riskte ? RENK.amber.koyu : "var(--color-yazi-sonuk)" }}
+        >
+          {s.riskte
+            ? `Bugün oynamazsan seri sıfırlanır. Oynarsan ${bonus} puan bonus.`
+            : `Bugün sayıldı. Yarın da gelirsen ${bonus} puan bonus.`}
+        </span>
+      </span>
+    </div>
   );
 }
 
@@ -435,16 +455,17 @@ function SeriKarti({ seri: s }: { seri: seri.Seri }) {
  * animasyonu bu ekranı ikiye katlardı. Kapalıyken de duruyor — kaybolan
  * bir kart "özellik kaldırıldı" diye okunuyor.
  *
- * ── Açıkken koyu, kapalıyken sakin (Ü64) ────────────────────
+ * ── Açıkken dolu, kapalıyken sakin (Ü64, Ü65) ───────────────
  *
  * Ana ekranda durum kartından sonra her şey beyazdı ve çark da o
  * beyazların arasında bir satır olarak kalıyordu — oysa uygulamanın en
- * heyecanlı anı orada. Çark **hazırken** koyu karta dönüşüyor; günün
- * çevirmesi bitince sakin beyaza düşüyor.
+ * heyecanlı anı orada. Çark **hazırken** doygun renkli karta dönüşüyor;
+ * günün çevirmesi bitince sakin beyaza düşüyor.
  *
- * İki dark kart (durum + çark) arka arkaya gelmiyor: aralarında havuz,
- * seri ve liderlik kartları var. Gelmeseydi bile sorun olmazdı, ikisi
- * de aynı yüzeyin farklı işleri.
+ * Ü64'te bu kart da koyu mordu — durum kartıyla aynı yüzey. Ürün
+ * sahibi *"her yere bu mor efekti koyma"* dediğinde en çok haklı
+ * olduğu yer burasıydı: iki koyu kart arasında hangisinin tıklanacağı
+ * belirsizdi. Şimdi çark, çarkın kasasının rengini (gül) taşıyor.
  */
 function CarkKarti({ durum }: { durum: cark.CarkDurumu }) {
   const acik = durum.acik;
@@ -458,11 +479,8 @@ function CarkKarti({ durum }: { durum: cark.CarkDurumu }) {
           className="block rounded-2xl border border-cizgi bg-yuzey px-5 py-5 transition-colors hover:border-yazi-sonuk/40"
         >
           <div className="flex items-center gap-4">
-            <span
-              className="flex size-11 shrink-0 items-center justify-center rounded-full bg-cukur text-2xl leading-none"
-              aria-hidden
-            >
-              🎡
+            <span className="shrink-0 opacity-50">
+              <CarkIkonu boy={40} />
             </span>
             <span className="min-w-0 flex-1">
               <span className="block font-display text-lg leading-tight font-bold">
@@ -483,31 +501,36 @@ function CarkKarti({ durum }: { durum: cark.CarkDurumu }) {
 
   return (
     <section className="mb-10">
-      <h2 className="etiket-caps mb-3 text-odul-koyu">Şans çarkı</h2>
+      <h2 className="etiket-caps mb-3" style={{ color: RENK.gul.ana }}>
+        Şans çarkı
+      </h2>
 
       <Link href="/cark" className="block transition-transform active:scale-[0.99]">
-        <KoyuKart className="border border-odul/60">
+        <RenkliKart renk="gul" dolu>
           <div className="flex items-center gap-4">
-            <span
-              className="flex size-14 shrink-0 items-center justify-center rounded-full bg-white/12 text-3xl leading-none"
-              aria-hidden
-            >
-              🎡
+            <span className="shrink-0">
+              <CarkIkonu boy={54} />
             </span>
             <span className="min-w-0 flex-1">
               <span className="block font-display text-xl leading-tight font-extrabold">
                 Çarkın hazır
               </span>
-              <span className="mt-1 block text-[13px] leading-relaxed text-white/60">
+              <span className="mt-1 block text-[13px] leading-relaxed text-white/80">
                 Günde bir kez çevirebilirsin. Çıkan ödül hesabına işlenir.
               </span>
             </span>
           </div>
 
-          <div className="mt-4 rounded-lg bg-odul py-3 text-center font-display text-[15px] font-bold text-yazi">
+          {/* Düğme `--color-odul` değil, çarkın kazanan diliminin altını
+              (#ffcf3f). Jeton altını gül zeminin üstünde donuk kalıyor;
+              çarkın altını parlıyor. */}
+          <div
+            className="mt-4 rounded-xl py-3 text-center font-display text-[15px] font-bold"
+            style={{ background: "#ffcf3f", color: "#3d1220" }}
+          >
             Çevir
           </div>
-        </KoyuKart>
+        </RenkliKart>
       </Link>
     </section>
   );
@@ -548,7 +571,10 @@ function LiderKarti({ liste, oyunAdi }: { liste: liderlik.Liste; oyunAdi: string
       >
         {bos ? (
           <>
-            <div className="font-display text-lg leading-tight font-bold">Liste boş</div>
+            <div className="flex items-center gap-3">
+              <KupaIkonu boy={28} />
+              <span className="font-display text-lg leading-tight font-bold">Liste boş</span>
+            </div>
             <p className="mt-1.5 text-[13px] leading-relaxed text-yazi-sonuk">
               Bugün bu kafede henüz kimse oynamadı. İlk skoru sen yaz.
             </p>
@@ -605,31 +631,30 @@ function saatBicim(d: Date): string {
 /**
  * Oyun karosu.
  *
- * Emoji artık çıplak değil, yuvarlak bir jetonun içinde: çıplak emoji
- * karonun sol üst köşesinde asılı duruyordu ve iki karo yan yana
- * gelince hizaları tutmuyordu (emoji yüksekliği yazı tipine göre
- * değişiyor). Jeton sabit bir kutu veriyor.
+ * Emojinin yerini oyunun kendi çizimi aldı (Ü65). Emoji her işletim
+ * sisteminde başka bir sanatçının çizimiydi; iki karo yan yana
+ * gelince boyutları ve hizaları tutmuyordu.
  *
- * Üstüne gelince karo kalkıyor ve çerçevesi vurgu rengine dönüyor —
- * oyuncu tarafında hangi karonun tıklanabilir olduğu, panelde
- * olduğundan daha çok fark edilmeli.
+ * Karo oyunun renginde ve renk her yerde aynı: burada, oyun kabuğunda,
+ * profildeki geçmiş satırında. Oyuncu adı okumadan hangi oyuna
+ * baktığını biliyor.
  */
 function OyunKarosu({ oyun }: { oyun: HerhangiOyun }) {
+  const r = RENK[oyunRengi(oyun.id)];
+
   return (
     <li>
       <Link
         href={`/oyna/${oyun.id}`}
-        className="flex aspect-[4/3] flex-col justify-between rounded-2xl border border-cizgi bg-yuzey px-4 py-4 transition-all hover:-translate-y-0.5 hover:border-vurgu hover:shadow-md"
+        className="flex aspect-[4/3] flex-col justify-between rounded-3xl px-4 py-4 transition-all hover:-translate-y-0.5 hover:shadow-md"
+        style={{ background: r.zemin, border: `1px solid ${r.canli}` }}
       >
-        <span
-          className="flex size-10 items-center justify-center rounded-full bg-cukur text-xl leading-none"
-          aria-hidden
-        >
-          {oyun.emoji}
+        <span className="flex size-11 items-center justify-center rounded-2xl bg-yuzey shadow-sm">
+          <OyunIkonu oyunId={oyun.id} boy={26} />
         </span>
         <span>
           <span className="block text-[15px] leading-tight font-semibold">{oyun.ad}</span>
-          <span className="mt-1 block etiket-caps text-yazi-sonuk">
+          <span className="mt-1 block etiket-caps" style={{ color: r.koyu }}>
             {oyun.bolumSayisi} bölüm
           </span>
         </span>

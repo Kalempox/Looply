@@ -382,13 +382,21 @@ function Tekerlek({
  *
  * ── Neden burada, globals.css'te değil ──────────────────────
  *
- * Bu renkler **yalnızca çarkta** geçerli. `globals.css` içine jeton
- * olarak konsalardı ürünün her yerinden erişilebilir olur ve palet
- * fiilen genişlerdi — bir sonraki ekranda "bu mor da var madem" denirdi.
- * Burada durdukları sürece kapsam tek bileşen.
+ * Burada "bu renkler yalnızca çarkta geçerli" yazıyordu. **O karar
+ * Ü65'te bilerek çevrildi**: ürün sahibi çarkın dilinin oyuncu
+ * tarafının tamamına yayılmasını istedi ve aynı aile
+ * `components/oyuncu-renk.ts`'te oyuncu paleti oldu.
  *
- * Tonlar bilerek pastel: ekranın geri kalanı sakin kalıyor, çark tek
- * başına parlıyor.
+ * Yine de `globals.css`e girmediler. Eski notun endişesi hâlâ geçerli:
+ * jeton olsalardı işletme paneli de erişebilir ve iki palet (Ü63'ün
+ * alan renkleri ile buranın pastelleri) karışırdı. Tek dosyada
+ * durdukları ve yalnızca oyuncu ekranları import ettiği sürece kapsam
+ * korunuyor.
+ *
+ * Buradaki dizi bilerek kopya değil: çarkın dilimleri altı ton
+ * gerektiriyor, oyuncu paleti beş renk × dört ton olarak
+ * yapılandırılmış. İkisini tek listeye indirmek, çarkın dilim sırasını
+ * paletin sırasına bağımlı hâle getirirdi.
  */
 const DOLGULAR = [
   "#8b7cf6", // menekşe
