@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Cark } from "@/components/cark";
+import { CarkSahnesi } from "@/components/cark-sahnesi";
 import { carkiCevir } from "./actions";
 
 /**
@@ -28,24 +28,23 @@ export function GunlukCark({
   kapaliMetin: string;
 }) {
   return (
-    <div className="rounded-2xl border border-cizgi bg-yuzey px-5 py-7">
-      <Cark
-        dilimler={dilimler}
-        cevir={acik ? carkiCevir : async () => ({ ok: false as const, hata: kapaliMetin })}
-        kilitli={!acik}
-        altMetin={
-          acik ? "Çark 24 saatte bir açılıyor. Çıkan ödül doğrudan hesabına işlenir." : kapaliMetin
-        }
-        kazandiMetni={
-          <>
-            Ödülün hesabına işlendi.{" "}
-            <Link href="/oduller" className="font-semibold text-yazi underline">
-              Ödüllerim
-            </Link>{" "}
-            ekranından kasada gösterebilirsin.
-          </>
-        }
-      />
-    </div>
+    <CarkSahnesi
+      dilimler={dilimler}
+      cevir={carkiCevir}
+      kilitli={!acik}
+      kapaliMetin={kapaliMetin}
+      davetBaslik={acik ? "Çarkın hazır" : "Çark kapalı"}
+      davetMetin="Dokun, çark tam ekranda açılsın."
+      altMetin="Çark 24 saatte bir açılıyor. Çıkan ödül doğrudan hesabına işlenir."
+      kazandiMetni={
+        <>
+          Ödülün hesabına işlendi.{" "}
+          <Link href="/oduller" className="font-semibold underline">
+            Ödüllerim
+          </Link>{" "}
+          ekranından kasada gösterebilirsin.
+        </>
+      }
+    />
   );
 }

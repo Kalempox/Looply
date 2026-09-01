@@ -1,6 +1,12 @@
 import { kafeYoneticisiGerekli } from "@/domain/yetki";
 import * as urun from "@/domain/urun";
-import { IsletmeSayfa, IsletmeBaslik, Bolum, Rozet } from "@/components/isletme";
+import {
+  IsletmeSayfa,
+  IsletmeBaslik,
+  Bolum,
+  Rozet,
+  IkiKolon,
+} from "@/components/isletme";
 import { UrunEkleme, DurumDugmesi } from "./kontroller";
 
 export const dynamic = "force-dynamic";
@@ -19,37 +25,51 @@ export default async function UrunlerSayfasi() {
 
   return (
     <IsletmeSayfa genis>
-      <IsletmeBaslik ust="İşletme paneli" alt="Ödüllerin ve kampanyaların dayanağı.">
+      <IsletmeBaslik
+        ust="İşletme paneli"
+        alt="Ödüllerin ve kampanyaların dayanağı."
+      >
         Ürünler
       </IsletmeBaslik>
 
-      <Bolum baslik="Yeni ürün">
-        <UrunEkleme />
-      </Bolum>
-
-      <Bolum baslik={`Menü · ${urunler.filter((u) => u.aktif).length} aktif`}>
-        {urunler.length === 0 ? (
-          <p className="text-[14px] text-yazi-sonuk">
-            Henüz ürün yok. Ödül tanımlayabilmek için önce menünü gir.
-          </p>
-        ) : (
-          <ul className="divide-y divide-cizgi border-y border-cizgi">
-            {urunler.map((u) => (
-              <li key={u.id} className={`flex items-center gap-4 py-3.5 ${u.aktif ? "" : "opacity-55"}`}>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-[15px] font-semibold">{u.ad}</span>
-                  <span className="font-data text-[12px] text-yazi-sonuk tabular">
-                    {(u.fiyatKurus / 100).toLocaleString("tr-TR")} TL
-                  </span>
-                </span>
-                {!u.aktif && <Rozet tur="pasif">kullanımda değil</Rozet>}
-                <DurumDugmesi urunId={u.id} aktif={u.aktif} />
-              </li>
-            ))}
-          </ul>
-        )}
-      </Bolum>
-
+      <IkiKolon
+        sol={
+          <Bolum baslik="Yeni ürün">
+            <UrunEkleme />
+          </Bolum>
+        }
+        sag={
+          <Bolum
+            baslik={`Menü · ${urunler.filter((u) => u.aktif).length} aktif`}
+          >
+            {urunler.length === 0 ? (
+              <p className="text-[14px] text-yazi-sonuk">
+                Henüz ürün yok. Ödül tanımlayabilmek için önce menünü gir.
+              </p>
+            ) : (
+              <ul className="divide-y divide-cizgi border-y border-cizgi">
+                {urunler.map((u) => (
+                  <li
+                    key={u.id}
+                    className={`flex items-center gap-4 py-3.5 ${u.aktif ? "" : "opacity-55"}`}
+                  >
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[15px] font-semibold">
+                        {u.ad}
+                      </span>
+                      <span className="font-data text-[12px] text-yazi-sonuk tabular">
+                        {(u.fiyatKurus / 100).toLocaleString("tr-TR")} TL
+                      </span>
+                    </span>
+                    {!u.aktif && <Rozet tur="pasif">kullanımda değil</Rozet>}
+                    <DurumDugmesi urunId={u.id} aktif={u.aktif} />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Bolum>
+        }
+      />
     </IsletmeSayfa>
   );
 }

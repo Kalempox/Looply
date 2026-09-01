@@ -176,3 +176,31 @@ export function Rozet({
     </span>
   );
 }
+
+/**
+ * İki kolonlu sayfa düzeni — Ü60.
+ *
+ * ── Neden var ───────────────────────────────────────────────
+ *
+ * Panelin alt sayfalarının çoğu aynı şekle sahip: bir **form** ve bir
+ * **liste**. Telefonda alt alta doğru çalışıyorlar. Bilgisayarda aynı
+ * dizilim, ekranın yarısı boşken kullanıcıyı iki üç ekran boyu
+ * kaydırtıyordu.
+ *
+ * ── Kolonların işi ──────────────────────────────────────────
+ *
+ * Sol **yazma**, sağ **okuma**. Kafe sahibi bir şey eklerken mevcut
+ * listeyi görüyor: eklediği şeyin zaten var olup olmadığını anlamak
+ * için kaydırmak gerekmiyor.
+ *
+ * `items-start` şart: kolonlar farklı boyda ve varsayılan `stretch`
+ * kısa olanı uzatıp içindeki kartı gereksiz yere geriyordu.
+ */
+export function IkiKolon({ sol, sag }: { sol: React.ReactNode; sag: React.ReactNode }) {
+  return (
+    <div className="grid items-start gap-x-8 lg:grid-cols-2">
+      <div>{sol}</div>
+      <div>{sag}</div>
+    </div>
+  );
+}

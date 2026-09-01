@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Cark } from "@/components/cark";
+import { CarkSahnesi } from "@/components/cark-sahnesi";
 import { carkiCevir } from "./actions";
 
 /**
@@ -37,7 +37,9 @@ export function MisafirCarki({
     return (
       <div className="text-center">
         <div className="etiket-caps text-odul-koyu">Çarktan çıkan ödülün</div>
-        <div className="mt-2 font-display text-2xl leading-tight font-extrabold">{acilistakiOdul}</div>
+        <div className="mt-2 font-display text-2xl leading-tight font-extrabold">
+          {acilistakiOdul}
+        </div>
         <p className="mt-3 text-[14px] leading-relaxed text-yazi-sonuk">
           Kullanmak için hesabını aç — ödül hesabına işlenecek.
         </p>
@@ -52,14 +54,16 @@ export function MisafirCarki({
   }
 
   return (
-    <Cark
+    <CarkSahnesi
       dilimler={dilimler}
       cevir={carkiCevir}
+      davetBaslik="Şans çarkın hazır"
+      davetMetin="Dokun, çark tam ekranda açılsın. Bir kez çevirebilirsin."
       altMetin="Bir kez çevir. Çıkan ödülü kullanmak için hesap açman gerekiyor."
       kazandiMetni={
         <>
           Kullanmak için hesabını aç.{" "}
-          <Link href="/giris" className="font-semibold text-yazi underline">
+          <Link href="/giris" className="font-semibold underline">
             Hesap aç
           </Link>
         </>

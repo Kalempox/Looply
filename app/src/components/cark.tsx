@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { OdulAcilisi } from "./odul-acilisi";
 
 /**
@@ -46,6 +46,8 @@ export function Cark({
   kilitli = false,
   altMetin,
   kazandiMetni,
+  koyuZemin = false,
+  donusBildir,
 }: {
   dilimler: CarkDilimi[];
   cevir: () => Promise<CevirmeCevabi>;
@@ -55,6 +57,16 @@ export function Cark({
   altMetin: string;
   /** Kazandıktan sonra ne yapması gerektiği — misafirde "hesap aç". */
   kazandiMetni: React.ReactNode;
+  /**
+   * Sahnede mi çiziliyor (Ü59)?
+   *
+   * Tam ekran sahnenin zemini koyu mor; oradaki yazılar açık renk
+   * olmak zorunda. Ayrı bir bileşen yazmak yerine tek bayrak: iki
+   * kopya, biri güncellenmeden kalır.
+   */
+  koyuZemin?: boolean;
+  /** Dönüş başladı/bitti — sahne bunu bilip kapatmayı kilitliyor. */
+  donusBildir?: (donuyor: boolean) => void;
 }) {
   const [aci, setAci] = useState(0);
   const [sonuc, setSonuc] = useState<{ baslik: string; dilim: number } | null>(null);
@@ -86,6 +98,7 @@ export function Cark({
       const fark = (((360 - hedef - suanki) % 360) + 360) % 360;
 
       setDonuyor(true);
+      donusBildir?.(true);
       setAci(aci + 360 * TUR + fark);
 
       // Sonucu animasyon bitmeden yazmıyoruz: yazsaydık çark hâlâ
@@ -93,14 +106,41 @@ export function Cark({
       window.setTimeout(() => {
         setSonuc({ baslik: c.baslik, dilim: c.dilim });
         setDonuyor(false);
+        donusBildir?.(false);
       }, DONUS_MS);
     });
 
   const dugmeKapali = kilitli || bekliyor || donuyor || !!sonuc;
 
+  /**
+   * Sonuç göründüğünde onu ekrana getir.
+   *
+   * Tam ekran sahnede çark + sonuç kartı toplamı 1200 pikseli geçiyor,
+   * telefon ekranı 812. Kazanma anında oyuncu ödülü görmüyor, aşağı
+   * kaydırması gerekiyordu — dönüşün bütün etkisini yiyen bir kusur.
+   *
+   * İki şey birden: çark küçülüyor (aşağıda `max-w`) ve sonuç ekranın
+   * ortasına kaydırılıyor. Yalnızca küçültmek yetmiyordu, yalnızca
+   * kaydırmak da — ikisi birlikte sonucu ilk bakışta görünür yapıyor.
+   */
+  const sonucRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!sonuc) return;
+    sonucRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [sonuc]);
+
   return (
     <div className="flex flex-col items-center">
-      <div className={`relative w-full max-w-[320px] ${kilitli && !sonuc ? "opacity-45" : ""}`}>
+      <div
+        // Kazanıldığında çark küçülüyor: sahnenin yıldızı artık ödül.
+        className={`relative mx-auto w-full transition-[max-width] duration-500 ${
+          sonuc
+            ? "max-w-[190px]"
+            : koyuZemin
+              ? "max-w-[400px]"
+              : "max-w-[320px]"
+        } ${kilitli && !sonuc ? "opacity-45" : ""}`}
+      >
         {/*
           Tepedeki işaret — çarkın nerede durduğunu okuyan tek nokta.
 
@@ -156,19 +196,29 @@ export function Cark({
       </div>
 
       {hata && (
-        <p className="mt-5 rounded-lg border border-tehlike/50 bg-cukur px-4 py-3 text-center text-[14px] text-tehlike">
+        <p
+          className={`mt-5 rounded-lg border px-4 py-3 text-center text-[14px] ${
+            koyuZemin
+              ? "border-white/25 bg-white/10 text-white"
+              : "border-tehlike/50 bg-cukur text-tehlike"
+          }`}
+        >
           {hata}
         </p>
       )}
 
       {sonuc ? (
-        <div className="mt-6 w-full">
+        <div ref={sonucRef} className="mt-5 w-full scroll-mt-6">
           {/* Ü56: emoji yerine açılan hediye kutusu. Ürün sahibinin
               verdiği Lottie örneğindeki hareket, kütüphanesiz. */}
-          <OdulAcilisi baslik={sonuc.baslik} altMetin={kazandiMetni} />
+          <OdulAcilisi baslik={sonuc.baslik} altMetin={kazandiMetni} koyuZemin={koyuZemin} />
         </div>
       ) : (
-        <p className="mt-5 max-w-[300px] text-center text-[13px] leading-relaxed text-yazi-sonuk">
+        <p
+          className={`mt-5 max-w-[320px] text-center text-[13px] leading-relaxed ${
+            koyuZemin ? "text-white/70" : "text-yazi-sonuk"
+          }`}
+        >
           {donuyor ? "Çark dönüyor…" : altMetin}
         </p>
       )}

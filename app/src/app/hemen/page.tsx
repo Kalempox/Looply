@@ -65,12 +65,12 @@ export default async function HemenSayfasi() {
         hesabına girdiğinde işlenir.
       </p>
 
+      {/* Ü59: çark artık tam ekran sahnede açılıyor; buradaki kart
+          davetin kendisi ve kendi çerçevesini taşıyor. Dış sarmalayıcı
+          çift çerçeve yapıyordu. */}
       {carkDurumu.length > 0 && (
-        <section className="mb-10 rounded-2xl border border-cizgi bg-yuzey px-5 py-7">
-          <MisafirCarki
-            dilimler={carkDurumu}
-            kazanilan={carkTalebi ? carkTalebi.baslik : null}
-          />
+        <section className="mb-10">
+          <MisafirCarki dilimler={carkDurumu} kazanilan={carkTalebi ? carkTalebi.baslik : null} />
         </section>
       )}
 

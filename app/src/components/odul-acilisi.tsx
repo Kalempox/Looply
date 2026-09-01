@@ -58,13 +58,26 @@ export function OdulAcilisi({
   baslik,
   ustEtiket = "Kazandın",
   altMetin,
+  koyuZemin = false,
 }: {
   baslik: string;
   ustEtiket?: string;
   altMetin?: React.ReactNode;
+  /**
+   * Tam ekran sahnede mi (Ü59)?
+   *
+   * Sahnenin zemini koyu mor; açık renkli kart orada yamalı duruyor ve
+   * yazılar okunmuyor. Ayrı bileşen yerine tek bayrak — iki kopya
+   * olsaydı biri güncellenmeden kalırdı.
+   */
+  koyuZemin?: boolean;
 }) {
   return (
-    <div className="relative flex flex-col items-center overflow-hidden rounded-2xl border border-odul bg-cukur px-5 py-6 text-center">
+    <div
+      className={`relative flex flex-col items-center overflow-hidden rounded-2xl border px-5 py-5 text-center ${
+        koyuZemin ? "border-white/20 bg-white/10 backdrop-blur-sm" : "border-odul bg-cukur"
+      }`}
+    >
       {/* Işık halkası — kutu açıldığı anda dışa doğru yayılıyor. */}
       <span
         aria-hidden
@@ -98,11 +111,25 @@ export function OdulAcilisi({
         ))}
       </div>
 
-      <div className="odul-gel mt-3">
-        <div className="etiket-caps text-odul-koyu">{ustEtiket}</div>
-        <div className="mt-1.5 font-display text-2xl leading-tight font-extrabold">{baslik}</div>
+      <div className="odul-gel mt-2">
+        <div className={`etiket-caps ${koyuZemin ? "text-odul" : "text-odul-koyu"}`}>
+          {ustEtiket}
+        </div>
+        <div
+          className={`mt-1.5 font-display text-2xl leading-tight font-extrabold ${
+            koyuZemin ? "text-white" : ""
+          }`}
+        >
+          {baslik}
+        </div>
         {altMetin && (
-          <div className="mt-3 text-[14px] leading-relaxed text-yazi-sonuk">{altMetin}</div>
+          <div
+            className={`mt-2.5 text-[14px] leading-relaxed ${
+              koyuZemin ? "text-white/75" : "text-yazi-sonuk"
+            }`}
+          >
+            {altMetin}
+          </div>
         )}
       </div>
     </div>
@@ -127,7 +154,7 @@ export function OdulAcilisi({
  */
 function HediyeKutusu() {
   return (
-    <svg width="132" height="120" viewBox="0 0 120 110" aria-hidden>
+    <svg width="112" height="102" viewBox="0 0 120 110" aria-hidden>
       {/* Zemin gölgesi — kutuyu havada bırakmıyor. */}
       <ellipse cx="60" cy="99" rx="34" ry="5" fill="#000" opacity="0.1" />
 
