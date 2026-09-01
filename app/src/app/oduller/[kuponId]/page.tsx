@@ -2,8 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import * as oturum from "@/domain/session";
 import { kuponDetayi } from "@/domain/odul";
 import { OyuncuSayfa, SayfaBasi } from "@/components/oyuncu";
-import { TUR_RENGI } from "@/components/oyuncu-renk";
-import { gorselSec } from "@/components/oyuncu-gorsel";
+import { gorselSec, GORSEL_RENGI } from "@/components/oyuncu-gorsel";
 import { Karekod } from "@/components/karekod";
 
 export const dynamic = "force-dynamic";
@@ -48,8 +47,8 @@ export default async function KuponSayfasi({
       <SayfaBasi
         ust={kupon.cafeAdi}
         baslik={kupon.baslik}
-        renk={TUR_RENGI[kupon.tur]}
-        gorsel={gorselSec(kupon.baslik)}
+        renk={GORSEL_RENGI[gorselSec(kupon.baslik, kupon.tur)]}
+        gorsel={gorselSec(kupon.baslik, kupon.tur)}
       />
 
       {kullanilabilir ? (

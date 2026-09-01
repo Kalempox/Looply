@@ -4,9 +4,9 @@ import * as oturum from "@/domain/session";
 import * as masaOturumu from "@/domain/masa";
 import { ozet } from "@/domain/puan";
 import { buradakiler } from "@/domain/firsat";
-import { OyuncuSayfa, SayfaBasi, Sayac, OyuncuBolum } from "@/components/oyuncu";
-import { RENK } from "@/components/oyuncu-renk";
-import { Gorsel, gorselSec } from "@/components/oyuncu-gorsel";
+import { OyuncuSayfa, SayfaBasi, Sayac, OyuncuBolum, ArkaCizim } from "@/components/oyuncu";
+import { RENK, kartZemin } from "@/components/oyuncu-renk";
+import { gorselSec, GORSEL_RENGI } from "@/components/oyuncu-gorsel";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Fırsatlar · CafePlay" };
@@ -41,7 +41,7 @@ export default async function FirsatlarSayfasi() {
   if (!masa) {
     return (
       <OyuncuSayfa aktif="/oyna" geri={{ href: "/oyna", etiket: "Ana ekran" }}>
-        <SayfaBasi ust="Fırsatlar" baslik="Buradaki fırsatlar" renk="nane" gorsel="kahve" />
+        <SayfaBasi ust="Fırsatlar" baslik="Buradaki fırsatlar" renk="nane" gorsel="icecek" />
         <div className="rounded-3xl border border-cizgi bg-yuzey px-6 py-8">
           <p className="text-[15px] leading-relaxed text-yazi-sonuk">
             Şu an bir kafede değilsin. Fırsatlar kafeye özel — masadaki karekodu okuttuğunda o
@@ -67,7 +67,7 @@ export default async function FirsatlarSayfasi() {
 
   return (
     <OyuncuSayfa aktif="/oyna" geri={{ href: "/oyna", etiket: "Ana ekran" }}>
-      <SayfaBasi ust={masa.cafeAdi} baslik="Buradaki fırsatlar" renk="nane" gorsel="kahve">
+      <SayfaBasi ust={masa.cafeAdi} baslik="Buradaki fırsatlar" renk="nane" gorsel="icecek">
         <div className="grid grid-cols-2 gap-2.5">
           {/* Ü52: puan artık harcanmıyor. Ekranın başında tek başına
               durursa "bunlarla ödül alacağım" diye okunuyor; bu yüzden
@@ -102,7 +102,6 @@ export default async function FirsatlarSayfasi() {
             {firsatlar.kampanyalar.map((k) => (
               <li key={k.id}>
                 <FirsatKarti
-                  renk="menekse"
                   baslik={k.urunAdi}
                   sag={`%${k.yuzde}`}
                   alt={`${k.bitis.toLocaleDateString("tr-TR", {
@@ -122,7 +121,6 @@ export default async function FirsatlarSayfasi() {
             {firsatlar.oduller.map((odul) => (
               <li key={odul.id}>
                 <FirsatKarti
-                  renk="amber"
                   baslik={odul.baslik}
                   aciklama={odul.aciklama ?? undefined}
                   /* E9: ödülün TL değeri oyuncuya GÖSTERİLMİYOR. Kasiyer
@@ -156,36 +154,30 @@ export default async function FirsatlarSayfasi() {
  * dokunup hiçbir şey olmadığında ekranı bozuk gösterir.
  */
 function FirsatKarti({
-  renk,
   baslik,
   aciklama,
   sag,
   alt,
 }: {
-  renk: "menekse" | "amber";
   baslik: string;
   aciklama?: string;
   /** Sağ üstte duran büyük değer — yalnızca yüzde kampanyalarında. */
   sag?: string;
   alt: string;
 }) {
+  // Renk de çizim de fırsatın kendisinden geliyor (Ü67): "Tiramisu"
+  // pasta ve gül, "50 TL" para ve nane. Bölüm başlığının rengiyle
+  // eşleşmesi gerekmiyor — kart neyi anlatıyorsa o.
+  const gorsel = gorselSec(baslik);
+  const renk = GORSEL_RENGI[gorsel];
   const r = RENK[renk];
 
   return (
     <div
       className="relative overflow-hidden rounded-2xl px-5 py-4"
-      style={{
-        background: `linear-gradient(130deg, ${r.zemin} 0%, #ffffff 90%)`,
-        border: `1px solid ${r.canli}`,
-      }}
+      style={{ background: kartZemin(renk), border: `1px solid ${r.canli}` }}
     >
-      <span
-        aria-hidden
-        className="pointer-events-none absolute -right-4 -bottom-6"
-        style={{ color: r.ana, opacity: 0.15 }}
-      >
-        <Gorsel ad={gorselSec(baslik)} boy={110} />
-      </span>
+      <ArkaCizim renk={renk} gorsel={gorsel} />
 
       <div className="relative">
         <div className="flex items-baseline justify-between gap-3">
@@ -193,7 +185,7 @@ function FirsatKarti({
           {sag && (
             <span
               className="shrink-0 font-data text-2xl leading-none font-bold tabular"
-              style={{ color: r.ana }}
+              style={{ color: r.koyu }}
             >
               {sag}
             </span>

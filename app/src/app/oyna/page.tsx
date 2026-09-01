@@ -12,9 +12,16 @@ import * as seri from "@/domain/seri";
 import { withBypass } from "@/db/context";
 import * as happy from "@/domain/happy";
 import { isGunu } from "@/lib/tarih";
-import { KoyuKart, CamKutu, SiraJetonu, RenkliKart, GorselKart } from "@/components/oyuncu";
-import { RENK, oyunRengi, type OyuncuRengi } from "@/components/oyuncu-renk";
-import { Gorsel, oyunGorseli, type GorselAdi } from "@/components/oyuncu-gorsel";
+import {
+  KoyuKart,
+  CamKutu,
+  SiraJetonu,
+  RenkliKart,
+  GorselKart,
+  ArkaCizim,
+} from "@/components/oyuncu";
+import { RENK, oyunRengi, kartZemin, type OyuncuRengi } from "@/components/oyuncu-renk";
+import { oyunGorseli, type GorselAdi } from "@/components/oyuncu-gorsel";
 import { OyunIkonu, CarkIkonu, KupaIkonu } from "@/components/oyuncu-ikon";
 import { OyuncuNav, NavBosluk } from "@/components/oyuncu-nav";
 import { SeriSahnesi } from "@/components/seri-sahnesi";
@@ -183,7 +190,7 @@ export default async function OynaSayfasi() {
               baslik="Buradaki fırsatlar"
               alt="Bu kafenin ödül kataloğu ve ürün indirimleri"
               renk="nane"
-              gorsel="kahve"
+              gorsel="icecek"
             />
           )}
         </section>
@@ -616,21 +623,12 @@ function GecisKarti({
     <Link
       href={yol}
       className="relative block overflow-hidden rounded-3xl px-5 py-4 transition-all hover:-translate-y-0.5 hover:shadow-md"
-      style={{
-        background: `linear-gradient(135deg, ${r.zemin} 0%, #ffffff 92%)`,
-        border: `1px solid ${r.canli}`,
-      }}
+      style={{ background: kartZemin(renk), border: `1px solid ${r.canli}` }}
     >
-      <span
-        aria-hidden
-        className="pointer-events-none absolute -right-4 -bottom-6"
-        style={{ color: r.ana, opacity: 0.15 }}
-      >
-        <Gorsel ad={gorsel} boy={112} />
-      </span>
+      <ArkaCizim renk={renk} gorsel={gorsel} />
 
       <div className="relative">
-        <div className="etiket-caps" style={{ color: r.ana }}>
+        <div className="etiket-caps" style={{ color: r.koyu }}>
           {ust}
         </div>
         <div className="mt-1 flex items-baseline justify-between gap-3">

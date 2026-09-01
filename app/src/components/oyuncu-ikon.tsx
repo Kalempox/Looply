@@ -36,15 +36,37 @@ function Kutu({ boy = 24, children }: IkonProps & { children: React.ReactNode })
 
 /* ── Oyun ikonları ─────────────────────────────────────────── */
 
-/** Blok — yerleştirilecek parçalar. */
+/*
+ * ── Oyun ikonları referans dilinde (Ü67) ────────────────────
+ *
+ * Ürün sahibi `Downloads/icons` klasörünü *"örnek al"* diye verdi.
+ * Oradaki üç oyun ikonunun dili net: Blok dolgu karelerden (block
+ * blast), Kelime ve Düşen ince çizgili kontur.
+ *
+ * Kutlama ikonları (alev, çark, taç, hediye, madalya) dolgulu ve çok
+ * renkli kalıyor. Ayrım bilerek: **oyun ikonu tanıtır, kutlama ikonu
+ * kutlar.** Hepsi kontur olsaydı oyun sonu ekranındaki hediye kutusu
+ * bir menü satırı gibi dururdu.
+ */
+
+/** Blok — dolu kareler, referanstaki gibi halka düzeninde. */
 export function BlokIkonu({ boy }: IkonProps) {
   const r = RENK.gok;
+  const kare = (x: number, y: number, renk: string) => (
+    <rect key={`${x}-${y}`} x={x} y={y} width="10" height="10" rx="2.5" fill={renk} />
+  );
   return (
     <Kutu boy={boy}>
-      <rect x="6" y="6" width="17" height="17" rx="4" fill={r.canli} />
-      <rect x="25" y="6" width="17" height="17" rx="4" fill={r.ana} />
-      <rect x="6" y="25" width="17" height="17" rx="4" fill={r.koyu} />
-      <rect x="25" y="25" width="17" height="17" rx="4" fill={RENK.nane.canli} />
+      {kare(2, 2, r.canli)}
+      {kare(14, 2, r.ana)}
+      {kare(26, 2, r.canli)}
+      {kare(2, 14, r.ana)}
+      {kare(36, 14, r.canli)}
+      {kare(36, 26, r.ana)}
+      {kare(2, 36, r.canli)}
+      {kare(14, 36, r.ana)}
+      {kare(26, 36, r.canli)}
+      {kare(36, 36, r.koyu)}
     </Kutu>
   );
 }
@@ -52,61 +74,64 @@ export function BlokIkonu({ boy }: IkonProps) {
 /**
  * Kelime — harf taşları.
  *
- * Taşların üstünde gerçek harf var. `<text>` yerine yol çizmek daha
- * güvenli olurdu ama 20 pikselde okunacak bir "A" elle çizilince
- * lekeye dönüşüyor; sayfanın kendi yazı tipi burada işi yapıyor.
- * Harfler dekoratif olduğu için `aria-hidden` zaten dışarıdan geliyor.
+ * Taşların üstünde gerçek harf var. Yol çizmek daha güvenli olurdu ama
+ * 20 pikselde okunacak bir "A" elle çizilince lekeye dönüşüyor; sayfanın
+ * kendi yazı tipi burada işi yapıyor. Harfler dekoratif, `aria-hidden`
+ * zaten dışarıdan geliyor.
  */
 export function KelimeIkonu({ boy }: IkonProps) {
   const r = RENK.menekse;
+  const cerceve = {
+    fill: "none",
+    stroke: r.ana,
+    strokeWidth: 2.6,
+    rx: 4,
+    width: 20,
+    height: 20,
+  };
   const yazi = {
     textAnchor: "middle" as const,
-    fontSize: 15,
+    fontSize: 12,
     fontWeight: 800,
-    fill: "#ffffff",
+    fill: r.ana,
+    stroke: "none",
   };
   return (
     <Kutu boy={boy}>
-      <rect x="3" y="16" width="20" height="20" rx="5" fill={r.canli} />
-      <text x="13" y="31" {...yazi}>
+      <rect x="3" y="3" {...cerceve} />
+      <text x="13" y="18" {...yazi}>
         A
       </text>
-      <rect x="25" y="10" width="20" height="20" rx="5" fill={r.ana} />
-      <text x="35" y="25" {...yazi}>
+      <rect x="25" y="3" {...cerceve} />
+      <text x="35" y="18" {...yazi}>
         B
       </text>
-      <rect x="16" y="34" width="20" height="11" rx="4" fill={RENK.amber.canli} />
+      <rect x="3" y="25" {...cerceve} />
+      <text x="13" y="40" {...yazi}>
+        C
+      </text>
+      <rect x="25" y="25" {...cerceve} stroke={r.canli} />
     </Kutu>
   );
 }
 
-/**
- * Düşen — inen parça, altta biriken duvar.
- *
- * İlk çizimde alttaki iki sıra aynı hizadaydı ve ikon bir sütun
- * grafiğine benziyordu. Sıraların derzi kaydırılınca duvar oldu.
- */
+/** Düşen — inen parça ve biriken duvar, kontur. */
 export function DusenIkonu({ boy }: IkonProps) {
   const r = RENK.gul;
+  const cizgi = {
+    fill: "none",
+    stroke: r.ana,
+    strokeWidth: 2.6,
+    strokeLinejoin: "round" as const,
+    strokeLinecap: "round" as const,
+  };
   return (
     <Kutu boy={boy}>
-      <rect x="17" y="3" width="14" height="9" rx="2.5" fill={r.canli} />
-      <path
-        d="M24 15v5"
-        stroke={r.canli}
-        strokeWidth="3"
-        strokeLinecap="round"
-        strokeDasharray="3 4"
-      />
-
-      {/* Üst sıra — derz solda ve ortada. */}
-      <rect x="4" y="24" width="18" height="9" rx="2" fill={r.ana} />
-      <rect x="24" y="24" width="20" height="9" rx="2" fill={RENK.amber.canli} />
-
-      {/* Alt sıra — derzler kaydırılmış. */}
-      <rect x="4" y="35" width="10" height="9" rx="2" fill={RENK.amber.canli} />
-      <rect x="16" y="35" width="20" height="9" rx="2" fill={r.koyu} />
-      <rect x="38" y="35" width="6" height="9" rx="2" fill={r.ana} />
+      {/* İnen T parçası */}
+      <path d="M4 4h18v7h-5.5v7h-7v-7H4V4Z" {...cizgi} />
+      {/* Duvar */}
+      <path d="M4 30h7v-7h14v-7h7v14h12v14H4V30Z" {...cizgi} stroke={r.canli} />
+      <path d="M4 37h40" {...cizgi} stroke={r.canli} />
     </Kutu>
   );
 }

@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { OyunEkrani } from "@/oyunlar/arayuz";
-import { RENK, oyunRengi } from "@/components/oyuncu-renk";
+import { ArkaCizim } from "@/components/oyuncu";
+import { RENK, oyunRengi, kartZemin } from "@/components/oyuncu-renk";
+import { oyunGorseli } from "@/components/oyuncu-gorsel";
 import { OyunIkonu, HediyeIkonu, TacIkonu } from "@/components/oyuncu-ikon";
 import { baslaEylemi, bitirEylemi, type BitirCevabi } from "./actions";
 
@@ -165,10 +167,12 @@ export function OyunKabugu(ayar: Ayar) {
       )}
 
       <div
-        className="overflow-hidden rounded-3xl px-5 py-6"
-        style={{ background: r.zemin, border: `1px solid ${r.canli}` }}
+        className="relative overflow-hidden rounded-3xl px-5 py-6"
+        style={{ background: kartZemin(oyunRengi(ayar.oyunId)), border: `1px solid ${r.canli}` }}
       >
-        <div className="flex items-start gap-3.5">
+        <ArkaCizim renk={oyunRengi(ayar.oyunId)} gorsel={oyunGorseli(ayar.oyunId)} />
+
+        <div className="relative flex items-start gap-3.5">
           <span className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-yuzey shadow-sm">
             <OyunIkonu oyunId={ayar.oyunId} boy={34} />
           </span>
@@ -183,13 +187,13 @@ export function OyunKabugu(ayar: Ayar) {
         </div>
 
         {ayar.bonusMu && ayar.kazandirir && (
-          <div className="mt-4 inline-block rounded-full border border-odul bg-yuzey px-3 py-1 etiket-caps text-[10px] text-odul-koyu">
+          <div className="relative mt-4 inline-block rounded-full border border-odul bg-yuzey px-3 py-1 etiket-caps text-[10px] text-odul-koyu">
             Bugünün oyunu · ×2 puan
           </div>
         )}
 
-        <div className="mt-6">
-          <div className="etiket-caps" style={{ color: r.ana }}>
+        <div className="relative mt-6">
+          <div className="etiket-caps" style={{ color: r.koyu }}>
             Bölüm seç
           </div>
           <ul className="mt-2.5 grid grid-cols-3 gap-2.5">
@@ -206,10 +210,6 @@ export function OyunKabugu(ayar: Ayar) {
           </ul>
         </div>
       </div>
-
-      <Link href="/oyna" className="mt-7 inline-block text-[14px] text-vurgu underline">
-        Ana ekrana dön
-      </Link>
     </div>
   );
 }
@@ -363,21 +363,23 @@ function SonucEkrani({
   return (
     <div>
       <div
-        className="overflow-hidden rounded-3xl px-5 py-6"
-        style={{ background: r.zemin, border: `1px solid ${r.canli}` }}
+        className="relative overflow-hidden rounded-3xl px-5 py-6"
+        style={{ background: kartZemin(oyunRengi(ayar.oyunId)), border: `1px solid ${r.canli}` }}
       >
-        <div className="flex items-center gap-2">
+        <ArkaCizim renk={oyunRengi(ayar.oyunId)} gorsel={oyunGorseli(ayar.oyunId)} />
+
+        <div className="relative flex items-center gap-2">
           <OyunIkonu oyunId={ayar.oyunId} boy={16} />
-          <span className="etiket-caps" style={{ color: r.ana }}>
+          <span className="etiket-caps" style={{ color: r.koyu }}>
             {ayar.ad} · {bolum}. bölüm
           </span>
         </div>
-        <h1 className="mt-1.5 font-display text-3xl leading-none font-extrabold tracking-tight">
+        <h1 className="relative mt-1.5 font-display text-3xl leading-none font-extrabold tracking-tight">
           {basarili ? "Bölüm tamam" : "Bölüm bitti"}
         </h1>
 
         {/* Skor tek başına ortada: ekranın tek büyük sayısı o. */}
-        <div className="mt-6 text-center">
+        <div className="relative mt-6 text-center">
           <div className="etiket-caps text-yazi-sonuk">Skor</div>
           <div
             className="patla mt-1 font-data text-6xl leading-none font-bold tabular"
@@ -388,7 +390,7 @@ function SonucEkrani({
           <div className="mt-2 font-data text-[9px] text-yazi-sonuk">sunucuda doğrulandı</div>
         </div>
 
-        <div className="mt-6 flex flex-col gap-2">
+        <div className="relative mt-6 flex flex-col gap-2">
           {/* Ö1: taht statüden ibaret — puan, kupon veya çarpan
               vermiyor. Ama ekranın en gurur verici satırı o, bu yüzden
               diğer kazanımların üstünde ve tek başına duruyor. */}

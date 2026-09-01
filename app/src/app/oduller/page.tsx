@@ -3,9 +3,9 @@ import { redirect } from "next/navigation";
 import * as oturum from "@/domain/session";
 import { envanter, type EnvanterKuponu } from "@/domain/odul";
 import { bakim } from "@/domain/bakim";
-import { OyuncuSayfa, SayfaBasi, Sayac, OyuncuBolum } from "@/components/oyuncu";
-import { RENK, TUR_RENGI } from "@/components/oyuncu-renk";
-import { Gorsel, gorselSec } from "@/components/oyuncu-gorsel";
+import { OyuncuSayfa, SayfaBasi, Sayac, OyuncuBolum, ArkaCizim } from "@/components/oyuncu";
+import { RENK, kartZemin } from "@/components/oyuncu-renk";
+import { Gorsel, gorselSec, GORSEL_RENGI } from "@/components/oyuncu-gorsel";
 
 export const dynamic = "force-dynamic";
 
@@ -46,7 +46,7 @@ export default async function OdullerSayfasi() {
 
   return (
     <OyuncuSayfa aktif="/oduller">
-      <SayfaBasi ust="Envanter" baslik="Ödüllerim" renk="amber" gorsel="hediye">
+      <SayfaBasi ust="Envanter" baslik="Ödüllerim" renk="amber" gorsel="para">
         <div className="grid grid-cols-2 gap-2.5">
           <Sayac
             etiket="Kasada gösterebilirsin"
@@ -68,7 +68,7 @@ export default async function OdullerSayfasi() {
             aria-hidden
             className="pointer-events-none absolute -right-6 -bottom-8 text-yazi-sonuk opacity-[0.10]"
           >
-            <Gorsel ad="hediye" boy={140} />
+            <Gorsel ad="para" boy={140} />
           </span>
           <p className="relative text-[15px] leading-relaxed text-yazi-sonuk">
             Henüz ödülün yok. Bir CafePlay kafesinde masadaki karekodu okutup oynadığında
@@ -162,39 +162,25 @@ const DURUM_ETIKETI: Record<EnvanterKuponu["durum"], string> = {
  * görünsün, üstünde bir tutar yazmıyor.
  */
 function BiletKarti({ kupon }: { kupon: EnvanterKuponu }) {
-  const renk = TUR_RENGI[kupon.tur];
+  const gorsel = gorselSec(kupon.baslik, kupon.tur);
+  const renk = GORSEL_RENGI[gorsel];
   const r = RENK[renk];
-  const gorsel = gorselSec(kupon.baslik);
 
   return (
     <Link
       href={`/oduller/${kupon.id}`}
       className="relative block overflow-hidden rounded-2xl transition-transform active:scale-[0.99]"
-      style={{
-        background: `linear-gradient(120deg, ${r.zemin} 0%, #ffffff 88%)`,
-        border: `1px solid ${r.canli}`,
-      }}
+      style={{ background: kartZemin(renk), border: `1px solid ${r.canli}` }}
     >
-      {/* Kuponun kendi çizimi — sağdan taşıyor, metnin altında kalıyor. */}
-      <span
-        aria-hidden
-        className="pointer-events-none absolute -right-3 -bottom-5"
-        style={{ color: r.ana, opacity: 0.17 }}
-      >
-        <Gorsel ad={gorsel} boy={118} />
-      </span>
+      <ArkaCizim renk={renk} gorsel={gorsel} />
 
       <div className="relative flex items-stretch">
         {/* Koçan: biletin koparılan ucu. Yalnızca görsel — kupon tek
             parça, kod QR ekranında. */}
-        <span
-          aria-hidden
-          className="w-2.5 shrink-0"
-          style={{ background: r.ana }}
-        />
+        <span aria-hidden className="w-2.5 shrink-0" style={{ background: r.ana }} />
 
         <span className="min-w-0 flex-1 px-4 py-4">
-          <span className="block etiket-caps" style={{ color: r.ana }}>
+          <span className="block etiket-caps" style={{ color: r.koyu }}>
             {kupon.cafeAdi}
           </span>
           <span className="mt-1 block font-display text-xl leading-tight font-bold">
@@ -204,7 +190,7 @@ function BiletKarti({ kupon }: { kupon: EnvanterKuponu }) {
           {/* Kesikli çizgi: biletin koparma yeri. */}
           <span
             className="mt-3 block border-t border-dashed pt-2.5"
-            style={{ borderColor: r.canli }}
+            style={{ borderColor: r.ana }}
           >
             <span className="flex items-baseline justify-between gap-3">
               <span className="etiket-caps" style={{ color: r.koyu }}>
@@ -254,7 +240,7 @@ function BiletKarti({ kupon }: { kupon: EnvanterKuponu }) {
 function SakinKart({ kupon }: { kupon: EnvanterKuponu }) {
   const bekliyor = kupon.durum === "beklemede";
   const tarih = bekliyor ? kupon.aktiflesme : kupon.sonKullanim;
-  const r = RENK[TUR_RENGI[kupon.tur]];
+  const r = RENK[GORSEL_RENGI[gorselSec(kupon.baslik, kupon.tur)]];
 
   const govde = (
     <>

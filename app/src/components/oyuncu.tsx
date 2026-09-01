@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { RENK, type OyuncuRengi } from "./oyuncu-renk";
+import { RENK, kartZemin, type OyuncuRengi } from "./oyuncu-renk";
 import { Gorsel, type GorselAdi } from "./oyuncu-gorsel";
 import { OyuncuNav, NavBosluk, type Durak } from "./oyuncu-nav";
 
@@ -212,22 +212,19 @@ export function SayfaBasi({
   return (
     <header
       className="relative mb-8 overflow-hidden rounded-3xl px-5 py-6"
-      style={{
-        background: `linear-gradient(140deg, ${r.zemin} 0%, #ffffff 85%)`,
-        border: `1px solid ${r.canli}`,
-      }}
+      style={{ background: kartZemin(renk), border: `1px solid ${r.canli}` }}
     >
       {gorsel && (
         <span
           aria-hidden
-          className="pointer-events-none absolute -top-6 -right-7"
-          style={{ color: r.ana, opacity: 0.18, transform: "rotate(-10deg)" }}
+          className="pointer-events-none absolute -top-5 -right-8"
+          style={{ color: r.ana, opacity: 0.2, transform: "rotate(-8deg)" }}
         >
-          <Gorsel ad={gorsel} boy={150} />
+          <Gorsel ad={gorsel} boy={168} />
         </span>
       )}
 
-      <p className="etiket-caps" style={{ color: r.ana }}>
+      <p className="etiket-caps" style={{ color: r.koyu }}>
         {ust}
       </p>
       <h1 className="mt-1 font-display text-3xl leading-none font-extrabold tracking-tight">
@@ -303,20 +300,33 @@ export function GorselKart({
   return (
     <div
       className={`relative overflow-hidden rounded-3xl ${className}`}
-      style={{
-        background: `linear-gradient(135deg, ${r.zemin} 0%, #ffffff 92%)`,
-        border: `1px solid ${r.canli}`,
-      }}
+      style={{ background: kartZemin(renk), border: `1px solid ${r.canli}` }}
     >
-      <span
-        aria-hidden
-        className="pointer-events-none absolute -right-5 -bottom-7"
-        style={{ color: r.ana, opacity: 0.16 }}
-      >
-        <Gorsel ad={gorsel} boy={132} />
-      </span>
+      <ArkaCizim renk={renk} gorsel={gorsel} />
       <div className="relative">{children}</div>
     </div>
+  );
+}
+
+/**
+ * Kartın sağındaki soluk çizim — Ü67.
+ *
+ * Sağ kenardan taşıyor ve dikeyde ortalı. Önceki hâli sağ **alt**
+ * köşedeydi ve kısa kartlarda çizimin yalnızca üst şeridi görünüyordu;
+ * ortalanınca her yükseklikte aynı parça görünüyor.
+ *
+ * Saydamlık 0.2: 0.35'te metnin altında desen çıkıyor, 0.1'de çizim
+ * fark edilmiyor.
+ */
+export function ArkaCizim({ renk, gorsel }: { renk: OyuncuRengi; gorsel: GorselAdi }) {
+  return (
+    <span
+      aria-hidden
+      className="pointer-events-none absolute top-1/2 -right-6 -translate-y-1/2"
+      style={{ color: RENK[renk].ana, opacity: 0.2 }}
+    >
+      <Gorsel ad={gorsel} boy={118} />
+    </span>
   );
 }
 

@@ -35,6 +35,34 @@
 
 export type OyuncuRengi = "menekse" | "nane" | "gul" | "amber" | "gok";
 
+/**
+ * Oyuncu tarafındaki kartın zemini — Ü67.
+ *
+ * ── Neden soldan sağa ───────────────────────────────────────
+ *
+ * Ürün sahibi: *"sağda daha az renk, solda daha fazla, sağdan sola
+ * artan şekilde olsun; ikon da sağ kısımda olsun."* Yani renk solda
+ * yoğun başlayıp sağa doğru beyaza gidiyor, arkadaki çizim de o beyaz
+ * tarafta duruyor.
+ *
+ * Mantığı sağlam: metin solda başlıyor ve rengin en yoğun olduğu yer
+ * metnin arkası; çizim sağda ve orada zemin zaten sakin, çizimin
+ * okunması için yer var. Önceki köşegen gradyan (135°) ikisini de
+ * ortada topluyordu.
+ *
+ * ── Neden `canlı` değil, yarısı ─────────────────────────────
+ *
+ * Sol uç `canli` tonunun **%50 opaklığı** (`80` son eki), doygun hâli
+ * değil. Doygun tonda kartın sol yarısındaki koyu metin okunuyor ama
+ * `koyu` renkli küçük etiket ("KAFE A") kontrastı kaybediyordu.
+ * Yarısı, ürün sahibinin *"bu kadar şeffaf olmasın"* itirazını
+ * karşılarken etiketi de okunur bırakıyor.
+ */
+export function kartZemin(renk: OyuncuRengi): string {
+  const r = RENK[renk];
+  return `linear-gradient(90deg, ${r.canli}80 0%, ${r.zemin} 42%, #ffffff 100%)`;
+}
+
 export type RenkTonu = {
   zemin: string;
   ana: string;
@@ -70,15 +98,12 @@ export function oyunRengi(oyunId: string): OyuncuRengi {
   return OYUN_RENGI[oyunId] ?? "menekse";
 }
 
-/**
- * Kupon cinsinin rengi.
+/*
+ * Kupon rengi burada değil, `oyuncu-gorsel.ts`'te (`GORSEL_RENGI`).
  *
- * Ödüller ekranında beş kupon alt alta duruyordu ve beşi de aynı
- * renkteydi — cüzdan değil, aynı kartın beş kopyası gibi. Cins zaten
- * biliniyor (`EnvanterKuponu.tur`), renk onu görünür yapıyor.
+ * Ü65'te renk kuponun **teknik tipinden** (ürün/yüzde/tutar) geliyordu
+ * ve "Tatlıda %10 indirim" menekşe çıkıyordu: ekranda pasta çizimi,
+ * kenarında mor bir şerit. Ü67'de renk gördüğün şeyden türüyor —
+ * içecek amber, tatlı gül, para nane — böylece çizim ve renk aynı
+ * şeyi söylüyor.
  */
-export const TUR_RENGI = {
-  urun: "amber",
-  yuzde: "menekse",
-  tutar: "nane",
-} as const satisfies Record<string, OyuncuRengi>;

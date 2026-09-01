@@ -1,49 +1,44 @@
 /**
- * Kart arkası çizimleri — Ü66.
+ * Kart arkası çizimleri — Ü66, Ü67.
  *
  * ── Ne işe yarıyorlar ───────────────────────────────────────
  *
  * Ürün sahibi: *"tatlı indiriminde tatlı, çay veya kahve indiriminde
- * içecek — indirim ne ile alakalıysa o görünsün; arka planda şeffaf,
- * blurlu gibi."* İkinci bir gerekçe de vardı: kuponlar doygun renkli
- * gradyanlarla *"fazla cırtlak"* duruyordu. Çizim, rengin yükünü
- * alıyor — kart artık rengiyle değil **içeriğiyle** ayrılıyor ve
- * pastel bir zeminle yetiniyor.
+ * içecek — indirim ne ile alakalıysa o görünsün; arka planda şeffaf."*
+ * Çizim, rengin yükünü alıyor: kart artık yalnızca rengiyle değil
+ * **içeriğiyle** ayrılıyor.
  *
- * ── Neden tek renk ──────────────────────────────────────────
+ * ── Üç çeşit, daha fazlası değil (Ü67) ──────────────────────
  *
- * Hepsi `currentColor` ile çiziliyor ve şeffaflığı katman katman
- * veriyor. Çok renkli olsalardı kartın kendi rengiyle çakışırlardı;
- * tek renk olunca kart hangi renkteyse çizim de o renkte ve %15-20
- * saydamlıkta arka planda kalıyor.
+ * İlk sürümde sekiz çeşit vardı: kahve, çay, soğuk içecek, tatlı,
+ * atıştırmalık, yüzde, para, hediye. Ürün sahibi sadeleştirdi:
+ * *"çay ve kahve ayrı değil, onlarda içecek; tatlılarda tatlı; direkt
+ * ücret kuponlarında para. Üç çeşit yeterli."*
  *
- * Bulanıklaştırma (`filter: blur`) denendi ve bırakıldı: küçük
- * ekranda çizimi lekeye çeviriyor, üstelik her karede yeniden
- * hesaplanan bir filtre. Düşük saydamlık aynı "arkada duruyor"
- * hissini bedavaya veriyor.
+ * Doğru karar: sekiz çizimin altısı ayrım yapmıyordu. Oyuncu kupona
+ * bakınca "bu içecek mi, tatlı mı, para mı" diye soruyor; "bu latte mi
+ * americano mu" diye değil — onu zaten başlık söylüyor.
+ *
+ * ── Çizim dili ──────────────────────────────────────────────
+ *
+ * Ürün sahibinin verdiği referanslar (`Downloads/icons`) ince çizgili
+ * kontur ikonlar: dolgu yok, sabit kalınlık, yuvarlak uçlar. Buradaki
+ * çizimler o dilde. Tek istisna Blok: referansı da dolgu kareler.
+ *
+ * `currentColor` kullanılıyor, yani kart hangi renkteyse çizim de o
+ * renkte. Çok renkli olsalardı kartın kendi rengiyle çakışırlardı.
  *
  * ── Fotoğraf değil çizim ────────────────────────────────────
  *
- * Ürün fotoğrafı daha zengin olurdu ama kafenin kendi ürününün
- * fotoğrafı yok; stok fotoğraf da "bu bardağı mı alacağım" diye
- * okunur ve kupon yanlış bir şey vaat etmiş olur. Çizim, cinsi
- * söylüyor, ürünü değil.
+ * Kafenin kendi ürün fotoğrafı yok; stok fotoğraf "bu bardağı mı
+ * alacağım" diye okunur ve kupon yanlış bir şey vaat etmiş olur.
+ * Çizim cinsi söylüyor, ürünü değil.
  */
 
-export type GorselAdi =
-  | "kahve"
-  | "cay"
-  | "soguk"
-  | "tatli"
-  | "atistirmalik"
-  | "yuzde"
-  | "para"
-  | "hediye"
-  | "blok"
-  | "kelime"
-  | "dusen"
-  | "alev"
-  | "cark";
+export type GorselAdi = "icecek" | "tatli" | "para" | "blok" | "kelime" | "dusen" | "alev" | "cark";
+
+/** Kupon kartında kullanılabilecek üç çeşit. */
+export type KuponGorseli = "icecek" | "tatli" | "para";
 
 /**
  * Kupon başlığından çizim seçer.
@@ -51,42 +46,53 @@ export type GorselAdi =
  * ── Sıra önemli ─────────────────────────────────────────────
  *
  * Ürün anahtar kelimeleri **önce** bakılıyor: "Tatlıda %10 indirim"
- * hem tatlı hem yüzde içeriyor ve ürün sahibinin istediği tatlı.
- * Yüzde ile TL en sonda, yalnızca hiçbir ürün tutmadığında.
+ * hem tatlı hem indirim içeriyor ve ürün sahibinin istediği tatlı.
+ * Para en sonda, yalnızca hiçbir ürün tutmadığında — "50 TL indirim"
+ * gibi doğrudan tutar kuponlarında.
  *
  * Türkçe küçültme `toLocaleLowerCase("tr")` ile: varsayılan küçültme
- * "ÇAY"ı doğru çeviriyor ama "IŞIL" gibi başlıklarda I harfini "i"ye
- * düşürüyor ve eşleşme kayıyor.
+ * "IŞIL" gibi başlıklarda I harfini "i"ye düşürüp eşleşmeyi kaydırıyor.
  */
-const ESLESME: [GorselAdi, string[]][] = [
-  [
-    "kahve",
-    ["kahve", "espresso", "latte", "americano", "filtre", "cappuccino", "mocha", "macchiato", "cortado", "flat white"],
-  ],
-  ["cay", ["çay", "demleme", "bitki"]],
-  [
-    "soguk",
-    ["limonata", "smoothie", "soğuk", "buzlu", "milkshake", "frappe", "kola", "ayran", "meşrubat", "meyve suyu", "ice"],
-  ],
+const ESLESME: [KuponGorseli, string[]][] = [
   [
     "tatli",
-    ["tatlı", "kek", "cheesecake", "brownie", "kurabiye", "pasta", "waffle", "dondurma", "sufle", "muffin", "tiramisu", "profiterol", "magnolia"],
+    ["tatlı", "kek", "cheesecake", "brownie", "kurabiye", "pasta", "waffle", "dondurma", "sufle", "muffin", "tiramisu", "profiterol", "magnolia", "kruvasan", "poğaça", "börek", "simit"],
   ],
   [
-    "atistirmalik",
-    ["tost", "sandviç", "sandvic", "bagel", "kruvasan", "poğaça", "simit", "börek", "salata", "kahvaltı", "wrap", "makarna"],
+    "icecek",
+    ["kahve", "espresso", "latte", "americano", "filtre", "cappuccino", "mocha", "macchiato", "cortado", "çay", "demleme", "bitki", "limonata", "smoothie", "soğuk", "buzlu", "milkshake", "frappe", "kola", "ayran", "meşrubat", "meyve suyu", "içecek", "ice"],
   ],
 ];
 
-export function gorselSec(metin: string): GorselAdi {
+/**
+ * @param metin Kuponun başlığı — "Ücretsiz filtre kahve", "Tatlıda %10".
+ * @param tur   Hiçbir kelime tutmazsa devreye giren yedek. Ürün ödülü
+ *              olduğu bilinen ama adı tanınmayan bir kupon ("Sürpriz")
+ *              para çizimiyle çıkmamalı — kafede satılan ürünlerin
+ *              çoğunluğu içecek olduğu için oraya düşüyor.
+ */
+export function gorselSec(metin: string, tur?: "urun" | "yuzde" | "tutar"): KuponGorseli {
   const m = metin.toLocaleLowerCase("tr");
   for (const [ad, kelimeler] of ESLESME) {
     if (kelimeler.some((k) => m.includes(k))) return ad;
   }
-  if (m.includes("%")) return "yuzde";
-  if (m.includes("tl") || m.includes("indirim")) return "para";
-  return "hediye";
+  return tur === "urun" ? "icecek" : "para";
 }
+
+/**
+ * Çizimin rengi.
+ *
+ * Renk artık kuponun **teknik tipinden** (ürün/yüzde/tutar) değil,
+ * gördüğü şeyden geliyor: içecek amber, tatlı gül, para nane. Ü65'te
+ * renk tipe bağlıydı ve "Tatlıda %10 indirim" menekşe (yüzde) çıkıyordu
+ * — ekranda pasta çizimi, kenarında mor bir şerit. İkisi aynı şeyi
+ * söylemeli.
+ */
+export const GORSEL_RENGI = {
+  icecek: "amber",
+  tatli: "gul",
+  para: "nane",
+} as const;
 
 /**
  * Oyunun kart arkasındaki çizimi.
@@ -95,7 +101,7 @@ export function gorselSec(metin: string): GorselAdi {
  * yerde duruyor, çünkü ana ekran, katalog ve oyun kabuğu aynı oyuna
  * aynı çizimi vermek zorunda.
  */
-export const OYUN_GORSELI: Record<string, GorselAdi> = {
+const OYUN_GORSELI: Record<string, GorselAdi> = {
   blok: "blok",
   kelime: "kelime",
   dusen: "dusen",
@@ -105,7 +111,7 @@ export function oyunGorseli(oyunId: string): GorselAdi {
   return OYUN_GORSELI[oyunId] ?? "blok";
 }
 
-/* ── Çizimler ──────────────────────────────────────────────── */
+/* ── Çizen ─────────────────────────────────────────────────── */
 
 export function Gorsel({
   ad,
@@ -120,8 +126,12 @@ export function Gorsel({
     <svg
       width={boy}
       height={boy}
-      viewBox="0 0 120 120"
-      fill="currentColor"
+      viewBox="0 0 512 512"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={CIZGI}
+      strokeLinecap="round"
+      strokeLinejoin="round"
       className={className}
       aria-hidden
     >
@@ -129,6 +139,9 @@ export function Gorsel({
     </svg>
   );
 }
+
+/** Referans ikonların çizgi kalınlığı — 512'lik kutuda 20 birim. */
+const CIZGI = 20;
 
 /*
  * Çizimler modül seviyesinde sabit elemanlar.
@@ -138,205 +151,114 @@ export function Gorsel({
  * yaratılır, React ağacı gereksiz yere yeniden kurulurdu.
  */
 const CIZIM: Record<GorselAdi, React.ReactElement> = {
-  /** Fincan, tabak, buhar. */
-  kahve: (
+  /** Fincan, tabak, buhar — sıcak da soğuk da içecek (Ü67). */
+  icecek: (
     <g>
-      <path d="M26 44h56v26a26 26 0 0 1-26 26h-4a26 26 0 0 1-26-26V44Z" opacity="0.55" />
-      <path
-        d="M82 52h9a15 15 0 0 1 0 30h-9v-8h9a7 7 0 0 0 0-14h-9v-8Z"
-        opacity="0.35"
-      />
-      <rect x="16" y="100" width="80" height="8" rx="4" opacity="0.4" />
-      <path
-        d="M44 32c-6-6 4-10-2-16M60 32c-6-6 4-10-2-16M76 32c-6-6 4-10-2-16"
-        stroke="currentColor"
-        strokeWidth="4"
-        strokeLinecap="round"
-        fill="none"
-        opacity="0.3"
-      />
+      {/* Buhar */}
+      <path d="M152 150c-22-26 22-40 0-66M226 138c-22-26 22-40 0-66M300 150c-22-26 22-40 0-66" />
+      {/* Fincan gövdesi */}
+      <path d="M18 188h392v104c0 106-86 192-192 192h-8C104 484 18 398 18 292V188Z" />
+      {/* Kulp */}
+      <path d="M410 224h84v58c0 50-40 90-90 90h-30" />
+      {/* Tabak */}
+      <path d="M10 462h436c0 34-28 62-62 62H72c-34 0-62-28-62-62Z" />
     </g>
   ),
 
-  /** İnce belli çay bardağı — tabak ve kaşık. */
-  cay: (
-    <g>
-      <path
-        d="M40 24h40l-5 20c-4 5-4 11 0 16l5 20H40l5-20c4-5 4-11 0-16L40 24Z"
-        opacity="0.5"
-      />
-      <path d="M43 34h34l-3 12H46l-3-12Z" opacity="0.35" />
-      <ellipse cx="60" cy="88" rx="34" ry="8" opacity="0.4" />
-      <path
-        d="M92 66c8 4 8 14 0 18"
-        stroke="currentColor"
-        strokeWidth="4"
-        strokeLinecap="round"
-        fill="none"
-        opacity="0.3"
-      />
-    </g>
-  ),
-
-  /** Uzun bardak, pipet, buz. */
-  soguk: (
-    <g>
-      <path d="M32 28h56l-7 74a8 8 0 0 1-8 7H47a8 8 0 0 1-8-7L32 28Z" opacity="0.45" />
-      <rect x="60" y="8" width="8" height="34" rx="4" transform="rotate(14 64 25)" opacity="0.4" />
-      <rect x="44" y="44" width="16" height="16" rx="3" opacity="0.3" />
-      <rect x="64" y="58" width="14" height="14" rx="3" opacity="0.3" />
-      <rect x="48" y="70" width="13" height="13" rx="3" opacity="0.3" />
-    </g>
-  ),
-
-  /** Pasta dilimi — katlar ve vişne. */
+  /** Pasta dilimi — katlar ve çilek. */
   tatli: (
     <g>
-      <path d="M20 60h80l-6 40a8 8 0 0 1-8 7H34a8 8 0 0 1-8-7L20 60Z" opacity="0.45" />
-      <path
-        d="M20 60c0-12 18-20 40-20s40 8 40 20c-8 8-24 12-40 12s-32-4-40-12Z"
-        opacity="0.55"
-      />
-      <rect x="26" y="76" width="68" height="7" rx="3.5" opacity="0.3" />
-      <circle cx="60" cy="26" r="10" opacity="0.5" />
-      <path
-        d="M60 16c2-8 8-10 12-9"
-        stroke="currentColor"
-        strokeWidth="4"
-        strokeLinecap="round"
-        fill="none"
-        opacity="0.35"
-      />
+      {/* Çilek ve sapı */}
+      <path d="M300 96c-8-30-30-42-52-40" />
+      <path d="M256 74c34 0 52 10 52 34 0 34-24 74-52 74s-52-40-52-74c0-24 18-34 52-34Z" />
+      {/* Dilim gövdesi */}
+      <path d="M14 250 232 140" />
+      <path d="M14 250h484v226H14V250Z" />
+      <path d="M312 128c98 8 186 62 186 122" />
+      {/* Kremalar */}
+      <path d="M14 316c34 0 34-26 68-26s34 26 68 26 34-26 68-26 34 26 68 26 34-26 68-26 34 26 68 26" />
+      <path d="M14 380c34 0 34-26 68-26s34 26 68 26 34-26 68-26 34 26 68 26 34-26 68-26 34 26 68 26" />
     </g>
   ),
 
-  /** Tost — üçgen dilim, kabuk. */
-  atistirmalik: (
-    <g>
-      <path d="M14 88 60 20l46 68a6 6 0 0 1-5 9H19a6 6 0 0 1-5-9Z" opacity="0.5" />
-      <path d="M32 78 60 38l28 40H32Z" opacity="0.3" />
-      <circle cx="52" cy="66" r="5" opacity="0.4" />
-      <circle cx="68" cy="60" r="4" opacity="0.4" />
-    </g>
-  ),
-
-  /** Yüzde işareti — etiketin içinde. */
-  yuzde: (
-    <g>
-      <path
-        d="M62 14h40a6 6 0 0 1 6 6v40a8 8 0 0 1-2.3 5.7l-40 40a8 8 0 0 1-11.4 0L20 71.7a8 8 0 0 1 0-11.4l40-40A8 8 0 0 1 62 14Z"
-        opacity="0.35"
-      />
-      <circle cx="92" cy="30" r="6" opacity="0.5" />
-      <path
-        d="M74 44 46 72"
-        stroke="currentColor"
-        strokeWidth="7"
-        strokeLinecap="round"
-        fill="none"
-        opacity="0.55"
-      />
-      <circle cx="48" cy="46" r="8" fill="none" stroke="currentColor" strokeWidth="6" opacity="0.55" />
-      <circle cx="72" cy="70" r="8" fill="none" stroke="currentColor" strokeWidth="6" opacity="0.55" />
-    </g>
-  ),
-
-  /** Bozuk para yığını. */
+  /** Banknot destesi ve bozuk para. */
   para: (
     <g>
-      <ellipse cx="60" cy="88" rx="38" ry="13" opacity="0.5" />
-      <rect x="22" y="66" width="76" height="22" opacity="0.5" />
-      <ellipse cx="60" cy="66" rx="38" ry="13" opacity="0.6" />
-      <ellipse cx="60" cy="46" rx="30" ry="11" opacity="0.4" />
-      <rect x="30" y="30" width="60" height="16" opacity="0.3" />
-      <ellipse cx="60" cy="30" rx="30" ry="11" opacity="0.45" />
+      {/* Üstteki banknot */}
+      <path d="M14 240 300 70l198 118-286 170L14 240Z" />
+      <ellipse cx="256" cy="214" rx="34" ry="22" transform="rotate(-30 256 214)" />
+      {/* Deste kalınlığı */}
+      <path d="M14 240v56l198 118M14 296v56l198 118M498 188v56M420 300l78-46" />
+      {/* Bozuk para */}
+      <ellipse cx="368" cy="330" rx="88" ry="36" />
+      <path d="M280 330v82c0 20 40 36 88 36s88-16 88-36v-82" />
+      <path d="M280 372c0 20 40 36 88 36s88-16 88-36" />
     </g>
   ),
 
-  /** Hediye kutusu — cinsi bilinmeyen ödül. */
-  hediye: (
-    <g>
-      <rect x="18" y="46" width="84" height="58" rx="6" opacity="0.45" />
-      <rect x="12" y="30" width="96" height="22" rx="6" opacity="0.55" />
-      <rect x="52" y="30" width="16" height="74" opacity="0.35" />
-      <path
-        d="M60 30c-8-16-28-18-28-5 0 8 13 8 28 5Zm0 0c8-16 28-18 28-5 0 8-13 8-28 5Z"
-        opacity="0.4"
-      />
-    </g>
-  ),
-
-  /** Blok — yerleşmiş parçalar. */
+  /**
+   * Blok — dolu kareler.
+   *
+   * Referansın (block blast) tek dolgu ikonu bu; kontur çizilseydi
+   * "bloklar" değil "kutular" gibi okunurdu.
+   */
   blok: (
-    <g>
-      <rect x="14" y="14" width="30" height="30" rx="6" opacity="0.5" />
-      <rect x="48" y="14" width="30" height="30" rx="6" opacity="0.3" />
-      <rect x="14" y="48" width="30" height="30" rx="6" opacity="0.3" />
-      <rect x="48" y="48" width="30" height="30" rx="6" opacity="0.55" />
-      <rect x="82" y="48" width="24" height="30" rx="6" opacity="0.35" />
-      <rect x="48" y="82" width="30" height="24" rx="6" opacity="0.4" />
+    <g fill="currentColor" stroke="none">
+      <rect x="30" y="30" width="100" height="100" rx="18" />
+      <rect x="152" y="30" width="100" height="100" rx="18" />
+      <rect x="274" y="30" width="100" height="100" rx="18" />
+      <rect x="30" y="152" width="100" height="100" rx="18" />
+      <rect x="382" y="152" width="100" height="100" rx="18" />
+      <rect x="382" y="274" width="100" height="100" rx="18" />
+      <rect x="30" y="382" width="100" height="100" rx="18" />
+      <rect x="152" y="382" width="100" height="100" rx="18" />
+      <rect x="274" y="382" width="100" height="100" rx="18" />
+      <rect x="382" y="382" width="100" height="100" rx="18" />
     </g>
   ),
 
-  /** Kelime — harf taşları. */
+  /** Kelime — üst üste binen harf taşları. */
   kelime: (
     <g>
-      <rect x="10" y="40" width="34" height="34" rx="7" opacity="0.5" />
-      <rect x="48" y="24" width="34" height="34" rx="7" opacity="0.35" />
-      <rect x="48" y="64" width="34" height="34" rx="7" opacity="0.45" />
-      <rect x="86" y="48" width="26" height="34" rx="7" opacity="0.3" />
-      <rect x="18" y="54" width="18" height="6" rx="3" opacity="0.55" />
-      <rect x="56" y="38" width="18" height="6" rx="3" opacity="0.5" />
-      <rect x="56" y="78" width="18" height="6" rx="3" opacity="0.5" />
+      <rect x="20" y="20" width="220" height="220" rx="44" />
+      <rect x="72" y="72" width="116" height="116" rx="12" />
+      <rect x="272" y="20" width="220" height="220" rx="44" />
+      <circle cx="382" cy="130" r="52" />
+      <rect x="20" y="272" width="220" height="220" rx="44" />
+      <path d="M110 442V322h44a40 40 0 0 1 0 80h-44m52 0 42 40" />
+      <rect x="272" y="272" width="220" height="220" rx="44" />
+      <path d="M348 442V322h40c34 0 56 24 56 60s-22 60-56 60h-40Z" />
     </g>
   ),
 
-  /** Düşen — inen parça ve duvar. */
+  /** Düşen — inen parça ve biriken duvar. */
   dusen: (
     <g>
-      <rect x="44" y="8" width="34" height="18" rx="4" opacity="0.45" />
-      <path
-        d="M61 32v12"
-        stroke="currentColor"
-        strokeWidth="6"
-        strokeLinecap="round"
-        strokeDasharray="6 8"
-        fill="none"
-        opacity="0.35"
-      />
-      <rect x="10" y="54" width="46" height="22" rx="4" opacity="0.45" />
-      <rect x="60" y="54" width="50" height="22" rx="4" opacity="0.3" />
-      <rect x="10" y="82" width="26" height="22" rx="4" opacity="0.3" />
-      <rect x="40" y="82" width="46" height="22" rx="4" opacity="0.5" />
-      <rect x="90" y="82" width="20" height="22" rx="4" opacity="0.35" />
+      {/* İnen T parçası */}
+      <path d="M30 100h180v70h-60v70h-60v-70H30v-70Z" />
+      {/* Sağ üstteki küçük parça */}
+      <path d="M330 30h150v80h-75v80h-75V30Z" />
+      {/* Duvar */}
+      <path d="M30 322h75v-80h150v-80h75v160h152v160H30V322Z" />
+      <path d="M105 322v160M180 322v160M255 322v160M330 322v160M405 322v160M30 402h452" />
     </g>
   ),
 
   /** Alev — günlük seri. */
   alev: (
     <g>
-      <path
-        d="M60 8c18 18 32 30 32 54a32 32 0 0 1-64 0c0-11 4-19 11-27 1 8 5 13 10 16-3-16 3-31 11-43Z"
-        opacity="0.45"
-      />
-      <path d="M60 58c9 9 15 15 15 25a15 15 0 0 1-30 0c0-8 5-14 15-25Z" opacity="0.35" />
+      <path d="M256 24c78 78 138 130 138 234a138 138 0 0 1-276 0c0-48 18-84 48-116 4 34 22 56 44 68-14-68 14-134 46-186Z" />
+      <path d="M256 258c40 40 66 66 66 110a66 66 0 0 1-132 0c0-34 22-62 66-110Z" />
     </g>
   ),
 
   /** Çark. */
   cark: (
     <g>
-      <circle cx="60" cy="62" r="46" opacity="0.3" />
-      <circle cx="60" cy="62" r="34" opacity="0.35" />
-      <path
-        d="M60 28v68M30 45l60 34M30 79l60-34"
-        stroke="currentColor"
-        strokeWidth="5"
-        strokeLinecap="round"
-        fill="none"
-        opacity="0.4"
-      />
-      <circle cx="60" cy="62" r="9" opacity="0.6" />
+      <circle cx="256" cy="270" r="200" />
+      <circle cx="256" cy="270" r="148" />
+      <path d="M256 70v400M83 170l346 200M83 370l346-200" />
+      <circle cx="256" cy="270" r="40" />
     </g>
   ),
 };

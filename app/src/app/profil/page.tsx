@@ -5,8 +5,15 @@ import { idIleBul, gorunum } from "@/domain/player";
 import { degerlendir, type KazanilmisRozet } from "@/domain/rozet";
 import { karne, type KafeKarnesi } from "@/domain/profil";
 import Link from "next/link";
-import { OyuncuSayfa, SayfaBasi, Sayac, OyuncuBolum, Pul } from "@/components/oyuncu";
-import { RENK, type OyuncuRengi } from "@/components/oyuncu-renk";
+import {
+  OyuncuSayfa,
+  SayfaBasi,
+  Sayac,
+  OyuncuBolum,
+  Pul,
+  ArkaCizim,
+} from "@/components/oyuncu";
+import { RENK, kartZemin, type OyuncuRengi } from "@/components/oyuncu-renk";
 import { MadalyaIkonu, OyunIkonu } from "@/components/oyuncu-ikon";
 import { Gorsel } from "@/components/oyuncu-gorsel";
 import { cikisYap } from "../oyna/actions";
@@ -88,7 +95,7 @@ export default async function ProfilSayfasi() {
             aria-hidden
             className="pointer-events-none absolute -right-6 -bottom-8 text-yazi-sonuk opacity-[0.10]"
           >
-            <Gorsel ad="kahve" boy={140} />
+            <Gorsel ad="icecek" boy={140} />
           </span>
           <div className="relative flex justify-center">
             <MadalyaIkonu boy={64} />
@@ -206,10 +213,17 @@ function KafeKarti({ kafe, buradaMi }: { kafe: KafeKarnesi; buradaMi: boolean })
       className="overflow-hidden rounded-3xl bg-yuzey"
       style={{ border: `1px solid ${buradaMi ? r.ana : "var(--color-cizgi)"}` }}
     >
-      {/* Üst şerit kuşağın renginde: kart açılmadan hangi seviyede
-          olduğun görünüyor. */}
-      <div className="px-5 py-5" style={{ background: r.zemin }}>
-        <div className="flex items-start gap-4">
+      {/*
+        Üst şerit kuşağın renginde ve soldan sağa açılıyor (Ü67):
+        seviye halkası solda, rengin en yoğun olduğu yerde duruyor.
+        Düz `zemin` dolgusuyken ürün sahibi *"profil kısmı yine çok
+        sönük"* dedi — haklıydı, pastelin tek tonu kartı düzleştiriyordu.
+      */}
+      <div className="relative px-5 py-5" style={{ background: kartZemin(renk) }}>
+        {/* Kafe kartının arkasında fincan: kart bir kafeyi anlatıyor. */}
+        <ArkaCizim renk={renk} gorsel="icecek" />
+
+        <div className="relative flex items-start gap-4">
           <SeviyeHalkasi seviye={kafe.seviye} yuzde={kafe.ilerlemeYuzde} renk={renk} />
 
           <div className="min-w-0 flex-1">
@@ -242,7 +256,7 @@ function KafeKarti({ kafe, buradaMi }: { kafe: KafeKarnesi; buradaMi: boolean })
         </div>
 
         {kafe.rozetler.length > 0 && (
-          <ul className="mt-4 flex flex-wrap gap-1.5">
+          <ul className="relative mt-4 flex flex-wrap gap-1.5">
             {kafe.rozetler.map((rz) => (
               <RozetPulu key={rz.code} rozet={rz} renk={renk} />
             ))}

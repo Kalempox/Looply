@@ -5,7 +5,7 @@ import { K2 } from "@/domain/masa";
 import { oyunBul, gununOyunu } from "@/oyunlar";
 import { kodEkrandaGosterilir } from "@/sms";
 import { isGunu } from "@/lib/tarih";
-import { Sayfa } from "@/components/ui";
+import { OyuncuSayfa } from "@/components/oyuncu";
 import { OyunKabugu } from "./oyun-kabuk";
 
 export const dynamic = "force-dynamic";
@@ -41,8 +41,20 @@ export default async function OyunSayfasi({
   const kazandirir = !!masa && (masa.kanitMaskesi & K2) !== 0;
   const bonusMu = gununOyunu(isGunu()).id === oyun.id;
 
+  /*
+    Geri düğmesi katalogda (Ü67).
+
+    Ürün sahibi: *"oyunlarda geri çıkma butonu da yok."* Doğru: oyun
+    ekranı oynarken ekranın tamamını kaplıyor ve tek çıkış yolu
+    sayfanın en altındaki bir bağlantıydı — oyun alanının altında,
+    görünmüyor.
+
+    Hedef `/oyunlar`: oyuncu buraya çoğunlukla katalogdan geliyor ve
+    "geri" onu geldiği yere döndürmeli. Ana ekrandan tek dokunuşla
+    gelenler için de katalog bir adım ötede, çıkmaz sokak yok.
+  */
   return (
-    <Sayfa>
+    <OyuncuSayfa aktif="/oyna" geri={{ href: "/oyunlar", etiket: "Oyunlar" }}>
       {/* Başlık kabuğun içinde: üç durumun üçü de oyunun adını farklı
           yerde söylüyor (kartın tepesinde, oynarken şeritte, sonuçta
           bölüm satırında). Sayfanın da ayrıca söylemesi, oyun adını
@@ -59,6 +71,6 @@ export default async function OyunSayfasi({
         demoKapisi={kodEkrandaGosterilir()}
         hemenBasla={sp.basla === "1"}
       />
-    </Sayfa>
+    </OyuncuSayfa>
   );
 }

@@ -5,9 +5,9 @@ import * as masaOturumu from "@/domain/masa";
 import { K2 } from "@/domain/masa";
 import { OYUNLAR, gununOyunu, type HerhangiOyun } from "@/oyunlar";
 import { isGunu } from "@/lib/tarih";
-import { OyuncuSayfa, SayfaBasi, OyuncuBolum } from "@/components/oyuncu";
-import { RENK, oyunRengi } from "@/components/oyuncu-renk";
-import { Gorsel, oyunGorseli } from "@/components/oyuncu-gorsel";
+import { OyuncuSayfa, SayfaBasi, OyuncuBolum, ArkaCizim } from "@/components/oyuncu";
+import { RENK, oyunRengi, kartZemin } from "@/components/oyuncu-renk";
+import { oyunGorseli } from "@/components/oyuncu-gorsel";
 import { OyunIkonu } from "@/components/oyuncu-ikon";
 
 export const dynamic = "force-dynamic";
@@ -131,18 +131,9 @@ function OyunKarti({ oyun, bugunMu }: { oyun: HerhangiOyun; bugunMu: boolean }) 
     <Link
       href={`/oyna/${oyun.id}`}
       className="relative block overflow-hidden rounded-3xl px-5 py-5 transition-all hover:-translate-y-0.5 hover:shadow-md"
-      style={{
-        background: `linear-gradient(135deg, ${r.zemin} 0%, #ffffff 92%)`,
-        border: `1px solid ${r.canli}`,
-      }}
+      style={{ background: kartZemin(oyunRengi(oyun.id)), border: `1px solid ${r.canli}` }}
     >
-      <span
-        aria-hidden
-        className="pointer-events-none absolute -right-4 -bottom-6"
-        style={{ color: r.ana, opacity: 0.16 }}
-      >
-        <Gorsel ad={oyunGorseli(oyun.id)} boy={130} />
-      </span>
+      <ArkaCizim renk={oyunRengi(oyun.id)} gorsel={oyunGorseli(oyun.id)} />
 
       <div className="relative flex items-start gap-4">
         <span className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-yuzey shadow-sm">
@@ -161,7 +152,7 @@ function OyunKarti({ oyun, bugunMu }: { oyun: HerhangiOyun; bugunMu: boolean }) 
           <span className="mt-1 block text-[13px] leading-relaxed" style={{ color: r.koyu }}>
             {oyun.ozet}
           </span>
-          <span className="mt-2.5 inline-flex items-center gap-1.5 etiket-caps" style={{ color: r.ana }}>
+          <span className="mt-2.5 inline-flex items-center gap-1.5 etiket-caps" style={{ color: r.koyu }}>
             Oyna →
           </span>
         </span>
