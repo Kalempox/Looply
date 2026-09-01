@@ -16,12 +16,26 @@ import { RENK } from "./oyuncu-renk";
  * ekranda tek satırlık bir kart olarak durduğunda "kaybedecek bir
  * şeyin var" duygusunu hiç vermiyor.
  *
- * ── Neden kendiliğinden açılmıyor ───────────────────────────
+ * ── Kendiliğinden açılıyor, günde bir kez (Ü68) ─────────────
  *
- * Sahne **dokununca** açılıyor, sayfa yüklenince değil. Kendiliğinden
- * açılsaydı ana ekranı her açan kişinin önüne günde onlarca kez tam
- * ekran bir kutlama çıkardı; kutlama tekrarlanınca engel oluyor.
- * Çark sahnesi de aynı kuralda.
+ * İlk sürümde yalnızca dokununca açılıyordu; gerekçem "her açılışta
+ * tam ekran kutlama, kutlamayı engele çevirir" idi. Ürün sahibi
+ * düzeltti: *"streak animasyonu da bir anda ekrana gelmeli, girince
+ * değil."*
+ *
+ * Haklı — seri, oyuncunun **fark etmesi gereken** şey; dokunmayı
+ * bekleyen bir kutlama kutlama değil, bir bağlantı. Ama her açılışta
+ * göstermek de yanlıştı, ikisi birden çözülüyor: sahne **günde bir
+ * kez** kendiliğinden açılıyor, sonra kart olarak duruyor ve isteyen
+ * yeniden açıyor.
+ *
+ * Gün damgası `localStorage`'da. Sunucuda tutmak daha sağlam olurdu
+ * (cihaz değişince yeniden görünüyor) ama bunun için tek işi "kutlama
+ * gösterildi mi" olan bir tablo ve her ana ekran açılışında bir yazma
+ * gerekirdi; yanlış tarafa düşen maliyet.
+ *
+ * ⚠️ Açılış `useEffect` içinde: ilk render sunucuyla aynı (kapalı)
+ * olmalı, yoksa hidrasyon uyuşmuyor.
  *
  * ── Katmanlar ───────────────────────────────────────────────
  *
@@ -42,6 +56,50 @@ export function SeriSahnesi({
 }) {
   const [acik, setAcik] = useState(false);
   const r = RENK.amber;
+
+  /*
+    Günde bir kez kendiliğinden açılış.
+
+    Anahtarda seri günü de var: aynı gün içinde seri büyüyemez ama
+    kafe değiştiğinde büyüyebilir ve o zaman kutlama yeniden hak
+    edilmiş olur.
+
+    Yarım saniyelik gecikme bilerek: sayfa daha çizilirken açılan bir
+    tam ekran, "bir şey ters gitti" gibi duruyor. Kısa bir bekleme onu
+    gelen bir kutlamaya çeviriyor.
+
+    ⚠️ **Damga sahne açılırken yazılıyor, kontrol edilirken değil.**
+
+    İlk yazımda okuma ve yazma birlikteydi ve sahne hiç açılmadı.
+    Sebep React'ın geliştirme kipindeki çift çağrısı: efekt çalışıyor
+    (damga yazılıyor, sayaç kuruluyor) → temizlik çalışıyor (sayaç
+    iptal) → efekt yeniden çalışıyor ve bu kez damgayı **kendi
+    yazdığını** görüp erken dönüyor. Yazma açılış anına alınınca ikinci
+    çağrı da damgayı bulamıyor ve sahne açılıyor; canlıda tek çağrı
+    olduğu için davranış aynı.
+  */
+  useEffect(() => {
+    const anahtar = "cafeplay:seri-gosterildi";
+    const damga = `${new Date().toDateString()}:${gun}`;
+
+    try {
+      if (window.localStorage.getItem(anahtar) === damga) return;
+    } catch {
+      // Gizli sekmede depolama okunamıyor. Kutlama yine de açılsın:
+      // sessizce hiç göstermemek, hatanın oyuncuya yansıması olurdu.
+    }
+
+    const zamanlayici = window.setTimeout(() => {
+      setAcik(true);
+      try {
+        window.localStorage.setItem(anahtar, damga);
+      } catch {
+        // Yazılamadıysa yarın yine açılır — kabul edilebilir.
+      }
+    }, 500);
+
+    return () => window.clearTimeout(zamanlayici);
+  }, [gun]);
 
   // Sahne açıkken arka plan kaymasın: parmak hareketi altındaki sayfayı
   // kaydırırsa oyuncu sahne kapanınca bambaşka bir yerde buluyor kendini.

@@ -167,7 +167,7 @@ export function OyunKabugu(ayar: Ayar) {
       )}
 
       <div
-        className="relative overflow-hidden rounded-3xl px-5 py-6"
+        className="kart-golge kart-gel relative overflow-hidden rounded-3xl px-5 py-6"
         style={{ background: kartZemin(oyunRengi(ayar.oyunId)), border: `1px solid ${r.canli}` }}
       >
         <ArkaCizim renk={oyunRengi(ayar.oyunId)} gorsel={oyunGorseli(ayar.oyunId)} />
@@ -363,7 +363,7 @@ function SonucEkrani({
   return (
     <div>
       <div
-        className="relative overflow-hidden rounded-3xl px-5 py-6"
+        className="parilti kart-golge kart-gel relative overflow-hidden rounded-3xl px-5 py-6"
         style={{ background: kartZemin(oyunRengi(ayar.oyunId)), border: `1px solid ${r.canli}` }}
       >
         <ArkaCizim renk={oyunRengi(ayar.oyunId)} gorsel={oyunGorseli(ayar.oyunId)} />

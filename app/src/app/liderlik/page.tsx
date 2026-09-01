@@ -14,7 +14,6 @@ import {
   MADALYA,
 } from "@/components/oyuncu";
 import { RENK, oyunRengi, type OyuncuRengi } from "@/components/oyuncu-renk";
-import { oyunGorseli } from "@/components/oyuncu-gorsel";
 import { TacIkonu, OyunIkonu } from "@/components/oyuncu-ikon";
 
 export const dynamic = "force-dynamic";
@@ -63,7 +62,7 @@ export default async function LiderlikSayfasi() {
   if (!masa) {
     return (
       <OyuncuSayfa aktif="/oyna" geri={{ href: "/oyna", etiket: "Ana ekran" }}>
-        <SayfaBasi ust="Liderlik" baslik="Sıralama" renk="gok" gorsel="blok" />
+        <SayfaBasi ust="Liderlik" baslik="Sıralama" renk="gok" gorsel="kupa" />
         <div className="rounded-3xl border border-cizgi bg-yuzey px-6 py-8">
           <p className="text-[15px] leading-relaxed text-yazi-sonuk">
             Sıralama kafeye ait. Masadaki karekodu okuttuğunda bu kafenin listesini görürsün.
@@ -93,7 +92,7 @@ export default async function LiderlikSayfasi() {
 
   return (
     <OyuncuSayfa aktif="/oyna" geri={{ href: "/oyna", etiket: "Ana ekran" }}>
-      <SayfaBasi ust={masa.cafeAdi} baslik="Sıralama" renk={renk} gorsel={oyunGorseli(oyun.id)}>
+      <SayfaBasi ust={masa.cafeAdi} baslik="Sıralama" renk={renk} gorsel="kupa">
         <div className="grid grid-cols-2 gap-2.5">
           <Sayac
             etiket={`Bugün · ${oyun.ad}`}

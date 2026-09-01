@@ -35,7 +35,24 @@
  * Çizim cinsi söylüyor, ürünü değil.
  */
 
-export type GorselAdi = "icecek" | "tatli" | "para" | "blok" | "kelime" | "dusen" | "alev" | "cark";
+export type GorselAdi =
+  /* Kupon ve fırsat kartları */
+  | "icecek"
+  | "tatli"
+  | "para"
+  /* Oyunlar */
+  | "blok"
+  | "kelime"
+  | "dusen"
+  /* Ekran başlıkları — Ü68 */
+  | "bilet"
+  | "kupa"
+  | "madalya"
+  | "kumanda"
+  | "etiket"
+  /* Kutlama */
+  | "alev"
+  | "cark";
 
 /** Kupon kartında kullanılabilecek üç çeşit. */
 export type KuponGorseli = "icecek" | "tatli" | "para";
@@ -241,6 +258,64 @@ const CIZIM: Record<GorselAdi, React.ReactElement> = {
       {/* Duvar */}
       <path d="M30 322h75v-80h150v-80h75v160h152v160H30V322Z" />
       <path d="M105 322v160M180 322v160M255 322v160M330 322v160M405 322v160M30 402h452" />
+    </g>
+  ),
+
+  /**
+   * Bilet — "Ödüllerim" başlığı (Ü68).
+   *
+   * Başlıkların arkasındaki çizimler ilk turda **rastgele** seçilmişti:
+   * profilin arkasında harf taşları, ödüllerin arkasında banknot
+   * duruyordu. Ürün sahibi haklı olarak *"çok alakasız yerlerde
+   * alakasız ikonlar kullanmışsın"* dedi. Artık her başlığın kendi
+   * çizimi var ve hiçbiri ödünç değil.
+   */
+  bilet: (
+    <g>
+      <path d="M32 150h448v78a48 48 0 0 0 0 96v78H32v-78a48 48 0 0 0 0-96v-78Z" />
+      <path d="M330 160v192" strokeDasharray="26 26" />
+      <circle cx="150" cy="256" r="42" />
+    </g>
+  ),
+
+  /** Kupa — sıralama başlığı. */
+  kupa: (
+    <g>
+      <path d="M128 40h256v148c0 71-57 128-128 128s-128-57-128-128V40Z" />
+      <path d="M128 76H54c0 62 38 100 84 104M384 76h74c0 62-38 100-84 104" />
+      <path d="M216 316h80v76h-80z" />
+      <path d="M150 392h212v64H150z" />
+    </g>
+  ),
+
+  /** Madalya — profil başlığı. */
+  madalya: (
+    <g>
+      <path d="M148 32h72l-46 150-88-40 62-110ZM364 32h-72l46 150 88-40-62-110Z" />
+      <circle cx="256" cy="340" r="140" />
+      <circle cx="256" cy="340" r="92" />
+      <path d="m256 282 26 54 60 8-44 42 11 60-53-29-53 29 11-60-44-42 60-8 26-54Z" />
+    </g>
+  ),
+
+  /** Kumanda — oyun kataloğu başlığı. */
+  kumanda: (
+    <g>
+      <path d="M170 152h172a112 112 0 0 1 110 90l30 152a62 62 0 0 1-61 74c-20 0-39-10-51-26l-34-46H176l-34 46c-12 16-31 26-51 26a62 62 0 0 1-61-74l30-152a112 112 0 0 1 110-90Z" />
+      <path d="M132 232v72M96 268h72" />
+      <circle cx="356" cy="240" r="20" />
+      <circle cx="410" cy="294" r="20" />
+    </g>
+  ),
+
+  /** Etiket — fırsatlar başlığı. */
+  etiket: (
+    <g>
+      <path d="M262 40h188a22 22 0 0 1 22 22v188a34 34 0 0 1-10 24L268 458a34 34 0 0 1-48 0L54 292a34 34 0 0 1 0-48L238 50a34 34 0 0 1 24-10Z" />
+      <circle cx="396" cy="116" r="28" />
+      <path d="M300 210 190 320" />
+      <circle cx="196" cy="226" r="30" />
+      <circle cx="294" cy="324" r="30" />
     </g>
   ),
 

@@ -295,6 +295,81 @@ body {
 /* Sahnenin arkasındaki yavaş dönen ışık — çark dururken de sahne
    ölü durmasın diye. `will-change` yok: sürekli dönen büyük bir
    katman, ucuz telefonlarda ısınmaya yol açıyor. */
+/* ── Kart kalitesi (Ü68) ───────────────────────────────────────
+
+   Ürün sahibi: *"böyle de çok kalitesiz ve ucuz durdu; tüm kartlar
+   daha çekici, daha parlak, daha kaliteli olsun."*
+
+   Teşhis: kartlar düz renk lekesiydi. Derinlik yok, ışık yok, hareket
+   yok. Üç katman ekleniyor ve üçü de ucuz görünmenin ayrı bir
+   sebebini kaldırıyor:
+
+   1. `kart-golge` — iki katlı gölge (yakın + uzak) ve **üstte içeriden
+      beyaz bir çizgi**. O içeri gölge, kartın kenarına ışık düşmüş
+      hissi veriyor; tek başına en çok fark yaratan detay.
+   2. `kart-gel` — kart yerine otururken kısa bir geliş.
+   3. `parilti` — yavaş geçen ışık süpürmesi. Yalnızca **kullanılabilir
+      kuponda**: her karta konsaydı ekran yanıp sönerdi. */
+
+.kart-golge {
+  box-shadow:
+    0 1px 2px rgba(20, 14, 40, 0.05),
+    0 12px 28px -14px rgba(20, 14, 40, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.85);
+}
+
+@keyframes kart-gel {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.kart-gel {
+  animation: kart-gel 0.45s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+
+/* Işık süpürmesi. Kartın kendi `overflow-hidden`'ı kırpıyor; bu yüzden
+   sınıf yalnızca zaten kırpan kartlarda kullanılıyor. */
+@keyframes parilti {
+  0% {
+    transform: translateX(-140%) skewX(-18deg);
+    opacity: 0;
+  }
+  8% {
+    opacity: 0.7;
+  }
+  38% {
+    opacity: 0.7;
+  }
+  52%,
+  100% {
+    transform: translateX(340%) skewX(-18deg);
+    opacity: 0;
+  }
+}
+
+.parilti::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 26%;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.9),
+    transparent
+  );
+  animation: parilti 6s ease-in-out infinite;
+}
+
 /* ── Günlük seri sahnesi (Ü66) ─────────────────────────────────
    Alev canlı durmalı ama dikkat çalmamalı: iki buçuk saniyelik yavaş
    bir salınım, ekranın odağını sayıda bırakıyor. */

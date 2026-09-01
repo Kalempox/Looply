@@ -64,7 +64,7 @@ export default async function ProfilSayfasi() {
 
   return (
     <OyuncuSayfa aktif="/profil">
-      <SayfaBasi ust="Profil" baslik={g.ad} renk="menekse" gorsel="kelime">
+      <SayfaBasi ust="Profil" baslik={g.ad} renk="menekse" gorsel="madalya">
         <div className="grid grid-cols-3 gap-2">
           <Sayac etiket="Kafe" deger={String(kafeler.length)} renk="gok" />
           <Sayac etiket="Oyun" deger={toplamOyun.toLocaleString("tr-TR")} renk="nane" />
@@ -95,7 +95,7 @@ export default async function ProfilSayfasi() {
             aria-hidden
             className="pointer-events-none absolute -right-6 -bottom-8 text-yazi-sonuk opacity-[0.10]"
           >
-            <Gorsel ad="icecek" boy={140} />
+            <Gorsel ad="madalya" boy={140} />
           </span>
           <div className="relative flex justify-center">
             <MadalyaIkonu boy={64} />
@@ -210,7 +210,7 @@ function KafeKarti({ kafe, buradaMi }: { kafe: KafeKarnesi; buradaMi: boolean })
 
   return (
     <section
-      className="overflow-hidden rounded-3xl bg-yuzey"
+      className="kart-golge kart-gel overflow-hidden rounded-3xl bg-yuzey"
       style={{ border: `1px solid ${buradaMi ? r.ana : "var(--color-cizgi)"}` }}
     >
       {/*

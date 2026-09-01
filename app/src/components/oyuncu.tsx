@@ -211,16 +211,22 @@ export function SayfaBasi({
 
   return (
     <header
-      className="relative mb-8 overflow-hidden rounded-3xl px-5 py-6"
+      className="kart-golge kart-gel relative mb-8 overflow-hidden rounded-3xl px-5 py-6"
       style={{ background: kartZemin(renk), border: `1px solid ${r.canli}` }}
     >
+      {/*
+        Çizim sağ kenarın dışına taşıyor: yalnızca sol yarısı görünüyor
+        ve başlığın altına girmiyor. Daha içeride çizildiğinde biletin
+        dairesi tam "Ödüllerim" yazısının üstüne oturuyor ve rakam gibi
+        okunuyordu.
+      */}
       {gorsel && (
         <span
           aria-hidden
-          className="pointer-events-none absolute -top-5 -right-8"
-          style={{ color: r.ana, opacity: 0.2, transform: "rotate(-8deg)" }}
+          className="pointer-events-none absolute -top-6 -right-16"
+          style={{ color: r.ana, opacity: 0.22, transform: "rotate(-8deg)" }}
         >
-          <Gorsel ad={gorsel} boy={168} />
+          <Gorsel ad={gorsel} boy={172} />
         </span>
       )}
 
@@ -256,7 +262,7 @@ export function Sayac({
 }) {
   const r = renk ? RENK[renk] : null;
   return (
-    <div className="rounded-2xl bg-yuzey px-4 py-3.5 shadow-sm">
+    <div className="kart-golge rounded-2xl bg-yuzey px-4 py-3.5">
       <div className="etiket-caps leading-tight text-yazi-sonuk">{etiket}</div>
       <div
         className="mt-1.5 font-data text-2xl leading-none font-bold tabular"
@@ -299,7 +305,7 @@ export function GorselKart({
   const r = RENK[renk];
   return (
     <div
-      className={`relative overflow-hidden rounded-3xl ${className}`}
+      className={`kart-golge kart-gel relative overflow-hidden rounded-3xl ${className}`}
       style={{ background: kartZemin(renk), border: `1px solid ${r.canli}` }}
     >
       <ArkaCizim renk={renk} gorsel={gorsel} />

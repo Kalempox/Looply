@@ -46,7 +46,7 @@ export default async function OdullerSayfasi() {
 
   return (
     <OyuncuSayfa aktif="/oduller">
-      <SayfaBasi ust="Envanter" baslik="Ödüllerim" renk="amber" gorsel="para">
+      <SayfaBasi ust="Envanter" baslik="Ödüllerim" renk="amber" gorsel="bilet">
         <div className="grid grid-cols-2 gap-2.5">
           <Sayac
             etiket="Kasada gösterebilirsin"
@@ -68,7 +68,7 @@ export default async function OdullerSayfasi() {
             aria-hidden
             className="pointer-events-none absolute -right-6 -bottom-8 text-yazi-sonuk opacity-[0.10]"
           >
-            <Gorsel ad="para" boy={140} />
+            <Gorsel ad="bilet" boy={140} />
           </span>
           <p className="relative text-[15px] leading-relaxed text-yazi-sonuk">
             Henüz ödülün yok. Bir CafePlay kafesinde masadaki karekodu okutup oynadığında
@@ -169,7 +169,7 @@ function BiletKarti({ kupon }: { kupon: EnvanterKuponu }) {
   return (
     <Link
       href={`/oduller/${kupon.id}`}
-      className="relative block overflow-hidden rounded-2xl transition-transform active:scale-[0.99]"
+      className="parilti kart-golge kart-gel relative block overflow-hidden rounded-2xl transition-transform active:scale-[0.99]"
       style={{ background: kartZemin(renk), border: `1px solid ${r.canli}` }}
     >
       <ArkaCizim renk={renk} gorsel={gorsel} />

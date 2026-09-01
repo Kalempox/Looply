@@ -74,7 +74,7 @@ export default async function OyunlarSayfasi() {
 
   return (
     <OyuncuSayfa aktif="/oyna" geri={{ href: "/oyna", etiket: "Ana ekran" }}>
-      <SayfaBasi ust="Katalog" baslik="Oyunlar" renk="gok" gorsel="blok">
+      <SayfaBasi ust="Katalog" baslik="Oyunlar" renk="gok" gorsel="kumanda">
         <p className="text-[13px] leading-relaxed text-yazi-sonuk">
           {kazandirir
             ? "Hepsi puan ve XP kazandırıyor. Bugünün oyunu iki katı veriyor."
@@ -130,7 +130,7 @@ function OyunKarti({ oyun, bugunMu }: { oyun: HerhangiOyun; bugunMu: boolean }) 
   return (
     <Link
       href={`/oyna/${oyun.id}`}
-      className="relative block overflow-hidden rounded-3xl px-5 py-5 transition-all hover:-translate-y-0.5 hover:shadow-md"
+      className="kart-golge kart-gel relative block overflow-hidden rounded-3xl px-5 py-5 transition-transform hover:-translate-y-0.5"
       style={{ background: kartZemin(oyunRengi(oyun.id)), border: `1px solid ${r.canli}` }}
     >
       <ArkaCizim renk={oyunRengi(oyun.id)} gorsel={oyunGorseli(oyun.id)} />

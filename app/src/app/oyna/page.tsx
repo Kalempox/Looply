@@ -181,7 +181,7 @@ export default async function OynaSayfasi() {
             baslik="Tüm oyunlar"
             alt={`${OYUNLAR.length} oyun · kategorilere ayrılmış`}
             renk="gok"
-            gorsel="blok"
+            gorsel="kumanda"
           />
           {masa && (
             <GecisKarti
@@ -190,7 +190,7 @@ export default async function OynaSayfasi() {
               baslik="Buradaki fırsatlar"
               alt="Bu kafenin ödül kataloğu ve ürün indirimleri"
               renk="nane"
-              gorsel="icecek"
+              gorsel="etiket"
             />
           )}
         </section>
@@ -622,7 +622,7 @@ function GecisKarti({
   return (
     <Link
       href={yol}
-      className="relative block overflow-hidden rounded-3xl px-5 py-4 transition-all hover:-translate-y-0.5 hover:shadow-md"
+      className="kart-golge kart-gel relative block overflow-hidden rounded-3xl px-5 py-4 transition-transform hover:-translate-y-0.5"
       style={{ background: kartZemin(renk), border: `1px solid ${r.canli}` }}
     >
       <ArkaCizim renk={renk} gorsel={gorsel} />

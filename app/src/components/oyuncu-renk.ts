@@ -60,7 +60,13 @@ export type OyuncuRengi = "menekse" | "nane" | "gul" | "amber" | "gok";
  */
 export function kartZemin(renk: OyuncuRengi): string {
   const r = RENK[renk];
-  return `linear-gradient(90deg, ${r.canli}80 0%, ${r.zemin} 42%, #ffffff 100%)`;
+  return [
+    // Sol üstten düşen ışık — Ü68. Tek katmanlı düz gradyan "ucuz"
+    // duruyordu; parlaklığı veren şey rengin doygunluğu değil, üstüne
+    // düşen ışık. Radyal katman rengi soldurmadan kartı kaldırıyor.
+    `radial-gradient(120% 90% at 6% -10%, rgba(255,255,255,0.62), rgba(255,255,255,0) 62%)`,
+    `linear-gradient(95deg, ${r.canli}a6 0%, ${r.zemin} 40%, #ffffff 92%)`,
+  ].join(", ");
 }
 
 export type RenkTonu = {
