@@ -1,9 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { withCafe } from "@/db/context";
 import { kafeYoneticisiGerekli } from "@/domain/yetki";
 import { donemBelirle } from "@/domain/butce";
+import * as ayar from "@/domain/ayar";
 
 export type ButceDurumu = { hata?: string; bilgi?: string };
 
@@ -26,21 +26,28 @@ export async function butceEylemi(_onceki: ButceDurumu, form: FormData): Promise
   if (!Number.isFinite(tutarTl) || tutarTl <= 0) return { hata: "Geçerli bir tutar gir." };
   if (tutarTl > 1_000_000) return { hata: "Bu tutar fazla yüksek görünüyor — kontrol et." };
 
-  const kafe = await withCafe(o.cafeId, (db) =>
-    db.one<{ approved_at: string | null }>(`SELECT approved_at::date::text FROM cafes`),
-  );
-
+  // Ü45: girilen tutar hem BUGÜNÜN dönemine yazılıyor hem de kafenin
+  // varsayılan günlük bütçesi olarak saklanıyor. İkincisi olmasa kafe her
+  // sabah yeniden bütçe girmek zorunda kalırdı.
   const sonuc = await donemBelirle({
     cafeId: o.cafeId,
     taahhutKurus: tutarTl * 100,
     aktorId: o.ozneId,
-    katilimGunu: kafe?.approved_at ?? undefined,
   });
+
+  if (sonuc.ok) {
+    await ayar.sayiYaz({
+      cafeId: o.cafeId,
+      anahtar: ayar.ANAHTARLAR.gunlukButce,
+      deger: tutarTl * 100,
+      aktorId: o.ozneId,
+    });
+  }
 
   revalidatePath("/kafe/panel/butce");
   revalidatePath("/kafe/panel");
 
   return sonuc.ok
-    ? { bilgi: "Bütçe kaydedildi. Kullanılmayan kuponun maliyeti yok — yalnızca kasada onaylanan düşer." }
+    ? { bilgi: "Günlük bütçe kaydedildi. Kullanılmayan kuponun maliyeti yok — yalnızca kasada onaylanan düşer." }
     : { hata: sonuc.hata };
 }

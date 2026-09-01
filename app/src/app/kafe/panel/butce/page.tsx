@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { withCafe } from "@/db/context";
 import { kafeYoneticisiGerekli } from "@/domain/yetki";
 import { durum, donemAraligi, tabanKurus } from "@/domain/butce";
 import { bakim } from "@/domain/bakim";
@@ -28,12 +27,8 @@ export default async function ButceSayfasi() {
   // gösterdiği için iadeyi okumadan önce çalıştırıyoruz.
   await bakim();
 
-  const kafe = await withCafe(o.cafeId, (db) =>
-    db.one<{ approved_at: string | null }>(`SELECT approved_at::date::text FROM cafes`),
-  );
-
   const d = await durum(o.cafeId);
-  const aralik = donemAraligi(isGunu(), kafe?.approved_at ?? undefined);
+  const aralik = donemAraligi(isGunu());
   const taban = d.donem?.tabanKurus ?? tabanKurus(aralik.gunSayisi);
   const gunSayisi = d.donem?.gunSayisi ?? aralik.gunSayisi;
 
@@ -43,7 +38,7 @@ export default async function ButceSayfasi() {
   return (
     <IsletmeSayfa genis>
       <IsletmeBaslik ust="İşletme paneli" alt="Kullanılmayan kuponun maliyeti yok.">
-        Haftalık bütçe
+        Günlük bütçe
       </IsletmeBaslik>
 
       {d.donem && (

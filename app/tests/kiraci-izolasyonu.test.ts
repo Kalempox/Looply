@@ -241,15 +241,15 @@ describe("iş kuralları veritabanı seviyesinde", () => {
         withBypass("test", (db) =>
           db.query(
             `INSERT INTO budget_periods (id, cafe_id, period_start, period_end, committed_kurus)
-             VALUES ('bgt_dusuk', $1, '2030-01-07', '2030-01-14', 100000)`,
+             VALUES ('bgt_dusuk', $1, '2030-01-07', '2030-01-08', 100000)`,
             [kafeA],
           ),
         ),
-      // Kısıt Ü25 ile yeniden adlandırıldı (`butce_tabani_orantili`, göç 0011):
-      // taban artık dönem uzunluğuna göre ölçekleniyor. Tam haftalık dönem
-      // için beklenen davranış değişmedi — 1.000 TL yine reddediliyor.
-      /butce_tabani_orantili|committed_kurus/i,
-      "1.000 TL'lik bütçe kabul edilmemeliydi — tam haftada taban 1.500 TL",
+      // Ü45 ile dönem günlük oldu ve kısıt `butce_tabani_gunluk` adını aldı
+      // (göç 0020): taban artık gün başına 1.500 TL. Sınanan güvence
+      // değişmedi — kod atlansa bile şema düşük taahhüdü reddediyor.
+      /butce_tabani_gunluk|committed_kurus/i,
+      "1.000 TL'lik günlük bütçe kabul edilmemeliydi — taban 1.500 TL",
     );
   });
 

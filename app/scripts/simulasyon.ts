@@ -64,14 +64,16 @@ const OYUNCU_SAYISI = 30;
 const GUN_SAYISI = 14;
 
 /**
- * Simüle edilen her haftanın bütçesi — 5.000 TL.
+ * Simüle edilen her GÜNÜN bütçesi — 5.000 TL.
  *
- * Tohumdaki 1.500 TL bir haftalık gerçek trafiği kaldırmıyor: bütçe ikinci
- * günde tükeniyor ve demonun geri kalanı "kupon çıkmadı" ekranına dönüyor.
+ * Ü45 ile dönem günlük oldu; taban 1.500 TL/gün. Simülasyonun trafiği bunun
+ * üstünde olduğu için taahhüt daha yükseğe çekiliyor: aksi hâlde bütçe öğlen
+ * tükeniyor ve günün geri kalanı "kupon çıkmadı" ekranına dönüyor.
+ *
  * Bütçe kuralı gevşetilmiyor — kafe sadece daha yüksek bir taahhüt vermiş
  * oluyor; tükenirse yine tükeniyor.
  */
-const HAFTALIK_BUTCE_KURUS = 500_000;
+const GUNLUK_BUTCE_KURUS = 500_000;
 
 /** Simülasyon oyuncularının numara aralığı — temizlik bunlara bakıyor. */
 const TELEFON_TABANI = 5_559_000_000;
@@ -278,15 +280,16 @@ async function masadaOturt(playerId: string, dakika: number): Promise<void> {
 /* ── Bütçe dönemleri ──────────────────────────────────────── */
 
 /**
- * Simüle edilen her gün için, o günü kapsayan bütçe dönemini hazırlar.
+ * Simüle edilen her gün için o günün bütçe dönemini hazırlar.
  *
  * Bu adım atlanamaz: kupon üretilirken `butce.rezerveEt` **o güne ait
  * dönemi** arıyor ve bulamazsa hiç kupon çıkmıyor. İlk koşuda tam olarak bu
  * oldu — tohumun dönemi geçen haftaya aitti, bu haftanınki hiç yoktu ve
  * simülasyon sıfır kupon üretti.
  *
- * Dönem anahtarı `(cafe_id, period_start)`; aynı haftaya düşen günler aynı
- * satırı günceller, yani gün gün çağırmak güvenli.
+ * Ü45 ile dönem günlük: her gün kendi satırını alıyor. Dönem anahtarı
+ * `(cafe_id, period_start)` olduğu için çağrı yinelenirse aynı satır
+ * güncelleniyor.
  */
 async function donemleriHazirla(kafeler: Kafe[], gunler: string[]): Promise<Map<string, string>> {
   const donemler = new Map<string, string>();
@@ -295,7 +298,7 @@ async function donemleriHazirla(kafeler: Kafe[], gunler: string[]): Promise<Map<
     for (const gun of gunler) {
       const sonuc = await butce.donemBelirle({
         cafeId: kafe.id,
-        taahhutKurus: HAFTALIK_BUTCE_KURUS,
+        taahhutKurus: GUNLUK_BUTCE_KURUS,
         aktorId: kafe.kasiyerId,
         gun,
       });

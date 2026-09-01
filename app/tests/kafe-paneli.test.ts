@@ -14,7 +14,7 @@ import * as qr from "@/domain/qr";
 import { kaydet } from "@/domain/player";
 import { normalizePhone } from "@/lib/crypto";
 import { randomInt } from "node:crypto";
-import { pazartesi, gunEkle, isGunu } from "@/lib/tarih";
+import { pazartesi, isGunu } from "@/lib/tarih";
 import { yoneticiSorgu } from "./_yardim";
 
 /**
@@ -116,27 +116,30 @@ describe("bütçe dönemi pazartesi başlar (Ü25)", () => {
     assert.equal(pazartesi("2026-08-31"), "2026-08-31");
   });
 
-  test("tam hafta tabanı 1.500 TL", () => {
+  /**
+   * Ü45: dönem artık bir gün. Haftalık dönem ve "hafta ortasında katılan
+   * kafenin orantılı tabanı" kavramları birlikte kalktı — her gün tam bir
+   * dönem olduğu için orantılanacak bir şey kalmadı.
+   */
+  test("dönem tek gün", () => {
     const a = butce.donemAraligi("2026-08-26");
-    assert.equal(a.gunSayisi, 7);
-    assert.equal(butce.tabanKurus(a.gunSayisi), butce.HAFTALIK_TABAN_KURUS);
-  });
-
-  test("hafta ortasında katılan kafenin ilk dönemi kısa ve tabanı orantılı", () => {
-    // Çarşamba katıldı: 26 Ağustos → 31 Ağustos = 5 gün.
-    const a = butce.donemAraligi("2026-08-26", "2026-08-26");
     assert.equal(a.baslangic, "2026-08-26");
-    assert.equal(a.gunSayisi, 5);
-
-    const taban = butce.tabanKurus(5);
-    assert.ok(taban < butce.HAFTALIK_TABAN_KURUS, "kısa dönemde taban düşmedi");
-    assert.equal(taban, Math.ceil((150_000 * 5) / 7));
+    assert.equal(a.bitis, "2026-08-27");
+    assert.equal(a.gunSayisi, 1);
   });
 
-  test("katılım günü haftanın başındaysa dönem yine pazartesi başlar", () => {
-    const a = butce.donemAraligi("2026-08-28", "2026-08-10");
-    assert.equal(a.baslangic, "2026-08-24");
-    assert.equal(a.gunSayisi, 7);
+  test("günlük taban 1.500 TL", () => {
+    assert.equal(butce.tabanKurus(1), butce.GUNLUK_TABAN_KURUS);
+    assert.equal(butce.GUNLUK_TABAN_KURUS, 150_000);
+  });
+
+  test("tabanın altındaki taahhüt reddediliyor", async () => {
+    const sonuc = await butce.donemBelirle({
+      cafeId: kafeB,
+      taahhutKurus: 149_999,
+      aktorId: "stf_test",
+    });
+    assert.equal(sonuc.ok, false);
   });
 });
 
@@ -145,7 +148,7 @@ describe("bütçe dönemi pazartesi başlar (Ü25)", () => {
    ═══════════════════════════════════════════════════════════ */
 
 describe("bütçe alt sınırın altına inemez (Ü6, Ü25)", () => {
-  test("tam haftada 1.500 TL'nin altı reddedilir", async () => {
+  test("günlük 1.500 TL'nin altı reddedilir", async () => {
     const sonuc = await butce.donemBelirle({
       cafeId: kafeA,
       taahhutKurus: 100_000,
@@ -174,18 +177,17 @@ describe("bütçe alt sınırın altına inemez (Ü6, Ü25)", () => {
     assert.ok(iz.length > 0, "bütçe yazımı denetim izine düşmedi");
   });
 
-  test("veritabanı da reddeder — orantılı taban kısıtı", async () => {
-    // Tam haftalık dönem için 1.000 TL: kod atlansa bile şema durdurmalı.
-    const hafta = pazartesi(bugun);
+  test("veritabanı da reddeder — günlük taban kısıtı", async () => {
+    // Bir günlük dönem için 1.000 TL: kod atlansa bile şema durdurmalı.
     await assert.rejects(
       withBypass("test: düşük taahhüt", (db) =>
         db.query(
           `INSERT INTO budget_periods (id, cafe_id, period_start, period_end, committed_kurus)
            VALUES ('bdg_test_dusuk', $1, $2, $3, 100000)`,
-          [kafeB, hafta, gunEkle(hafta, 7)],
+          [kafeB, "2030-02-05", "2030-02-06"],
         ),
       ),
-      /butce_tabani_orantili|violates check constraint/i,
+      /butce_tabani_gunluk|violates check constraint/i,
     );
   });
 });

@@ -22,6 +22,14 @@ import { audit } from "@/lib/audit";
 export const ANAHTARLAR = {
   /** Bu tutarın üstündeki ödül 24 saat sonra açılır (Ü28, kuruş). */
   ertelemeEsigi: "erteleme_esigi_kurus",
+  /**
+   * Kafenin bir günde dağıtmayı taahhüt ettiği ödül değeri (Ü45, kuruş).
+   *
+   * Her sabah yeniden bütçe girmek zorunda kalmasın diye burada duruyor:
+   * o günün dönemi ilk ihtiyaç anında bu tutarla açılıyor. Kafe istediği
+   * günü ayrıca değiştirebiliyor — "yarın maç var, havuzu artırayım".
+   */
+  gunlukButce: "gunluk_butce_kurus",
 } as const;
 
 export type Anahtar = (typeof ANAHTARLAR)[keyof typeof ANAHTARLAR];
@@ -36,6 +44,9 @@ export type Anahtar = (typeof ANAHTARLAR)[keyof typeof ANAHTARLAR];
  */
 export const SINIRLAR: Record<Anahtar, { en_az: number; en_cok: number; varsayilan: number }> = {
   [ANAHTARLAR.ertelemeEsigi]: { en_az: 0, en_cok: 500_00, varsayilan: 50_00 },
+  // Alt sınır Ü45'in günlük tabanı; üst sınır yok denecek kadar yüksek
+  // tutuluyor — kafenin ne kadar dağıtacağı bizim kararımız değil.
+  [ANAHTARLAR.gunlukButce]: { en_az: 1_500_00, en_cok: 100_000_00, varsayilan: 1_500_00 },
 };
 
 export async function sayiOku(cafeId: string, anahtar: Anahtar): Promise<number> {

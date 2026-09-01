@@ -1,7 +1,7 @@
 import { withCafe, type Db } from "@/db/context";
 import { audit } from "@/lib/audit";
 import { newId } from "@/lib/ids";
-import { isGunu, pazartesi, gunEkle, gunFarki } from "@/lib/tarih";
+import { isGunu, gunEkle, gunFarki } from "@/lib/tarih";
 import { log } from "@/lib/log";
 
 /**
@@ -21,15 +21,21 @@ import { log } from "@/lib/log";
  * **Bakiye kolonu yoktur** (E3). Dört sayı da defterin toplamından türer;
  * geçmişe dönük düzeltme yapılamaz, yalnızca yeni satır yazılır.
  *
- * ── Dönem (Ü25) ─────────────────────────────────────────────
+ * ── Dönem GÜNLÜK (Ü45, Ü25'in revizyonu) ────────────────────
  *
- * Pazartesi başlar. Kafe hafta ortasında katılırsa ilk dönem kısa olur ve
- * **alt sınır da orantılı** uygulanır — 5 günlük dönemde 1.071 TL. Veritabanı
- * bunu kendi de doğruluyor (`butce_tabani_orantili`, göç 0011).
+ * Bir dönem = bir gün. Ü25 haftalık kurmuştu; ürün belgesinde dönem her
+ * yerde günlük geçiyor ("Günlük ödül bütçesi: 1.500 TL") ve kafenin
+ * zihnindeki birim de bu: *"bugün ne kadar dağıtacağım."* Haftalık taahhüt,
+ * pazartesi verilen kararın cumayı da bağlaması demekti.
+ *
+ * Kafe **bir kez günlük tutarını** söylüyor (`domain/ayar.ts`); o günün
+ * dönemi ilk ihtiyaç duyulduğunda o tutarla açılıyor. Böylece her sabah
+ * yeniden bütçe girmek gerekmiyor, ama kafe istediği günü ayrıca
+ * değiştirebiliyor — "yarın maç var, havuzu artırayım".
  */
 
-/** Ü6: haftalık taban — 1.500 TL, kuruş cinsinden. */
-export const HAFTALIK_TABAN_KURUS = 150_000;
+/** Ü45: günlük taban — 1.500 TL, kuruş cinsinden. */
+export const GUNLUK_TABAN_KURUS = 150_000;
 
 export type Donem = {
   id: string;
@@ -56,24 +62,23 @@ export type ButceDurumu = {
 };
 
 /**
- * Bir gün için dönem aralığını hesaplar.
+ * Bir günün dönem aralığı — dönem artık **tek gün** (Ü45).
  *
- * `katilimGunu` verilirse dönem ondan önce başlayamaz — kafenin onaylandığı
- * günden önceki günler için bütçe taahhüdü istemek anlamsız olurdu.
+ * `katilimGunu` parametresi kaldırıldı: haftalık dönemde kafenin hafta
+ * ortasında katılması dönemi kısaltıyordu ve taban orantılanıyordu. Günlük
+ * dönemde böyle bir durum yok — her gün tam bir dönem.
  */
-export function donemAraligi(
-  gun: string,
-  katilimGunu?: string,
-): { baslangic: string; bitis: string; gunSayisi: number } {
-  const haftaBasi = pazartesi(gun);
-  const baslangic = katilimGunu && katilimGunu > haftaBasi ? katilimGunu : haftaBasi;
-  const bitis = gunEkle(haftaBasi, 7);
-  return { baslangic, bitis, gunSayisi: gunFarki(baslangic, bitis) };
+export function donemAraligi(gun: string): {
+  baslangic: string;
+  bitis: string;
+  gunSayisi: number;
+} {
+  return { baslangic: gun, bitis: gunEkle(gun, 1), gunSayisi: 1 };
 }
 
-/** Ü25: dönem kısaysa taban orantılı. Tam haftada 1.500 TL. */
+/** Ü45: her gün için 1.500 TL taban. */
 export function tabanKurus(gunSayisi: number): number {
-  return Math.ceil((HAFTALIK_TABAN_KURUS * gunSayisi) / 7);
+  return GUNLUK_TABAN_KURUS * gunSayisi;
 }
 
 /** Kuruşu okunur TL'ye çevirir — ekranlar ve hata mesajları için. */
@@ -206,21 +211,14 @@ export async function donemBelirle(opts: {
   cafeId: string;
   taahhutKurus: number;
   aktorId: string;
-  katilimGunu?: string;
   gun?: string;
 }): Promise<DonemSonucu> {
   const gun = opts.gun ?? isGunu();
-  const aralik = donemAraligi(gun, opts.katilimGunu);
+  const aralik = donemAraligi(gun);
   const taban = tabanKurus(aralik.gunSayisi);
 
   if (!Number.isInteger(opts.taahhutKurus) || opts.taahhutKurus < taban) {
-    return {
-      ok: false,
-      hata:
-        aralik.gunSayisi === 7
-          ? `Haftalık bütçe en az ${tl(taban)} TL olmalı.`
-          : `Bu dönem ${aralik.gunSayisi} gün; alt sınır orantılı olarak ${tl(taban)} TL.`,
-    };
+    return { ok: false, hata: `Günlük bütçe en az ${tl(taban)} TL olmalı.` };
   }
 
   return withCafe(opts.cafeId, async (db) => {
