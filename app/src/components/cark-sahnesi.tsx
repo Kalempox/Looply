@@ -136,14 +136,24 @@ export function CarkSahnesi({
                 "radial-gradient(circle at 50% 38%, #4c2a8f 0%, #2a1450 45%, #150a2b 100%)",
             }}
           />
-          <span
-            aria-hidden
-            className="sahne-isik pointer-events-none absolute top-1/2 left-1/2 size-[150vmax] -translate-x-1/2 -translate-y-1/2 opacity-[0.14]"
-            style={{
-              background:
-                "repeating-conic-gradient(from 0deg, #fff 0deg 6deg, transparent 6deg 18deg)",
-            }}
-          />
+          {/*
+            Işın demeti KIRPMA katmanının içinde.
+
+            Doğrudan sahneye konduğunda 150vmax'lik boyu sahnenin kaydırma
+            alanını 1015 piksele çıkarıyordu (ekran 812): sahne sebepsiz
+            kaydırılabilir hâle geliyor ve `justify-center` ile ortalanan
+            içeriğin üstü erişilemez oluyordu. Kırpma, ışığı görsel bir
+            katman olarak bırakıp yerleşimden çıkarıyor.
+          */}
+          <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+            <span
+              className="sahne-isik absolute top-1/2 left-1/2 size-[150vmax] -translate-x-1/2 -translate-y-1/2 opacity-[0.14]"
+              style={{
+                background:
+                  "repeating-conic-gradient(from 0deg, #fff 0deg 6deg, transparent 6deg 18deg)",
+              }}
+            />
+          </div>
 
           <button
             type="button"

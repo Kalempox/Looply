@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { OdulAcilisi } from "./odul-acilisi";
 
 /**
@@ -31,8 +31,7 @@ import { OdulAcilisi } from "./odul-acilisi";
 export type CarkDilimi = { baslik: string };
 
 export type CevirmeCevabi =
-  | { ok: true; dilim: number; baslik: string }
-  | { ok: false; hata: string };
+  { ok: true; dilim: number; baslik: string } | { ok: false; hata: string };
 
 /** Dönüş süresi (ms) — animasyon ve sonucun açılması bu süreye bağlı. */
 const DONUS_MS = 4600;
@@ -69,7 +68,9 @@ export function Cark({
   donusBildir?: (donuyor: boolean) => void;
 }) {
   const [aci, setAci] = useState(0);
-  const [sonuc, setSonuc] = useState<{ baslik: string; dilim: number } | null>(null);
+  const [sonuc, setSonuc] = useState<{ baslik: string; dilim: number } | null>(
+    null,
+  );
   const [hata, setHata] = useState<string | null>(null);
   const [donuyor, setDonuyor] = useState(false);
   const [bekliyor, basla] = useTransition();
@@ -113,114 +114,146 @@ export function Cark({
   const dugmeKapali = kilitli || bekliyor || donuyor || !!sonuc;
 
   /**
-   * Sonuç göründüğünde onu ekrana getir.
+   * Ödül açılışı çarkın YERİNE geçiyor, altına eklenmiyor.
    *
-   * Tam ekran sahnede çark + sonuç kartı toplamı 1200 pikseli geçiyor,
-   * telefon ekranı 812. Kazanma anında oyuncu ödülü görmüyor, aşağı
-   * kaydırması gerekiyordu — dönüşün bütün etkisini yiyen bir kusur.
+   * ── Düzeltilen hata ─────────────────────────────────────
    *
-   * İki şey birden: çark küçülüyor (aşağıda `max-w`) ve sonuç ekranın
-   * ortasına kaydırılıyor. Yalnızca küçültmek yetmiyordu, yalnızca
-   * kaydırmak da — ikisi birlikte sonucu ilk bakışta görünür yapıyor.
+   * Önce ikisi alt alta duruyordu: çark küçülüyor, sonuç altında
+   * beliriyor, sayfa da sonucu görünür kılmak için kaydırılıyordu.
+   * Sahnenin toplam yüksekliği ekranı aşıyordu ve `justify-center`
+   * yüzünden blok her boyut değişiminde yeniden ortalanıyordu —
+   * ürün sahibinin tarifiyle *"ekranın altı havaya kalkıyor"*. 500
+   * ms'lik genişlik geçişi bunu her karede tekrarlıyordu.
+   *
+   * Değiştirme bu sınıf hatanın tamamını kapatıyor: aynı anda tek
+   * blok var, içerik ekrana sığıyor, ne kaydırma ne yeniden ortalama
+   * gerekiyor.
+   *
+   * ── Neden gecikmeli ─────────────────────────────────────
+   *
+   * Çark durur durmaz değişseydi oyuncu çarkın hangi dilimde
+   * durduğunu hiç göremezdi. Yedi yüz milisaniye, kazanan dilimin
+   * altın rengine dönmesini görmeye yetiyor.
    */
-  const sonucRef = useRef<HTMLDivElement>(null);
+  const [acilis, setAcilis] = useState(false);
   useEffect(() => {
     if (!sonuc) return;
-    sonucRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    const t = window.setTimeout(() => setAcilis(true), 700);
+    return () => window.clearTimeout(t);
   }, [sonuc]);
 
   return (
     <div className="flex flex-col items-center">
-      <div
-        // Kazanıldığında çark küçülüyor: sahnenin yıldızı artık ödül.
-        className={`relative mx-auto w-full transition-[max-width] duration-500 ${
-          sonuc
-            ? "max-w-[190px]"
-            : koyuZemin
-              ? "max-w-[400px]"
-              : "max-w-[320px]"
-        } ${kilitli && !sonuc ? "opacity-45" : ""}`}
-      >
-        {/*
+      {/*
+        Açılış geldiğinde çark EKRANDAN ÇIKIYOR, küçülmüyor.
+
+        İkisi aynı anda durduğunda sahnenin yüksekliği telefon ekranını
+        aşıyor ve `justify-center` her boyut değişiminde bloğu yeniden
+        ortalıyordu. Tek blok, sığan içerik, kayma yok.
+      */}
+      {acilis && sonuc ? (
+        <div className="w-full">
+          {/* Ü56: emoji yerine açılan hediye kutusu. Ürün sahibinin
+              verdiği Lottie örneğindeki hareket, kütüphanesiz. */}
+          <OdulAcilisi
+            baslik={sonuc.baslik}
+            altMetin={kazandiMetni}
+            koyuZemin={koyuZemin}
+          />
+        </div>
+      ) : (
+        <>
+          <div
+            className={`relative mx-auto w-full ${
+              koyuZemin ? "max-w-[360px]" : "max-w-[320px]"
+            } ${kilitli && !sonuc ? "opacity-45" : ""}`}
+          >
+            {/*
           Tepedeki işaret — çarkın nerede durduğunu okuyan tek nokta.
 
           Damla biçimi: referанс çarklarda ok sivri üçgen değil, ucu
           aşağı bakan yuvarlak bir damla. Üçgen sert duruyordu ve
           çarkın yumuşak hatlarıyla çelişiyordu.
         */}
-        <svg
-          aria-hidden
-          viewBox="0 0 24 34"
-          className="absolute top-0 left-1/2 z-20 w-7 -translate-x-1/2 translate-y-1 drop-shadow-md"
-        >
-          <path
-            d="M12 34C12 34 2 20.5 2 12a10 10 0 1 1 20 0c0 8.5-10 22-10 22Z"
-            fill="var(--color-odul)"
-            stroke="#fff"
-            strokeWidth="2"
-          />
-          <circle cx="12" cy="12" r="3.4" fill="#fff" />
-        </svg>
+            <svg
+              aria-hidden
+              viewBox="0 0 24 34"
+              className="absolute top-0 left-1/2 z-20 w-7 -translate-x-1/2 translate-y-1 drop-shadow-md"
+            >
+              <path
+                d="M12 34C12 34 2 20.5 2 12a10 10 0 1 1 20 0c0 8.5-10 22-10 22Z"
+                fill="var(--color-odul)"
+                stroke="#fff"
+                strokeWidth="2"
+              />
+              <circle cx="12" cy="12" r="3.4" fill="#fff" />
+            </svg>
 
-        <div
-          className="aspect-square w-full"
-          style={{
-            transform: `rotate(${aci}deg)`,
-            // Yavaşlayarak duran eğri: çarkın son yarım turu belirgin
-            // biçimde ağırlaşıyor, gerçek bir çark gibi.
-            transition: donuyor
-              ? `transform ${DONUS_MS}ms cubic-bezier(0.12, 0.68, 0.06, 1)`
-              : "none",
-          }}
-        >
-          <Tekerlek dilimler={dilimler} kazanan={sonuc?.dilim ?? null} />
-        </div>
+            <div
+              className="aspect-square w-full"
+              style={{
+                transform: `rotate(${aci}deg)`,
+                // Yavaşlayarak duran eğri: çarkın son yarım turu belirgin
+                // biçimde ağırlaşıyor, gerçek bir çark gibi.
+                transition: donuyor
+                  ? `transform ${DONUS_MS}ms cubic-bezier(0.12, 0.68, 0.06, 1)`
+                  : "none",
+              }}
+            >
+              <Tekerlek dilimler={dilimler} kazanan={sonuc?.dilim ?? null} />
+            </div>
 
-        {/* Ortadaki çevir düğmesi — gerçek çarklarda göbek basılır. */}
-        <button
-          type="button"
-          onClick={cevirmeyeBasla}
-          disabled={dugmeKapali}
-          aria-label="Çarkı çevir"
-          // Göbek koyu değil sıcak: siyah bir daire, pastel çarkın
-          // ortasında delik gibi duruyordu. Referans çarklarda göbek
-          // kasayla aynı aileden ve çarkın parçası gibi görünüyor.
-          className={`absolute top-1/2 left-1/2 z-10 flex size-[23%] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-[5px] border-white font-display text-[12px] font-extrabold tracking-tight shadow-lg transition-transform ${
-            dugmeKapali
-              ? "bg-[#f0d9a8] text-[#8a7145]"
-              : "bg-[#ffcf3f] text-[#2b1b33] hover:scale-105 active:scale-95"
-          }`}
-        >
-          {donuyor ? "…" : sonuc ? "✓" : "ÇEVİR"}
-        </button>
-      </div>
+            {/* Ortadaki çevir düğmesi — gerçek çarklarda göbek basılır. */}
+            <button
+              type="button"
+              onClick={cevirmeyeBasla}
+              disabled={dugmeKapali}
+              aria-label="Çarkı çevir"
+              // Göbek koyu değil sıcak: siyah bir daire, pastel çarkın
+              // ortasında delik gibi duruyordu. Referans çarklarda göbek
+              // kasayla aynı aileden ve çarkın parçası gibi görünüyor.
+              className={`absolute top-1/2 left-1/2 z-10 flex size-[23%] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-[5px] border-white font-display text-[12px] font-extrabold tracking-tight shadow-lg transition-transform ${
+                dugmeKapali
+                  ? "bg-[#f0d9a8] text-[#8a7145]"
+                  : "bg-[#ffcf3f] text-[#2b1b33] hover:scale-105 active:scale-95"
+              }`}
+            >
+              {donuyor ? "…" : sonuc ? "✓" : "ÇEVİR"}
+            </button>
+          </div>
 
-      {hata && (
-        <p
-          className={`mt-5 rounded-lg border px-4 py-3 text-center text-[14px] ${
-            koyuZemin
-              ? "border-white/25 bg-white/10 text-white"
-              : "border-tehlike/50 bg-cukur text-tehlike"
-          }`}
-        >
-          {hata}
-        </p>
-      )}
+          {hata && (
+            <p
+              className={`mt-5 rounded-lg border px-4 py-3 text-center text-[14px] ${
+                koyuZemin
+                  ? "border-white/25 bg-white/10 text-white"
+                  : "border-tehlike/50 bg-cukur text-tehlike"
+              }`}
+            >
+              {hata}
+            </p>
+          )}
 
-      {sonuc ? (
-        <div ref={sonucRef} className="mt-5 w-full scroll-mt-6">
-          {/* Ü56: emoji yerine açılan hediye kutusu. Ürün sahibinin
-              verdiği Lottie örneğindeki hareket, kütüphanesiz. */}
-          <OdulAcilisi baslik={sonuc.baslik} altMetin={kazandiMetni} koyuZemin={koyuZemin} />
-        </div>
-      ) : (
-        <p
-          className={`mt-5 max-w-[320px] text-center text-[13px] leading-relaxed ${
-            koyuZemin ? "text-white/70" : "text-yazi-sonuk"
-          }`}
-        >
-          {donuyor ? "Çark dönüyor…" : altMetin}
-        </p>
+          {hata && (
+            <p
+              className={`mt-5 rounded-lg border px-4 py-3 text-center text-[14px] ${
+                koyuZemin
+                  ? "border-white/25 bg-white/10 text-white"
+                  : "border-tehlike/50 bg-cukur text-tehlike"
+              }`}
+            >
+              {hata}
+            </p>
+          )}
+
+          <p
+            className={`mt-5 max-w-[320px] text-center text-[13px] leading-relaxed ${
+              koyuZemin ? "text-white/70" : "text-yazi-sonuk"
+            }`}
+          >
+            {donuyor ? "Çark dönüyor…" : sonuc ? "Ödülün açılıyor…" : altMetin}
+          </p>
+        </>
       )}
     </div>
   );
@@ -233,7 +266,13 @@ export function Cark({
  * kütüphanesi indirmek, kafede mobil veriyle açılan bir sayfada
  * ödeyeceğimiz en gereksiz bedel olurdu.
  */
-function Tekerlek({ dilimler, kazanan }: { dilimler: CarkDilimi[]; kazanan: number | null }) {
+function Tekerlek({
+  dilimler,
+  kazanan,
+}: {
+  dilimler: CarkDilimi[];
+  kazanan: number | null;
+}) {
   const n = Math.max(1, dilimler.length);
   const adim = 360 / n;
   const R = 43;
@@ -363,7 +402,13 @@ const DOLGULAR = [
 /** Kazanan dilim — kasanın rengiyle aynı aileden, en doygun ton. */
 const KAZANAN_DOLGU = "#ffcf3f";
 
-function dilimYolu(cx: number, cy: number, r: number, basDeg: number, sonDeg: number): string {
+function dilimYolu(
+  cx: number,
+  cy: number,
+  r: number,
+  basDeg: number,
+  sonDeg: number,
+): string {
   const bas = (basDeg * Math.PI) / 180;
   const son = (sonDeg * Math.PI) / 180;
   const x1 = yuvarla(cx + r * Math.cos(bas));
