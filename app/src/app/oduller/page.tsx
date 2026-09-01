@@ -6,8 +6,7 @@ import { bakim } from "@/domain/bakim";
 import { OyuncuSayfa, SayfaBasi, Sayac, OyuncuBolum } from "@/components/oyuncu";
 import { RENK } from "@/components/oyuncu-renk";
 import { Gorsel, gorselSec, GORSEL_RENGI } from "@/components/oyuncu-gorsel";
-import { Bilet, BILET_STILLERI, stilOku, type BiletStili } from "@/components/bilet";
-import { kodEkrandaGosterilir } from "@/sms";
+import { Bilet } from "@/components/bilet";
 
 export const dynamic = "force-dynamic";
 
@@ -34,11 +33,7 @@ export const dynamic = "force-dynamic";
  * indiriminde fincan, tatlıda pasta, yüzdede etiket. Renk hâlâ cinsi
  * söylüyor ama artık fısıldayarak.
  */
-export default async function OdullerSayfasi({
-  searchParams,
-}: {
-  searchParams: Promise<{ stil?: string }>;
-}) {
+export default async function OdullerSayfasi() {
   const o = await oturum.oku();
   if (!o || o.rol !== "oyuncu") redirect("/giris");
 
@@ -49,11 +44,6 @@ export default async function OdullerSayfasi({
 
   const e = await envanter(o.ozneId);
   const bosMu = !e.kullanilabilir.length && !e.bekleyen.length && !e.gecmis.length;
-
-  // Ü69: bilet stili denemesi. `?stil=` yalnızca geliştirmede görünür
-  // bir seçiciyle değişiyor; stil seçilince anahtar da seçici de gidecek.
-  const stil = stilOku((await searchParams).stil);
-  const seciciGorunur = kodEkrandaGosterilir();
 
   return (
     <OyuncuSayfa aktif="/oduller">
@@ -94,8 +84,6 @@ export default async function OdullerSayfasi({
         </div>
       ) : (
         <>
-          {seciciGorunur && <StilSecici aktif={stil} />}
-
           <OyuncuBolum
             baslik="Kullanılabilir"
             renk="kahve"
@@ -109,7 +97,7 @@ export default async function OdullerSayfasi({
               <ul className="flex flex-col gap-3">
                 {e.kullanilabilir.map((k) => (
                   <li key={k.id}>
-                    <BiletKarti kupon={k} stil={stil} />
+                    <BiletKarti kupon={k} />
                   </li>
                 ))}
               </ul>
@@ -174,12 +162,11 @@ const DURUM_ETIKETI: Record<EnvanterKuponu["durum"], string> = {
  * E9: ödülün adı var, değeri yok. Bilet ne kadar "değerli" görünürse
  * görünsün, üstünde bir tutar yazmıyor.
  */
-function BiletKarti({ kupon, stil }: { kupon: EnvanterKuponu; stil: BiletStili }) {
+function BiletKarti({ kupon }: { kupon: EnvanterKuponu }) {
   const gorsel = gorselSec(kupon.baslik, kupon.tur);
 
   return (
     <Bilet
-      stil={stil}
       veri={{
         href: `/oduller/${kupon.id}`,
         kafe: kupon.cafeAdi,
@@ -192,40 +179,6 @@ function BiletKarti({ kupon, stil }: { kupon: EnvanterKuponu; stil: BiletStili }
         }),
       }}
     />
-  );
-}
-
-/**
- * Stil seçici — yalnızca geliştirmede.
- *
- * Dört stili sırayla canlıya alıp ekran görüntüsü göndermek yerine
- * ürün sahibi kendi telefonunda dokunup bakıyor. Seçim yapılınca hem
- * bu bileşen hem `?stil=` anahtarı hem de kazanmayan üç stil silinecek.
- *
- * Bağlantı, düğme değil: sunucu bileşeni olduğu için durum
- * `searchParams`te duruyor ve sayfa yenilendiğinde seçim kayboluyor —
- * geçici bir laboratuvar için doğru maliyet.
- */
-function StilSecici({ aktif }: { aktif: BiletStili }) {
-  return (
-    <div className="mb-6 rounded-2xl border border-cizgi bg-cukur px-4 py-3.5">
-      <div className="etiket-caps text-odul-koyu">Yalnızca geliştirme · bilet stili</div>
-      <div className="mt-2.5 flex flex-wrap gap-1.5">
-        {BILET_STILLERI.map((s) => (
-          <Link
-            key={s.kod}
-            href={`/oduller?stil=${s.kod}`}
-            className={`rounded-full border px-3 py-1.5 text-[13px] font-semibold transition-colors ${
-              s.kod === aktif
-                ? "border-yazi bg-yazi text-white"
-                : "border-cizgi bg-yuzey text-yazi-sonuk hover:border-yazi-sonuk"
-            }`}
-          >
-            {s.ad}
-          </Link>
-        ))}
-      </div>
-    </div>
   );
 }
 
