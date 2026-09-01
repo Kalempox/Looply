@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { kafeYoneticisiGerekli } from "@/domain/yetki";
 import { konumVarMi } from "@/domain/cafe";
 import { GEOFENCE_METRE } from "@/domain/masa";
@@ -74,9 +73,6 @@ export default async function KonumSayfasi() {
         </p>
       </Bolum>
 
-      <Link href="/kafe/panel" className="text-[14px] text-yazi-sonuk underline">
-        Panele dön
-      </Link>
     </IsletmeSayfa>
   );
 }

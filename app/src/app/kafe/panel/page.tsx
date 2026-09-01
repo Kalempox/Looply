@@ -12,9 +12,18 @@ export const metadata = { title: "İşletme paneli · CafePlay" };
 /**
  * Kafe paneli.
  *
- * Faz 6'nın konusu (bütçe, ürün, kampanya, rapor). Şu an yalnızca kimliğin
- * oturduğunu ve kiracı izolasyonunun çalıştığını gösteriyor: buradaki her
- * sorgu `withCafe` bağlamından geçiyor, `cafe_id` oturumdan geliyor.
+ * ── Neden liste değil kart ──────────────────────────────────
+ *
+ * Önceki hâli her şeyi satır satır yazıyordu ve dokuz satırın dokuzunda da
+ * yeşil "açık" rozeti vardı: eksik olan iki madde o yeşilliğin arasında
+ * kayboluyordu. Panel okunacak bir belge değil, **bakılacak bir gösterge** —
+ * kafe sahibinin ilk sorusu "bugün ne durumdayım".
+ *
+ * Şimdi eksik olan kendini kırmızı kenarla gösteriyor, tamam olan sessiz
+ * kalıyor. Bütçe tek bakışta okunan bir çubuğa dönüştü.
+ *
+ * Her sorgu `withCafe` bağlamından geçiyor; `cafe_id` oturumdan geliyor ve
+ * satırları RLS süzüyor.
  */
 export default async function KafePaneli() {
   const o = await kafeYoneticisiGerekli();
@@ -57,8 +66,8 @@ export default async function KafePaneli() {
       {!veri.konumVar && (
         <div className="mb-8">
           <IsletmeUyari>
-            <strong>Kafenin konumu belirlenmemiş.</strong> Oyuncular konumlarını
-            doğrulayamıyor; puan, ödül ve kupon hiç kazanılmıyor.{" "}
+            <strong>Kafenin konumu belirlenmemiş.</strong> Oyuncular konumlarını doğrulayamıyor;
+            puan, ödül ve kupon hiç kazanılmıyor.{" "}
             <Link href="/kafe/panel/konum" className="underline">
               Konumu işaretle
             </Link>
@@ -66,106 +75,71 @@ export default async function KafePaneli() {
         </div>
       )}
 
-      <Bolum baslik="Kurulum durumu">
-        <div className="grid grid-cols-3 gap-px overflow-hidden rounded-2xl border border-cizgi bg-cizgi">
-          <Sayi etiket="Masa" deger={veri.masa} />
-          <Sayi etiket="Personel" deger={veri.personel} />
-          <Sayi etiket="Kayıtlı cihaz" deger={veri.cihaz} />
+      {/* ── Bugün ────────────────────────────────────────
+          Kafe sahibinin ilk baktığı yer: bugünkü bütçe ve kurulumun sayıları. */}
+      <section className="mb-9 grid gap-3 sm:grid-cols-2">
+        <ButceKarti butce={butce} />
+        <div className="grid grid-cols-3 gap-3">
+          <KucukKart etiket="Masa" deger={veri.masa} yol="/kafe/panel/masalar" eksik={veri.masa === 0} />
+          <KucukKart etiket="Personel" deger={veri.personel} yol="/kafe/panel/personel" />
+          <KucukKart etiket="Cihaz" deger={veri.cihaz} yol="/kafe/panel/personel" />
         </div>
-      </Bolum>
+      </section>
 
-      {butce.donem ? (
-        <Bolum baslik="Bu dönemin bütçesi">
-          <Link
-            href="/kafe/panel/butce"
-            className="block rounded-2xl border border-cizgi bg-yuzey px-4 py-4 hover:bg-cukur"
-          >
-            <div className="flex items-baseline justify-between">
-              <span className="etiket-caps text-yazi-sonuk">
-                Dağıtılabilir
-              </span>
-              <span className="font-data text-[12px] text-yazi-sonuk tabular">
-                {tlYaz(butce.donem.taahhutKurus)} TL taahhüt
-              </span>
-            </div>
-            <div className="mt-1.5 font-data text-3xl leading-none font-bold tabular">
-              {tlYaz(butce.dagitilabilirKurus)}
-              <span className="ml-1 text-[13px] font-normal">TL</span>
-            </div>
-            <div className="mt-2 font-data text-[11px] text-yazi-sonuk tabular">
-              {tlYaz(butce.rezerveKurus)} TL açık kuponlarda · {tlYaz(butce.harcananKurus)} TL
-              kasada harcandı
-            </div>
-          </Link>
-        </Bolum>
-      ) : (
-        <Bolum baslik="Bu dönemin bütçesi">
-          <IsletmeUyari tur="bekle">
-            Henüz bütçe belirlemedin. Bütçe olmadan hiçbir ödül dağıtılamaz.{" "}
-            <Link href="/kafe/panel/butce" className="underline">
-              Bütçeyi belirle
-            </Link>
-          </IsletmeUyari>
-        </Bolum>
-      )}
-
-      <Bolum baslik="Kurulum">
-        <ul className="divide-y divide-cizgi border-y border-cizgi">
-          <Gorev
+      <Bolum baslik="Kurulum ve yönetim">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Kart
             baslik="Kafe konumu"
             aciklama="Oyuncunun kafede olduğunu doğrulamanın tek yolu"
             yol="/kafe/panel/konum"
-            durum={veri.konumVar ? "acik" : "eksik"}
+            eksik={!veri.konumVar}
+            ikon="konum"
           />
-          <Gorev
-            baslik="Personel ve PIN"
-            aciklama="Kasiyer hesabı aç, PIN ver, kasa cihazını kaydet"
-            yol="/kafe/panel/personel"
-            durum="acik"
-          />
-          <Gorev
-            baslik="Haftalık bütçe"
+          <Kart
+            baslik="Günlük bütçe"
             aciklama="En az 1.500 TL — kullanılmayan kuponun maliyeti yok"
             yol="/kafe/panel/butce"
-            durum="acik"
+            eksik={!butce.donem}
+            ikon="butce"
           />
-          <Gorev
+          <Kart
+            baslik="Ödüller ve kampanyalar"
+            aciklama="Oyuncunun kazandığı ödüller ve herkese açık yüzde indirimleri"
+            yol="/kafe/panel/oduller"
+            ikon="odul"
+          />
+          <Kart
             baslik="Ürünler"
             aciklama="Menün — ödüllerin ve kampanyaların dayanağı"
             yol="/kafe/panel/urunler"
-            durum="acik"
+            ikon="urun"
           />
-          <Gorev
-            baslik="Ödül kataloğu"
-            aciklama="Ürün ödülü ve TL tavanlı indirim kuponu"
-            yol="/kafe/panel/oduller"
-            durum="acik"
+          <Kart
+            baslik="Masa karekodları"
+            aciklama="Ekle, yazdır, masaya yapıştır"
+            yol="/kafe/panel/masalar"
+            eksik={veri.masa === 0}
+            ikon="karekod"
           />
-          <Gorev
+          <Kart
+            baslik="Personel ve PIN"
+            aciklama="Kasiyer hesabı aç, PIN ver, kasa cihazını kaydet"
+            yol="/kafe/panel/personel"
+            ikon="personel"
+          />
+          <Kart
             baslik="Happy Hour"
             aciklama="Boş saatine görünür bir TL havuzu ayır"
             yol="/kafe/panel/happy-hour"
-            durum="acik"
+            ikon="saat"
           />
-          <Gorev
-            baslik="Ürün kampanyaları"
-            aciklama="Yüzde indirimi — tavan, adet ve süre limitiyle"
-            yol="/kafe/panel/kampanyalar"
-            durum="acik"
-          />
-          <Gorev
-            baslik="Masa karekodları"
-            aciklama="Masalara yapıştırılacak kodlar — ekle, yazdır, yapıştır"
-            yol="/kafe/panel/masalar"
-            durum={veri.masa > 0 ? "acik" : "eksik"}
-          />
-          <Gorev
-            baslik="Raporlar"
-            aciklama="Gelen nitelikli oyuncu, fiilen kullanılan indirim, hangi saat doluyor"
+          <Kart
+            baslik="Rapor"
+            aciklama="Gelen müşteri, tekrar gelen, kullanılan indirim, dolu saatler"
             yol="/kafe/panel/rapor"
-            durum="acik"
+            ikon="rapor"
           />
-        </ul>
+        </div>
       </Bolum>
 
       <nav className="mt-10 flex items-center gap-5 border-t border-cizgi pt-6 text-[14px]">
@@ -183,56 +157,207 @@ function tlYaz(kurus: number): string {
   return (kurus / 100).toLocaleString("tr-TR", { maximumFractionDigits: 0 });
 }
 
-function Sayi({ etiket, deger }: { etiket: string; deger: number }) {
+/**
+ * Bütçe kartı — panelin en çok bakılan sayısı.
+ *
+ * Çubuk üç değeri tek bakışta veriyor: kasada harcanan, açık kuponlarda
+ * bağlı olan, kalan. Sayıları okumadan da "bugün ne kadar yerim var"
+ * sorusu cevaplanıyor.
+ */
+function ButceKarti({ butce }: { butce: Awaited<ReturnType<typeof butceDurumu>> }) {
+  if (!butce.donem) {
+    return (
+      <Link
+        href="/kafe/panel/butce"
+        className="flex flex-col justify-between rounded-2xl border-2 border-tehlike/70 bg-yuzey p-5 transition-colors hover:bg-cukur"
+      >
+        <div className="etiket-caps text-tehlike">Bugünün bütçesi yok</div>
+        <div className="mt-3 text-[14px] leading-relaxed text-yazi-sonuk">
+          Bütçe belirlenmeden hiçbir ödül dağıtılamaz.
+        </div>
+        <div className="mt-3 etiket-caps text-vurgu">Bütçeyi belirle →</div>
+      </Link>
+    );
+  }
+
+  const taahhut = butce.donem.taahhutKurus;
+  const oran = (k: number) => (taahhut > 0 ? Math.min(100, Math.round((k / taahhut) * 100)) : 0);
+
   return (
-    <div className="bg-yuzey px-4 py-5">
-      <div className="etiket-caps text-yazi-sonuk">
-        {etiket}
+    <Link
+      href="/kafe/panel/butce"
+      className="rounded-2xl border border-cizgi bg-yuzey p-5 transition-colors hover:bg-cukur"
+    >
+      <div className="flex items-baseline justify-between">
+        <span className="etiket-caps text-yazi-sonuk">Bugün dağıtılabilir</span>
+        <span className="font-data text-[11px] text-yazi-sonuk tabular">
+          {tlYaz(taahhut)} TL taahhüt
+        </span>
       </div>
-      <div className="mt-2 font-data text-2xl leading-none font-bold tabular">{deger}</div>
-    </div>
+
+      <div className="mt-2 font-data text-4xl leading-none font-bold tabular">
+        {tlYaz(butce.dagitilabilirKurus)}
+        <span className="ml-1 text-[14px] font-normal text-yazi-sonuk">TL</span>
+      </div>
+
+      <div className="mt-4 flex h-2 overflow-hidden rounded-full bg-cukur">
+        <span className="bg-vurgu" style={{ width: `${oran(butce.harcananKurus)}%` }} />
+        <span className="bg-odul" style={{ width: `${oran(butce.rezerveKurus)}%` }} />
+      </div>
+
+      <div className="mt-2.5 flex flex-wrap gap-x-4 gap-y-1 font-data text-[11px] text-yazi-sonuk tabular">
+        <span>
+          <span className="mr-1 inline-block size-2 rounded-full bg-vurgu align-middle" />
+          {tlYaz(butce.harcananKurus)} TL kasada
+        </span>
+        <span>
+          <span className="mr-1 inline-block size-2 rounded-full bg-odul align-middle" />
+          {tlYaz(butce.rezerveKurus)} TL açık kuponlarda
+        </span>
+      </div>
+    </Link>
   );
 }
 
-function Gorev({
+function KucukKart({
+  etiket,
+  deger,
+  yol,
+  eksik,
+}: {
+  etiket: string;
+  deger: number;
+  yol: string;
+  eksik?: boolean;
+}) {
+  return (
+    <Link
+      href={yol}
+      className={`flex flex-col justify-between rounded-2xl border bg-yuzey p-4 transition-colors hover:bg-cukur ${
+        eksik ? "border-tehlike/60" : "border-cizgi"
+      }`}
+    >
+      <span className="etiket-caps text-[10px] text-yazi-sonuk">{etiket}</span>
+      <span
+        className={`mt-3 font-data text-2xl leading-none font-bold tabular ${
+          eksik ? "text-tehlike" : ""
+        }`}
+      >
+        {deger}
+      </span>
+    </Link>
+  );
+}
+
+/**
+ * Kurulum kartı.
+ *
+ * Eksik olan kırmızı kenarla kendini gösteriyor; tamam olan sessiz kalıyor.
+ * Önceki hâli her satıra yeşil "açık" rozeti koyuyordu ve iki kırmızı, yedi
+ * yeşilin arasında kayboluyordu.
+ */
+function Kart({
   baslik,
   aciklama,
   yol,
-  durum,
+  eksik,
+  ikon,
 }: {
   baslik: string;
   aciklama: string;
-  yol?: string;
-  durum: "acik" | "sirada" | "eksik";
+  yol: string;
+  eksik?: boolean;
+  ikon: keyof typeof IKONLAR;
 }) {
-  const icerik = (
-    <>
-      <span className="min-w-0 flex-1">
-        <span className="block text-[15px] font-semibold">{baslik}</span>
-        <span className="block text-[13px] text-yazi-sonuk">{aciklama}</span>
-      </span>
-      {durum === "acik" ? (
-        <Rozet tur="onayli">açık</Rozet>
-      ) : durum === "eksik" ? (
-        <Rozet tur="red">eksik</Rozet>
-      ) : (
-        <Rozet tur="pasif">sırada</Rozet>
-      )}
-    </>
-  );
-
   return (
-    <li>
-      {yol ? (
-        <Link href={yol} className="flex items-center gap-4 py-3.5 hover:bg-cukur">
-          {icerik}
-        </Link>
-      ) : (
-        <div className="flex items-center gap-4 py-3.5 opacity-60">{icerik}</div>
-      )}
-    </li>
+    <Link
+      href={yol}
+      className={`flex gap-3.5 rounded-2xl border bg-yuzey p-4 transition-colors hover:bg-cukur ${
+        eksik ? "border-tehlike/60" : "border-cizgi"
+      }`}
+    >
+      <span className={`mt-0.5 shrink-0 ${eksik ? "text-tehlike" : "text-yazi-sonuk"}`}>
+        {IKONLAR[ikon]}
+      </span>
+      <span className="min-w-0">
+        <span className="flex flex-wrap items-center gap-2">
+          <span className="text-[15px] font-semibold">{baslik}</span>
+          {eksik && <Rozet tur="red">eksik</Rozet>}
+        </span>
+        <span className="mt-1 block text-[13px] leading-relaxed text-yazi-sonuk">{aciklama}</span>
+      </span>
+    </Link>
   );
 }
+
+/* Satır içi SVG — işletme tarafında emoji yok (Ü31) ve dış kaynak da yok. */
+const cizgi = {
+  width: 22,
+  height: 22,
+  viewBox: "0 0 24 24",
+  fill: "none",
+  stroke: "currentColor",
+  strokeWidth: 1.6,
+  strokeLinecap: "round",
+  strokeLinejoin: "round",
+} as const;
+
+const IKONLAR = {
+  konum: (
+    <svg {...cizgi} aria-hidden>
+      <path d="M12 21s7-5.5 7-11a7 7 0 1 0-14 0c0 5.5 7 11 7 11Z" />
+      <circle cx="12" cy="10" r="2.6" />
+    </svg>
+  ),
+  butce: (
+    <svg {...cizgi} aria-hidden>
+      <rect x="2.5" y="6" width="19" height="13" rx="2" />
+      <path d="M2.5 10.5h19" />
+    </svg>
+  ),
+  odul: (
+    <svg {...cizgi} aria-hidden>
+      <path d="M4 9h16v11a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V9Z" />
+      <path d="M3 5.5h18V9H3zM12 5.5V21" />
+    </svg>
+  ),
+  urun: (
+    <svg {...cizgi} aria-hidden>
+      <path d="M6 8h10v6a5 5 0 0 1-10 0V8Z" />
+      <path d="M16 9h1.5a2.5 2.5 0 0 1 0 5H16" />
+      <path d="M4 21h14" />
+    </svg>
+  ),
+  karekod: (
+    <svg {...cizgi} aria-hidden>
+      <rect x="3" y="3" width="7" height="7" rx="1" />
+      <rect x="14" y="3" width="7" height="7" rx="1" />
+      <rect x="3" y="14" width="7" height="7" rx="1" />
+      <path d="M14 14h3v3h-3zM20 14v3M14 20h6" />
+    </svg>
+  ),
+  personel: (
+    <svg {...cizgi} aria-hidden>
+      <circle cx="9" cy="8" r="3.2" />
+      <path d="M3 20a6 6 0 0 1 12 0" />
+      <path d="M16 11a3 3 0 1 0 0-6M18 20a6 6 0 0 0-3-5.2" />
+    </svg>
+  ),
+  saat: (
+    <svg {...cizgi} aria-hidden>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M12 7.5V12l3 2" />
+    </svg>
+  ),
+  rapor: (
+    <svg {...cizgi} aria-hidden>
+      <path d="M3 21h18" />
+      <rect x="5" y="12" width="4" height="7" rx="1" />
+      <rect x="10" y="7" width="4" height="12" rx="1" />
+      <rect x="15" y="14" width="4" height="5" rx="1" />
+    </svg>
+  ),
+} as const;
 
 async function cikisYap() {
   "use server";

@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { kafeYoneticisiGerekli } from "@/domain/yetki";
 import { durum, donemAraligi, tabanKurus } from "@/domain/butce";
 import { bakim } from "@/domain/bakim";
@@ -113,9 +112,6 @@ export default async function ButceSayfasi() {
         </ol>
       </Bolum>
 
-      <Link href="/kafe/panel" className="text-[14px] text-yazi-sonuk underline">
-        Panele dön
-      </Link>
     </IsletmeSayfa>
   );
 }

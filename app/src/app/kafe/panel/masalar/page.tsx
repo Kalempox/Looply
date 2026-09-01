@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { kafeYoneticisiGerekli } from "@/domain/yetki";
 import * as masaYonetim from "@/domain/masa-yonetim";
 import { IsletmeSayfa, IsletmeBaslik, Bolum, IsletmeUyari } from "@/components/isletme";
@@ -88,9 +87,6 @@ export default async function MasalarSayfasi() {
         konumu kafede değilse kazanım açılmaz.
       </p>
 
-      <Link href="/kafe/panel" className="text-[14px] text-yazi-sonuk underline">
-        Panele dön
-      </Link>
     </IsletmeSayfa>
   );
 }

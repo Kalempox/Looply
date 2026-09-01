@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { kafeYoneticisiGerekli } from "@/domain/yetki";
 import * as urun from "@/domain/urun";
 import { IsletmeSayfa, IsletmeBaslik, Bolum, Rozet } from "@/components/isletme";
@@ -51,9 +50,6 @@ export default async function UrunlerSayfasi() {
         )}
       </Bolum>
 
-      <Link href="/kafe/panel" className="text-[14px] text-yazi-sonuk underline">
-        Panele dön
-      </Link>
     </IsletmeSayfa>
   );
 }

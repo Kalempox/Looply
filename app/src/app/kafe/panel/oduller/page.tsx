@@ -5,6 +5,7 @@ import * as urun from "@/domain/urun";
 import * as ayar from "@/domain/ayar";
 import { IsletmeSayfa, IsletmeBaslik, Bolum, Rozet, IsletmeUyari } from "@/components/isletme";
 import { OdulEkleme, DurumDugmesi, EsikAyari } from "./kontroller";
+import { OdulSekmeleri } from "../odul-sekmeleri";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Ödül kataloğu · CafePlay" };
@@ -30,9 +31,11 @@ export default async function OdullerSayfasi() {
 
   return (
     <IsletmeSayfa genis>
-      <IsletmeBaslik ust="İşletme paneli" alt="Oyuncunun puanıyla alabileceği şeyler.">
-        Ödül kataloğu
+      <IsletmeBaslik ust="İşletme paneli" alt="Müşteriye ne veriyorsun — kazanılan ödüller ve herkese açık indirimler.">
+        Ödüller ve kampanyalar
       </IsletmeBaslik>
+
+      <OdulSekmeleri aktif="odul" />
 
       {urunler.length === 0 && (
         <div className="mb-7">
@@ -93,9 +96,6 @@ export default async function OdullerSayfasi() {
         )}
       </Bolum>
 
-      <Link href="/kafe/panel" className="text-[14px] text-yazi-sonuk underline">
-        Panele dön
-      </Link>
     </IsletmeSayfa>
   );
 }

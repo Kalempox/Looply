@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { kafeYoneticisiGerekli } from "@/domain/yetki";
 import * as happy from "@/domain/happy";
 import { durum as butceDurumu } from "@/domain/butce";
@@ -117,9 +116,6 @@ export default async function HappyHourSayfasi() {
         </ul>
       </Bolum>
 
-      <Link href="/kafe/panel" className="text-[14px] text-yazi-sonuk underline">
-        Panele dön
-      </Link>
     </IsletmeSayfa>
   );
 }

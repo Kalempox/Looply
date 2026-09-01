@@ -1,8 +1,8 @@
-import Link from "next/link";
 import { kafeYoneticisiGerekli } from "@/domain/yetki";
 import * as kampanya from "@/domain/kampanya";
 import * as urun from "@/domain/urun";
 import { IsletmeSayfa, IsletmeBaslik, Bolum, Rozet } from "@/components/isletme";
+import { OdulSekmeleri } from "../odul-sekmeleri";
 import { KampanyaOlusturma, DurumDugmeleri } from "./kontroller";
 
 export const dynamic = "force-dynamic";
@@ -27,9 +27,11 @@ export default async function KampanyalarSayfasi() {
 
   return (
     <IsletmeSayfa genis>
-      <IsletmeBaslik ust="İşletme paneli" alt="Boş saatini doldur, istediğin ürünü sattır.">
-        Ürün kampanyaları
+      <IsletmeBaslik ust="İşletme paneli" alt="Müşteriye ne veriyorsun — kazanılan ödüller ve herkese açık indirimler.">
+        Ödüller ve kampanyalar
       </IsletmeBaslik>
+
+      <OdulSekmeleri aktif="kampanya" />
 
       <Bolum
         baslik="Yeni kampanya"
@@ -92,9 +94,6 @@ export default async function KampanyalarSayfasi() {
         )}
       </Bolum>
 
-      <Link href="/kafe/panel" className="text-[14px] text-yazi-sonuk underline">
-        Panele dön
-      </Link>
     </IsletmeSayfa>
   );
 }

@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { kafeYoneticisiGerekli } from "@/domain/yetki";
 import { personelListele, PIN_ROTASYON_GUNU } from "@/domain/staff";
 import { withCafe } from "@/db/context";
@@ -96,9 +95,6 @@ export default async function PersonelSayfasi() {
       </Bolum>
 
       <nav className="mt-10 border-t border-cizgi pt-6 text-[14px]">
-        <Link href="/kafe/panel" className="underline">
-          ← Panele dön
-        </Link>
       </nav>
     </IsletmeSayfa>
   );

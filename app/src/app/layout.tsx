@@ -72,7 +72,10 @@ function GelistirmeRozeti() {
   return (
     <nav
       aria-label="Geliştirme araçları"
-      className="fixed right-3 bottom-3 z-50 flex gap-1.5 etiket-caps"
+      /* Alt gezinme şeridinin ÜSTÜNDE duruyor. Oyuncu ve işletme
+         taraflarının ikisinde de sabit bir şerit var (`bottom-0`,
+         yaklaşık 64px) ve rozet `bottom-3` iken onları kapatıyordu. */
+      className="fixed right-3 bottom-20 z-50 flex gap-1.5 etiket-caps"
     >
       <Link
         href="/"

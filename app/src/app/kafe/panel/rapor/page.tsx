@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { kafeYoneticisiGerekli } from "@/domain/yetki";
 import * as rapor from "@/domain/rapor";
 import { bakim } from "@/domain/bakim";
@@ -302,9 +301,6 @@ export default async function RaporSayfasi({
         <DisaAktarma hafta={gecen ? "gecen" : "bu"} />
       </Bolum>
 
-      <Link href="/kafe/panel" className="text-[14px] text-yazi-sonuk underline">
-        Panele dön
-      </Link>
     </IsletmeSayfa>
   );
 }
