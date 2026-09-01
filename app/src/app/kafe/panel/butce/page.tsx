@@ -52,6 +52,7 @@ export default async function ButceSayfasi() {
               deger={`${tlYaz(d.dagitilabilirKurus)} TL`}
               alt="yeni kupon için kalan"
               ikon={IKON.para}
+              alan="para"
               vurgulu
             />
             <SayiKarti
@@ -59,12 +60,14 @@ export default async function ButceSayfasi() {
               deger={`${tlYaz(d.rezerveKurus)} TL`}
               alt="verildi, kullanılmadı"
               ikon={IKON.kupon}
+              alan="odul"
             />
             <SayiKarti
               etiket="Kasada harcanan"
               deger={`${tlYaz(d.harcananKurus)} TL`}
               alt="fiilen ödediğin"
               ikon={IKON.onay}
+              alan="para"
               seri={yedi.map((g) => g.harcananKurus)}
             />
             <SayiKarti
@@ -72,6 +75,7 @@ export default async function ButceSayfasi() {
               deger={`${tlYaz(d.iadeKurus)} TL`}
               alt="süresi dolan kupondan"
               ikon={IKON.saat}
+              alan="genel"
             />
           </section>
 

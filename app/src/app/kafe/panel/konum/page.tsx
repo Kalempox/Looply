@@ -67,12 +67,14 @@ export default async function KonumSayfasi() {
               etiket="Enlem"
               deger={konum.lat!.toFixed(5)}
               ikon={IKON.masa}
+              alan="masa"
             />
             <SayiKarti
               etiket="Yarıçap"
               deger={`${GEOFENCE_METRE} m`}
               alt="bu mesafede doğrulanır"
               ikon={IKON.onay}
+              alan="genel"
               vurgulu
             />
           </div>

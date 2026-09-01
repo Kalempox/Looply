@@ -57,6 +57,7 @@ export default async function UrunlerSayfasi() {
           deger={String(aktifUrun.length)}
           alt={`${urunler.length} tanımlı`}
           ikon={IKON.urun}
+          alan="urun"
           vurgulu
         />
         <SayiKarti
@@ -64,12 +65,14 @@ export default async function UrunlerSayfasi() {
           deger={`${Math.round(ortalamaFiyat / 100)} TL`}
           alt="ödül değerinin dayanağı"
           ikon={IKON.para}
+          alan="para"
         />
         <SayiKarti
           etiket="En pahalı"
           deger={enPahali ? `${Math.round(enPahali.fiyatKurus / 100)} TL` : "—"}
           alt={enPahali ? enPahali.ad : "ürün girilmedi"}
           ikon={IKON.odul}
+          alan="urun"
         />
       </section>
 
@@ -88,21 +91,33 @@ export default async function UrunlerSayfasi() {
                 Henüz ürün yok. Ödül tanımlayabilmek için önce menünü gir.
               </p>
             ) : (
-              <ul className="divide-y divide-cizgi border-y border-cizgi">
+              <ul className="grid gap-2.5">
                 {urunler.map((u) => (
                   <li
                     key={u.id}
-                    className={`flex items-center gap-4 py-3.5 ${u.aktif ? "" : "opacity-55"}`}
+                    className={`flex items-center gap-3.5 rounded-2xl border border-cizgi bg-yuzey p-4 transition-all hover:-translate-y-0.5 hover:border-urun hover:shadow-md ${
+                      u.aktif ? "" : "opacity-55"
+                    }`}
                   >
+                    <span
+                      className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-urun-zemin text-urun"
+                      aria-hidden
+                    >
+                      {IKON.urun}
+                    </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block text-[15px] font-semibold">
-                        {u.ad}
+                      <span className="flex flex-wrap items-center gap-2">
+                        <span className="text-[15px] leading-tight font-semibold">
+                          {u.ad}
+                        </span>
+                        {!u.aktif && (
+                          <Rozet tur="pasif">kullanımda değil</Rozet>
+                        )}
                       </span>
-                      <span className="font-data text-[12px] text-yazi-sonuk tabular">
+                      <span className="mt-1.5 inline-block rounded-full bg-urun-zemin px-2 py-0.5 font-data text-[11px] font-bold text-urun tabular">
                         {(u.fiyatKurus / 100).toLocaleString("tr-TR")} TL
                       </span>
                     </span>
-                    {!u.aktif && <Rozet tur="pasif">kullanımda değil</Rozet>}
                     <DurumDugmesi urunId={u.id} aktif={u.aktif} />
                   </li>
                 ))}

@@ -75,18 +75,21 @@ export default async function PersonelSayfasi() {
           deger={String(kasiyerler.length)}
           alt="PIN ile giriyor"
           ikon={IKON.kisi}
+          alan="kisi"
         />
         <SayiKarti
           etiket="Kayıtlı cihaz"
           deger={String(cihazlar.length)}
           alt="PIN yalnızca bunlarda çalışır"
           ikon={IKON.masa}
+          alan="masa"
         />
         <SayiKarti
           etiket="Onaylanan kupon"
           deger={String(toplamOnay)}
           alt="son 7 gün"
           ikon={IKON.onay}
+          alan="kisi"
           vurgulu
         />
         <SayiKarti
@@ -94,6 +97,7 @@ export default async function PersonelSayfasi() {
           deger={enCok ? enCok.etiket : "—"}
           alt={enCok ? `${enCok.deger} kupon` : "henüz onay yok"}
           ikon={IKON.kupon}
+          alan="odul"
         />
       </section>
 
@@ -134,6 +138,7 @@ export default async function PersonelSayfasi() {
                   not: k.deger === 0 ? "hiç onaylamadı" : `${k.deger} kupon`,
                 }))}
                 bosMetin="Kasiyer eklenmedi."
+                alan="kisi"
               />
             </Bolum>
           </>

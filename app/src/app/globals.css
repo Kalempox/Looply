@@ -33,6 +33,41 @@
   --color-odul-koyu: #856612; /* aynı ödül rengi, METİN olarak okunabilir tonu */
   --color-tehlike: #d93025; /* hata, ret, yıkıcı eylem */
 
+  /* ── Alan renkleri (Ü63) ─────────────────────────────────────
+     "Ekleme yok — onuncu renk paleti anlamsızlaştırır" kuralı
+     işletme panelinde **bilerek gevşetildi.**
+
+     Gerekçe: panel artık bir belge değil, bir gösterge takımı. Sekiz
+     iç sayfa, dört gösterge kartı, düzinelerce ikon kutusu — hepsi tek
+     maviyle çizildiğinde ürün sahibinin deyimiyle "çok basit" duruyor
+     ve daha kötüsü, hiçbir kutu diğerinden ayrılmıyor. Renk burada süs
+     değil **yön bulma**: kafe sahibi para kutusunu yeşilden, masayı
+     sarıdan tanıyor.
+
+     Kural: her renk BİR ALANA ait ve o alan dışında kullanılmıyor.
+     "Yeşil = iyi, kırmızı = kötü" gibi bir okuma YOK — bugün az kupon
+     verilmiş olması kafe için kötü haber değil, bütçe korunuyor demek.
+
+     Oyuncu tarafı bu renkleri kullanmıyor: orası çarkın dilinde
+     (Ü61) ve iki dilin karışması ikisini de bozar. */
+  --color-para: #15803d; /* bütçe, tutar, kasa — para gören her yer */
+  --color-masa: #b45309; /* masa, karekod, oturma düzeni */
+  --color-urun: #c2410c; /* menü, ürün, fiyat */
+  --color-kisi: #0e7490; /* personel, kasiyer, cihaz */
+  --color-kampanya: #6d28d9; /* kampanya, yüzde indirimi */
+
+  /* Aynı renklerin **zemin** tonları: ikon kutusu ve rozet için.
+     Metin tonuyla aynı rengi %10 opaklıkla kullanmak yerine ayrı
+     jeton: opaklık zeminin rengine göre kayıyor ve kartın üstünde
+     başka, sayfanın üstünde başka çıkıyordu. */
+  --color-para-zemin: #e8f5ec;
+  --color-masa-zemin: #fdf1e3;
+  --color-urun-zemin: #fdeee7;
+  --color-kisi-zemin: #e4f4f7;
+  --color-kampanya-zemin: #f0e9fd;
+  --color-vurgu-zemin: #e7effb;
+  --color-odul-zemin: #fbf3dd;
+
   /* ── Kontrast neden bu değerlerde ────────────────────────────
      Sistemin kendi kuralı: "gövde metni ve mikro etiket 4.5:1'i geçmeli,
      'sönük' okunmaz griye kaymamalı." Ölçünce iki değer kendi kuralını

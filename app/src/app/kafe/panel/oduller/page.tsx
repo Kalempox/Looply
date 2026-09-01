@@ -79,12 +79,14 @@ export default async function OdullerSayfasi() {
           deger={String(yayinda.length)}
           alt={`${oduller.length} tanımlı`}
           ikon={IKON.odul}
+          alan="odul"
         />
         <SayiKarti
           etiket="Çarka giren"
           deger={String(carkaUygun)}
           alt={`${Math.round(carkSinirKurus / 100)} TL sınırının altında`}
           ikon={IKON.kupon}
+          alan="odul"
           vurgulu
         />
         <SayiKarti
@@ -92,12 +94,14 @@ export default async function OdullerSayfasi() {
           deger={`${Math.round(ortalamaKurus / 100)} TL`}
           alt="bütçe bu hızda eriyor"
           ikon={IKON.para}
+          alan="para"
         />
         <SayiKarti
           etiket="Hemen açılan"
           deger={String(hemenAcilan)}
           alt={`üstü 24 saat bekliyor`}
           ikon={IKON.saat}
+          alan="genel"
         />
       </section>
 
@@ -154,48 +158,10 @@ export default async function OdullerSayfasi() {
                 şey yok.
               </p>
             ) : (
-              <ul className="divide-y divide-cizgi border-y border-cizgi">
+              <ul className="grid gap-2.5">
                 {oduller.map((od) => (
-                  <li
-                    key={od.id}
-                    className={`py-4 ${od.aktif ? "" : "opacity-55"}`}
-                  >
-                    <div className="flex items-start gap-4">
-                      <span className="min-w-0 flex-1">
-                        <span className="flex flex-wrap items-center gap-2">
-                          <span className="text-[15px] font-semibold">
-                            {od.tip === "percent"
-                              ? "🎟️"
-                              : od.tip === "amount"
-                                ? "💸"
-                                : "🏆"}{" "}
-                            {od.baslik}
-                          </span>
-                          {od.anlik && <Rozet tur="onayli">anlık</Rozet>}
-                          {!od.aktif && (
-                            <Rozet tur="pasif">yayında değil</Rozet>
-                          )}
-                        </span>
-
-                        <span className="mt-1 block font-data text-[12px] text-yazi-sonuk tabular">
-                          {od.tip === "percent"
-                            ? `%${od.yuzde} · en fazla ${tlYaz(od.maliyetKurus)} TL`
-                            : od.tip === "amount"
-                              ? `${tlYaz(od.maliyetKurus)} TL indirim`
-                              : `${tlYaz(od.maliyetKurus)} TL`}
-                          {od.anlik
-                            ? " · puan istemez"
-                            : ` · ${od.puanFiyati.toLocaleString("tr-TR")} puan`}
-                          {od.urunAdi && ` · ${od.urunAdi}`}
-                        </span>
-
-                        <span className="mt-1 block text-[12px] text-yazi-sonuk">
-                          {kanitCumlesi(od.kanitSeviyesi)}
-                        </span>
-                      </span>
-
-                      <DurumDugmesi odulId={od.id} aktif={od.aktif} />
-                    </div>
+                  <li key={od.id}>
+                    <OdulKarti odul={od} />
                   </li>
                 ))}
               </ul>
@@ -204,6 +170,136 @@ export default async function OdullerSayfasi() {
         </div>
       </div>
     </IsletmeSayfa>
+  );
+}
+
+/**
+ * Katalogdaki tek ödül — Ü63.
+ *
+ * ── Neden satır değil kart ──────────────────────────────────
+ *
+ * Liste düz satırlardı: emoji + başlık + tek satır gri metin. Ürün
+ * sahibinin deyimiyle "çok çirkin" ve daha önemlisi **okunmuyordu** —
+ * tip, değer, kanıt ve durum aynı gri cümlenin içinde eriyordu.
+ *
+ * Şimdi her bilgi kendi yerinde: solda tipin renkli ikonu, üstte ad ve
+ * durum, altta değer ile kanıt ayrı rozetlerde. Emoji yok (Ü31).
+ *
+ * ── Renk tipten geliyor ─────────────────────────────────────
+ *
+ * Ürün turuncu, yüzde mor, tutar yeşil (Ü63). Kafe sahibi listeyi
+ * okumadan da hangi tipten kaç tane olduğunu görüyor.
+ */
+function OdulKarti({ odul }: { odul: katalog.Odul }) {
+  const t = TIP_GORUNUM[odul.tip];
+
+  return (
+    <div
+      className={`flex items-start gap-3.5 rounded-2xl border bg-yuzey p-4 transition-all hover:-translate-y-0.5 hover:shadow-md ${
+        odul.aktif ? `${t.kenar} border-cizgi` : "border-cizgi opacity-55"
+      }`}
+    >
+      <span
+        className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${t.kutu}`}
+        aria-hidden
+      >
+        {t.ikon}
+      </span>
+
+      <span className="min-w-0 flex-1">
+        <span className="flex flex-wrap items-center gap-2">
+          <span className="text-[15px] leading-tight font-semibold">
+            {odul.baslik}
+          </span>
+          {!odul.aktif && <Rozet tur="pasif">yayında değil</Rozet>}
+        </span>
+
+        <span className="mt-2 flex flex-wrap items-center gap-1.5">
+          <span
+            className={`rounded-full px-2 py-0.5 font-data text-[11px] font-bold tabular ${t.kutu}`}
+          >
+            {odul.tip === "percent"
+              ? `%${odul.yuzde} · en fazla ${tlYaz(odul.maliyetKurus)} TL`
+              : `${tlYaz(odul.maliyetKurus)} TL`}
+          </span>
+          <span className="rounded-full bg-cukur px-2 py-0.5 text-[11px] text-yazi-sonuk">
+            {kanitCumlesi(odul.kanitSeviyesi)}
+          </span>
+          {odul.urunAdi && (
+            <span className="rounded-full bg-cukur px-2 py-0.5 text-[11px] text-yazi-sonuk">
+              {odul.urunAdi}
+            </span>
+          )}
+        </span>
+      </span>
+
+      <DurumDugmesi odulId={odul.id} aktif={odul.aktif} />
+    </div>
+  );
+}
+
+/**
+ * Ödül tipinin görünümü — ikon, renk, çerçeve.
+ *
+ * Tek yerde: kart, form düğmesi ve ileride rapor aynı tipe aynı rengi
+ * vermek zorunda. İki yerde tanımlansaydı biri değişir, diğeri kalırdı.
+ */
+const TIP_GORUNUM = {
+  product: {
+    kutu: "bg-urun-zemin text-urun",
+    kenar: "hover:border-urun",
+    ikon: <UrunSimgesi />,
+  },
+  percent: {
+    kutu: "bg-kampanya-zemin text-kampanya",
+    kenar: "hover:border-kampanya",
+    ikon: <YuzdeSimgesi />,
+  },
+  amount: {
+    kutu: "bg-para-zemin text-para",
+    kenar: "hover:border-para",
+    ikon: <TutarSimgesi />,
+  },
+} as const;
+
+const SIMGE = {
+  width: 20,
+  height: 20,
+  viewBox: "0 0 24 24",
+  fill: "none",
+  stroke: "currentColor",
+  strokeWidth: 1.7,
+  strokeLinecap: "round",
+  strokeLinejoin: "round",
+  "aria-hidden": true,
+} as const;
+
+function UrunSimgesi() {
+  return (
+    <svg {...SIMGE}>
+      <path d="M4 8h12v7a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4V8Z" />
+      <path d="M16 10h2.5a2.5 2.5 0 0 1 0 5H16" />
+      <path d="M7 4.5v1.5M11 3.5v2.5" />
+    </svg>
+  );
+}
+
+function YuzdeSimgesi() {
+  return (
+    <svg {...SIMGE}>
+      <path d="M19 5 5 19" />
+      <circle cx="7.5" cy="7.5" r="2.5" />
+      <circle cx="16.5" cy="16.5" r="2.5" />
+    </svg>
+  );
+}
+
+function TutarSimgesi() {
+  return (
+    <svg {...SIMGE}>
+      <path d="M12.6 3H20a1 1 0 0 1 1 1v7.4a2 2 0 0 1-.6 1.4l-7.6 7.6a2 2 0 0 1-2.8 0l-6.4-6.4a2 2 0 0 1 0-2.8l7.6-7.6a2 2 0 0 1 1.4-.6Z" />
+      <circle cx="16.5" cy="7.5" r="1.4" />
+    </svg>
   );
 }
 

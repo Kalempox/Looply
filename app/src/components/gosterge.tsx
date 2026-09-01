@@ -27,6 +27,53 @@ import Link from "next/link";
 
 /* ── Sayı kartı ────────────────────────────────────────────── */
 
+/**
+ * Kartın ait olduğu alan — rengi bu belirliyor (Ü63).
+ *
+ * "Yeşil iyi, kırmızı kötü" DEĞİL: renk yön bulma aracı. Kafe sahibi
+ * para kutusunu yeşilden, masayı sarıdan tanıyor. Aynı alan her ekranda
+ * aynı renkte olmak zorunda, yoksa renk anlamını kaybeder.
+ */
+export type Alan = "genel" | "para" | "masa" | "urun" | "kisi" | "odul" | "kampanya";
+
+const ALAN_SINIF: Record<Alan, { kutu: string; dolu: string; kenar: string }> = {
+  genel: {
+    kutu: "bg-vurgu-zemin text-vurgu",
+    dolu: "border-vurgu bg-vurgu",
+    kenar: "hover:border-vurgu",
+  },
+  para: { kutu: "bg-para-zemin text-para", dolu: "border-para bg-para", kenar: "hover:border-para" },
+  masa: { kutu: "bg-masa-zemin text-masa", dolu: "border-masa bg-masa", kenar: "hover:border-masa" },
+  urun: { kutu: "bg-urun-zemin text-urun", dolu: "border-urun bg-urun", kenar: "hover:border-urun" },
+  kisi: { kutu: "bg-kisi-zemin text-kisi", dolu: "border-kisi bg-kisi", kenar: "hover:border-kisi" },
+  /**
+   * Altın dolu kart, koyu altın zeminle (odul-koyu) çamur gibi
+   * duruyordu: beyaz yazı zeytin yeşili bir zeminde okunmuyor.
+   * Altın parlak bir renk — dolgusu parlak, yazısı koyu olmalı.
+   */
+  odul: {
+    kutu: "bg-odul-zemin text-odul-koyu",
+    dolu: "border-odul bg-odul",
+    kenar: "hover:border-odul",
+  },
+  kampanya: {
+    kutu: "bg-kampanya-zemin text-kampanya",
+    dolu: "border-kampanya bg-kampanya",
+    kenar: "hover:border-kampanya",
+  },
+};
+
+/** Kıvılcım ve rozetin çizgi rengi — dolgu jetonunun karşılığı. */
+const ALAN_CIZGI: Record<Alan, string> = {
+  genel: "var(--color-vurgu)",
+  para: "var(--color-para)",
+  masa: "var(--color-masa)",
+  urun: "var(--color-urun)",
+  kisi: "var(--color-kisi)",
+  odul: "var(--color-odul-koyu)",
+  kampanya: "var(--color-kampanya)",
+};
+
 export type SayiKartiOzellik = {
   etiket: string;
   /** Zaten biçimlenmiş değer — TL, adet, yüzde ne olursa. */
@@ -42,6 +89,8 @@ export type SayiKartiOzellik = {
   vurgulu?: boolean;
   /** Kart tıklanabilirse gidilecek yer. */
   yol?: string;
+  /** Rengi belirleyen alan. */
+  alan?: Alan;
 };
 
 export function SayiKarti({
@@ -53,19 +102,28 @@ export function SayiKarti({
   seri,
   vurgulu = false,
   yol,
+  alan = "genel",
 }: SayiKartiOzellik) {
+  const renk = ALAN_SINIF[alan];
+  const cizgi = ALAN_CIZGI[alan];
   const govde = (
     <>
       <div className="flex items-start justify-between gap-2">
         <span
-          className={`etiket-caps text-[10px] ${vurgulu ? "text-white/75" : "text-yazi-sonuk"}`}
+          className={`etiket-caps text-[10px] ${
+            vurgulu ? (alan === "odul" ? "text-yazi/70" : "text-white/75") : "text-yazi-sonuk"
+          }`}
         >
           {etiket}
         </span>
         {ikon && (
           <span
-            className={`flex size-8 shrink-0 items-center justify-center rounded-xl ${
-              vurgulu ? "bg-white/20 text-white" : "bg-cukur text-yazi"
+            className={`flex size-8 shrink-0 items-center justify-center rounded-xl transition-colors ${
+              vurgulu
+                ? alan === "odul"
+                  ? "bg-yazi/12 text-yazi"
+                  : "bg-white/20 text-white"
+                : renk.kutu
             }`}
           >
             {ikon}
@@ -73,7 +131,13 @@ export function SayiKarti({
         )}
       </div>
 
-      <div className="mt-2.5 font-data text-2xl leading-none font-bold tabular">{deger}</div>
+      <div
+        className={`mt-2.5 font-data text-2xl leading-none font-bold tabular ${
+          vurgulu && alan !== "odul" ? "text-white" : "text-yazi"
+        }`}
+      >
+        {deger}
+      </div>
 
       {(degisim != null || alt) && (
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
@@ -83,7 +147,7 @@ export function SayiKarti({
                 vurgulu
                   ? "bg-white/20 text-white"
                   : degisim >= 0
-                    ? "bg-vurgu/10 text-vurgu"
+                    ? renk.kutu
                     : "bg-cukur text-yazi-sonuk"
               }`}
             >
@@ -91,21 +155,34 @@ export function SayiKarti({
             </span>
           )}
           {alt && (
-            <span className={`text-[11px] ${vurgulu ? "text-white/75" : "text-yazi-sonuk"}`}>
+            <span
+              className={`text-[11px] ${
+                vurgulu ? (alan === "odul" ? "text-yazi/70" : "text-white/75") : "text-yazi-sonuk"
+              }`}
+            >
               {alt}
             </span>
           )}
         </div>
       )}
 
-      {seri && seri.length > 1 && <Kivilcim seri={seri} vurgulu={vurgulu} />}
+      {seri && seri.length > 1 && (
+        <Kivilcim seri={seri} renk={vurgulu && alan !== "odul" ? "#ffffff" : cizgi} />
+      )}
     </>
   );
 
-  const sinif = `relative overflow-hidden rounded-2xl border px-4 pt-4 ${
+  // Tıklanabilir kart üstüne gelince **alanının rengiyle** çerçeveleniyor:
+  // "buraya basılabilir" bilgisi ile "bu hangi alan" bilgisi tek harekette
+  // veriliyor. Gri çerçeve ikisini de söylemiyordu.
+  const sinif = `relative block overflow-hidden rounded-2xl border px-4 pt-4 ${
     seri && seri.length > 1 ? "pb-8" : "pb-4"
-  } ${vurgulu ? "border-vurgu bg-vurgu text-white" : "border-cizgi bg-yuzey"} ${
-    yol ? "transition-all hover:-translate-y-0.5 hover:shadow-md" : ""
+  } ${vurgulu ? `${renk.dolu} ${alan === "odul" ? "text-yazi" : "text-white"}` : "border-cizgi bg-yuzey"} ${
+    yol
+      ? `transition-all hover:-translate-y-0.5 hover:shadow-md ${
+          vurgulu ? "hover:brightness-110" : renk.kenar
+        }`
+      : ""
   }`;
 
   return yol ? (
@@ -126,7 +203,7 @@ export function SayiKarti({
  * Hepsi eşitse aralık sıfıra düşer ve bölme patlar; en az bir kabul
  * ediliyor ve çizgi düz çıkıyor.
  */
-function Kivilcim({ seri, vurgulu }: { seri: number[]; vurgulu: boolean }) {
+function Kivilcim({ seri, renk }: { seri: number[]; renk: string }) {
   const enAz = Math.min(...seri);
   const aralik = Math.max(1, Math.max(...seri) - enAz);
 
@@ -137,7 +214,6 @@ function Kivilcim({ seri, vurgulu }: { seri: number[]; vurgulu: boolean }) {
   });
 
   const cizgi = `M ${nokta.join(" L ")}`;
-  const renk = vurgulu ? "#ffffff" : "var(--color-vurgu)";
 
   return (
     <svg
@@ -146,7 +222,7 @@ function Kivilcim({ seri, vurgulu }: { seri: number[]; vurgulu: boolean }) {
       className="pointer-events-none absolute inset-x-0 bottom-0 h-7 w-full"
       aria-hidden
     >
-      <path d={`${cizgi} L 100,26 L 0,26 Z`} fill={renk} opacity={vurgulu ? 0.22 : 0.1} />
+      <path d={`${cizgi} L 100,26 L 0,26 Z`} fill={renk} opacity={0.13} />
       <path
         d={cizgi}
         fill="none"
@@ -246,9 +322,11 @@ export type CubukSatiri = {
 export function CubukListe({
   satirlar,
   bosMetin = "Henüz kayıt yok.",
+  alan = "genel",
 }: {
   satirlar: CubukSatiri[];
   bosMetin?: string;
+  alan?: Alan;
 }) {
   if (satirlar.length === 0) {
     return <p className="text-[14px] text-yazi-sonuk">{bosMetin}</p>;
@@ -268,8 +346,11 @@ export function CubukListe({
           </div>
           <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-cukur">
             <div
-              className="h-full rounded-full bg-vurgu"
-              style={{ width: `${Math.max(3, (s.deger / enYuksek) * 100)}%` }}
+              className="h-full rounded-full"
+              style={{
+                width: `${Math.max(3, (s.deger / enYuksek) * 100)}%`,
+                background: ALAN_CIZGI[alan],
+              }}
             />
           </div>
         </li>

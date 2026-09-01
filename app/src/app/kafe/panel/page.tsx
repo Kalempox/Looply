@@ -5,7 +5,14 @@ import { kafeYoneticisiGerekli } from "@/domain/yetki";
 import * as oturum from "@/domain/session";
 import { durum as butceDurumu } from "@/domain/butce";
 import * as panel from "@/domain/panel";
-import { IsletmeSayfa, IsletmeBaslik, Bolum, Rozet, IsletmeUyari } from "@/components/isletme";
+import { SayiKarti, IKON, type Alan } from "@/components/gosterge";
+import {
+  IsletmeSayfa,
+  IsletmeBaslik,
+  Bolum,
+  Rozet,
+  IsletmeUyari,
+} from "@/components/isletme";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "İşletme paneli · CafePlay" };
@@ -38,7 +45,9 @@ export default async function KafePaneli() {
       lat: number | null;
       lng: number | null;
     }>(`SELECT name, city, slug, lat, lng FROM cafes`);
-    const masa = await db.one<{ n: string }>(`SELECT count(*) AS n FROM cafe_tables`);
+    const masa = await db.one<{ n: string }>(
+      `SELECT count(*) AS n FROM cafe_tables`,
+    );
     const personel = await db.one<{ n: string }>(
       `SELECT count(*) AS n FROM staff WHERE active = true`,
     );
@@ -70,8 +79,8 @@ export default async function KafePaneli() {
       {!veri.konumVar && (
         <div className="mb-8">
           <IsletmeUyari>
-            <strong>Kafenin konumu belirlenmemiş.</strong> Oyuncular konumlarını doğrulayamıyor;
-            puan, ödül ve kupon hiç kazanılmıyor.{" "}
+            <strong>Kafenin konumu belirlenmemiş.</strong> Oyuncular konumlarını
+            doğrulayamıyor; puan, ödül ve kupon hiç kazanılmıyor.{" "}
             <Link href="/kafe/panel/konum" className="underline">
               Konumu işaretle
             </Link>
@@ -83,13 +92,29 @@ export default async function KafePaneli() {
           Vardiya arasında iki saniye bakılan yer. Dört sayı ve bir
           grafik; karar vermek için rapora gidiliyor. */}
       <section className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Gosterge etiket="Bugün gelen" alt="sayılan ziyaret" olcu={gosterge.ziyaret} ikon="kisi" />
-        <Gosterge etiket="Verilen kupon" alt="kazanıldı" olcu={gosterge.kuponVerilen} ikon="kupon" />
+        <Gosterge
+          etiket="Bugün gelen"
+          alt="sayılan ziyaret"
+          olcu={gosterge.ziyaret}
+          ikon="kisi"
+          alan="kisi"
+          yol="/kafe/panel/rapor"
+        />
+        <Gosterge
+          etiket="Verilen kupon"
+          alt="kazanıldı"
+          olcu={gosterge.kuponVerilen}
+          ikon="kupon"
+          alan="odul"
+          yol="/kafe/panel/oduller"
+        />
         <Gosterge
           etiket="Kullanılan"
           alt="kasada onaylandı"
           olcu={gosterge.kuponKullanilan}
           ikon="onay"
+          alan="kampanya"
+          yol="/kafe/panel/rapor"
         />
         {/* Vurgu kartı: kafenin cebinden çıkan tek sayı. Referans
             panellerde de kartlardan biri dolu renkli — göz önce oraya
@@ -101,6 +126,8 @@ export default async function KafePaneli() {
           ikon="para"
           birim="TL"
           kurus
+          alan="para"
+          yol="/kafe/panel/butce"
           vurgulu
         />
       </section>
@@ -112,9 +139,22 @@ export default async function KafePaneli() {
       <section className="mb-9 grid gap-3 sm:grid-cols-2">
         <ButceKarti butce={butce} />
         <div className="grid grid-cols-3 gap-3">
-          <KucukKart etiket="Masa" deger={veri.masa} yol="/kafe/panel/masalar" eksik={veri.masa === 0} />
-          <KucukKart etiket="Personel" deger={veri.personel} yol="/kafe/panel/personel" />
-          <KucukKart etiket="Cihaz" deger={veri.cihaz} yol="/kafe/panel/personel" />
+          <KucukKart
+            etiket="Masa"
+            deger={veri.masa}
+            yol="/kafe/panel/masalar"
+            eksik={veri.masa === 0}
+          />
+          <KucukKart
+            etiket="Personel"
+            deger={veri.personel}
+            yol="/kafe/panel/personel"
+          />
+          <KucukKart
+            etiket="Cihaz"
+            deger={veri.cihaz}
+            yol="/kafe/panel/personel"
+          />
         </div>
       </section>
 
@@ -126,6 +166,7 @@ export default async function KafePaneli() {
             yol="/kafe/panel/konum"
             eksik={!veri.konumVar}
             ikon="konum"
+            alan="masa"
           />
           <Kart
             baslik="Günlük bütçe"
@@ -133,18 +174,21 @@ export default async function KafePaneli() {
             yol="/kafe/panel/butce"
             eksik={!butce.donem}
             ikon="butce"
+            alan="para"
           />
           <Kart
             baslik="Ödüller ve kampanyalar"
             aciklama="Oyuncunun kazandığı ödüller ve herkese açık yüzde indirimleri"
             yol="/kafe/panel/oduller"
             ikon="odul"
+            alan="odul"
           />
           <Kart
             baslik="Ürünler"
             aciklama="Menün — ödüllerin ve kampanyaların dayanağı"
             yol="/kafe/panel/urunler"
             ikon="urun"
+            alan="urun"
           />
           <Kart
             baslik="Masa karekodları"
@@ -152,24 +196,28 @@ export default async function KafePaneli() {
             yol="/kafe/panel/masalar"
             eksik={veri.masa === 0}
             ikon="karekod"
+            alan="masa"
           />
           <Kart
             baslik="Personel ve PIN"
             aciklama="Kasiyer hesabı aç, PIN ver, kasa cihazını kaydet"
             yol="/kafe/panel/personel"
             ikon="personel"
+            alan="kisi"
           />
           <Kart
             baslik="Happy Hour"
             aciklama="Boş saatine görünür bir TL havuzu ayır"
             yol="/kafe/panel/happy-hour"
             ikon="saat"
+            alan="kampanya"
           />
           <Kart
             baslik="Rapor"
             aciklama="Gelen müşteri, tekrar gelen, kullanılan indirim, dolu saatler"
             yol="/kafe/panel/rapor"
             ikon="rapor"
+            alan="genel"
           />
         </div>
       </Bolum>
@@ -189,28 +237,12 @@ export default async function KafePaneli() {
 }
 
 /**
- * Gösterge kutusu — panelin üstündeki dört sayı.
+ * Panelin gösterge kutusu — ortak karta ince sarmalayıcı.
  *
- * ── Referanstan alınan üç parça ─────────────────────────────
- *
- * Ürün sahibinin verdiği yönetim paneli şablonlarında (Orchid, Valex)
- * gösterge kartı hep aynı üç parçadan kuruluyor:
- *
- *   1. Küçük etiket + sağ üstte renkli ikon kutusu
- *   2. Büyük sayı
- *   3. **Düne göre değişim rozeti** (↑ %12) ve kartın altına yayılan
- *      **kıvılcım grafik**
- *
- * İlk sürümde yalnızca birincisi vardı; sayı tek başına "iyi mi kötü mü"
- * sorusunu cevaplamıyordu. Rozet ve kıvılcım, aynı sayıya yön veriyor.
- *
- * ── Renk anlam taşımıyor, YÖN taşıyor ───────────────────────
- *
- * Kartların dolgusu tek renk (beyaz) ve yalnızca biri vurgulu. Rozetin
- * rengi ise **yönü** söylüyor: artış yeşil değil vurgu mavisi, azalış
- * tehlike kırmızısı değil sönük gri. Sebep: "bugün 2 kupon az verildi"
- * kafe için kötü bir haber değil — bütçe korunuyor demek. Kırmızı
- * boyamak, yorumu ekrana gömmek olurdu ve o yorum kafeye göre değişir.
+ * Kartın kendisi `components/gosterge.tsx`'te (Ü62): panel bir belge
+ * değil gösterge takımı ve sekiz sayfada aynı kartın sekiz kopyası
+ * olmamalı. Burada kalan tek iş, `Olcu` tipini karta çevirmek —
+ * kuruşu TL'ye bölmek ve "düne göre" cümlesini kurmak.
  */
 function Gosterge({
   etiket,
@@ -220,149 +252,36 @@ function Gosterge({
   birim,
   kurus = false,
   vurgulu = false,
+  alan = "genel",
+  yol,
 }: {
   etiket: string;
   alt: string;
   olcu: panel.Olcu;
-  ikon: keyof typeof GOSTERGE_IKONLARI;
+  ikon: keyof typeof IKON;
   birim?: string;
   /** Değer kuruş cinsindense TL'ye çevrilip yazılıyor. */
   kurus?: boolean;
-  /** Dolu renkli kart — panelde yalnızca bir tane olmalı. */
   vurgulu?: boolean;
+  alan?: Alan;
+  yol?: string;
 }) {
   const deger = kurus ? Math.round(olcu.bugun / 100) : olcu.bugun;
 
   return (
-    <div
-      className={`relative overflow-hidden rounded-2xl border px-4 pt-4 pb-8 ${
-        vurgulu ? "border-vurgu bg-vurgu text-white" : "border-cizgi bg-yuzey"
-      }`}
-    >
-      <div className="flex items-start justify-between gap-2">
-        <span
-          className={`etiket-caps text-[10px] ${vurgulu ? "text-white/75" : "text-yazi-sonuk"}`}
-        >
-          {etiket}
-        </span>
-        <span
-          className={`flex size-8 shrink-0 items-center justify-center rounded-xl ${
-            vurgulu ? "bg-white/20 text-white" : "bg-cukur text-yazi"
-          }`}
-        >
-          {GOSTERGE_IKONLARI[ikon]}
-        </span>
-      </div>
-
-      <div className="mt-2.5 font-data text-2xl leading-none font-bold tabular">
-        {deger.toLocaleString("tr-TR")}
-        {birim && <span className="ml-1 text-[13px] font-semibold">{birim}</span>}
-      </div>
-
-      <div className="mt-2 flex flex-wrap items-center gap-1.5">
-        {olcu.degisim !== null && (
-          <span
-            className={`rounded-full px-1.5 py-0.5 font-data text-[10px] font-bold tabular ${
-              vurgulu
-                ? "bg-white/20 text-white"
-                : olcu.degisim >= 0
-                  ? "bg-vurgu/10 text-vurgu"
-                  : "bg-cukur text-yazi-sonuk"
-            }`}
-          >
-            {olcu.degisim >= 0 ? "↑" : "↓"} %{Math.abs(olcu.degisim)}
-          </span>
-        )}
-        <span className={`text-[11px] ${vurgulu ? "text-white/75" : "text-yazi-sonuk"}`}>
-          {olcu.degisim !== null ? "düne göre" : alt}
-        </span>
-      </div>
-
-      {/* Kıvılcım grafik kartın alt kenarına yapışıyor: referans
-          panellerde de kartın içinde yüzen değil, tabanını oluşturan
-          bir şerit. */}
-      <Kivilcim seri={olcu.seri} vurgulu={vurgulu} />
-    </div>
+    <SayiKarti
+      etiket={etiket}
+      deger={`${deger.toLocaleString("tr-TR")}${birim ? ` ${birim}` : ""}`}
+      alt={olcu.degisim !== null ? "düne göre" : alt}
+      degisim={olcu.degisim}
+      seri={olcu.seri}
+      ikon={IKON[ikon]}
+      vurgulu={vurgulu}
+      alan={alan}
+      yol={yol}
+    />
   );
 }
-
-/**
- * Kıvılcım grafik — yedi günün şekli, eksensiz.
- *
- * Sayı yok, ızgara yok, etiket yok: kart zaten sayıyı yazıyor. Buranın
- * tek işi "yükseliyor mu düşüyor mu" sorusunu bir bakışta cevaplamak.
- *
- * Tek nokta varsa (ya da hepsi eşitse) düz bir çizgi çiziliyor — bölme
- * sıfıra düşmesin diye aralık en az bir kabul ediliyor.
- */
-function Kivilcim({ seri, vurgulu }: { seri: number[]; vurgulu: boolean }) {
-  if (seri.length < 2) return null;
-
-  const enAz = Math.min(...seri);
-  const enCok = Math.max(...seri);
-  const aralik = Math.max(1, enCok - enAz);
-
-  const nokta = seri.map((v, i) => {
-    const x = (i / (seri.length - 1)) * 100;
-    const y = 24 - ((v - enAz) / aralik) * 20;
-    return `${Math.round(x * 100) / 100},${Math.round(y * 100) / 100}`;
-  });
-
-  const cizgi = `M ${nokta.join(" L ")}`;
-  const dolgu = `${cizgi} L 100,26 L 0,26 Z`;
-  const renk = vurgulu ? "#ffffff" : "var(--color-vurgu)";
-
-  return (
-    <svg
-      viewBox="0 0 100 26"
-      preserveAspectRatio="none"
-      className="pointer-events-none absolute inset-x-0 bottom-0 h-7 w-full"
-      aria-hidden
-    >
-      <path d={dolgu} fill={renk} opacity={vurgulu ? 0.22 : 0.1} />
-      <path d={cizgi} fill="none" stroke={renk} strokeWidth="1.6" vectorEffect="non-scaling-stroke" />
-    </svg>
-  );
-}
-
-const IKON_ORTAK = {
-  width: 18,
-  height: 18,
-  viewBox: "0 0 24 24",
-  fill: "none",
-  stroke: "currentColor",
-  strokeWidth: 1.8,
-  strokeLinecap: "round",
-  strokeLinejoin: "round",
-  "aria-hidden": true,
-} as const;
-
-const GOSTERGE_IKONLARI = {
-  kisi: (
-    <svg {...IKON_ORTAK}>
-      <circle cx="12" cy="8" r="3.5" />
-      <path d="M4.5 20a7.5 7.5 0 0 1 15 0" />
-    </svg>
-  ),
-  kupon: (
-    <svg {...IKON_ORTAK}>
-      <path d="M3 9V6.5A1.5 1.5 0 0 1 4.5 5h15A1.5 1.5 0 0 1 21 6.5V9a3 3 0 0 0 0 6v2.5a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5V15a3 3 0 0 0 0-6Z" />
-      <path d="M14 5v14" strokeDasharray="2 2.5" />
-    </svg>
-  ),
-  onay: (
-    <svg {...IKON_ORTAK}>
-      <circle cx="12" cy="12" r="9" />
-      <path d="m8.5 12.2 2.4 2.4 4.6-5" />
-    </svg>
-  ),
-  para: (
-    <svg {...IKON_ORTAK}>
-      <rect x="2.5" y="6" width="19" height="12" rx="2" />
-      <circle cx="12" cy="12" r="2.6" />
-    </svg>
-  ),
-} as const;
 
 /**
  * Son yedi günün ziyaret grafiği.
@@ -376,7 +295,11 @@ const GOSTERGE_IKONLARI = {
  * Boş günler de çiziliyor: eksik sütun, o günü hiç olmamış gibi gösterip
  * grafiği yanıltırdı.
  */
-function YediGunGrafigi({ gunler }: { gunler: { gun: string; ziyaret: number }[] }) {
+function YediGunGrafigi({
+  gunler,
+}: {
+  gunler: { gun: string; ziyaret: number }[];
+}) {
   const enYuksek = Math.max(1, ...gunler.map((g) => g.ziyaret));
   const toplam = gunler.reduce((t, g) => t + g.ziyaret, 0);
 
@@ -400,17 +323,24 @@ function YediGunGrafigi({ gunler }: { gunler: { gun: string; ziyaret: number }[]
         {gunler.map((g, i) => {
           const bugunMu = i === gunler.length - 1;
           return (
-            <div key={g.gun} className="flex flex-1 flex-col items-center gap-1.5">
+            <div
+              key={g.gun}
+              className="flex flex-1 flex-col items-center gap-1.5"
+            >
               <span className="font-data text-[10px] text-yazi-sonuk tabular">
                 {g.ziyaret > 0 ? g.ziyaret : ""}
               </span>
               <span className="flex w-full flex-1 items-end">
                 <span
                   className={`w-full rounded-t-sm ${bugunMu ? "bg-vurgu" : "bg-cukur"}`}
-                  style={{ height: `${Math.max(4, (g.ziyaret / enYuksek) * 100)}%` }}
+                  style={{
+                    height: `${Math.max(4, (g.ziyaret / enYuksek) * 100)}%`,
+                  }}
                 />
               </span>
-              <span className="etiket-caps text-[9px] text-yazi-sonuk">{gunAdi(g.gun)}</span>
+              <span className="etiket-caps text-[9px] text-yazi-sonuk">
+                {gunAdi(g.gun)}
+              </span>
             </div>
           );
         })}
@@ -438,7 +368,11 @@ function tlYaz(kurus: number): string {
  * bağlı olan, kalan. Sayıları okumadan da "bugün ne kadar yerim var"
  * sorusu cevaplanıyor.
  */
-function ButceKarti({ butce }: { butce: Awaited<ReturnType<typeof butceDurumu>> }) {
+function ButceKarti({
+  butce,
+}: {
+  butce: Awaited<ReturnType<typeof butceDurumu>>;
+}) {
   if (!butce.donem) {
     return (
       <Link
@@ -455,7 +389,8 @@ function ButceKarti({ butce }: { butce: Awaited<ReturnType<typeof butceDurumu>> 
   }
 
   const taahhut = butce.donem.taahhutKurus;
-  const oran = (k: number) => (taahhut > 0 ? Math.min(100, Math.round((k / taahhut) * 100)) : 0);
+  const oran = (k: number) =>
+    taahhut > 0 ? Math.min(100, Math.round((k / taahhut) * 100)) : 0;
 
   return (
     <Link
@@ -475,8 +410,14 @@ function ButceKarti({ butce }: { butce: Awaited<ReturnType<typeof butceDurumu>> 
       </div>
 
       <div className="mt-4 flex h-2 overflow-hidden rounded-full bg-cukur">
-        <span className="bg-vurgu" style={{ width: `${oran(butce.harcananKurus)}%` }} />
-        <span className="bg-odul" style={{ width: `${oran(butce.rezerveKurus)}%` }} />
+        <span
+          className="bg-vurgu"
+          style={{ width: `${oran(butce.harcananKurus)}%` }}
+        />
+        <span
+          className="bg-odul"
+          style={{ width: `${oran(butce.rezerveKurus)}%` }}
+        />
       </div>
 
       <div className="mt-2.5 flex flex-wrap gap-x-4 gap-y-1 font-data text-[11px] text-yazi-sonuk tabular">
@@ -530,32 +471,58 @@ function KucukKart({
  * Önceki hâli her satıra yeşil "açık" rozeti koyuyordu ve iki kırmızı, yedi
  * yeşilin arasında kayboluyordu.
  */
+/**
+ * Kurulum kartı — Ü63.
+ *
+ * ── Renk neden alandan geliyor ──────────────────────────────
+ *
+ * Sekiz kartın sekizi de gri ikon kutusuyla duruyordu ve ürün sahibi
+ * "çok basit" dedi. Doğru teşhis: kutular birbirinden ayrılmıyordu, göz
+ * sekiz kez aynı şeyi okuyup başlığa inmek zorunda kalıyordu.
+ *
+ * Artık her kart kendi alanının renginde (Ü63): bütçe yeşil, masa sarı,
+ * ürün turuncu, personel turkuaz, ödül altın, kampanya mor. Renk süs
+ * değil — kafe sahibi ikinci gelişinde başlığı okumadan gideceği kartı
+ * buluyor.
+ *
+ * ── Üstüne gelince ──────────────────────────────────────────
+ *
+ * Çerçeve alanın rengine dönüyor ve ikon kutusu koyulaşıyor. Gri
+ * çerçeve "tıklanabilir" diyordu ama "neye tıklıyorsun" demiyordu.
+ *
+ * ── Eksik olan rengini kaybediyor ───────────────────────────
+ *
+ * Eksik kart kırmızıya dönüyor ve alan rengini bırakıyor: o an
+ * söylenmesi gereken tek şey eksikliğin kendisi.
+ */
 function Kart({
   baslik,
   aciklama,
   yol,
   eksik,
   ikon,
+  alan,
 }: {
   baslik: string;
   aciklama: string;
   yol: string;
   eksik?: boolean;
   ikon: keyof typeof IKONLAR;
+  alan: Alan;
 }) {
+  const renk = KART_RENGI[alan];
+
   return (
     <Link
       href={yol}
       className={`group flex flex-col rounded-2xl border bg-yuzey p-4 transition-all hover:-translate-y-0.5 hover:shadow-md ${
-        eksik ? "border-tehlike/60" : "border-cizgi hover:border-yazi-sonuk/40"
+        eksik ? "border-tehlike/60" : `border-cizgi ${renk.kenar}`
       }`}
     >
       <span className="flex items-start justify-between gap-2">
-        {/* İkon artık çıplak değil, kutunun içinde: gösterge kartlarıyla
-            aynı dil. Eksik olan kart kırmızı zeminle kendini söylüyor. */}
         <span
-          className={`flex size-9 shrink-0 items-center justify-center rounded-xl ${
-            eksik ? "bg-tehlike/10 text-tehlike" : "bg-cukur text-yazi"
+          className={`flex size-9 shrink-0 items-center justify-center rounded-xl transition-colors ${
+            eksik ? "bg-tehlike/10 text-tehlike" : renk.kutu
           }`}
         >
           {IKONLAR[ikon]}
@@ -565,18 +532,67 @@ function Kart({
         ) : (
           <span
             aria-hidden
-            className="text-[15px] text-yazi-sonuk/40 transition-colors group-hover:text-yazi-sonuk"
+            className={`text-[15px] text-yazi-sonuk/35 transition-colors ${renk.ok}`}
           >
             →
           </span>
         )}
       </span>
 
-      <span className="mt-3 block text-[15px] leading-tight font-semibold">{baslik}</span>
-      <span className="mt-1.5 block text-[13px] leading-relaxed text-yazi-sonuk">{aciklama}</span>
+      <span className="mt-3 block text-[15px] leading-tight font-semibold">
+        {baslik}
+      </span>
+      <span className="mt-1.5 block text-[13px] leading-relaxed text-yazi-sonuk">
+        {aciklama}
+      </span>
     </Link>
   );
 }
+
+/**
+ * Kurulum kartının alan renkleri.
+ *
+ * Tailwind sınıfları **tam yazılmak zorunda**: `hover:border-${x}` gibi
+ * bir birleştirme derleme sırasında taranamıyor ve sınıf üretilmiyor.
+ * Bu yüzden harita, kısaltma değil.
+ */
+const KART_RENGI: Record<Alan, { kutu: string; kenar: string; ok: string }> = {
+  genel: {
+    kutu: "bg-vurgu-zemin text-vurgu",
+    kenar: "hover:border-vurgu",
+    ok: "group-hover:text-vurgu",
+  },
+  para: {
+    kutu: "bg-para-zemin text-para",
+    kenar: "hover:border-para",
+    ok: "group-hover:text-para",
+  },
+  masa: {
+    kutu: "bg-masa-zemin text-masa",
+    kenar: "hover:border-masa",
+    ok: "group-hover:text-masa",
+  },
+  urun: {
+    kutu: "bg-urun-zemin text-urun",
+    kenar: "hover:border-urun",
+    ok: "group-hover:text-urun",
+  },
+  kisi: {
+    kutu: "bg-kisi-zemin text-kisi",
+    kenar: "hover:border-kisi",
+    ok: "group-hover:text-kisi",
+  },
+  odul: {
+    kutu: "bg-odul-zemin text-odul-koyu",
+    kenar: "hover:border-odul",
+    ok: "group-hover:text-odul-koyu",
+  },
+  kampanya: {
+    kutu: "bg-kampanya-zemin text-kampanya",
+    kenar: "hover:border-kampanya",
+    ok: "group-hover:text-kampanya",
+  },
+};
 
 /* Satır içi SVG — işletme tarafında emoji yok (Ü31) ve dış kaynak da yok. */
 const cizgi = {

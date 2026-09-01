@@ -68,12 +68,14 @@ export default async function MasalarSayfasi() {
           deger={String(aktifSayisi)}
           alt={`${masalar.length} tanımlı`}
           ikon={IKON.masa}
+          alan="masa"
         />
         <SayiKarti
           etiket="Çalışan masa"
           deger={String(calisan)}
           alt="son 7 günde okutuldu"
           ikon={IKON.onay}
+          alan="masa"
           vurgulu
         />
         <SayiKarti
@@ -81,12 +83,14 @@ export default async function MasalarSayfasi() {
           deger={String(toplamOyun)}
           alt="son 7 gün"
           ikon={IKON.kisi}
+          alan="kisi"
         />
         <SayiKarti
           etiket="En yoğun masa"
           deger={enYogun ? enYogun.masaAdi : "—"}
           alt={enYogun ? `${enYogun.oyun} oyun` : "henüz veri yok"}
           ikon={IKON.saat}
+          alan="masa"
         />
       </section>
 
@@ -111,6 +115,7 @@ export default async function MasalarSayfasi() {
                       : `${k.oyun} oyun · ${k.gun} gün`,
                 }))}
                 bosMetin="Açık masa yok."
+                alan="masa"
               />
             </Bolum>
 

@@ -68,18 +68,21 @@ export default async function HappyHourSayfasi() {
           deger={String(gecerli.length)}
           alt={`günde en fazla ${happy.GUNLUK_EN_FAZLA}`}
           ikon={IKON.saat}
+          alan="genel"
         />
         <SayiKarti
           etiket="Ayrılan havuz"
           deger={`${tl(havuzKurus)} TL`}
           alt="bugün toplam"
           ikon={IKON.para}
+          alan="para"
         />
         <SayiKarti
           etiket="Dağıtılan"
           deger={`${tl(dagitilanKurus)} TL`}
           alt="havuzdan eriyen"
           ikon={IKON.kupon}
+          alan="odul"
           vurgulu
         />
         <SayiKarti
@@ -89,6 +92,7 @@ export default async function HappyHourSayfasi() {
           }
           alt={suAn ? `${tl(suAn.kalanKurus)} TL kaldı` : "açık pencere yok"}
           ikon={IKON.onay}
+          alan="kampanya"
         />
       </section>
 

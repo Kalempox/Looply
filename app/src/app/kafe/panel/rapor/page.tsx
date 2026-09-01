@@ -147,24 +147,28 @@ export default async function RaporSayfasi({
             deger={String(getiri.ziyaret)}
             alt="sayıldı"
             ikon={IKON.kisi}
+            alan="kisi"
           />
           <SayiKarti
             etiket="Verilen ürün"
             deger={String(getiri.urun)}
             alt="sayıldı"
             ikon={IKON.urun}
+            alan="urun"
           />
           <SayiKarti
             etiket="İndirim gideri"
             deger={`${tl(getiri.indirimKurus)} TL`}
             alt="sayıldı"
             ikon={IKON.para}
+            alan="para"
           />
           <SayiKarti
             etiket="Fark"
             deger={`${tl(getiri.netKurus)} TL`}
             alt="tahmin − gider"
             ikon={IKON.onay}
+            alan="para"
             vurgulu={getiri.netKurus > 0}
           />
         </div>
@@ -224,18 +228,21 @@ export default async function RaporSayfasi({
             deger={String(ozet.tekilOyuncu)}
             alt="oyunu tamamlayan herkes"
             ikon={IKON.kisi}
+            alan="kisi"
           />
           <SayiKarti
             etiket="Oynanan oyun"
             deger={String(ozet.toplamOyun)}
             alt="aynı kişi birden çok oynayabilir"
             ikon={IKON.masa}
+            alan="masa"
           />
           <SayiKarti
             etiket="Verilen kupon"
             deger={String(ozet.kuponVerilen)}
             alt="kazanıldı, kullanılmamış olabilir"
             ikon={IKON.kupon}
+            alan="odul"
           />
         </div>
       </Bolum>
