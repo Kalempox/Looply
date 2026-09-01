@@ -4,8 +4,15 @@ import * as oturum from "@/domain/session";
 import * as masaOturumu from "@/domain/masa";
 import { ozet } from "@/domain/puan";
 import { buradakiler } from "@/domain/firsat";
-import { OyuncuSayfa, SayfaBasi, Sayac, OyuncuBolum, ArkaCizim } from "@/components/oyuncu";
-import { RENK, kartZemin } from "@/components/oyuncu-renk";
+import {
+  OyuncuSayfa,
+  SayfaBasi,
+  Sayac,
+  OyuncuBolum,
+  KartDokusu,
+  kartStili,
+} from "@/components/oyuncu";
+import { RENK } from "@/components/oyuncu-renk";
 import { gorselSec, GORSEL_RENGI } from "@/components/oyuncu-gorsel";
 
 export const dynamic = "force-dynamic";
@@ -175,13 +182,13 @@ function FirsatKarti({
   return (
     <div
       className="kart-golge kart-gel relative overflow-hidden rounded-2xl px-5 py-4"
-      style={{ background: kartZemin(renk), border: `1px solid ${r.canli}` }}
+      style={kartStili(renk)}
     >
-      <ArkaCizim renk={renk} gorsel={gorsel} />
+      <KartDokusu renk={renk} gorsel={gorsel} />
 
       <div className="relative">
         <div className="flex items-baseline justify-between gap-3">
-          <span className="font-display text-lg leading-tight font-bold">{baslik}</span>
+          <span className="font-display text-lg leading-tight font-bold text-yazi">{baslik}</span>
           {sag && (
             <span
               className="shrink-0 font-data text-2xl leading-none font-bold tabular"
@@ -193,7 +200,9 @@ function FirsatKarti({
         </div>
 
         {aciklama && (
-          <p className="mt-1 text-[13px] leading-relaxed text-yazi-sonuk">{aciklama}</p>
+          <p className="mt-1 text-[13px] leading-relaxed" style={{ color: r.koyu }}>
+            {aciklama}
+          </p>
         )}
 
         <div className="mt-2.5 etiket-caps" style={{ color: r.koyu }}>

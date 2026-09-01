@@ -11,7 +11,7 @@ import {
   Sayac,
   OyuncuBolum,
   Pul,
-  ArkaCizim,
+  KartDokusu,
 } from "@/components/oyuncu";
 import { RENK, kartZemin, type OyuncuRengi } from "@/components/oyuncu-renk";
 import { MadalyaIkonu, OyunIkonu } from "@/components/oyuncu-ikon";
@@ -219,9 +219,9 @@ function KafeKarti({ kafe, buradaMi }: { kafe: KafeKarnesi; buradaMi: boolean })
         Düz `zemin` dolgusuyken ürün sahibi *"profil kısmı yine çok
         sönük"* dedi — haklıydı, pastelin tek tonu kartı düzleştiriyordu.
       */}
-      <div className="relative px-5 py-5" style={{ background: kartZemin(renk) }}>
+      <div className="relative overflow-hidden px-5 py-5" style={{ background: kartZemin(renk) }}>
         {/* Kafe kartının arkasında fincan: kart bir kafeyi anlatıyor. */}
-        <ArkaCizim renk={renk} gorsel="icecek" />
+        <KartDokusu renk={renk} gorsel="icecek" />
 
         <div className="relative flex items-start gap-4">
           <SeviyeHalkasi seviye={kafe.seviye} yuzde={kafe.ilerlemeYuzde} renk={renk} />

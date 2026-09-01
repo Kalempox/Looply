@@ -1,5 +1,12 @@
 import Link from "next/link";
-import { RENK, kartZemin, type OyuncuRengi } from "./oyuncu-renk";
+import {
+  RENK,
+  kartZemin,
+  kartKenar,
+  ISIN_OPAKLIK,
+  ISIN_DOKUSU,
+  type OyuncuRengi,
+} from "./oyuncu-renk";
 import { Gorsel, type GorselAdi } from "./oyuncu-gorsel";
 import { OyuncuNav, NavBosluk, type Durak } from "./oyuncu-nav";
 
@@ -212,8 +219,9 @@ export function SayfaBasi({
   return (
     <header
       className="kart-golge kart-gel relative mb-8 overflow-hidden rounded-3xl px-5 py-6"
-      style={{ background: kartZemin(renk), border: `1px solid ${r.canli}` }}
+      style={kartStili(renk)}
     >
+      <KartDokusu renk={renk} />
       {/*
         Çizim sağ kenarın dışına taşıyor: yalnızca sol yarısı görünüyor
         ve başlığın altına girmiyor. Daha içeride çizildiğinde biletin
@@ -224,16 +232,16 @@ export function SayfaBasi({
         <span
           aria-hidden
           className="pointer-events-none absolute -top-6 -right-16"
-          style={{ color: r.ana, opacity: 0.22, transform: "rotate(-8deg)" }}
+          style={{ color: r.koyu, opacity: 0.24, transform: "rotate(-8deg)" }}
         >
           <Gorsel ad={gorsel} boy={172} />
         </span>
       )}
 
-      <p className="etiket-caps" style={{ color: r.koyu }}>
+      <p className="relative etiket-caps" style={{ color: r.koyu }}>
         {ust}
       </p>
-      <h1 className="mt-1 font-display text-3xl leading-none font-extrabold tracking-tight">
+      <h1 className="relative mt-1 font-display text-3xl leading-none font-extrabold tracking-tight">
         {baslik}
       </h1>
 
@@ -302,34 +310,70 @@ export function GorselKart({
   className?: string;
   children: React.ReactNode;
 }) {
-  const r = RENK[renk];
   return (
     <div
       className={`kart-golge kart-gel relative overflow-hidden rounded-3xl ${className}`}
-      style={{ background: kartZemin(renk), border: `1px solid ${r.canli}` }}
+      style={kartStili(renk)}
     >
-      <ArkaCizim renk={renk} gorsel={gorsel} />
+      <KartDokusu renk={renk} gorsel={gorsel} />
       <div className="relative">{children}</div>
     </div>
   );
 }
 
 /**
- * Kartın sağındaki soluk çizim — Ü67.
+ * Kartın satır içi stili — zemin ve çerçeve.
+ *
+ * Bileşene sarılamayan kartlar da var (bir `<Link>`, bir `<section>`,
+ * oyun kabuğundaki `<div>`); onlar bu nesneyi doğrudan `style`'a
+ * veriyor. Yüzey yine tek yerden geliyor.
+ */
+export function kartStili(renk: OyuncuRengi): React.CSSProperties {
+  return { background: kartZemin(renk), border: `1px solid ${kartKenar(renk)}` };
+}
+
+/**
+ * Kartın iki dokusu: ışın ve arka çizim — Ü71.
+ *
+ * İkisi birlikte duruyor çünkü ikisi de kartın **yüzeyi**, içeriği
+ * değil. Ayrı ayrı çağrıldıklarında bir kartta ışın unutuluyor,
+ * diğerinde çizim yanlış tarafa düşüyordu.
+ *
+ * `gorsel` isteğe bağlı: bazı kartların (profildeki hesap satırı gibi)
+ * anlatacak bir çizimi yok ama yüzeyi aynı kalmalı.
+ */
+export function KartDokusu({ renk, gorsel }: { renk: OyuncuRengi; gorsel?: GorselAdi }) {
+  return (
+    <>
+      {/*
+        Işınların merkezi kartın **dışında** (yukarıda). Merkez içeride
+        kaldığında ışınların birleştiği nokta metnin üstüne denk geliyor
+        ve hedef tahtası gibi duruyor.
+      */}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute -top-[240%] left-1/2 size-[300%] -translate-x-1/2"
+        style={{ opacity: ISIN_OPAKLIK, background: ISIN_DOKUSU }}
+      />
+      {gorsel && <ArkaCizim renk={renk} gorsel={gorsel} />}
+    </>
+  );
+}
+
+/**
+ * Kartın sağındaki soluk çizim.
  *
  * Sağ kenardan taşıyor ve dikeyde ortalı. Önceki hâli sağ **alt**
- * köşedeydi ve kısa kartlarda çizimin yalnızca üst şeridi görünüyordu;
- * ortalanınca her yükseklikte aynı parça görünüyor.
+ * köşedeydi ve kısa kartlarda çizimin yalnızca üst şeridi görünüyordu.
  *
- * Saydamlık 0.2: 0.35'te metnin altında desen çıkıyor, 0.1'de çizim
- * fark edilmiyor.
+ * Renk `koyu`: açık zeminde `ana` tonu yeterince ayrılmıyordu.
  */
 export function ArkaCizim({ renk, gorsel }: { renk: OyuncuRengi; gorsel: GorselAdi }) {
   return (
     <span
       aria-hidden
       className="pointer-events-none absolute top-1/2 -right-6 -translate-y-1/2"
-      style={{ color: RENK[renk].ana, opacity: 0.2 }}
+      style={{ color: RENK[renk].koyu, opacity: 0.24 }}
     >
       <Gorsel ad={gorsel} boy={118} />
     </span>

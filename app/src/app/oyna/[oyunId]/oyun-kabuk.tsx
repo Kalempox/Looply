@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { OyunEkrani } from "@/oyunlar/arayuz";
-import { ArkaCizim } from "@/components/oyuncu";
-import { RENK, oyunRengi, kartZemin } from "@/components/oyuncu-renk";
+import { KartDokusu, kartStili } from "@/components/oyuncu";
+import { RENK, oyunRengi } from "@/components/oyuncu-renk";
 import { oyunGorseli } from "@/components/oyuncu-gorsel";
 import { OyunIkonu, HediyeIkonu, TacIkonu } from "@/components/oyuncu-ikon";
 import { baslaEylemi, bitirEylemi, type BitirCevabi } from "./actions";
@@ -168,9 +168,9 @@ export function OyunKabugu(ayar: Ayar) {
 
       <div
         className="kart-golge kart-gel relative overflow-hidden rounded-3xl px-5 py-6"
-        style={{ background: kartZemin(oyunRengi(ayar.oyunId)), border: `1px solid ${r.canli}` }}
+        style={kartStili(oyunRengi(ayar.oyunId))}
       >
-        <ArkaCizim renk={oyunRengi(ayar.oyunId)} gorsel={oyunGorseli(ayar.oyunId)} />
+        <KartDokusu renk={oyunRengi(ayar.oyunId)} gorsel={oyunGorseli(ayar.oyunId)} />
 
         <div className="relative flex items-start gap-3.5">
           <span className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-yuzey shadow-sm">
@@ -364,9 +364,9 @@ function SonucEkrani({
     <div>
       <div
         className="parilti kart-golge kart-gel relative overflow-hidden rounded-3xl px-5 py-6"
-        style={{ background: kartZemin(oyunRengi(ayar.oyunId)), border: `1px solid ${r.canli}` }}
+        style={kartStili(oyunRengi(ayar.oyunId))}
       >
-        <ArkaCizim renk={oyunRengi(ayar.oyunId)} gorsel={oyunGorseli(ayar.oyunId)} />
+        <KartDokusu renk={oyunRengi(ayar.oyunId)} gorsel={oyunGorseli(ayar.oyunId)} />
 
         <div className="relative flex items-center gap-2">
           <OyunIkonu oyunId={ayar.oyunId} boy={16} />

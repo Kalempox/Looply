@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { AlevIkonu } from "./oyuncu-ikon";
-import { Gorsel } from "./oyuncu-gorsel";
+import { KartDokusu, kartStili } from "./oyuncu";
 import { RENK } from "./oyuncu-renk";
 
 /**
@@ -127,21 +127,17 @@ export function SeriSahnesi({
       <button
         type="button"
         onClick={() => setAcik(true)}
-        className="relative w-full overflow-hidden rounded-3xl px-5 py-5 text-left transition-all hover:-translate-y-0.5 hover:shadow-md"
-        style={{
-          background: riskte
-            ? `linear-gradient(135deg, ${r.zemin} 0%, #ffffff 92%)`
-            : "var(--color-yuzey)",
-          border: `1px solid ${riskte ? r.canli : "var(--color-cizgi)"}`,
-        }}
+        className="kart-golge kart-gel relative w-full overflow-hidden rounded-3xl px-5 py-5 text-left transition-transform hover:-translate-y-0.5"
+        style={
+          // Riskteyken kartın kendisi renkleniyor, değilken sakin
+          // beyaz kalıyor: rengin işi burada "bugün bir şey yapman
+          // gerekiyor" demek, süs değil.
+          riskte
+            ? kartStili("amber")
+            : { background: "var(--color-yuzey)", border: "1px solid var(--color-cizgi)" }
+        }
       >
-        <span
-          aria-hidden
-          className="pointer-events-none absolute -right-5 -bottom-7"
-          style={{ color: r.ana, opacity: riskte ? 0.16 : 0.07 }}
-        >
-          <Gorsel ad="alev" boy={126} />
-        </span>
+        {riskte && <KartDokusu renk="amber" gorsel="alev" />}
 
         <span className="relative flex items-center gap-4">
           <span className="shrink-0">

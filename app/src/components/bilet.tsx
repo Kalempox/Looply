@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { RENK, type OyuncuRengi } from "./oyuncu-renk";
-import { Gorsel, type KuponGorseli } from "./oyuncu-gorsel";
+import { kartStili, KartDokusu } from "./oyuncu";
+import { type KuponGorseli } from "./oyuncu-gorsel";
 
 /**
  * Kupon bileti — Ü70.
@@ -38,18 +39,6 @@ import { Gorsel, type KuponGorseli } from "./oyuncu-gorsel";
  * görünürse görünsün kasada okutulmadan hiçbir şey ifade etmiyor.
  */
 
-/**
- * Işın dokusu — 0.22'den indirildi (Ü70).
- *
- * İki değişken birden düştü, çünkü tek başına opaklık yetmedi: 0.08'de
- * bile ışınlar doygun bir zeminin üstünde **çizgili kumaş** gibi
- * okunuyordu. Işınlar seyreltilince (3° dolu, 17° boş) desen olmaktan
- * çıkıp yüzeye düşen ışığa dönüştü.
- */
-const ISIN_OPAKLIK = 0.05;
-const ISIN_DOKUSU =
-  "repeating-conic-gradient(from 0deg, #fff 0deg 3deg, transparent 3deg 20deg)";
-
 export type BiletVerisi = {
   href: string;
   kafe: string;
@@ -67,27 +56,9 @@ export function Bilet({ veri }: { veri: BiletVerisi }) {
     <Link
       href={veri.href}
       className="kart-golge kart-gel parilti relative block overflow-hidden rounded-2xl transition-transform active:scale-[0.99]"
-      style={{
-        // Aynı hue üstünde iki durak: canlı tondan onun yarısına.
-        // Ayrı bir "açık" paleti tutmaya gerek yok, parlaklık yetiyor.
-        background: `linear-gradient(150deg, ${r.canli} 0%, ${r.canli}70 100%)`,
-        border: `1px solid ${r.ana}40`,
-      }}
+      style={kartStili(veri.renk)}
     >
-      <span
-        aria-hidden
-        className="pointer-events-none absolute -top-[240%] left-1/2 size-[300%] -translate-x-1/2"
-        style={{ opacity: ISIN_OPAKLIK, background: ISIN_DOKUSU }}
-      />
-
-      {/* Kuponun çizimi — sağ kenardan taşıyor, dikeyde ortalı. */}
-      <span
-        aria-hidden
-        className="pointer-events-none absolute top-1/2 -right-6 -translate-y-1/2"
-        style={{ color: r.koyu, opacity: 0.24 }}
-      >
-        <Gorsel ad={veri.gorsel} boy={118} />
-      </span>
+      <KartDokusu renk={veri.renk} gorsel={veri.gorsel} />
 
       <div className="relative flex items-stretch">
         {/* Koçan: biletin koparılan ucu. Yalnızca görsel — kupon tek

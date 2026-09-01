@@ -5,8 +5,14 @@ import * as masaOturumu from "@/domain/masa";
 import { K2 } from "@/domain/masa";
 import { OYUNLAR, gununOyunu, type HerhangiOyun } from "@/oyunlar";
 import { isGunu } from "@/lib/tarih";
-import { OyuncuSayfa, SayfaBasi, OyuncuBolum, ArkaCizim } from "@/components/oyuncu";
-import { RENK, oyunRengi, kartZemin } from "@/components/oyuncu-renk";
+import {
+  OyuncuSayfa,
+  SayfaBasi,
+  OyuncuBolum,
+  KartDokusu,
+  kartStili,
+} from "@/components/oyuncu";
+import { RENK, oyunRengi } from "@/components/oyuncu-renk";
 import { oyunGorseli } from "@/components/oyuncu-gorsel";
 import { OyunIkonu } from "@/components/oyuncu-ikon";
 
@@ -131,9 +137,9 @@ function OyunKarti({ oyun, bugunMu }: { oyun: HerhangiOyun; bugunMu: boolean }) 
     <Link
       href={`/oyna/${oyun.id}`}
       className="kart-golge kart-gel relative block overflow-hidden rounded-3xl px-5 py-5 transition-transform hover:-translate-y-0.5"
-      style={{ background: kartZemin(oyunRengi(oyun.id)), border: `1px solid ${r.canli}` }}
+      style={kartStili(oyunRengi(oyun.id))}
     >
-      <ArkaCizim renk={oyunRengi(oyun.id)} gorsel={oyunGorseli(oyun.id)} />
+      <KartDokusu renk={oyunRengi(oyun.id)} gorsel={oyunGorseli(oyun.id)} />
 
       <div className="relative flex items-start gap-4">
         <span className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-yuzey shadow-sm">

@@ -18,9 +18,10 @@ import {
   SiraJetonu,
   RenkliKart,
   GorselKart,
-  ArkaCizim,
+  KartDokusu,
+  kartStili,
 } from "@/components/oyuncu";
-import { RENK, oyunRengi, kartZemin, type OyuncuRengi } from "@/components/oyuncu-renk";
+import { RENK, oyunRengi, type OyuncuRengi } from "@/components/oyuncu-renk";
 import { oyunGorseli, type GorselAdi } from "@/components/oyuncu-gorsel";
 import { OyunIkonu, CarkIkonu, KupaIkonu } from "@/components/oyuncu-ikon";
 import { OyuncuNav, NavBosluk } from "@/components/oyuncu-nav";
@@ -623,16 +624,16 @@ function GecisKarti({
     <Link
       href={yol}
       className="kart-golge kart-gel relative block overflow-hidden rounded-3xl px-5 py-4 transition-transform hover:-translate-y-0.5"
-      style={{ background: kartZemin(renk), border: `1px solid ${r.canli}` }}
+      style={kartStili(renk)}
     >
-      <ArkaCizim renk={renk} gorsel={gorsel} />
+      <KartDokusu renk={renk} gorsel={gorsel} />
 
       <div className="relative">
         <div className="etiket-caps" style={{ color: r.koyu }}>
           {ust}
         </div>
         <div className="mt-1 flex items-baseline justify-between gap-3">
-          <span className="font-display text-lg leading-tight font-bold">{baslik}</span>
+          <span className="font-display text-lg leading-tight font-bold text-yazi">{baslik}</span>
           <span aria-hidden className="text-[15px]" style={{ color: r.ana }}>
             →
           </span>

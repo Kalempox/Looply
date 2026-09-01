@@ -36,38 +36,55 @@
 export type OyuncuRengi = "kahve" | "yesil" | "pembe" | "menekse" | "amber" | "gok";
 
 /**
- * Oyuncu tarafındaki kartın zemini — Ü67.
+ * Oyuncu tarafındaki kartın yüzeyi — Ü67, Ü70, Ü71.
  *
- * ── Neden soldan sağa ───────────────────────────────────────
+ * ── Nasıl buraya gelindi ────────────────────────────────────
  *
- * Ürün sahibi: *"sağda daha az renk, solda daha fazla, sağdan sola
- * artan şekilde olsun; ikon da sağ kısımda olsun."* Yani renk solda
- * yoğun başlayıp sağa doğru beyaza gidiyor, arkadaki çizim de o beyaz
- * tarafta duruyor.
+ * Ü67'de zemin soldan sağa açılan bir gradyandı: solda renk, sağda
+ * beyaz. Ü69-70'te kupon bileti dört stil denemesinden geçti ve ürün
+ * sahibi **açık zeminli ışın** stilinde karar kıldı — zemin kuponun
+ * kendi renginde, üstünde çok soluk bir ışın dokusu.
  *
- * Mantığı sağlam: metin solda başlıyor ve rengin en yoğun olduğu yer
- * metnin arkası; çizim sağda ve orada zemin zaten sakin, çizimin
- * okunması için yer var. Önceki köşegen gradyan (135°) ikisini de
- * ortada topluyordu.
+ * Ü71'de o dil **bütün kartlara** yayıldı: *"bu dili diğer kartlara da
+ * yay."* Fırsat kartı, oyun kartı, sayfa başlığı, profildeki kafe
+ * kartı — hepsi artık aynı yüzeyi paylaşıyor.
  *
- * ── Neden `canlı` değil, yarısı ─────────────────────────────
+ * ── Neden tek fonksiyon ─────────────────────────────────────
  *
- * Sol uç `canli` tonunun **%50 opaklığı** (`80` son eki), doygun hâli
- * değil. Doygun tonda kartın sol yarısındaki koyu metin okunuyor ama
- * `koyu` renkli küçük etiket ("KAFE A") kontrastı kaybediyordu.
- * Yarısı, ürün sahibinin *"bu kadar şeffaf olmasın"* itirazını
- * karşılarken etiketi de okunur bırakıyor.
+ * Zemin, çerçeve ve ışın üçlüsü altı ayrı dosyada elle yazılıydı ve
+ * biletin tonu her değiştiğinde altısını da güncellemek gerekiyordu.
+ * Artık kartın yüzeyi tek yerden geliyor; bilet neye benziyorsa
+ * ekrandaki her kart ona benziyor.
+ *
+ * ── Aynı hue, iki durak ─────────────────────────────────────
+ *
+ * `canli` tonundan onun %44'üne iniyor. Ayrı bir "açık" paleti tutmaya
+ * gerek yok — parlaklık farkı yetiyor ve renk ailesi bozulmuyor.
  */
 export function kartZemin(renk: OyuncuRengi): string {
   const r = RENK[renk];
-  return [
-    // Sol üstten düşen ışık — Ü68. Tek katmanlı düz gradyan "ucuz"
-    // duruyordu; parlaklığı veren şey rengin doygunluğu değil, üstüne
-    // düşen ışık. Radyal katman rengi soldurmadan kartı kaldırıyor.
-    `radial-gradient(120% 90% at 6% -10%, rgba(255,255,255,0.62), rgba(255,255,255,0) 62%)`,
-    `linear-gradient(95deg, ${r.canli}a6 0%, ${r.zemin} 40%, #ffffff 92%)`,
-  ].join(", ");
+  return `linear-gradient(150deg, ${r.canli} 0%, ${r.canli}70 100%)`;
 }
+
+/** Kartın çerçevesi — zeminle aynı aileden, biraz koyu. */
+export function kartKenar(renk: OyuncuRengi): string {
+  return `${RENK[renk].ana}40`;
+}
+
+/**
+ * Işın dokusu.
+ *
+ * ⚠️ İki değer birden düşürüldü (Ü70). Tek başına opaklığı kısmak
+ * yetmedi: 0.08'de bile doygun bir zeminin üstünde ışınlar **çizgili
+ * kumaş** gibi okunuyordu. Seyreltilince (3° dolu, 20° boş) desen
+ * olmaktan çıkıp yüzeye düşen ışığa dönüştü.
+ *
+ * Kaldırılmadı, azaltıldı: kartların ana ekrandaki koyu durum kartıyla
+ * akrabalığını kuran tek detay bu.
+ */
+export const ISIN_OPAKLIK = 0.05;
+export const ISIN_DOKUSU =
+  "repeating-conic-gradient(from 0deg, #fff 0deg 3deg, transparent 3deg 20deg)";
 
 export type RenkTonu = {
   zemin: string;
