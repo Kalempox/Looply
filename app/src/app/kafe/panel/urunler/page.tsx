@@ -1,5 +1,6 @@
 import { kafeYoneticisiGerekli } from "@/domain/yetki";
 import * as urun from "@/domain/urun";
+import { SayiKarti, IKON } from "@/components/gosterge";
 import {
   IsletmeSayfa,
   IsletmeBaslik,
@@ -23,6 +24,24 @@ export default async function UrunlerSayfasi() {
   const o = await kafeYoneticisiGerekli();
   const urunler = await urun.listele(o.cafeId);
 
+  /**
+   * Ü62: ürünler ödülün dayanağı — ortalama fiyat, ödül değerlerinin
+   * mantıklı olup olmadığını söyleyen tek sayı. 25 TL'lik ödül, 30
+   * TL'lik ortalama adisyonu olan bir kafede cömert; 200 TL'lik
+   * ortalaması olan bir kafede görünmez.
+   */
+  const aktifUrun = urunler.filter((u) => u.aktif);
+  const ortalamaFiyat =
+    aktifUrun.length > 0
+      ? Math.round(
+          aktifUrun.reduce((t, u) => t + u.fiyatKurus, 0) / aktifUrun.length,
+        )
+      : 0;
+  const enPahali = aktifUrun.reduce<(typeof aktifUrun)[number] | null>(
+    (en, u) => (en === null || u.fiyatKurus > en.fiyatKurus ? u : en),
+    null,
+  );
+
   return (
     <IsletmeSayfa genis>
       <IsletmeBaslik
@@ -31,6 +50,28 @@ export default async function UrunlerSayfasi() {
       >
         Ürünler
       </IsletmeBaslik>
+
+      <section className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-3">
+        <SayiKarti
+          etiket="Menüdeki ürün"
+          deger={String(aktifUrun.length)}
+          alt={`${urunler.length} tanımlı`}
+          ikon={IKON.urun}
+          vurgulu
+        />
+        <SayiKarti
+          etiket="Ortalama fiyat"
+          deger={`${Math.round(ortalamaFiyat / 100)} TL`}
+          alt="ödül değerinin dayanağı"
+          ikon={IKON.para}
+        />
+        <SayiKarti
+          etiket="En pahalı"
+          deger={enPahali ? `${Math.round(enPahali.fiyatKurus / 100)} TL` : "—"}
+          alt={enPahali ? enPahali.ad : "ürün girilmedi"}
+          ikon={IKON.odul}
+        />
+      </section>
 
       <IkiKolon
         sol={

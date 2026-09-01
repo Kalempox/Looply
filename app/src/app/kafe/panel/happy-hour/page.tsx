@@ -1,7 +1,14 @@
 import { kafeYoneticisiGerekli } from "@/domain/yetki";
 import * as happy from "@/domain/happy";
 import { durum as butceDurumu } from "@/domain/butce";
-import { IsletmeSayfa, IsletmeBaslik, Bolum, Rozet } from "@/components/isletme";
+import {
+  IsletmeSayfa,
+  IsletmeBaslik,
+  Bolum,
+  Rozet,
+  IkiKolon,
+} from "@/components/isletme";
+import { SayiKarti, Halka, IKON } from "@/components/gosterge";
 import { PencereFormu, KapatDugmesi } from "./kontroller";
 
 export const dynamic = "force-dynamic";
@@ -32,6 +39,20 @@ export default async function HappyHourSayfasi() {
 
   const acik = pencereler.filter((p) => !p.iptalMi).length;
 
+  /**
+   * Ü62: günün havuz özeti.
+   *
+   * Ekran pencereleri listeliyordu; kafe sahibinin sorduğu şey
+   * **havuzun ne kadarı eridi**. Tek tek pencerelere bakıp toplamayı
+   * ona bırakmak, panelin işini kullanıcıya devretmek olurdu.
+   */
+  const gecerli = pencereler.filter((p) => !p.iptalMi);
+  const havuzKurus = gecerli.reduce((t, p) => t + p.havuzKurus, 0);
+  const dagitilanKurus = gecerli.reduce((t, p) => t + p.harcananKurus, 0);
+  const erimeYuzde =
+    havuzKurus > 0 ? Math.round((dagitilanKurus / havuzKurus) * 100) : 0;
+  const suAn = gecerli.find((p) => p.acikMi) ?? null;
+
   return (
     <IsletmeSayfa genis>
       <IsletmeBaslik
@@ -41,81 +62,156 @@ export default async function HappyHourSayfasi() {
         Happy Hour
       </IsletmeBaslik>
 
-      <Bolum
-        baslik="Bugünün pencereleri"
-        alt={`Günde en fazla ${happy.GUNLUK_EN_FAZLA} pencere. Fazlası "sürekli happy hour" olur ve değer sıfırlanır.`}
-      >
-        {pencereler.length === 0 ? (
-          <p className="text-[14px] text-yazi-sonuk">Bugün pencere açılmadı.</p>
-        ) : (
-          <ul className="divide-y divide-cizgi border-y border-cizgi">
-            {pencereler.map((p) => (
-              <li key={p.id} className={`py-4 ${p.iptalMi ? "opacity-55" : ""}`}>
-                <div className="flex items-center gap-3">
-                  <span className="flex-1 font-data text-[15px] font-semibold tabular">
-                    {saat(p.baslangic)} – {saat(p.bitis)}
-                  </span>
-                  {p.iptalMi ? (
-                    <Rozet tur="pasif">kapatıldı</Rozet>
-                  ) : p.acikMi ? (
-                    <Rozet tur="onayli">açık</Rozet>
-                  ) : p.havuzBittiMi ? (
-                    <Rozet tur="bekliyor">havuz bitti</Rozet>
-                  ) : (
-                    <Rozet tur="pasif">{p.bittiMi ? "bitti" : "sırada"}</Rozet>
-                  )}
-                  {!p.iptalMi && !p.bittiMi && <KapatDugmesi pencereId={p.id} />}
-                </div>
+      <section className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <SayiKarti
+          etiket="Bugünün pencereleri"
+          deger={String(gecerli.length)}
+          alt={`günde en fazla ${happy.GUNLUK_EN_FAZLA}`}
+          ikon={IKON.saat}
+        />
+        <SayiKarti
+          etiket="Ayrılan havuz"
+          deger={`${tl(havuzKurus)} TL`}
+          alt="bugün toplam"
+          ikon={IKON.para}
+        />
+        <SayiKarti
+          etiket="Dağıtılan"
+          deger={`${tl(dagitilanKurus)} TL`}
+          alt="havuzdan eriyen"
+          ikon={IKON.kupon}
+          vurgulu
+        />
+        <SayiKarti
+          etiket="Şu an"
+          deger={
+            suAn ? `${saat(suAn.baslangic)}–${saat(suAn.bitis)}` : "kapalı"
+          }
+          alt={suAn ? `${tl(suAn.kalanKurus)} TL kaldı` : "açık pencere yok"}
+          ikon={IKON.onay}
+        />
+      </section>
 
-                {/* Havuz doluluğu — kafe panelinde canlı (Ö3). */}
-                <div className="mt-2.5">
-                  <div className="h-2 w-full overflow-hidden rounded-sm bg-cukur">
-                    <div
-                      className="asil-serit h-full rounded-sm bg-odul"
-                      style={{
-                        width: `${Math.min(100, Math.round((p.harcananKurus / p.havuzKurus) * 100))}%`,
-                      }}
-                    />
-                  </div>
-                  <div className="mt-1.5 font-data text-[11px] text-yazi-sonuk tabular">
-                    {tl(p.harcananKurus)} / {tl(p.havuzKurus)} TL dağıtıldı ·{" "}
-                    <strong className="text-yazi">{tl(p.kalanKurus)} TL kaldı</strong>
-                  </div>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Bolum>
+      <IkiKolon
+        sol={
+          <>
+            <Bolum
+              baslik="Havuzun erimesi"
+              alt="Bugün ayrılan havuzun ne kadarı dağıtıldı."
+            >
+              <div className="rounded-2xl border border-cizgi bg-yuzey px-5 py-6">
+                <Halka
+                  yuzde={erimeYuzde}
+                  ortaUst={`%${erimeYuzde}`}
+                  ortaAlt="dağıtıldı"
+                  renk="var(--color-odul)"
+                />
+                <p className="mt-4 text-center text-[13px] leading-relaxed text-yazi-sonuk">
+                  {havuzKurus === 0
+                    ? "Bugün havuz ayrılmadı."
+                    : `${tl(dagitilanKurus)} TL dağıtıldı, ${tl(havuzKurus - dagitilanKurus)} TL kaldı.`}
+                </p>
+              </div>
+            </Bolum>
 
-      {acik < happy.GUNLUK_EN_FAZLA && (
-        <Bolum
-          baslik="Yeni pencere"
-          alt={`Dağıtılabilir bütçen ${tl(butce.dagitilabilirKurus)} TL. Havuz bundan büyük olamaz.`}
-        >
-          <PencereFormu enKisaSaat={happy.EN_KISA_SAAT} enUzunSaat={happy.EN_UZUN_SAAT} />
-        </Bolum>
-      )}
+            {acik < happy.GUNLUK_EN_FAZLA && (
+              <Bolum
+                baslik="Yeni pencere"
+                alt={`Dağıtılabilir bütçen ${tl(butce.dagitilabilirKurus)} TL. Havuz bundan büyük olamaz.`}
+              >
+                <PencereFormu
+                  enKisaSaat={happy.EN_KISA_SAAT}
+                  enUzunSaat={happy.EN_UZUN_SAAT}
+                />
+              </Bolum>
+            )}
+          </>
+        }
+        sag={
+          <Bolum
+            baslik="Bugünün pencereleri"
+            alt={`Günde en fazla ${happy.GUNLUK_EN_FAZLA} pencere. Fazlası "sürekli happy hour" olur ve değer sıfırlanır.`}
+          >
+            {pencereler.length === 0 ? (
+              <p className="text-[14px] text-yazi-sonuk">
+                Bugün pencere açılmadı.
+              </p>
+            ) : (
+              <ul className="divide-y divide-cizgi border-y border-cizgi">
+                {pencereler.map((p) => (
+                  <li
+                    key={p.id}
+                    className={`py-4 ${p.iptalMi ? "opacity-55" : ""}`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="flex-1 font-data text-[15px] font-semibold tabular">
+                        {saat(p.baslangic)} – {saat(p.bitis)}
+                      </span>
+                      {p.iptalMi ? (
+                        <Rozet tur="pasif">kapatıldı</Rozet>
+                      ) : p.acikMi ? (
+                        <Rozet tur="onayli">açık</Rozet>
+                      ) : p.havuzBittiMi ? (
+                        <Rozet tur="bekliyor">havuz bitti</Rozet>
+                      ) : (
+                        <Rozet tur="pasif">
+                          {p.bittiMi ? "bitti" : "sırada"}
+                        </Rozet>
+                      )}
+                      {!p.iptalMi && !p.bittiMi && (
+                        <KapatDugmesi pencereId={p.id} />
+                      )}
+                    </div>
+
+                    {/* Havuz doluluğu — kafe panelinde canlı (Ö3). */}
+                    <div className="mt-2.5">
+                      <div className="h-2 w-full overflow-hidden rounded-sm bg-cukur">
+                        <div
+                          className="asil-serit h-full rounded-sm bg-odul"
+                          style={{
+                            width: `${Math.min(100, Math.round((p.harcananKurus / p.havuzKurus) * 100))}%`,
+                          }}
+                        />
+                      </div>
+                      <div className="mt-1.5 font-data text-[11px] text-yazi-sonuk tabular">
+                        {tl(p.harcananKurus)} / {tl(p.havuzKurus)} TL dağıtıldı
+                        ·{" "}
+                        <strong className="text-yazi">
+                          {tl(p.kalanKurus)} TL kaldı
+                        </strong>
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Bolum>
+        }
+      />
 
       <Bolum baslik="Nasıl çalışıyor">
         <ul className="flex flex-col gap-2 text-[14px] leading-relaxed text-yazi-sonuk">
           <Madde>
-            Pencere açıkken oyuncu <strong className="text-yazi">ikinci bir ödül</strong>{" "}
-            kazanabilir; maliyeti bu havuzdan sayılır.
+            Pencere açıkken oyuncu{" "}
+            <strong className="text-yazi">ikinci bir ödül</strong> kazanabilir;
+            maliyeti bu havuzdan sayılır.
           </Madde>
           <Madde>
-            Havuz bitince pencere kapanır. Oyun oynanmaya devam eder, o pencereden ödül çıkmaz.
+            Havuz bitince pencere kapanır. Oyun oynanmaya devam eder, o
+            pencereden ödül çıkmaz.
           </Madde>
           <Madde>
-            Pencere bitince <strong className="text-yazi">kalan kaybolmaz</strong> — havuz
-            bütçenden ayrı bir kese değil, yalnızca bir tavan. Dağıtılmayan para bütçende durur.
+            Pencere bitince{" "}
+            <strong className="text-yazi">kalan kaybolmaz</strong> — havuz
+            bütçenden ayrı bir kese değil, yalnızca bir tavan. Dağıtılmayan para
+            bütçende durur.
           </Madde>
           <Madde>
-            Kupon kasada onaylanana kadar hiçbir şey harcanmış sayılmaz (Ü7) — burada da aynı.
+            Kupon kasada onaylanana kadar hiçbir şey harcanmış sayılmaz (Ü7) —
+            burada da aynı.
           </Madde>
         </ul>
       </Bolum>
-
     </IsletmeSayfa>
   );
 }
@@ -137,7 +233,10 @@ function saat(d: Date): string {
 function Madde({ children }: { children: React.ReactNode }) {
   return (
     <li className="flex gap-3">
-      <span className="mt-2.5 h-1 w-1 shrink-0 rounded-full bg-yazi-sonuk" aria-hidden />
+      <span
+        className="mt-2.5 h-1 w-1 shrink-0 rounded-full bg-yazi-sonuk"
+        aria-hidden
+      />
       <span>{children}</span>
     </li>
   );

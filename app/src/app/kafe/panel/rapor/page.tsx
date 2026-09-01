@@ -2,7 +2,13 @@ import { kafeYoneticisiGerekli } from "@/domain/yetki";
 import * as rapor from "@/domain/rapor";
 import * as ayar from "@/domain/ayar";
 import { bakim } from "@/domain/bakim";
-import { IsletmeSayfa, IsletmeBaslik, Bolum, Rozet } from "@/components/isletme";
+import {
+  IsletmeSayfa,
+  IsletmeBaslik,
+  Bolum,
+  Rozet,
+} from "@/components/isletme";
+import { SayiKarti, IKON } from "@/components/gosterge";
 import { DisaAktarma, TarihAraligi, AdisyonAyari } from "./kontroller";
 
 export const dynamic = "force-dynamic";
@@ -53,22 +59,37 @@ export default async function RaporSayfasi({
   const secim = rapor.araligiCoz(sp);
   const aralik = secim.aralik;
 
-  const adisyonKurus = await ayar.sayiOku(o.cafeId, ayar.ANAHTARLAR.ortalamaAdisyon);
+  const adisyonKurus = await ayar.sayiOku(
+    o.cafeId,
+    ayar.ANAHTARLAR.ortalamaAdisyon,
+  );
 
-  const [ozet, ziyaretler, masalar, dagilim, kampanyalar, odul, kullanim, getiri] =
-    await Promise.all([
-      rapor.ozet(o.cafeId, aralik),
-      rapor.ziyaretler(o.cafeId, aralik),
-      rapor.masaHareketi(o.cafeId, aralik),
-      rapor.saatlikDagilim(o.cafeId, aralik),
-      rapor.kampanyaSonuclari(o.cafeId, aralik),
-      rapor.odulDagilimi(o.cafeId, aralik),
-      rapor.kuponKullanimi(o.cafeId, aralik),
-      rapor.getiri(o.cafeId, aralik, adisyonKurus),
-    ]);
+  const [
+    ozet,
+    ziyaretler,
+    masalar,
+    dagilim,
+    kampanyalar,
+    odul,
+    kullanim,
+    getiri,
+  ] = await Promise.all([
+    rapor.ozet(o.cafeId, aralik),
+    rapor.ziyaretler(o.cafeId, aralik),
+    rapor.masaHareketi(o.cafeId, aralik),
+    rapor.saatlikDagilim(o.cafeId, aralik),
+    rapor.kampanyaSonuclari(o.cafeId, aralik),
+    rapor.odulDagilimi(o.cafeId, aralik),
+    rapor.kuponKullanimi(o.cafeId, aralik),
+    rapor.getiri(o.cafeId, aralik, adisyonKurus),
+  ]);
 
   // Faz 8 güvenlik kapısı: her rapor görüntüleme denetim izine düşer.
-  await rapor.goruntulemeyiKaydet({ cafeId: o.cafeId, aktorId: o.ozneId, aralik });
+  await rapor.goruntulemeyiKaydet({
+    cafeId: o.cafeId,
+    aktorId: o.ozneId,
+    aralik,
+  });
 
   const saatler = dagilim.saatler;
   const enYuksekOran = Math.max(0.01, ...saatler.map((s) => s.oran));
@@ -106,28 +127,44 @@ export default async function RaporSayfasi({
         <div className="rounded-2xl border border-cizgi bg-yuzey px-5 py-6">
           <div className="etiket-caps text-yazi-sonuk">Tahmini ciro</div>
           <div className="mt-1.5 font-data text-4xl leading-none font-bold text-vurgu tabular">
-            {tl(getiri.tahminiCiroKurus)} <span className="text-[16px]">TL</span>
+            {tl(getiri.tahminiCiroKurus)}{" "}
+            <span className="text-[16px]">TL</span>
           </div>
           <p className="mt-3 text-[13px] leading-relaxed text-yazi-sonuk">
             <strong className="text-yazi">{getiri.ziyaret} ziyaret</strong> ×{" "}
-            {tl(getiri.ortalamaAdisyonKurus)} TL ortalama hesap. Ziyaret sayısı defterden
-            geliyor, ortalama hesabı sen giriyorsun — <strong className="text-yazi">bu
-            yüzden sonuç bir tahmin</strong>.
+            {tl(getiri.ortalamaAdisyonKurus)} TL ortalama hesap. Ziyaret sayısı
+            defterden geliyor, ortalama hesabı sen giriyorsun —{" "}
+            <strong className="text-yazi">bu yüzden sonuç bir tahmin</strong>.
           </p>
         </div>
 
-        <div className="mt-2.5 grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-cizgi bg-cizgi sm:grid-cols-4">
-          <Sayi etiket="Ziyaret" deger={String(getiri.ziyaret)} ipucu="sayıldı" />
-          <Sayi etiket="Verilen ürün" deger={String(getiri.urun)} ipucu="sayıldı" />
-          <Sayi
+        {/* Ü62: rapor da panelin gösterge diline geçti — aynı kart,
+            aynı ikon kutusu. İki ekran arasında geçen kafe sahibi
+            aynı şeyi iki farklı biçimde okumamalı. */}
+        <div className="mt-2.5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <SayiKarti
+            etiket="Ziyaret"
+            deger={String(getiri.ziyaret)}
+            alt="sayıldı"
+            ikon={IKON.kisi}
+          />
+          <SayiKarti
+            etiket="Verilen ürün"
+            deger={String(getiri.urun)}
+            alt="sayıldı"
+            ikon={IKON.urun}
+          />
+          <SayiKarti
             etiket="İndirim gideri"
             deger={`${tl(getiri.indirimKurus)} TL`}
-            ipucu="sayıldı"
+            alt="sayıldı"
+            ikon={IKON.para}
           />
-          <Sayi
+          <SayiKarti
             etiket="Fark"
             deger={`${tl(getiri.netKurus)} TL`}
-            ipucu="tahmin − gider"
+            alt="tahmin − gider"
+            ikon={IKON.onay}
             vurgulu={getiri.netKurus > 0}
           />
         </div>
@@ -135,9 +172,10 @@ export default async function RaporSayfasi({
         <div className="mt-4 rounded-xl border border-cizgi bg-cukur px-4 py-3.5">
           <AdisyonAyari mevcutTl={Math.round(adisyonKurus / 100)} />
           <p className="mt-2 text-[12px] leading-relaxed text-yazi-sonuk">
-            Bu müşterilerin bir kısmı zaten gelecekti; onu ölçmenin yolu yok. Rakam
-            &ldquo;CafePlay üzerinden gelen müşterinin kafede bıraktığı tahmini tutar&rdquo;
-            demek, &ldquo;CafePlay olmasa hiç gelmezdi&rdquo; demek değil.
+            Bu müşterilerin bir kısmı zaten gelecekti; onu ölçmenin yolu yok.
+            Rakam &ldquo;CafePlay üzerinden gelen müşterinin kafede bıraktığı
+            tahmini tutar&rdquo; demek, &ldquo;CafePlay olmasa hiç
+            gelmezdi&rdquo; demek değil.
           </p>
         </div>
       </Bolum>
@@ -155,37 +193,49 @@ export default async function RaporSayfasi({
               ertesi gün geldiğinde yeniden sayılıyor. Fatura bu sayıdan
               kesildiği için yanlış tanım, yanlış faturaya dönüşür. */}
           <p className="mt-3 text-[13px] leading-relaxed text-yazi-sonuk">
-            Kafeye gelip <strong className="text-yazi">konumu doğrulanan</strong> ve oyunu{" "}
-            <strong className="text-yazi">tamamlayan</strong> müşteri. Aynı müşteri günde bir kez
-            sayılır — ertesi gün yine gelirse yeniden sayılır.
+            Kafeye gelip{" "}
+            <strong className="text-yazi">konumu doğrulanan</strong> ve oyunu{" "}
+            <strong className="text-yazi">tamamlayan</strong> müşteri. Aynı
+            müşteri günde bir kez sayılır — ertesi gün yine gelirse yeniden
+            sayılır.
           </p>
           {ozet.tekilOyuncu > 0 && (
             <p className="mt-2 text-[13px] leading-relaxed text-yazi-sonuk">
-              Bu dönemde <strong className="text-yazi">{ozet.nitelikliOyuncu} ziyaret</strong>,{" "}
-              <strong className="text-yazi">{ozet.tekilOyuncu} farklı kişiden</strong> geldi.
+              Bu dönemde{" "}
+              <strong className="text-yazi">
+                {ozet.nitelikliOyuncu} ziyaret
+              </strong>
+              ,{" "}
+              <strong className="text-yazi">
+                {ozet.tekilOyuncu} farklı kişiden
+              </strong>{" "}
+              geldi.
             </p>
           )}
           <p className="mt-2 text-[12px] leading-relaxed text-yazi-sonuk">
-            Faturada bu satır <em>nitelikli oyuncu</em> diye geçiyor; ikisi aynı sayı.
+            Faturada bu satır <em>nitelikli oyuncu</em> diye geçiyor; ikisi aynı
+            sayı.
           </p>
         </div>
 
-        <div className="mt-2.5 grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-cizgi bg-cizgi sm:grid-cols-3">
-          <Sayi
+        <div className="mt-2.5 grid grid-cols-2 gap-3 lg:grid-cols-3">
+          <SayiKarti
             etiket="Gelen kişi"
             deger={String(ozet.tekilOyuncu)}
-            ipucu="oyunu tamamlayan herkes"
+            alt="oyunu tamamlayan herkes"
+            ikon={IKON.kisi}
           />
-          <Sayi
+          <SayiKarti
             etiket="Oynanan oyun"
             deger={String(ozet.toplamOyun)}
-            ipucu="aynı kişi birden çok oynayabilir"
+            alt="aynı kişi birden çok oynayabilir"
+            ikon={IKON.masa}
           />
-          <Sayi
+          <SayiKarti
             etiket="Verilen kupon"
             deger={String(ozet.kuponVerilen)}
-            ipucu="kazanıldı, henüz kullanılmamış olabilir"
-            genis
+            alt="kazanıldı, kullanılmamış olabilir"
+            ikon={IKON.kupon}
           />
         </div>
       </Bolum>
@@ -243,17 +293,20 @@ export default async function RaporSayfasi({
           <div className="bg-yuzey px-5 py-5">
             <div className="etiket-caps text-yazi-sonuk">Kazanılan</div>
             <div className="mt-2 font-data text-2xl leading-none font-bold text-yazi-sonuk tabular">
-              {tl(ozet.kazanilanIndirimKurus)} <span className="text-[11px]">TL</span>
+              {tl(ozet.kazanilanIndirimKurus)}{" "}
+              <span className="text-[11px]">TL</span>
             </div>
             <p className="mt-2 text-[12px] leading-relaxed text-yazi-sonuk">
-              Dağıtılan {ozet.kuponVerilen} kuponun toplam değeri. Kullanılmayanın maliyeti yok.
+              Dağıtılan {ozet.kuponVerilen} kuponun toplam değeri.
+              Kullanılmayanın maliyeti yok.
             </p>
           </div>
 
           <div className="bg-yuzey px-5 py-5">
             <div className="etiket-caps text-yazi-sonuk">Kasada kullanılan</div>
             <div className="mt-2 font-data text-2xl leading-none font-bold tabular">
-              {tl(ozet.kullanilanIndirimKurus)} <span className="text-[11px]">TL</span>
+              {tl(ozet.kullanilanIndirimKurus)}{" "}
+              <span className="text-[11px]">TL</span>
             </div>
             <p className="mt-2 text-[12px] leading-relaxed text-yazi-sonuk">
               {ozet.kuponKullanilan} kupon ·{" "}
@@ -280,7 +333,9 @@ export default async function RaporSayfasi({
                   <span
                     aria-hidden
                     className="size-3 shrink-0 rounded-sm"
-                    style={{ background: PASTA_RENKLERI[i % PASTA_RENKLERI.length] }}
+                    style={{
+                      background: PASTA_RENKLERI[i % PASTA_RENKLERI.length],
+                    }}
                   />
                   <span className="flex-1 text-[14px]">{d.etiket}</span>
                   <span className="font-data text-[13px] tabular">
@@ -299,7 +354,9 @@ export default async function RaporSayfasi({
           masası olduğu bilinmeden bir şey söylemiyor. */}
       <Bolum baslik="Hangi saat doluyor">
         {rapor.donemBos(saatler) ? (
-          <p className="text-[14px] text-yazi-sonuk">Bu dönemde henüz oyun oynanmadı.</p>
+          <p className="text-[14px] text-yazi-sonuk">
+            Bu dönemde henüz oyun oynanmadı.
+          </p>
         ) : (
           <>
             <p className="mb-3.5 text-[13px] leading-relaxed text-yazi-sonuk">
@@ -307,8 +364,8 @@ export default async function RaporSayfasi({
               <strong className="text-yazi">
                 {dagilim.masaSayisi} masa × {dagilim.gunSayisi} gün
               </strong>
-              . Oyun oynamadan oturan müşteri bu orana girmiyor — bu, kafenin doluluğu değil,
-              CafePlay üzerinden dolan masa oranı.
+              . Oyun oynamadan oturan müşteri bu orana girmiyor — bu, kafenin
+              doluluğu değil, CafePlay üzerinden dolan masa oranı.
             </p>
 
             <ul className="flex flex-col gap-1">
@@ -337,9 +394,9 @@ export default async function RaporSayfasi({
 
             {gizliSaatVar && (
               <p className="mt-3 text-[12px] leading-relaxed text-yazi-sonuk">
-                {`<${rapor.GIZLEME_ESIGI}`} yazan saatlerde müşteri var ama sayısı gizlilik
-                eşiğinin altında kaldığı için tam sayı gösterilmiyor. Doluluk oranı ve
-                toplamlar bundan etkilenmiyor.
+                {`<${rapor.GIZLEME_ESIGI}`} yazan saatlerde müşteri var ama
+                sayısı gizlilik eşiğinin altında kaldığı için tam sayı
+                gösterilmiyor. Doluluk oranı ve toplamlar bundan etkilenmiyor.
               </p>
             )}
           </>
@@ -349,16 +406,22 @@ export default async function RaporSayfasi({
       {/* ── Masa ───────────────────────────────────────── */}
       <Bolum baslik="Masa hareketi">
         {masalar.length === 0 ? (
-          <p className="text-[14px] text-yazi-sonuk">Henüz masa hareketi yok.</p>
+          <p className="text-[14px] text-yazi-sonuk">
+            Henüz masa hareketi yok.
+          </p>
         ) : (
           <ul className="flex flex-col gap-1.5">
             {masalar.map((m) => (
               <li key={m.masa} className="flex items-center gap-3">
-                <span className="w-20 shrink-0 truncate text-[14px] font-semibold">{m.masa}</span>
+                <span className="w-20 shrink-0 truncate text-[14px] font-semibold">
+                  {m.masa}
+                </span>
                 <span className="h-3.5 flex-1 overflow-hidden rounded-sm bg-cukur">
                   <span
                     className="block h-full rounded-sm bg-yazi"
-                    style={{ width: `${(m.oyun / Math.max(1, masalar[0].oyun)) * 100}%` }}
+                    style={{
+                      width: `${(m.oyun / Math.max(1, masalar[0].oyun)) * 100}%`,
+                    }}
                   />
                 </span>
                 <span className="w-28 text-right font-data text-[11px] text-yazi-sonuk tabular">
@@ -383,11 +446,14 @@ export default async function RaporSayfasi({
                   {k.durum === "active" ? (
                     <Rozet tur="onayli">yayında</Rozet>
                   ) : (
-                    <Rozet tur="pasif">{k.durum === "ended" ? "bitti" : k.durum}</Rozet>
+                    <Rozet tur="pasif">
+                      {k.durum === "ended" ? "bitti" : k.durum}
+                    </Rozet>
                   )}
                 </div>
                 <div className="mt-1 font-data text-[12px] text-yazi-sonuk tabular">
-                  {k.verilen} verildi · {k.kullanilan} kullanıldı · {tl(k.kullanilanKurus)} TL
+                  {k.verilen} verildi · {k.kullanilan} kullanıldı ·{" "}
+                  {tl(k.kullanilanKurus)} TL
                 </div>
               </li>
             ))}
@@ -403,7 +469,11 @@ export default async function RaporSayfasi({
               <li key={k.kod} className="flex items-center gap-4 py-2.5">
                 <span className="font-data text-[13px]">{k.kod}</span>
                 <span className="flex-1 text-right font-data text-[12px] text-yazi-sonuk tabular">
-                  son: {k.sonKullanim.toLocaleDateString("tr-TR", { day: "numeric", month: "short" })}
+                  son:{" "}
+                  {k.sonKullanim.toLocaleDateString("tr-TR", {
+                    day: "numeric",
+                    month: "short",
+                  })}
                 </span>
                 <span className="w-16 text-right font-data text-[13px] font-semibold tabular">
                   {k.adet} kupon
@@ -415,8 +485,9 @@ export default async function RaporSayfasi({
             ))}
           </ul>
           <p className="mt-3 text-[12px] leading-relaxed text-yazi-sonuk">
-            En çok kullanandan aza doğru. Aynı kodun çok sayıda kuponu, sadık müşteri de
-            olabilir suistimal de — kod üstünden doğrulama defterine bakabilirsin.
+            En çok kullanandan aza doğru. Aynı kodun çok sayıda kuponu, sadık
+            müşteri de olabilir suistimal de — kod üstünden doğrulama defterine
+            bakabilirsin.
           </p>
         </Bolum>
       )}
@@ -452,7 +523,9 @@ export default async function RaporSayfasi({
                         minute: "2-digit",
                       })}
                     </td>
-                    <td className="py-2 pr-4 text-yazi-sonuk">{z.masa ?? "—"}</td>
+                    <td className="py-2 pr-4 text-yazi-sonuk">
+                      {z.masa ?? "—"}
+                    </td>
                     <td className="py-2 pr-4">
                       {z.nitelikli ? (
                         <Rozet tur="onayli">sayıldı</Rozet>
@@ -471,15 +544,19 @@ export default async function RaporSayfasi({
         )}
 
         <p className="mt-4 text-[12px] leading-relaxed text-yazi-sonuk">
-          Müşteriler işletmene özel anonim kodla görünür. Ad, soyad ve telefon CafePlay&apos;de
-          kalır, hiçbir ekranda gösterilmez.
+          Müşteriler işletmene özel anonim kodla görünür. Ad, soyad ve telefon
+          CafePlay&apos;de kalır, hiçbir ekranda gösterilmez.
         </p>
       </Bolum>
 
       <Bolum baslik="Dışa aktar">
         <DisaAktarma
           sorgu={sp}
-          dosyaAdi={sonGun ? `${secim.hazir}-gun` : `${aralik.baslangic}_${geriGun(aralik.bitis)}`}
+          dosyaAdi={
+            sonGun
+              ? `${secim.hazir}-gun`
+              : `${aralik.baslangic}_${geriGun(aralik.bitis)}`
+          }
         />
       </Bolum>
     </IsletmeSayfa>
@@ -531,7 +608,14 @@ function Halka({
   return (
     <div className="relative mx-auto size-[136px] shrink-0 sm:mx-0">
       <svg viewBox="0 0 128 128" className="size-full -rotate-90" aria-hidden>
-        <circle cx="64" cy="64" r={R} fill="none" stroke="var(--color-cukur)" strokeWidth="18" />
+        <circle
+          cx="64"
+          cy="64"
+          r={R}
+          fill="none"
+          stroke="var(--color-cukur)"
+          strokeWidth="18"
+        />
         {toplam > 0 &&
           dilimler.map((d) => {
             const pay = (d.deger / toplam) * CEVRE;
@@ -553,8 +637,12 @@ function Halka({
           })}
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="font-data text-xl leading-none font-bold tabular">{ortaUst}</span>
-        <span className="etiket-caps mt-1 text-[10px] text-yazi-sonuk">{ortaAlt}</span>
+        <span className="font-data text-xl leading-none font-bold tabular">
+          {ortaUst}
+        </span>
+        <span className="etiket-caps mt-1 text-[10px] text-yazi-sonuk">
+          {ortaAlt}
+        </span>
       </div>
     </div>
   );
@@ -582,39 +670,4 @@ function kanitCumlesi(seviye: number): string {
   if (seviye === 3) return "masada 5 dk kaldı";
   if (seviye === 2) return "konumu doğrulandı";
   return "karekod okuttu";
-}
-
-function Sayi({
-  etiket,
-  deger,
-  ipucu,
-  vurgulu,
-  genis,
-}: {
-  etiket: string;
-  deger: string;
-  ipucu?: string;
-  vurgulu?: boolean;
-  /**
-   * Dar ekranda iki sütunu birden kaplar.
-   *
-   * Üç kutuluk bir ızgara iki sütuna sığmıyor ve sonuncusunun yanında
-   * ızgaranın zemin rengi boş bir kare olarak görünüyordu — kart gibi
-   * duran ama içi olmayan bir alan, "veri yüklenmedi" diye okunuyor.
-   */
-  genis?: boolean;
-}) {
-  return (
-    <div className={`bg-yuzey px-4 py-4 ${genis ? "col-span-2 sm:col-span-1" : ""}`}>
-      <div className="etiket-caps text-[10px] text-yazi-sonuk">{etiket}</div>
-      <div
-        className={`mt-1.5 font-data text-xl leading-none font-bold tabular ${
-          vurgulu ? "text-vurgu" : ""
-        }`}
-      >
-        {deger}
-      </div>
-      {ipucu && <div className="mt-1.5 text-[11px] leading-snug text-yazi-sonuk">{ipucu}</div>}
-    </div>
-  );
 }

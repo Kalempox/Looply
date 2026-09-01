@@ -12,6 +12,7 @@ import {
 } from "@/components/isletme";
 import { OdulEkleme, DurumDugmesi, EsikAyari, CarkSiniri } from "./kontroller";
 import { OdulSekmeleri } from "../odul-sekmeleri";
+import { SayiKarti, IKON } from "@/components/gosterge";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Ödül kataloğu · CafePlay" };
@@ -42,6 +43,25 @@ export default async function OdullerSayfasi() {
     (od) => od.aktif && od.anlik && od.maliyetKurus <= carkSinirKurus,
   ).length;
 
+  /**
+   * Ü62: kafe sahibinin bu ekranda sorduğu üç şey.
+   *
+   * "Kaç ödülüm var" listeden sayılabiliyordu ama "ortalama kaç TL" ve
+   * "kaçı hemen açılıyor" sayılamıyordu — ikisi de ödül ekonomisinin
+   * karakterini belirliyor. Ortalama yüksekse bütçe hızlı eriyor;
+   * ertelenen oran yüksekse oyuncu ödülünü hemen kullanamıyor.
+   */
+  const yayinda = oduller.filter((od) => od.aktif);
+  const ortalamaKurus =
+    yayinda.length > 0
+      ? Math.round(
+          yayinda.reduce((t, od) => t + od.maliyetKurus, 0) / yayinda.length,
+        )
+      : 0;
+  const hemenAcilan = yayinda.filter(
+    (od) => od.maliyetKurus <= esikKurus,
+  ).length;
+
   return (
     <IsletmeSayfa genis>
       <IsletmeBaslik
@@ -52,6 +72,34 @@ export default async function OdullerSayfasi() {
       </IsletmeBaslik>
 
       <OdulSekmeleri aktif="odul" />
+
+      <section className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <SayiKarti
+          etiket="Yayındaki ödül"
+          deger={String(yayinda.length)}
+          alt={`${oduller.length} tanımlı`}
+          ikon={IKON.odul}
+        />
+        <SayiKarti
+          etiket="Çarka giren"
+          deger={String(carkaUygun)}
+          alt={`${Math.round(carkSinirKurus / 100)} TL sınırının altında`}
+          ikon={IKON.kupon}
+          vurgulu
+        />
+        <SayiKarti
+          etiket="Ortalama değer"
+          deger={`${Math.round(ortalamaKurus / 100)} TL`}
+          alt="bütçe bu hızda eriyor"
+          ikon={IKON.para}
+        />
+        <SayiKarti
+          etiket="Hemen açılan"
+          deger={String(hemenAcilan)}
+          alt={`üstü 24 saat bekliyor`}
+          ikon={IKON.saat}
+        />
+      </section>
 
       {urunler.length === 0 && (
         <div className="mb-7">
