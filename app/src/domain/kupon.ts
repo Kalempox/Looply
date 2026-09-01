@@ -339,6 +339,8 @@ export async function carkOduluVer(opts: {
     return { ok: false, hata: "Telefon numaran yakında değişti; güvenlik için ödül açılmıyor." };
   }
 
+  const sinir = await ayar.sayiOku(opts.cafeId, ayar.ANAHTARLAR.carkUstSinir);
+
   return withBypass("çark ödülü", async (db) => {
     await db.query(`SELECT id FROM players WHERE id = $1 FOR UPDATE`, [opts.playerId]);
 
@@ -355,11 +357,16 @@ export async function carkOduluVer(opts: {
       }
     }
 
+    // Üst sınır burada da aranıyor. `cark.ts` zaten listeyi süzüyor ama
+    // parayı yazan fonksiyon bu: sınırı yalnızca seçim tarafında tutmak,
+    // imzalı talebin ya da doğrudan çağrının sınırı atlamasına açık kapı
+    // bırakırdı. Süzgeç, değerin çıktığı yerde de duruyor.
     const odul = await db.one<OdulSatiri>(
       `SELECT id, title, cost_kurus, min_proof_level, reward_type, percent
          FROM rewards
-        WHERE id = $1 AND cafe_id = $2 AND active AND kind = 'instant'`,
-      [opts.odulId, opts.cafeId],
+        WHERE id = $1 AND cafe_id = $2 AND active AND kind = 'instant'
+          AND cost_kurus <= $3`,
+      [opts.odulId, opts.cafeId, sinir],
     );
     if (!odul) return { ok: false as const, hata: "Bu ödül artık yayında değil." };
 

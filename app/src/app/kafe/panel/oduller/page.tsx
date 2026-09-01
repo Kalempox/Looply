@@ -4,7 +4,7 @@ import * as katalog from "@/domain/katalog";
 import * as urun from "@/domain/urun";
 import * as ayar from "@/domain/ayar";
 import { IsletmeSayfa, IsletmeBaslik, Bolum, Rozet, IsletmeUyari } from "@/components/isletme";
-import { OdulEkleme, DurumDugmesi, EsikAyari } from "./kontroller";
+import { OdulEkleme, DurumDugmesi, EsikAyari, CarkSiniri } from "./kontroller";
 import { OdulSekmeleri } from "../odul-sekmeleri";
 
 export const dynamic = "force-dynamic";
@@ -23,11 +23,18 @@ export const metadata = { title: "Ödül kataloğu · CafePlay" };
  */
 export default async function OdullerSayfasi() {
   const o = await kafeYoneticisiGerekli();
-  const [oduller, urunler, esikKurus] = await Promise.all([
+  const [oduller, urunler, esikKurus, carkSinirKurus] = await Promise.all([
     katalog.listele(o.cafeId),
     urun.listele(o.cafeId, false),
     ayar.sayiOku(o.cafeId, ayar.ANAHTARLAR.ertelemeEsigi),
+    ayar.sayiOku(o.cafeId, ayar.ANAHTARLAR.carkUstSinir),
   ]);
+
+  // Çarkın dönebilmesi için sınırın altında en az bir anlık ödül gerekiyor;
+  // kafe sayıyı görmeden "çark neden dönmüyor" sorusunu çözemez.
+  const carkaUygun = oduller.filter(
+    (od) => od.aktif && od.anlik && od.maliyetKurus <= carkSinirKurus,
+  ).length;
 
   return (
     <IsletmeSayfa genis>
@@ -52,6 +59,10 @@ export default async function OdullerSayfasi() {
 
       <Bolum baslik="Gecikmeli açılma">
         <EsikAyari mevcutTl={Math.round(esikKurus / 100)} />
+      </Bolum>
+
+      <Bolum baslik="Şans çarkı">
+        <CarkSiniri mevcutTl={Math.round(carkSinirKurus / 100)} uygunSayisi={carkaUygun} />
       </Bolum>
 
       <Bolum baslik={`Katalog · ${oduller.filter((x) => x.aktif).length} yayında`}>

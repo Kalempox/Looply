@@ -1,7 +1,14 @@
 "use client";
 
 import { useActionState, useState, useTransition } from "react";
-import { ekleEylemi, durumEylemi, esikEylemi, type OdulDurumu, type EsikDurumu } from "./actions";
+import {
+  ekleEylemi,
+  durumEylemi,
+  esikEylemi,
+  carkSiniriEylemi,
+  type OdulDurumu,
+  type EsikDurumu,
+} from "./actions";
 import { IsletmeDugme, IsletmeAlan, isletmeGirdi, IsletmeUyari } from "@/components/isletme";
 
 const BOS: OdulDurumu = {};
@@ -219,6 +226,43 @@ export function EsikAyari({ mevcutTl }: { mevcutTl: number }) {
 
       <IsletmeDugme type="submit" disabled={bekliyor}>
         {bekliyor ? "Kaydediliyor…" : "Eşiği kaydet"}
+      </IsletmeDugme>
+    </form>
+  );
+}
+
+/** Çarkta çıkabilecek en büyük ödül (Ü49). */
+export function CarkSiniri({ mevcutTl, uygunSayisi }: { mevcutTl: number; uygunSayisi: number }) {
+  const [durum, action, bekliyor] = useActionState(carkSiniriEylemi, {} as EsikDurumu);
+
+  return (
+    <form action={action} className="space-y-4">
+      {durum.hata && <IsletmeUyari>{durum.hata}</IsletmeUyari>}
+      {durum.bilgi && <IsletmeUyari tur="bilgi">{durum.bilgi}</IsletmeUyari>}
+
+      {uygunSayisi === 0 && (
+        <IsletmeUyari tur="bekle">
+          Bu sınırın altında anlık ödülün yok — çark hiç dönmüyor. Ya sınırı yükselt ya da daha
+          küçük değerli bir anlık ödül ekle.
+        </IsletmeUyari>
+      )}
+
+      <IsletmeAlan
+        etiket="Çarkta en büyük ödül (TL)"
+        ipucu={`Çark, anlık ödüllerinden bu tutarın altında kalanları dağıtır — şu an ${uygunSayisi} ödül uygun. Üstündekiler katalogda kalır, oyun içinde çıkmaya devam eder. Ucuz ödül çok daha sık çıkar.`}
+      >
+        <input
+          name="sinir"
+          type="text"
+          inputMode="numeric"
+          defaultValue={String(mevcutTl)}
+          className={isletmeGirdi}
+          placeholder="25"
+        />
+      </IsletmeAlan>
+
+      <IsletmeDugme type="submit" disabled={bekliyor}>
+        {bekliyor ? "Kaydediliyor…" : "Sınırı kaydet"}
       </IsletmeDugme>
     </form>
   );

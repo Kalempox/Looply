@@ -22,10 +22,12 @@ import type { OyunEkraniProps } from "./ortak";
  *
  * ── İniş önizlemesi ─────────────────────────────────────────
  *
- * Sürüklerken parçanın **kaplayacağı kareler** boyanıyor: sığıyorsa vurgu
- * rengi, sığmıyorsa tehlike. Eski ekran yalnızca geçerli köşeleri
- * ışıklandırıyordu ve "bu köşeye koyarsam parça nereye taşar" sorusunu
- * oyuncunun kafasında çözmesini bekliyordu.
+ * Sürüklerken **yalnızca parçanın kaplayacağı kareler** boyanıyor:
+ * sığıyorsa vurgu rengi, sığmıyorsa tehlike.
+ *
+ * Bir ara sürüm parçanın sığdığı bütün köşeleri de ışıklandırıyordu.
+ * Kaldırıldı: ızgaranın yarısı yanınca parçanın nereye **ineceği** değil
+ * nereye **inebileceği** görünüyor ve oyuncunun sorduğu soru bu değil.
  *
  * ── Çapa: parçanın sol üst köşesi ───────────────────────────
  *
@@ -52,16 +54,27 @@ export function BlokEkrani({ tohum, bolum, bitti }: OyunEkraniProps) {
   /** Parmak ızgaranın üstüne hiç geldi mi — gelmediyse bu bir dokunuş. */
   const suruklendi = useRef(false);
 
-  /** Seçili parçanın sığdığı köşeler — dokunmadan önce görünsün. */
-  const gecerliKoseler = useMemo(() => {
-    if (secili === null) return new Set<number>();
-    const kume = new Set<number>();
+  /**
+   * Seçili parça ızgaraya hiç sığıyor mu?
+   *
+   * Önceki sürüm sığdığı **bütün** köşeleri ışıklandırıyordu. Ürün sahibi
+   * kaldırılmasını istedi ve haklı: ızgaranın yarısı yanıp sönünce parçanın
+   * nereye ineceği değil, nereye inebileceği görünüyor — oyuncunun sorduğu
+   * soru bu değil. Artık yalnızca sürüklenen parçanın kaplayacağı kareler
+   * boyanıyor.
+   *
+   * Sayı yine de hesaplanıyor ama tek bir soru için: hiçbir yere sığmayan
+   * parçada oyuncu boşuna uğraşmasın diye. İlk sığan köşede duruyoruz —
+   * 64 karenin tamamını taramaya gerek yok.
+   */
+  const sigiyorMu = useMemo(() => {
+    if (secili === null) return true;
     for (let s = 0; s < 8; s++) {
       for (let k = 0; k < 8; k++) {
-        if (blok.uygula(durum, { t: secili, s, k })) kume.add(s * 8 + k);
+        if (blok.uygula(durum, { t: secili, s, k })) return true;
       }
     }
-    return kume;
+    return false;
   }, [durum, secili]);
 
   /**
@@ -135,7 +148,6 @@ export function BlokEkrani({ tohum, bolum, bitti }: OyunEkraniProps) {
           const k = i % 8;
           const dolu = (durum.izgara[s] & (1 << k)) !== 0;
           const inecek = onizleme?.kareler.has(i) ?? false;
-          const kose = gecerliKoseler.has(i);
 
           return (
             <button
@@ -152,9 +164,7 @@ export function BlokEkrani({ tohum, bolum, bitti }: OyunEkraniProps) {
                     : "bg-tehlike/40 ring-1 ring-tehlike/70"
                   : dolu
                     ? "bg-vurgu"
-                    : kose
-                      ? "bg-vurgu/25 ring-1 ring-vurgu/50"
-                      : "bg-cukur"
+                    : "bg-cukur"
               }`}
             />
           );
@@ -216,13 +226,13 @@ export function BlokEkrani({ tohum, bolum, bitti }: OyunEkraniProps) {
       <p className="mt-4 text-center text-[13px] text-yazi-sonuk">
         {secili === null
           ? "Bir parçayı ızgaraya sürükle"
-          : gecerliKoseler.size === 0
+          : !sigiyorMu
             ? "Bu parça hiçbir yere sığmıyor — başka parça dene"
             : hedef
               ? onizleme?.gecerli
                 ? "Bırak"
                 : "Buraya sığmıyor"
-              : "Işıklı bir kareye sürükle ya da dokun"}
+              : "Izgaranın üstüne sürükle — parçanın ineceği yer görünecek"}
       </p>
     </div>
   );

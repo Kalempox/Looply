@@ -200,10 +200,35 @@ describe("mahremiyet eşiği (Ü30)", () => {
     assert.ok(o.tekilOyuncu >= 9, "toplam sayı gizlendi — eşik yanlış yere uygulanmış");
   });
 
+  /**
+   * Sıfır ile gizlenmiş sayı karıştırılmamalı: `null` "veri yok" değil,
+   * "var ama gizlendi" demek.
+   *
+   * ── Neden sabit bir saat seçilmiyor ─────────────────────────
+   *
+   * Önce saat 4'ün boş olduğu varsayılıyordu. Test kafesi demo kafesiyle
+   * ortak ve tarayıcıda gece yarısından sonra oynanan tek bir oyun o saati
+   * doldurdu; test, kodda hiçbir şey bozulmadan kırıldı. Artık boş saati
+   * veritabanına sorup buluyoruz — hangi saatin boş olduğu testin bilmesi
+   * gereken bir şey değil, sınanan iddia "boş saat sıfır görünmeli".
+   */
   test("sıfır olan grup gizlenmiş sayılmaz", async () => {
     const { saatler } = await rapor.saatlikDagilim(kafeA, aralik, true);
-    const bos = saatler.find((s) => s.saat === 4);
-    assert.equal(bos?.oyuncu, 0, "boş saat `<5` gibi gösterildi — bilgi kaybı");
+
+    const dolu = await withBypass("test — dolu saatler", (db) =>
+      db.all<{ saat: string }>(
+        `SELECT DISTINCT extract(hour FROM started_at AT TIME ZONE 'Europe/Istanbul')::int AS saat
+           FROM play_sessions
+          WHERE cafe_id = $1 AND status = 'completed'
+            AND business_date >= $2 AND business_date < $3`,
+        [kafeA, aralik.baslangic, aralik.bitis],
+      ),
+    );
+    const doluSaatler = new Set(dolu.map((r) => Number(r.saat)));
+
+    const bos = saatler.find((s) => !doluSaatler.has(s.saat));
+    assert.ok(bos, "dönemde hiç boş saat kalmamış — test verisi kurulamıyor");
+    assert.equal(bos.oyuncu, 0, "boş saat `<5` gibi gösterildi — bilgi kaybı");
   });
 
   test("gizlenmiş dönem 'boş dönem' sayılmaz — REGRESYON", () => {

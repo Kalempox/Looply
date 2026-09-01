@@ -42,6 +42,19 @@ export const ANAHTARLAR = {
    * rapor, tahmini gösterirken hangi tutarı kullandığını da yazıyor.
    */
   ortalamaAdisyon: "ortalama_adisyon_kurus",
+  /**
+   * Çarkta çıkabilecek en büyük ödül (Ü49, kuruş).
+   *
+   * Çark ödülleri kafenin **günlük havuzundan** çıkıyor (E10) ama havuzun
+   * kendisi tek bir ödülün büyüklüğünü sınırlamıyor: 1.500 TL'lik havuzdan
+   * tek seferde 300 TL'lik bir ödül de çıkabilir. Ürün sahibinin tarifi
+   * bunun tersi — *"çok da yüksek ödüller vermeyen bir çark."*
+   *
+   * Bu yüzden ayrı bir tavan: bu tutarın üstündeki anlık ödüller çarka
+   * hiç girmiyor. Katalogda durmaya devam ediyorlar, oyun içi anlık ödül
+   * olarak çıkabiliyorlar — yalnızca çarkın listesinde yoklar.
+   */
+  carkUstSinir: "cark_ust_sinir_kurus",
 } as const;
 
 export type Anahtar = (typeof ANAHTARLAR)[keyof typeof ANAHTARLAR];
@@ -61,6 +74,9 @@ export const SINIRLAR: Record<Anahtar, { en_az: number; en_cok: number; varsayil
   [ANAHTARLAR.gunlukButce]: { en_az: 1_500_00, en_cok: 100_000_00, varsayilan: 1_500_00 },
   // Bir kahveden ucuz olamaz, bir masanın toplam hesabından pahalı olmasın.
   [ANAHTARLAR.ortalamaAdisyon]: { en_az: 20_00, en_cok: 5_000_00, varsayilan: 150_00 },
+  // Varsayılan 25 TL: bir kahvenin altında, "küçük ödül" tarifine uyuyor.
+  // Üst sınır 200 TL — kafe isterse çarkı büyütebilir ama sınırsız değil.
+  [ANAHTARLAR.carkUstSinir]: { en_az: 5_00, en_cok: 200_00, varsayilan: 25_00 },
 };
 
 export async function sayiOku(cafeId: string, anahtar: Anahtar): Promise<number> {

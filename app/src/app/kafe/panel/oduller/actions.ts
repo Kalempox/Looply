@@ -78,3 +78,31 @@ export async function esikEylemi(_onceki: EsikDurumu, form: FormData): Promise<E
         : `${tl.toLocaleString("tr-TR")} TL üstündeki ödüller 24 saat sonra açılacak.`,
   };
 }
+
+/**
+ * Çarkın üst sınırı (Ü49).
+ *
+ * Çark ödülleri kafenin günlük havuzundan çıkıyor ama havuz **tek bir
+ * ödülün** büyüklüğünü sınırlamıyor. Bu ayar onu sınırlıyor: üstündeki
+ * anlık ödüller katalogda kalıyor ve oyun içi anlık ödül olarak çıkmaya
+ * devam ediyor, yalnızca çarkın listesine girmiyorlar.
+ */
+export async function carkSiniriEylemi(
+  _onceki: EsikDurumu,
+  form: FormData,
+): Promise<EsikDurumu> {
+  const o = await kafeYoneticisiGerekli();
+
+  const tl = sayi(form, "sinir");
+  const sonuc = await ayar.sayiYaz({
+    cafeId: o.cafeId,
+    anahtar: ayar.ANAHTARLAR.carkUstSinir,
+    deger: tl * 100,
+    aktorId: o.ozneId,
+  });
+
+  if (!sonuc.ok) return { hata: sonuc.hata };
+
+  revalidatePath("/kafe/panel/oduller");
+  return { bilgi: `Çarkta en fazla ${tl.toLocaleString("tr-TR")} TL değerinde ödül çıkacak.` };
+}

@@ -83,7 +83,7 @@ before(async () => {
     ["Elif", "Demir"],
     ["Ahmet", "Çelik"],
   ] as const) {
-    const r = await kaydet({ telefon: yeniTelefon(), ad, soyad, dogumYili: 1990 });
+    const r = await kaydet({ telefon: yeniTelefon(), ad, soyad, dogumYili: 1990, pazarlamaIzni: false });
     oyuncular.push({ id: r.oyuncu.id, ad, soyad });
   }
 
@@ -177,6 +177,7 @@ describe("liderlik · sıralama ve sınırlar", () => {
       ad: "Uzak",
       soyad: "Oyuncu",
       dogumYili: 1990,
+      pazarlamaIzni: false,
     });
     await skorYaz({ playerId: r.oyuncu.id, cafeId, skor: 99_999, k2: false });
 

@@ -71,8 +71,8 @@ before(async () => {
   cafeId = await kafeKur("CarkTest", true);
   cafeId2 = await kafeKur("CarkButcesiz", false);
 
-  const a = await kaydet({ telefon: yeniTelefon(), ad: "Deniz", soyad: "Aydın", dogumYili: 1990 });
-  const b = await kaydet({ telefon: yeniTelefon(), ad: "Kerem", soyad: "Şahin", dogumYili: 1992 });
+  const a = await kaydet({ telefon: yeniTelefon(), ad: "Deniz", soyad: "Aydın", dogumYili: 1990, pazarlamaIzni: false });
+  const b = await kaydet({ telefon: yeniTelefon(), ad: "Kerem", soyad: "Şahin", dogumYili: 1992, pazarlamaIzni: false });
   oyuncu = a.oyuncu.id;
   oyuncu2 = b.oyuncu.id;
 });
@@ -132,6 +132,53 @@ describe("çark · günlük sınır", () => {
       kanitSeviyesi: 2,
     });
     assert.equal(s.ok, false, "bütçesiz kafeden ödül çıktı — E10 delindi");
+  });
+});
+
+describe("çark · üst sınır", () => {
+  /**
+   * Ürün sahibinin şartı: *"küçük ödüller dağıtacak."* Havuz (E10) tek bir
+   * ödülün büyüklüğünü sınırlamıyor; sınırlayan şey bu ayar.
+   *
+   * Test kafesinde 5 / 15 / 45 TL var, varsayılan sınır 25 TL: 45 TL'lik
+   * ödül çarkta hiç görünmemeli.
+   */
+  test("sınırın üstündeki ödül çarka girmiyor", async () => {
+    const durum = await cark.durum({ playerId: oyuncu2, cafeId });
+    assert.equal(durum.acik, true);
+    if (!durum.acik) return;
+
+    assert.ok(
+      durum.dilimler.every((d) => d.kurusDegeri <= 25_00),
+      `sınırın üstünde ödül çarkta: ${durum.dilimler.map((d) => d.kurusDegeri).join(", ")}`,
+    );
+    assert.ok(
+      !durum.dilimler.some((d) => d.baslik === "Test pahali"),
+      "45 TL'lik ödül çarkta göründü",
+    );
+  });
+
+  /**
+   * ASIL GÜVENCE. Seçim tarafındaki süzgeç ekranı düzeltir; parayı yazan
+   * fonksiyonun da reddetmesi gerekiyor — yoksa doğrudan çağıran biri
+   * (ya da kurcalanmış bir talep) sınırı atlardı.
+   */
+  test("sınır üstü ödül doğrudan çağrıyla da yazılamıyor — ASIL GÜVENCE", async () => {
+    const pahali = await withBypass("test pahali odul", (db) =>
+      db.one<{ id: string }>(
+        `SELECT id FROM rewards WHERE cafe_id = $1 AND title = 'Test pahali'`,
+        [cafeId],
+      ),
+    );
+    assert.ok(pahali);
+
+    const s = await carkOduluVer({
+      playerId: oyuncu2,
+      cafeId,
+      odulId: pahali.id,
+      kanitSeviyesi: 2,
+    });
+    assert.equal(s.ok, false, "sınır üstü ödül çarktan yazıldı");
   });
 });
 

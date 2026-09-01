@@ -3,6 +3,7 @@ import { imzala, imzaGecerliMi } from "@/lib/crypto";
 import { withBypass, type Db } from "@/db/context";
 import { log } from "@/lib/log";
 import * as acil from "./acil";
+import * as ayar from "./ayar";
 
 /**
  * Şans çarkı — Ü49.
@@ -68,13 +69,29 @@ export type Dilim = {
 
 type OdulSatiri = { id: string; title: string; cost_kurus: string };
 
-async function odulleriOku(db: Db, cafeId: string): Promise<Dilim[]> {
+/**
+ * Çarka girecek ödüller.
+ *
+ * ── Üst sınır neden var ─────────────────────────────────────
+ *
+ * Ödüller kafenin günlük havuzundan çıkıyor (E10) ama havuz **tek bir
+ * ödülün** büyüklüğünü sınırlamıyor: 1.500 TL'lik havuzdan tek seferde
+ * 300 TL'lik ödül de çıkabilirdi. Ürün sahibinin tarifi bunun tersi —
+ * *"küçük ödüller dağıtacak."* Sınır kafenin ayarı (`cark_ust_sinir_kurus`,
+ * varsayılan 25 TL); üstündeki anlık ödüller katalogda kalıyor ve oyun içi
+ * anlık ödül olarak çıkmaya devam ediyor, yalnızca çarkta yoklar.
+ *
+ * Süzgeç **SQL'de**: JavaScript'te filtrelenseydi ağırlık hesabına giren
+ * liste ile ekrana giden liste ayrışabilirdi.
+ */
+async function odulleriOku(db: Db, cafeId: string, ustSinirKurus: number): Promise<Dilim[]> {
   const satirlar = await db.all<OdulSatiri>(
     `SELECT id, title, cost_kurus
        FROM rewards
       WHERE cafe_id = $1 AND kind = 'instant' AND active
+        AND cost_kurus <= $2
       ORDER BY cost_kurus, id`,
-    [cafeId],
+    [cafeId, ustSinirKurus],
   );
 
   return satirlar.map((r) => ({
@@ -82,6 +99,11 @@ async function odulleriOku(db: Db, cafeId: string): Promise<Dilim[]> {
     baslik: r.title,
     kurusDegeri: Number(r.cost_kurus),
   }));
+}
+
+/** Kafenin çark tavanı — `withBypass` dışında okunuyor (RLS açık kalsın). */
+async function ustSinir(cafeId: string): Promise<number> {
+  return ayar.sayiOku(cafeId, ayar.ANAHTARLAR.carkUstSinir);
 }
 
 /**
@@ -159,8 +181,10 @@ export async function durum(opts: {
     return { acik: false, sebep: "durduruldu" };
   }
 
+  const sinir = await ustSinir(opts.cafeId);
+
   return withBypass("çark durumu", async (db) => {
-    const oduller = await odulleriOku(db, opts.cafeId);
+    const oduller = await odulleriOku(db, opts.cafeId, sinir);
     if (oduller.length === 0) return { acik: false as const, sebep: "odul_yok" as const };
 
     const son = await sonCevirme(db, opts);
@@ -240,8 +264,9 @@ export function durumMetni(d: CarkDurumu): string {
  */
 export async function misafirDurumu(cafeId: string): Promise<Dilim[]> {
   if (await acil.durduruldu(acil.ANAHTARLAR.kupon)) return [];
+  const sinir = await ustSinir(cafeId);
   return withBypass("misafir çark dilimleri", async (db) =>
-    dilimleriYay(await odulleriOku(db, cafeId)),
+    dilimleriYay(await odulleriOku(db, cafeId, sinir)),
   );
 }
 
@@ -280,8 +305,10 @@ export async function misafirCevir(opts: { cafeId: string }): Promise<MisafirSon
     return { ok: false, hata: "Ödül dağıtımı geçici olarak durduruldu." };
   }
 
+  const sinir = await ustSinir(opts.cafeId);
+
   return withBypass("misafir çark çevirme", async (db) => {
-    const oduller = await odulleriOku(db, opts.cafeId);
+    const oduller = await odulleriOku(db, opts.cafeId, sinir);
     if (oduller.length === 0) {
       return { ok: false as const, hata: "Bu kafede şu an dağıtılan ödül yok." };
     }
