@@ -74,30 +74,18 @@ export default async function OynaSayfasi() {
       <div className="mx-auto w-full max-w-md px-5 pb-16">
         <DurumSeridi durum={seridDurumu} demoKapisi={kodEkrandaGosterilir()} />
 
-        {/* ── Kimlik ve sayılar ─────────────────────────── */}
-        <section className="gir mb-10">
-          <p className="etiket-caps text-yazi-sonuk">
-            Merhaba
-          </p>
-          <h1 className="mt-1 font-display text-4xl leading-none font-extrabold tracking-tight">
-            {g.ad}
-          </h1>
-
-          <div className="mt-6 grid grid-cols-2 gap-2.5">
-            <Sayi
-              etiket={masa ? "Bu kafedeki puanın" : "Puan"}
-              deger={sayilar.kafePuani ?? 0}
-              sonek={masa ? undefined : "kafede kazanılır"}
-              vurgu={masa ? "turkuaz" : undefined}
-            />
-            <Sayi
-              etiket="Kullanılabilir kupon"
-              deger={sayilar.aktifKupon}
-              vurgu={sayilar.aktifKupon > 0 ? "pirinc" : undefined}
-            />
-          </div>
-
-          {seviyeBilgisi && <SeviyeSeridi bilgi={seviyeBilgisi} />}
+        {/* ── Durum kartı (Ü61) ─────────────────────────
+            Oyuncu tarafının dili çarktan geliyor: koyu zemin, ışın
+            dokusu, canlı vurgular. Panelin dili sakin ve resmî;
+            oyuncununki heyecanlı olmalı, ikisi bilerek ayrıştı. */}
+        <section className="gir mb-8">
+          <DurumKarti
+            ad={g.ad}
+            puan={sayilar.kafePuani ?? 0}
+            kupon={sayilar.aktifKupon}
+            masada={!!masa}
+            seviye={seviyeBilgisi}
+          />
         </section>
 
         {g.odulKilidiBitis && (
@@ -242,39 +230,113 @@ function seridBelirle(masa: Awaited<ReturnType<typeof masaOturumu.aktif>>): Seri
  * Puanın yanında değil altında duruyor: puan harcanan şey, seviye biriken
  * şey. Yan yana konsalardı aynı cinsten iki sayı gibi okunurlardı.
  */
-function SeviyeSeridi({ bilgi }: { bilgi: KafeSeviyesi }) {
+/**
+ * Oyuncunun durum kartı — Ü61.
+ *
+ * ── Neden koyu ve renkli ────────────────────────────────────
+ *
+ * Ürün sahibinin ayrımı net: **panel resmî ve net, oyuncu tarafı
+ * eğlenceli, canlı, içine çeken.** Bu ekran üç beyaz kutuda üç sayı
+ * gösteriyordu — doğru bilgi, yanlış ton. Çarkın dili (koyu mor zemin,
+ * ışın dokusu, altın vurgu) buraya taşındı.
+ *
+ * ── Neden tek kart ──────────────────────────────────────────
+ *
+ * Puan, kupon ve seviye üç ayrı kutudaydı ve üçü de aynı soruyu
+ * cevaplıyor: *"bu kafede nerede duruyorum?"* Tek kart, üç kutunun
+ * kapladığı yerin yarısını kaplıyor ve okuması bir bakış sürüyor.
+ *
+ * ── Renkler nereden ─────────────────────────────────────────
+ *
+ * Zemin çark sahnesiyle aynı aileden. Palet jetonları burada da
+ * kullanılıyor (altın vurgu `--color-odul`); yeni renk tanımlanmadı,
+ * yalnızca koyu zeminde okunan tonlar seçildi.
+ */
+function DurumKarti({
+  ad,
+  puan,
+  kupon,
+  masada,
+  seviye,
+}: {
+  ad: string;
+  puan: number;
+  kupon: number;
+  masada: boolean;
+  seviye: KafeSeviyesi | null;
+}) {
   return (
-    <Link
-      href="/profil"
-      className="mt-2.5 block rounded-lg border border-cizgi bg-cukur px-4 py-3"
+    <div
+      className="relative overflow-hidden rounded-3xl px-5 py-6 text-white"
+      style={{
+        background:
+          "linear-gradient(150deg, #4c2a8f 0%, #2a1450 55%, #1b0e38 100%)",
+      }}
     >
-      <div className="flex items-baseline justify-between gap-3">
-        <span className="etiket-caps text-yazi-sonuk">
-          Bu kafedeki seviyen
-        </span>
-        <span className="font-data text-lg leading-none font-bold text-vurgu tabular">
-          {bilgi.seviye}
-        </span>
-      </div>
+      {/*
+        Işın dokusu — çark sahnesinin sakinleştirilmiş hâli.
 
-      <div className="mt-2.5 h-1 w-full rounded-full bg-cizgi">
-        <div
-          className="asil-serit h-full rounded-full bg-vurgu"
-          style={{ width: `${bilgi.ilerlemeYuzde}%` }}
-          role="progressbar"
-          aria-valuenow={bilgi.ilerlemeYuzde}
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-label="Seviye ilerlemesi"
-        />
-      </div>
+        Dönmüyor: ana ekran her açılışta hareket etmemeli.
 
-      <div className="mt-1.5 font-data text-[9px] text-yazi-sonuk">
-        {bilgi.sonrakiEsik === null
-          ? "En üst seviyedesin"
-          : `Sonraki seviyeye ${(bilgi.sonrakiEsik - bilgi.xp).toLocaleString("tr-TR")} XP`}
+        Merkez kartın ÜSTÜNDE, dışarıda. İlk denemede merkez kartın
+        ortasına denk geliyordu ve ışınların birleştiği nokta tam
+        sayıların üstünde bir hedef tahtası gibi duruyordu. Dışarı
+        alınınca geriye yalnızca eğik ışınlar kalıyor.
+      */}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute -top-[240%] left-1/2 size-[300%] -translate-x-1/2 opacity-[0.10]"
+        style={{
+          background:
+            "repeating-conic-gradient(from 0deg, #fff 0deg 4deg, transparent 4deg 14deg)",
+        }}
+      />
+
+      <div className="relative">
+        <p className="etiket-caps text-white/60">Merhaba</p>
+        <h1 className="mt-1 font-display text-3xl leading-none font-extrabold tracking-tight">
+          {ad}
+        </h1>
+
+        <div className="mt-5 grid grid-cols-2 gap-2.5">
+          <Kutucuk
+            etiket={masada ? "Bu kafedeki puanın" : "Puan"}
+            deger={puan}
+            alt={masada ? undefined : "kafede kazanılır"}
+          />
+          <Kutucuk etiket="Kullanılabilir kupon" deger={kupon} altin={kupon > 0} />
+        </div>
+
+        {seviye && (
+          <Link href="/profil" className="mt-3 block rounded-2xl bg-white/10 px-4 py-3.5">
+            <div className="flex items-baseline justify-between gap-3">
+              <span className="etiket-caps text-white/60">Bu kafedeki seviyen</span>
+              <span className="font-data text-lg leading-none font-bold text-odul tabular">
+                {seviye.seviye}
+              </span>
+            </div>
+
+            <div className="mt-2.5 h-1.5 w-full rounded-full bg-white/15">
+              <div
+                className="asil-serit h-full rounded-full bg-odul"
+                style={{ width: `${seviye.ilerlemeYuzde}%` }}
+                role="progressbar"
+                aria-valuenow={seviye.ilerlemeYuzde}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-label="Seviye ilerlemesi"
+              />
+            </div>
+
+            <div className="mt-2 font-data text-[10px] text-white/55">
+              {seviye.sonrakiEsik === null
+                ? "En üst seviyedesin"
+                : `Sonraki seviyeye ${(seviye.sonrakiEsik - seviye.xp).toLocaleString("tr-TR")} XP`}
+            </div>
+          </Link>
+        )}
       </div>
-    </Link>
+    </div>
   );
 }
 
@@ -496,42 +558,39 @@ function KucukSatir({ satir }: { satir: liderlik.LiderSatiri }) {
   );
 }
 
+/** Durum kartındaki tek sayı — koyu zeminde okunan cam kutu. */
+function Kutucuk({
+  etiket,
+  deger,
+  alt,
+  altin,
+}: {
+  etiket: string;
+  deger: number;
+  alt?: string;
+  altin?: boolean;
+}) {
+  return (
+    <div className="rounded-2xl bg-white/10 px-4 py-4">
+      <div className="etiket-caps leading-tight text-white/60">{etiket}</div>
+      <div
+        className={`mt-2 font-data text-3xl leading-none font-bold tabular ${
+          altin ? "text-odul" : "text-white"
+        }`}
+      >
+        {deger.toLocaleString("tr-TR")}
+      </div>
+      {alt && <div className="mt-1.5 text-[11px] leading-snug text-white/55">{alt}</div>}
+    </div>
+  );
+}
+
 function saatBicim(d: Date): string {
   return d.toLocaleTimeString("tr-TR", {
     hour: "2-digit",
     minute: "2-digit",
     timeZone: "Europe/Istanbul",
   });
-}
-
-function Sayi({
-  etiket,
-  deger,
-  sonek,
-  vurgu,
-}: {
-  etiket: string;
-  deger: number;
-  sonek?: string;
-  vurgu?: "turkuaz" | "pirinc";
-}) {
-  const renk =
-    vurgu === "turkuaz" ? "text-vurgu" : vurgu === "pirinc" ? "text-odul-koyu" : "text-yazi";
-  const cerceve =
-    vurgu === "turkuaz" ? "border-vurgu" : vurgu === "pirinc" ? "border-odul" : "border-cizgi";
-  return (
-    <div className={`rounded-2xl border ${cerceve} bg-yuzey px-4 py-5`}>
-      <div className="etiket-caps leading-tight text-yazi-sonuk">
-        {etiket}
-      </div>
-      <div className={`mt-2.5 font-data text-3xl leading-none font-bold tabular ${renk}`}>
-        {deger.toLocaleString("tr-TR")}
-      </div>
-      {sonek && (
-        <div className="mt-1.5 font-data text-[9px] tracking-wide text-yazi-sonuk">{sonek}</div>
-      )}
-    </div>
-  );
 }
 
 function OyunKarosu({ oyun }: { oyun: HerhangiOyun }) {
