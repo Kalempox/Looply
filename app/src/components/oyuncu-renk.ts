@@ -33,7 +33,7 @@
  * - `canli` — koyu zeminde ya da dolgu olarak kullanılan doygun ton.
  */
 
-export type OyuncuRengi = "menekse" | "nane" | "gul" | "amber" | "gok";
+export type OyuncuRengi = "kahve" | "yesil" | "pembe" | "menekse" | "amber" | "gok";
 
 /**
  * Oyuncu tarafındaki kartın zemini — Ü67.
@@ -77,9 +77,13 @@ export type RenkTonu = {
 };
 
 export const RENK: Record<OyuncuRengi, RenkTonu> = {
+  /* Sıcak içecek — Ü69. Kahvenin kendi rengi. */
+  kahve: { zemin: "#f4eae1", ana: "#8a5a33", koyu: "#5c3a1e", canli: "#c08b5c" },
+  /* Doğrudan tutar kuponu — para yeşili. */
+  yesil: { zemin: "#e3f4e8", ana: "#15803d", koyu: "#14532d", canli: "#4ade80" },
+  /* Tatlı — koyu pembe. */
+  pembe: { zemin: "#fde7f0", ana: "#be185d", koyu: "#831843", canli: "#f472b6" },
   menekse: { zemin: "#f1ecfe", ana: "#7c3aed", koyu: "#5b21b6", canli: "#a78bfa" },
-  nane: { zemin: "#d9f7ef", ana: "#0d9488", koyu: "#115e59", canli: "#5eead4" },
-  gul: { zemin: "#ffe7ec", ana: "#e11d48", koyu: "#9f1239", canli: "#fb7185" },
   amber: { zemin: "#fff2d5", ana: "#c2740a", koyu: "#8a5206", canli: "#fbbf24" },
   gok: { zemin: "#e2f3fd", ana: "#0284c7", koyu: "#075985", canli: "#38bdf8" },
 };
@@ -93,11 +97,15 @@ export const RENK: Record<OyuncuRengi, RenkTonu> = {
  *
  * Tanınmayan oyun menekşe: yeni bir oyun eklendiğinde ekran renksiz
  * kalmıyor, yalnızca kimliksiz kalıyor.
+ *
+ * Düşen Ü69'da gülden **pembeye** geçti: kupon paleti koyu pembeyi
+ * aldığında iki yakın ton yan yana gelirdi ve altı renk yerine beş
+ * tutmak, ayırt edilebilirliği artırıyor.
  */
 export const OYUN_RENGI: Record<string, OyuncuRengi> = {
   blok: "gok",
   kelime: "menekse",
-  dusen: "gul",
+  dusen: "pembe",
 };
 
 export function oyunRengi(oyunId: string): OyuncuRengi {
@@ -109,7 +117,8 @@ export function oyunRengi(oyunId: string): OyuncuRengi {
  *
  * Ü65'te renk kuponun **teknik tipinden** (ürün/yüzde/tutar) geliyordu
  * ve "Tatlıda %10 indirim" menekşe çıkıyordu: ekranda pasta çizimi,
- * kenarında mor bir şerit. Ü67'de renk gördüğün şeyden türüyor —
- * içecek amber, tatlı gül, para nane — böylece çizim ve renk aynı
- * şeyi söylüyor.
+ * kenarında mor bir şerit. Ü67'de renk gördüğün şeyden türüdü ve Ü69'da
+ * ürün sahibi tonları kendisi seçti — **sıcak içecek kahverengi, tatlı
+ * koyu pembe, doğrudan tutar kuponu koyu yeşil.** Üçü de gerçek
+ * nesnenin rengi; öğrenilecek bir eşleme kalmıyor.
  */

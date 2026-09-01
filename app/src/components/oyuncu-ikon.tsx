@@ -117,7 +117,7 @@ export function KelimeIkonu({ boy }: IkonProps) {
 
 /** Düşen — inen parça ve biriken duvar, kontur. */
 export function DusenIkonu({ boy }: IkonProps) {
-  const r = RENK.gul;
+  const r = RENK.pembe;
   const cizgi = {
     fill: "none",
     stroke: r.ana,

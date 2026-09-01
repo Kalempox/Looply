@@ -106,9 +106,9 @@ export function gorselSec(metin: string, tur?: "urun" | "yuzde" | "tutar"): Kupo
  * söylemeli.
  */
 export const GORSEL_RENGI = {
-  icecek: "amber",
-  tatli: "gul",
-  para: "nane",
+  icecek: "kahve",
+  tatli: "pembe",
+  para: "yesil",
 } as const;
 
 /**

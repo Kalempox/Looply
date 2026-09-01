@@ -41,7 +41,7 @@ export default async function FirsatlarSayfasi() {
   if (!masa) {
     return (
       <OyuncuSayfa aktif="/oyna" geri={{ href: "/oyna", etiket: "Ana ekran" }}>
-        <SayfaBasi ust="Fırsatlar" baslik="Buradaki fırsatlar" renk="nane" gorsel="etiket" />
+        <SayfaBasi ust="Fırsatlar" baslik="Buradaki fırsatlar" renk="yesil" gorsel="etiket" />
         <div className="rounded-3xl border border-cizgi bg-yuzey px-6 py-8">
           <p className="text-[15px] leading-relaxed text-yazi-sonuk">
             Şu an bir kafede değilsin. Fırsatlar kafeye özel — masadaki karekodu okuttuğunda o
@@ -67,7 +67,7 @@ export default async function FirsatlarSayfasi() {
 
   return (
     <OyuncuSayfa aktif="/oyna" geri={{ href: "/oyna", etiket: "Ana ekran" }}>
-      <SayfaBasi ust={masa.cafeAdi} baslik="Buradaki fırsatlar" renk="nane" gorsel="etiket">
+      <SayfaBasi ust={masa.cafeAdi} baslik="Buradaki fırsatlar" renk="yesil" gorsel="etiket">
         <div className="grid grid-cols-2 gap-2.5">
           {/* Ü52: puan artık harcanmıyor. Ekranın başında tek başına
               durursa "bunlarla ödül alacağım" diye okunuyor; bu yüzden
@@ -76,7 +76,7 @@ export default async function FirsatlarSayfasi() {
           <Sayac
             etiket="Bu kafedeki puanın"
             deger={(sayilar.kafePuani ?? 0).toLocaleString("tr-TR")}
-            renk="nane"
+            renk="yesil"
             alt="sıralama ve seviye"
           />
           <Sayac

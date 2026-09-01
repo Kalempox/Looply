@@ -189,7 +189,7 @@ export default async function OynaSayfasi() {
               ust={masa.cafeAdi}
               baslik="Buradaki fırsatlar"
               alt="Bu kafenin ödül kataloğu ve ürün indirimleri"
-              renk="nane"
+              renk="yesil"
               gorsel="etiket"
             />
           )}
@@ -468,12 +468,12 @@ function CarkKarti({ durum }: { durum: cark.CarkDurumu }) {
 
   return (
     <section className="mb-10">
-      <h2 className="etiket-caps mb-3" style={{ color: RENK.gul.ana }}>
+      <h2 className="etiket-caps mb-3" style={{ color: RENK.pembe.ana }}>
         Şans çarkı
       </h2>
 
       <Link href="/cark" className="block transition-transform active:scale-[0.99]">
-        <RenkliKart renk="gul" dolu>
+        <RenkliKart renk="pembe" dolu>
           <div className="flex items-center gap-4">
             <span className="shrink-0">
               <CarkIkonu boy={54} />

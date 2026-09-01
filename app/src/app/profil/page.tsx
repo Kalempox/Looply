@@ -67,7 +67,7 @@ export default async function ProfilSayfasi() {
       <SayfaBasi ust="Profil" baslik={g.ad} renk="menekse" gorsel="madalya">
         <div className="grid grid-cols-3 gap-2">
           <Sayac etiket="Kafe" deger={String(kafeler.length)} renk="gok" />
-          <Sayac etiket="Oyun" deger={toplamOyun.toLocaleString("tr-TR")} renk="nane" />
+          <Sayac etiket="Oyun" deger={toplamOyun.toLocaleString("tr-TR")} renk="yesil" />
           <Sayac
             etiket="Rozet"
             deger={String(rozetSayisi)}
@@ -137,7 +137,7 @@ export default async function ProfilSayfasi() {
             yol="/davet"
             baslik="Arkadaşını çağır"
             alt="Davet kodunu paylaş, ikiniz de kazanın"
-            renk="nane"
+            renk="yesil"
           />
           <HesapSatiri
             yol="/verilerim"
@@ -201,7 +201,7 @@ function seviyeRengi(seviye: number): OyuncuRengi {
   if (seviye >= 7) return "amber";
   if (seviye >= 5) return "menekse";
   if (seviye >= 3) return "gok";
-  return "nane";
+  return "yesil";
 }
 
 function KafeKarti({ kafe, buradaMi }: { kafe: KafeKarnesi; buradaMi: boolean }) {
