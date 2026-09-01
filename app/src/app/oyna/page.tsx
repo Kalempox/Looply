@@ -5,20 +5,21 @@ import * as masaOturumu from "@/domain/masa";
 import { idIleBul, gorunum } from "@/domain/player";
 import { ozet } from "@/domain/puan";
 import { kafeSeviyesi, type KafeSeviyesi } from "@/domain/xp";
-import { OYUNLAR, gununOyunu, type HerhangiOyun } from "@/oyunlar";
+import { OYUNLAR, gununOyunu } from "@/oyunlar";
 import * as liderlik from "@/domain/liderlik";
 import * as cark from "@/domain/cark";
 import * as seri from "@/domain/seri";
 import { withBypass } from "@/db/context";
 import * as happy from "@/domain/happy";
 import { isGunu } from "@/lib/tarih";
-import { KoyuKart, CamKutu, SiraJetonu, RenkliKart } from "@/components/oyuncu";
-import { RENK, oyunRengi } from "@/components/oyuncu-renk";
-import { OyunIkonu, CarkIkonu, AlevIkonu, KupaIkonu } from "@/components/oyuncu-ikon";
+import { KoyuKart, CamKutu, SiraJetonu, RenkliKart, GorselKart } from "@/components/oyuncu";
+import { RENK, oyunRengi, type OyuncuRengi } from "@/components/oyuncu-renk";
+import { Gorsel, oyunGorseli, type GorselAdi } from "@/components/oyuncu-gorsel";
+import { OyunIkonu, CarkIkonu, KupaIkonu } from "@/components/oyuncu-ikon";
 import { OyuncuNav, NavBosluk } from "@/components/oyuncu-nav";
+import { SeriSahnesi } from "@/components/seri-sahnesi";
 import { kodEkrandaGosterilir } from "@/sms";
 import { DurumSeridi, type SeritDurumu } from "./durum-seridi";
-import { cikisYap } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -130,7 +131,11 @@ export default async function OynaSayfasi() {
               (Ü65): aşağıdaki karolarla aynı renk ailesi, böylece
               "bugünün oyunu" ile "tüm oyunlar" aynı ürünün parçası
               olarak okunuyor. */}
-          <RenkliKart renk={oyunRengi(bonus.id)} className="px-6 py-7">
+          <GorselKart
+            renk={oyunRengi(bonus.id)}
+            gorsel={oyunGorseli(bonus.id)}
+            className="px-6 py-7"
+          >
             <div className="flex items-start gap-4">
               <span className="flex size-16 shrink-0 items-center justify-center rounded-2xl bg-yuzey shadow-sm">
                 <OyunIkonu oyunId={bonus.id} boy={38} />
@@ -155,41 +160,33 @@ export default async function OynaSayfasi() {
             >
               Oyna
             </Link>
-          </RenkliKart>
+          </GorselKart>
         </section>
 
-        {/* ── Oyun listesi ──────────────────────────────── */}
-        <section className="mb-10">
-          <h2 className="mb-3 etiket-caps text-yazi-sonuk">
-            Tüm oyunlar
-          </h2>
-          <ul className="grid grid-cols-2 gap-2.5">
-            {OYUNLAR.filter((oyun) => oyun.id !== bonus.id).map((oyun) => (
-              <OyunKarosu key={oyun.id} oyun={oyun} />
-            ))}
-          </ul>
+        {/* ── Diğer sayfalara geçişler (Ü66) ─────────────
+            Oyun karoları ve "fırsatlar" bağlantısı ayrı ayrı
+            duruyordu; ikisi de "buradan başka bir yere git" diyor ve
+            aynı biçimde durmaları gerekiyordu. */}
+        <section className="mb-10 grid gap-2.5">
+          <GecisKarti
+            yol="/oyunlar"
+            ust="Katalog"
+            baslik="Tüm oyunlar"
+            alt={`${OYUNLAR.length} oyun · kategorilere ayrılmış`}
+            renk="gok"
+            gorsel="blok"
+          />
+          {masa && (
+            <GecisKarti
+              yol="/firsatlar"
+              ust={masa.cafeAdi}
+              baslik="Buradaki fırsatlar"
+              alt="Bu kafenin ödül kataloğu ve ürün indirimleri"
+              renk="nane"
+              gorsel="kahve"
+            />
+          )}
         </section>
-
-        {/* ── Buradaki fırsatlar ────────────────────────── */}
-        {masa && (
-          <Link
-            href="/firsatlar"
-            className="mb-10 block rounded-2xl border border-cizgi bg-yuzey px-5 py-4"
-          >
-            <div className="etiket-caps text-yazi-sonuk">
-              {masa.cafeAdi}
-            </div>
-            <div className="mt-1.5 flex items-baseline justify-between gap-3">
-              <span className="font-display text-lg leading-tight font-bold">
-                Buradaki fırsatlar
-              </span>
-              <span className="text-[14px] text-vurgu">→</span>
-            </div>
-            <p className="mt-1 text-[13px] leading-relaxed text-yazi-sonuk">
-              Bu kafenin ödül kataloğu ve ürün indirimleri
-            </p>
-          </Link>
-        )}
 
         {!kazanabilir && (
           <p className="mb-10 border-l-2 border-cizgi pl-4 text-[13px] leading-relaxed text-yazi-sonuk">
@@ -199,20 +196,14 @@ export default async function OynaSayfasi() {
           </p>
         )}
 
-        {/* ── Gezinme ───────────────────────────────────── */}
-        <nav className="flex flex-col gap-3 border-t border-cizgi pt-6">
-          <Link href="/davet" className="text-[14px] text-vurgu underline">
-            Arkadaşını çağır
-          </Link>
-          <Link href="/verilerim" className="text-[14px] text-vurgu underline">
-            Verilerim ve hesap ayarlarım
-          </Link>
-          <form action={cikisYap}>
-            <button type="submit" className="text-[14px] text-yazi-sonuk underline">
-              Çıkış yap
-            </button>
-          </form>
-        </nav>
+        {/*
+          Hesap bağlantıları (davet, verilerim, çıkış) buradan
+          **profile taşındı** (Ü66). Ürün sahibi *"çıkış yap,
+          arkadaşını çağır vb. butonlar sayfamızın yapısıyla alakasız
+          olmuş"* dedi: ana ekran oynanacak yer, hesap ayarları
+          profilin işi. Alt alta üç çıplak alt çizgili bağlantı,
+          ekranın en altında kalan bir artık gibi duruyordu.
+        */}
 
         <NavBosluk />
       </div>
@@ -404,47 +395,16 @@ function HavuzKarti({ pencere, kafeAdi }: { pencere: happy.Pencere; kafeAdi: str
 function SeriKarti({ seri: s }: { seri: seri.Seri }) {
   const bonus = seri.bonusPuani(s.gun + (s.bugunOynadi ? 1 : 0));
 
+  // Kart artık sahneyi de taşıyor (Ü66): dokununca tam ekran seri
+  // animasyonu açılıyor. Kart ile sahne aynı bileşende çünkü sahne
+  // istemci tarafı ve karta dokunmakla açılıyor.
   return (
     <section className="mb-10">
       <h2 className="etiket-caps mb-3" style={{ color: RENK.amber.ana }}>
         Günlük seri
       </h2>
-
-      {/* Riskteyken pastel amber kart, güvendeyken sakin beyaz: rengin
-          işi burada "bugün bir şey yapman gerekiyor" demek. */}
-      {s.riskte ? (
-        <RenkliKart renk="amber">
-          <SeriGovdesi seri={s} bonus={bonus} />
-        </RenkliKart>
-      ) : (
-        <div className="rounded-3xl border border-cizgi bg-yuzey px-5 py-5">
-          <SeriGovdesi seri={s} bonus={bonus} />
-        </div>
-      )}
+      <SeriSahnesi gun={s.gun} riskte={s.riskte} bonus={bonus} />
     </section>
-  );
-}
-
-function SeriGovdesi({ seri: s, bonus }: { seri: seri.Seri; bonus: number }) {
-  return (
-    <div className="flex items-center gap-4">
-      <span className="shrink-0">
-        <AlevIkonu boy={40} />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block font-display text-lg leading-tight font-bold">
-          {s.gun} gün üst üste
-        </span>
-        <span
-          className="mt-1 block text-[13px] leading-relaxed"
-          style={{ color: s.riskte ? RENK.amber.koyu : "var(--color-yazi-sonuk)" }}
-        >
-          {s.riskte
-            ? `Bugün oynamazsan seri sıfırlanır. Oynarsan ${bonus} puan bonus.`
-            : `Bugün sayıldı. Yarın da gelirsen ${bonus} puan bonus.`}
-        </span>
-      </span>
-    </div>
   );
 }
 
@@ -629,36 +589,60 @@ function saatBicim(d: Date): string {
 }
 
 /**
- * Oyun karosu.
+ * Ana ekrandan çıkan kapı — Ü66.
  *
- * Emojinin yerini oyunun kendi çizimi aldı (Ü65). Emoji her işletim
- * sisteminde başka bir sanatçının çizimiydi; iki karo yan yana
- * gelince boyutları ve hizaları tutmuyordu.
- *
- * Karo oyunun renginde ve renk her yerde aynı: burada, oyun kabuğunda,
- * profildeki geçmiş satırında. Oyuncu adı okumadan hangi oyuna
- * baktığını biliyor.
+ * Katalog ve fırsatlar aynı işi yapıyor: oyuncuyu ana ekranın
+ * dışındaki bir listeye götürüyor. Farklı görünmeleri için bir sebep
+ * yok; arkalarındaki çizim hangisine gittiğini söylüyor.
  */
-function OyunKarosu({ oyun }: { oyun: HerhangiOyun }) {
-  const r = RENK[oyunRengi(oyun.id)];
+function GecisKarti({
+  yol,
+  ust,
+  baslik,
+  alt,
+  renk,
+  gorsel,
+}: {
+  yol: string;
+  ust: string;
+  baslik: string;
+  alt: string;
+  renk: OyuncuRengi;
+  gorsel: GorselAdi;
+}) {
+  const r = RENK[renk];
 
   return (
-    <li>
-      <Link
-        href={`/oyna/${oyun.id}`}
-        className="flex aspect-[4/3] flex-col justify-between rounded-3xl px-4 py-4 transition-all hover:-translate-y-0.5 hover:shadow-md"
-        style={{ background: r.zemin, border: `1px solid ${r.canli}` }}
+    <Link
+      href={yol}
+      className="relative block overflow-hidden rounded-3xl px-5 py-4 transition-all hover:-translate-y-0.5 hover:shadow-md"
+      style={{
+        background: `linear-gradient(135deg, ${r.zemin} 0%, #ffffff 92%)`,
+        border: `1px solid ${r.canli}`,
+      }}
+    >
+      <span
+        aria-hidden
+        className="pointer-events-none absolute -right-4 -bottom-6"
+        style={{ color: r.ana, opacity: 0.15 }}
       >
-        <span className="flex size-11 items-center justify-center rounded-2xl bg-yuzey shadow-sm">
-          <OyunIkonu oyunId={oyun.id} boy={26} />
-        </span>
-        <span>
-          <span className="block text-[15px] leading-tight font-semibold">{oyun.ad}</span>
-          <span className="mt-1 block etiket-caps" style={{ color: r.koyu }}>
-            {oyun.bolumSayisi} bölüm
+        <Gorsel ad={gorsel} boy={112} />
+      </span>
+
+      <div className="relative">
+        <div className="etiket-caps" style={{ color: r.ana }}>
+          {ust}
+        </div>
+        <div className="mt-1 flex items-baseline justify-between gap-3">
+          <span className="font-display text-lg leading-tight font-bold">{baslik}</span>
+          <span aria-hidden className="text-[15px]" style={{ color: r.ana }}>
+            →
           </span>
-        </span>
-      </Link>
-    </li>
+        </div>
+        <p className="mt-1 text-[13px] leading-relaxed" style={{ color: r.koyu }}>
+          {alt}
+        </p>
+      </div>
+    </Link>
   );
 }

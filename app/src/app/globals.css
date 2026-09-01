@@ -295,6 +295,68 @@ body {
 /* Sahnenin arkasındaki yavaş dönen ışık — çark dururken de sahne
    ölü durmasın diye. `will-change` yok: sürekli dönen büyük bir
    katman, ucuz telefonlarda ısınmaya yol açıyor. */
+/* ── Günlük seri sahnesi (Ü66) ─────────────────────────────────
+   Alev canlı durmalı ama dikkat çalmamalı: iki buçuk saniyelik yavaş
+   bir salınım, ekranın odağını sayıda bırakıyor. */
+
+@keyframes alev-titre {
+  0%,
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
+  35% {
+    transform: scale(1.05) rotate(-2deg);
+  }
+  70% {
+    transform: scale(0.97) rotate(2deg);
+  }
+}
+
+.alev-titre {
+  animation: alev-titre 2.4s ease-in-out infinite;
+  transform-origin: 50% 85%;
+}
+
+@keyframes seri-sayi {
+  0% {
+    transform: scale(0.35);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.14);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.seri-sayi {
+  animation: seri-sayi 0.7s cubic-bezier(0.2, 0.9, 0.3, 1) 0.15s both;
+}
+
+/* Yükselen kıvılcım. Konumları ve gecikmeleri sabit dizide —
+   `Math.random()` sunucu ile istemcide farklı değer üretip hidrasyon
+   uyarısına yol açıyordu (aynı hata konfetide de çıkmıştı). */
+@keyframes seri-kivilcim {
+  0% {
+    transform: translateY(0) scale(0.5);
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.85;
+  }
+  100% {
+    transform: translateY(-150px) scale(0.15);
+    opacity: 0;
+  }
+}
+
+.seri-kivilcim {
+  animation: seri-kivilcim 2.8s ease-out infinite;
+}
+
 @keyframes sahne-isik {
   from { transform: rotate(0deg); }
   to   { transform: rotate(360deg); }

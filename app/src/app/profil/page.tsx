@@ -4,11 +4,12 @@ import * as masaOturumu from "@/domain/masa";
 import { idIleBul, gorunum } from "@/domain/player";
 import { degerlendir, type KazanilmisRozet } from "@/domain/rozet";
 import { karne, type KafeKarnesi } from "@/domain/profil";
-import { Sayfa } from "@/components/ui";
-import { SayfaBasi, Sayac, OyuncuBolum, Pul } from "@/components/oyuncu";
+import Link from "next/link";
+import { OyuncuSayfa, SayfaBasi, Sayac, OyuncuBolum, Pul } from "@/components/oyuncu";
 import { RENK, type OyuncuRengi } from "@/components/oyuncu-renk";
 import { MadalyaIkonu, OyunIkonu } from "@/components/oyuncu-ikon";
-import { OyuncuNav, NavBosluk } from "@/components/oyuncu-nav";
+import { Gorsel } from "@/components/oyuncu-gorsel";
+import { cikisYap } from "../oyna/actions";
 
 export const dynamic = "force-dynamic";
 
@@ -55,13 +56,8 @@ export default async function ProfilSayfasi() {
   const toplamOyun = kafeler.reduce((t, k) => t + k.toplamOyun, 0);
 
   return (
-    <Sayfa>
-      <SayfaBasi
-        ust="Profil"
-        baslik={g.ad}
-        renk="menekse"
-        ikon={<MadalyaIkonu boy={130} />}
-      >
+    <OyuncuSayfa aktif="/profil">
+      <SayfaBasi ust="Profil" baslik={g.ad} renk="menekse" gorsel="kelime">
         <div className="grid grid-cols-3 gap-2">
           <Sayac etiket="Kafe" deger={String(kafeler.length)} renk="gok" />
           <Sayac etiket="Oyun" deger={toplamOyun.toLocaleString("tr-TR")} renk="nane" />
@@ -87,11 +83,17 @@ export default async function ProfilSayfasi() {
       </SayfaBasi>
 
       {kafeler.length === 0 ? (
-        <div className="rounded-3xl border border-cizgi bg-yuzey px-6 py-8 text-center">
-          <div className="flex justify-center">
+        <div className="relative overflow-hidden rounded-3xl border border-cizgi bg-yuzey px-6 py-8 text-center">
+          <span
+            aria-hidden
+            className="pointer-events-none absolute -right-6 -bottom-8 text-yazi-sonuk opacity-[0.10]"
+          >
+            <Gorsel ad="kahve" boy={140} />
+          </span>
+          <div className="relative flex justify-center">
             <MadalyaIkonu boy={64} />
           </div>
-          <p className="mt-4 text-[15px] leading-relaxed text-yazi-sonuk">
+          <p className="relative mt-4 text-[15px] leading-relaxed text-yazi-sonuk">
             Henüz bir kafede ilerleme kaydetmedin. Seviye ve rozetler yalnızca kafede, masadaki
             karekodu okutup oynadığında birikir.
           </p>
@@ -106,13 +108,76 @@ export default async function ProfilSayfasi() {
         </OyuncuBolum>
       )}
 
-      <p className="mt-10 border-l-2 border-cizgi pl-4 text-[13px] leading-relaxed text-yazi-sonuk">
+      <p className="mb-9 border-l-2 border-cizgi pl-4 text-[13px] leading-relaxed text-yazi-sonuk">
         Seviye her kafede ayrı tutulur — bir kafedeki ilerlemen diğerine taşınmaz.
       </p>
 
-      <NavBosluk />
-      <OyuncuNav aktif="/profil" />
-    </Sayfa>
+      {/*
+        Hesap bölümü — Ü66.
+
+        Ana ekranın en altında üç çıplak alt çizgili bağlantı olarak
+        duruyordu ve ürün sahibi *"sayfamızın yapısıyla alakasız
+        olmuş"* dedi. Doğru yeri burası: ana ekran oynanacak yer,
+        hesap ayarları profilin işi.
+
+        Çıkış ayrı ve en altta, kırmızı değil sönük: yıkıcı bir işlem
+        değil, oturumu kapatmak. Kırmızı olsaydı "hesabımı siliyorum"
+        gibi okunurdu.
+      */}
+      <OyuncuBolum baslik="Hesabın">
+        <div className="grid gap-2.5">
+          <HesapSatiri
+            yol="/davet"
+            baslik="Arkadaşını çağır"
+            alt="Davet kodunu paylaş, ikiniz de kazanın"
+            renk="nane"
+          />
+          <HesapSatiri
+            yol="/verilerim"
+            baslik="Verilerim ve hesap ayarlarım"
+            alt="Adının görünürlüğü, telefonun, hesabını kapatma"
+            renk="gok"
+          />
+          <form action={cikisYap}>
+            <button
+              type="submit"
+              className="w-full rounded-2xl border border-cizgi bg-yuzey px-5 py-4 text-left text-[15px] font-semibold text-yazi-sonuk transition-colors hover:border-yazi-sonuk/40 hover:text-yazi"
+            >
+              Çıkış yap
+            </button>
+          </form>
+        </div>
+      </OyuncuBolum>
+    </OyuncuSayfa>
+  );
+}
+
+function HesapSatiri({
+  yol,
+  baslik,
+  alt,
+  renk,
+}: {
+  yol: string;
+  baslik: string;
+  alt: string;
+  renk: OyuncuRengi;
+}) {
+  const r = RENK[renk];
+  return (
+    <Link
+      href={yol}
+      className="block rounded-2xl border border-cizgi border-l-4 bg-yuzey px-5 py-4 transition-colors hover:border-yazi-sonuk/40"
+      style={{ borderLeftColor: r.canli }}
+    >
+      <div className="flex items-baseline justify-between gap-3">
+        <span className="text-[15px] leading-tight font-semibold">{baslik}</span>
+        <span aria-hidden className="text-[14px]" style={{ color: r.ana }}>
+          →
+        </span>
+      </div>
+      <p className="mt-1 text-[13px] leading-relaxed text-yazi-sonuk">{alt}</p>
+    </Link>
   );
 }
 

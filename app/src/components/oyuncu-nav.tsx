@@ -24,7 +24,17 @@ const DURAKLAR = [
   { href: "/profil", etiket: "Profilim", ikon: Kisi },
 ] as const;
 
-export function OyuncuNav({ aktif }: { aktif: (typeof DURAKLAR)[number]["href"] }) {
+/**
+ * Alt şeritte yanabilecek duraklar.
+ *
+ * Şeridin götürmediği ekranlar (fırsatlar, sıralama, oyun, kupon
+ * detayı) da bir durağı yakıyor — hangi sekmenin altındaysalar onu.
+ * Hiçbiri yanmasaydı oyuncu "şeridin dışına çıktım" hissine kapılır,
+ * oysa hâlâ aynı bölümün içinde.
+ */
+export type Durak = (typeof DURAKLAR)[number]["href"];
+
+export function OyuncuNav({ aktif }: { aktif: Durak }) {
   return (
     <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-cizgi bg-cukur/95 backdrop-blur">
       <ul className="mx-auto flex w-full max-w-md">

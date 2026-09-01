@@ -3,11 +3,9 @@ import { redirect } from "next/navigation";
 import * as oturum from "@/domain/session";
 import { envanter, type EnvanterKuponu } from "@/domain/odul";
 import { bakim } from "@/domain/bakim";
-import { Sayfa } from "@/components/ui";
-import { SayfaBasi, Sayac, OyuncuBolum } from "@/components/oyuncu";
+import { OyuncuSayfa, SayfaBasi, Sayac, OyuncuBolum } from "@/components/oyuncu";
 import { RENK, TUR_RENGI } from "@/components/oyuncu-renk";
-import { BiletIkonu, HediyeIkonu } from "@/components/oyuncu-ikon";
-import { OyuncuNav, NavBosluk } from "@/components/oyuncu-nav";
+import { Gorsel, gorselSec } from "@/components/oyuncu-gorsel";
 
 export const dynamic = "force-dynamic";
 
@@ -23,15 +21,16 @@ export const dynamic = "force-dynamic";
  * telefonda "80 TL" yazan bir ekran gösterilip kasada kabul edilmesi
  * mümkün olmamalı. Değeri yalnızca kasa ekranı görür (Faz 7).
  *
- * ── Renk kuponun cinsinden geliyor (Ü65) ────────────────────
+ * ── Renk yerine çizim (Ü66) ─────────────────────────────────
  *
- * İlk denemede beş kupon alt alta duruyordu ve **beşi de aynı koyu
- * mordu** — cüzdan değil, aynı kartın beş kopyası. Ürün sahibi haklı
- * olarak *"her yere bu mor efekti koyma"* dedi.
+ * İlk denemede (Ü65) her bilet cinsinin doygun renginde bir gradyandı
+ * ve ürün sahibi *"fazla cırtlak"* dedi. Haklıydı: beş bilet alt alta
+ * beş duvar demekti ve renk, karta bakan gözün ilk gördüğü şeydi —
+ * oysa oyuncunun aradığı şey "hangi kupon".
  *
- * Artık her bilet cinsinin renginde: ürün amber, yüzde menekşe, tutar
- * nane. Renk rastgele değil — rastgele olsaydı süs olurdu; cins zaten
- * bilinen bir şey ve renk onu okumadan gösteriyor.
+ * Şimdi zemin pastel, arkada **kuponun kendi çizimi** duruyor: kahve
+ * indiriminde fincan, tatlıda pasta, yüzdede etiket. Renk hâlâ cinsi
+ * söylüyor ama artık fısıldayarak.
  */
 export default async function OdullerSayfasi() {
   const o = await oturum.oku();
@@ -46,13 +45,8 @@ export default async function OdullerSayfasi() {
   const bosMu = !e.kullanilabilir.length && !e.bekleyen.length && !e.gecmis.length;
 
   return (
-    <Sayfa>
-      <SayfaBasi
-        ust="Envanter"
-        baslik="Ödüllerim"
-        renk="amber"
-        ikon={<BiletIkonu boy={130} />}
-      >
+    <OyuncuSayfa aktif="/oduller">
+      <SayfaBasi ust="Envanter" baslik="Ödüllerim" renk="amber" gorsel="hediye">
         <div className="grid grid-cols-2 gap-2.5">
           <Sayac
             etiket="Kasada gösterebilirsin"
@@ -69,17 +63,20 @@ export default async function OdullerSayfasi() {
       </SayfaBasi>
 
       {bosMu ? (
-        <div className="rounded-3xl border border-cizgi bg-yuzey px-6 py-8 text-center">
-          <div className="flex justify-center">
-            <HediyeIkonu boy={64} />
-          </div>
-          <p className="mt-4 text-[15px] leading-relaxed text-yazi-sonuk">
+        <div className="relative overflow-hidden rounded-3xl border border-cizgi bg-yuzey px-6 py-8 text-center">
+          <span
+            aria-hidden
+            className="pointer-events-none absolute -right-6 -bottom-8 text-yazi-sonuk opacity-[0.10]"
+          >
+            <Gorsel ad="hediye" boy={140} />
+          </span>
+          <p className="relative text-[15px] leading-relaxed text-yazi-sonuk">
             Henüz ödülün yok. Bir CafePlay kafesinde masadaki karekodu okutup oynadığında
             kazandıkların burada birikir.
           </p>
           <Link
             href="/oyna"
-            className="mt-5 inline-block rounded-xl bg-vurgu px-6 py-3 font-display text-[15px] font-bold tracking-tight text-white"
+            className="relative mt-5 inline-block rounded-xl bg-vurgu px-6 py-3 font-display text-[15px] font-bold tracking-tight text-white"
           >
             Oynamaya başla
           </Link>
@@ -120,7 +117,7 @@ export default async function OdullerSayfasi() {
 
           {e.gecmis.length > 0 && (
             <OyuncuBolum baslik="Geçmiş">
-              <ul className="flex flex-col gap-2.5 opacity-60">
+              <ul className="flex flex-col gap-2.5 opacity-70">
                 {e.gecmis.map((k) => (
                   <li key={k.id}>
                     <SakinKart kupon={k} />
@@ -131,10 +128,7 @@ export default async function OdullerSayfasi() {
           )}
         </>
       )}
-
-      <NavBosluk />
-      <OyuncuNav aktif="/oduller" />
-    </Sayfa>
+    </OyuncuSayfa>
   );
 }
 
@@ -155,8 +149,8 @@ const DURUM_ETIKETI: Record<EnvanterKuponu["durum"], string> = {
  *
  * Bu kart oyuncunun kasaya uzattığı şey. Diğer kartlarla aynı beyaz
  * dikdörtgen olduğunda "bunu göstereceğim" hissi vermiyordu. Zımba
- * çentikleri, doygun renk ve sol kenardaki koçan, ekrandaki tek
- * fiziksel nesne izlenimi veriyor.
+ * çentikleri ve kesikli koparma çizgisi, ekrandaki tek fiziksel nesne
+ * izlenimi veriyor.
  *
  * Çentikler `radial-gradient` ile **kartın kenarına oyulmuş** iki
  * boşluk: üstüne yerleştirilen daireler olsaydı arkadaki sayfa rengini
@@ -168,48 +162,55 @@ const DURUM_ETIKETI: Record<EnvanterKuponu["durum"], string> = {
  * görünsün, üstünde bir tutar yazmıyor.
  */
 function BiletKarti({ kupon }: { kupon: EnvanterKuponu }) {
-  const r = RENK[TUR_RENGI[kupon.tur]];
+  const renk = TUR_RENGI[kupon.tur];
+  const r = RENK[renk];
+  const gorsel = gorselSec(kupon.baslik);
 
   return (
     <Link
       href={`/oduller/${kupon.id}`}
-      className="relative block overflow-hidden rounded-2xl text-white transition-transform active:scale-[0.99]"
+      className="relative block overflow-hidden rounded-2xl transition-transform active:scale-[0.99]"
       style={{
-        background: `linear-gradient(120deg, ${r.canli} 0%, ${r.ana} 60%, ${r.koyu} 100%)`,
+        background: `linear-gradient(120deg, ${r.zemin} 0%, #ffffff 88%)`,
+        border: `1px solid ${r.canli}`,
       }}
     >
-      {/* Kenardaki zımba çentikleri — biletin tek süsü. */}
+      {/* Kuponun kendi çizimi — sağdan taşıyor, metnin altında kalıyor. */}
       <span
         aria-hidden
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background:
-            "radial-gradient(circle at 0 68%, var(--color-zemin) 9px, transparent 9px)," +
-            "radial-gradient(circle at 100% 68%, var(--color-zemin) 9px, transparent 9px)",
-        }}
-      />
+        className="pointer-events-none absolute -right-3 -bottom-5"
+        style={{ color: r.ana, opacity: 0.17 }}
+      >
+        <Gorsel ad={gorsel} boy={118} />
+      </span>
 
       <div className="relative flex items-stretch">
-        {/* Koçan: biletin renkli gövdesinden koparılan uç. Yalnızca
-            görsel — kupon tek parça ve kod QR ekranında. */}
+        {/* Koçan: biletin koparılan ucu. Yalnızca görsel — kupon tek
+            parça, kod QR ekranında. */}
         <span
           aria-hidden
-          className="flex w-12 shrink-0 items-center justify-center bg-white/15"
-        >
-          <BiletIkonu boy={24} renk={TUR_RENGI[kupon.tur]} />
-        </span>
+          className="w-2.5 shrink-0"
+          style={{ background: r.ana }}
+        />
 
         <span className="min-w-0 flex-1 px-4 py-4">
-          <span className="block etiket-caps text-white/70">{kupon.cafeAdi}</span>
+          <span className="block etiket-caps" style={{ color: r.ana }}>
+            {kupon.cafeAdi}
+          </span>
           <span className="mt-1 block font-display text-xl leading-tight font-bold">
             {kupon.baslik}
           </span>
 
           {/* Kesikli çizgi: biletin koparma yeri. */}
-          <span className="mt-3 block border-t border-dashed border-white/35 pt-2.5">
+          <span
+            className="mt-3 block border-t border-dashed pt-2.5"
+            style={{ borderColor: r.canli }}
+          >
             <span className="flex items-baseline justify-between gap-3">
-              <span className="etiket-caps text-white">Kasada göster →</span>
-              <span className="font-data text-[10px] text-white/65 tabular">
+              <span className="etiket-caps" style={{ color: r.koyu }}>
+                Kasada göster →
+              </span>
+              <span className="font-data text-[10px] text-yazi-sonuk tabular">
                 son{" "}
                 {kupon.sonKullanim.toLocaleDateString("tr-TR", {
                   day: "numeric",
@@ -220,6 +221,24 @@ function BiletKarti({ kupon }: { kupon: EnvanterKuponu }) {
           </span>
         </span>
       </div>
+
+      {/*
+        Zımba çentikleri **en üstte**.
+
+        İlk denemede içerikten önce çiziliyorlardı ve soldaki çentik,
+        üstüne gelen renkli koçanın altında kalıyordu — bilet tek
+        taraftan çentikli görünüyordu. Katman en sonda ve
+        `pointer-events-none` olduğu için tıklamayı da engellemiyor.
+      */}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(circle at 0 70%, var(--color-zemin) 8px, transparent 8px)," +
+            "radial-gradient(circle at 100% 70%, var(--color-zemin) 8px, transparent 8px)",
+        }}
+      />
     </Link>
   );
 }
@@ -252,7 +271,7 @@ function SakinKart({ kupon }: { kupon: EnvanterKuponu }) {
   );
 
   const sinif =
-    "block rounded-2xl border border-cizgi bg-yuzey px-5 py-4 border-l-4 transition-colors";
+    "block rounded-2xl border border-cizgi border-l-4 bg-yuzey px-5 py-4 transition-colors";
 
   return bekliyor ? (
     <Link

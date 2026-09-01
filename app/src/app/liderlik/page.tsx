@@ -5,11 +5,17 @@ import * as masaOturumu from "@/domain/masa";
 import * as liderlik from "@/domain/liderlik";
 import { gununOyunu } from "@/oyunlar";
 import { isGunu } from "@/lib/tarih";
-import { Sayfa, Baslik } from "@/components/ui";
-import { SayfaBasi, Sayac, OyuncuBolum, SiraJetonu, MADALYA } from "@/components/oyuncu";
+import {
+  OyuncuSayfa,
+  SayfaBasi,
+  Sayac,
+  OyuncuBolum,
+  SiraJetonu,
+  MADALYA,
+} from "@/components/oyuncu";
 import { RENK, oyunRengi, type OyuncuRengi } from "@/components/oyuncu-renk";
-import { KupaIkonu, TacIkonu, OyunIkonu } from "@/components/oyuncu-ikon";
-import { OyuncuNav, NavBosluk } from "@/components/oyuncu-nav";
+import { oyunGorseli } from "@/components/oyuncu-gorsel";
+import { TacIkonu, OyunIkonu } from "@/components/oyuncu-ikon";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Liderlik · CafePlay" };
@@ -56,17 +62,20 @@ export default async function LiderlikSayfasi() {
   const masa = await masaOturumu.aktif(o.ozneId);
   if (!masa) {
     return (
-      <Sayfa>
-        <Baslik ust="Liderlik">Sıralama</Baslik>
-        <p className="text-[15px] leading-relaxed text-yazi-sonuk">
-          Sıralama kafeye ait. Masadaki karekodu okuttuğunda bu kafenin listesini görürsün.
-        </p>
-        <Link href="/oyna" className="mt-6 inline-block text-[15px] font-semibold underline">
-          Ana ekrana dön
-        </Link>
-        <NavBosluk />
-        <OyuncuNav aktif="/oyna" />
-      </Sayfa>
+      <OyuncuSayfa aktif="/oyna" geri={{ href: "/oyna", etiket: "Ana ekran" }}>
+        <SayfaBasi ust="Liderlik" baslik="Sıralama" renk="gok" gorsel="blok" />
+        <div className="rounded-3xl border border-cizgi bg-yuzey px-6 py-8">
+          <p className="text-[15px] leading-relaxed text-yazi-sonuk">
+            Sıralama kafeye ait. Masadaki karekodu okuttuğunda bu kafenin listesini görürsün.
+          </p>
+          <Link
+            href="/oyna"
+            className="mt-5 inline-block rounded-xl bg-vurgu px-6 py-3 font-display text-[15px] font-bold text-white"
+          >
+            Ana ekrana dön
+          </Link>
+        </div>
+      </OyuncuSayfa>
     );
   }
 
@@ -83,8 +92,8 @@ export default async function LiderlikSayfasi() {
   const benim = benimSiram(bugun);
 
   return (
-    <Sayfa>
-      <SayfaBasi ust={masa.cafeAdi} baslik="Sıralama" renk={renk} ikon={<KupaIkonu boy={130} />}>
+    <OyuncuSayfa aktif="/oyna" geri={{ href: "/oyna", etiket: "Ana ekran" }}>
+      <SayfaBasi ust={masa.cafeAdi} baslik="Sıralama" renk={renk} gorsel={oyunGorseli(oyun.id)}>
         <div className="grid grid-cols-2 gap-2.5">
           <Sayac
             etiket={`Bugün · ${oyun.ad}`}
@@ -141,9 +150,7 @@ export default async function LiderlikSayfasi() {
         sayfasından tamamen gizleyebilirsin.
       </p>
 
-      <NavBosluk />
-      <OyuncuNav aktif="/oyna" />
-    </Sayfa>
+    </OyuncuSayfa>
   );
 }
 

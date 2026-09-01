@@ -1,8 +1,9 @@
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import * as oturum from "@/domain/session";
 import { kuponDetayi } from "@/domain/odul";
-import { Sayfa, Baslik } from "@/components/ui";
+import { OyuncuSayfa, SayfaBasi } from "@/components/oyuncu";
+import { TUR_RENGI } from "@/components/oyuncu-renk";
+import { gorselSec } from "@/components/oyuncu-gorsel";
 import { Karekod } from "@/components/karekod";
 
 export const dynamic = "force-dynamic";
@@ -43,8 +44,13 @@ export default async function KuponSayfasi({
   const kullanilabilir = kupon.durum === "kullanilabilir";
 
   return (
-    <Sayfa>
-      <Baslik ust={kupon.cafeAdi}>{kupon.baslik}</Baslik>
+    <OyuncuSayfa aktif="/oduller" geri={{ href: "/oduller", etiket: "Ödüllerim" }}>
+      <SayfaBasi
+        ust={kupon.cafeAdi}
+        baslik={kupon.baslik}
+        renk={TUR_RENGI[kupon.tur]}
+        gorsel={gorselSec(kupon.baslik)}
+      />
 
       {kullanilabilir ? (
         <>
@@ -84,15 +90,14 @@ export default async function KuponSayfasi({
         </div>
       )}
 
+      {/* Geri dönüş üstteki şeritte (Ü66): "Ödüllerime dön" bağlantısı
+          sayfanın en altındaydı ve karekodun altında kalıyordu — kasada
+          telefonu uzatan oyuncunun kaydırması gereken son şey. */}
       <div className="mt-6 font-data text-[11px] text-yazi-sonuk tabular">
         Son kullanım{" "}
         {kupon.sonKullanim.toLocaleDateString("tr-TR", { day: "numeric", month: "long" })}
       </div>
-
-      <Link href="/oduller" className="mt-8 inline-block text-[14px] text-vurgu underline">
-        Ödüllerime dön
-      </Link>
-    </Sayfa>
+    </OyuncuSayfa>
   );
 }
 

@@ -1,4 +1,7 @@
+import Link from "next/link";
 import { RENK, type OyuncuRengi } from "./oyuncu-renk";
+import { Gorsel, type GorselAdi } from "./oyuncu-gorsel";
+import { OyuncuNav, NavBosluk, type Durak } from "./oyuncu-nav";
 
 /**
  * Oyuncu tarafının ortak parçaları — Ü64, Ü65.
@@ -26,6 +29,72 @@ import { RENK, type OyuncuRengi } from "./oyuncu-renk";
  * Şimdi koyu kart iki yerde: **ana ekranın durum kartı** ve **çark
  * sahnesi**. Geri kalan her ekran `SayfaBasi` ile aydınlık ve renkli.
  */
+
+/* ── Sayfa kabuğu ──────────────────────────────────────────── */
+
+/**
+ * Oyuncu tarafındaki her ekranın dış kabuğu — Ü66.
+ *
+ * ── Neden tek bileşen ───────────────────────────────────────
+ *
+ * Her ekran kendi `<Sayfa>`, `<NavBosluk>`, `<OyuncuNav>` üçlüsünü
+ * elle diziyordu ve ürün sahibi sonucu net söyledi: *"genel olarak
+ * tasarımsal bütünlük yok, her yer birbirinden bağımsız duruyor."*
+ * Sekiz ekranda sekiz kopya varken bütünlük bir dikkat meselesi
+ * oluyor; tek kabukta yapısal bir garanti.
+ *
+ * ── Geri düğmesi ────────────────────────────────────────────
+ *
+ * *"Sayfalara geri dönme butonları koymamışsın."* Alt şeritte üç
+ * durak var ama şeridin götürmediği yerler de var: kupon detayı,
+ * fırsatlar, sıralama, oyun, verilerim, davet. Oralarda tarayıcının
+ * geri düğmesinden başka yol yoktu — uygulama gibi davranan bir
+ * sayfada bu, çıkmaz sokak demek.
+ *
+ * Üç durağın kendisinde geri düğmesi **yok**: sekmenin kökünde "geri"
+ * nereye gideceği belirsiz bir söz.
+ */
+export function OyuncuSayfa({
+  geri,
+  aktif,
+  children,
+}: {
+  /** Üstteki geri bağlantısı. Sekme köklerinde verilmiyor. */
+  geri?: { href: string; etiket: string };
+  /** Alt şeritte hangi durak yanacak. */
+  aktif: Durak;
+  children: React.ReactNode;
+}) {
+  return (
+    <main className="min-h-dvh bg-zemin text-yazi">
+      <div className="mx-auto w-full max-w-md px-5 pt-6 pb-10 sm:pt-10">
+        {geri && (
+          <Link
+            href={geri.href}
+            className="mb-4 -ml-1 inline-flex items-center gap-1.5 rounded-full py-1.5 pr-3 pl-1 text-[14px] font-semibold text-yazi-sonuk transition-colors hover:text-yazi"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
+              <path
+                d="M15 5 8 12l7 7"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+            {geri.etiket}
+          </Link>
+        )}
+
+        {children}
+
+        <NavBosluk />
+      </div>
+
+      <OyuncuNav aktif={aktif} />
+    </main>
+  );
+}
 
 /* ── Koyu kart ─────────────────────────────────────────────── */
 
@@ -118,23 +187,23 @@ export function CamKutu({
  * profil menekşe, sıralama gök. Aynı sayfada iki kez kullanılmıyor —
  * ekranın tek başlığı.
  *
- * ── İkon neden taşıyor ──────────────────────────────────────
+ * ── Çizim neden taşıyor ─────────────────────────────────────
  *
- * İkon sağ üstten dışarı taşıyor ve kırpılıyor. Kutuya sığdırılmış bir
- * ikon "buraya bir ikon koyduk" diye okunuyordu; taşan ikon kartın
- * kendisini bir nesneye çeviriyor. `overflow-hidden` bu yüzden şart.
+ * Çizim sağ üstten dışarı taşıyor ve kırpılıyor. Kutuya sığdırılmış
+ * bir çizim "buraya bir ikon koyduk" diye okunuyordu; taşan çizim
+ * kartın kendisini bir nesneye çeviriyor. `overflow-hidden` şart.
  */
 export function SayfaBasi({
   ust,
   baslik,
   renk,
-  ikon,
+  gorsel,
   children,
 }: {
   ust: string;
   baslik: string;
   renk: OyuncuRengi;
-  ikon?: React.ReactNode;
+  gorsel?: GorselAdi;
   /** Başlığın altındaki sayaçlar. */
   children?: React.ReactNode;
 }) {
@@ -148,13 +217,13 @@ export function SayfaBasi({
         border: `1px solid ${r.canli}`,
       }}
     >
-      {ikon && (
+      {gorsel && (
         <span
           aria-hidden
-          className="pointer-events-none absolute -top-4 -right-5 opacity-25"
-          style={{ transform: "rotate(-12deg)" }}
+          className="pointer-events-none absolute -top-6 -right-7"
+          style={{ color: r.ana, opacity: 0.18, transform: "rotate(-10deg)" }}
         >
-          {ikon}
+          <Gorsel ad={gorsel} boy={150} />
         </span>
       )}
 
@@ -199,6 +268,54 @@ export function Sayac({
         {deger}
       </div>
       {alt && <div className="mt-1 text-[11px] leading-snug text-yazi-sonuk">{alt}</div>}
+    </div>
+  );
+}
+
+/* ── Görselli kart ─────────────────────────────────────────── */
+
+/**
+ * Arkasında soluk bir çizim taşıyan kart — Ü66.
+ *
+ * Ürün sahibinin isteği: *"indirim ne ile alakalıysa arka planda
+ * şeffaf biçimde o görünsün."* Aynı düzen oyun kartlarında da
+ * kullanılıyor.
+ *
+ * Çizim **sağ alt köşeden taşıyor** ve `overflow-hidden` onu
+ * kırpıyor. Kutuya sığdırılmış bir çizim "ikon" gibi okunuyordu;
+ * taşan çizim arka plan oluyor.
+ *
+ * Saydamlık 0.16: 0.30'da metnin altında desen görünüyor ve başlık
+ * okunmuyordu, 0.08'de çizim hiç fark edilmiyordu.
+ */
+export function GorselKart({
+  renk,
+  gorsel,
+  className = "",
+  children,
+}: {
+  renk: OyuncuRengi;
+  gorsel: GorselAdi;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  const r = RENK[renk];
+  return (
+    <div
+      className={`relative overflow-hidden rounded-3xl ${className}`}
+      style={{
+        background: `linear-gradient(135deg, ${r.zemin} 0%, #ffffff 92%)`,
+        border: `1px solid ${r.canli}`,
+      }}
+    >
+      <span
+        aria-hidden
+        className="pointer-events-none absolute -right-5 -bottom-7"
+        style={{ color: r.ana, opacity: 0.16 }}
+      >
+        <Gorsel ad={gorsel} boy={132} />
+      </span>
+      <div className="relative">{children}</div>
     </div>
   );
 }
