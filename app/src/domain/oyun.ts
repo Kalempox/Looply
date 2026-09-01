@@ -9,7 +9,14 @@ import { K2 } from "./masa";
 import * as acil from "./acil";
 import * as davet from "./davet";
 import * as taht from "./taht";
-import { yazIle as puanYaz, OYUN_PUANI, BONUS_CARPANI, type PuanSonucu } from "./puan";
+import {
+  yazIle as puanYaz,
+  OYUN_PUANI,
+  BONUS_CARPANI,
+  KATILIM_PUANI,
+  esikBul,
+  type PuanSonucu,
+} from "./puan";
 import { yazIle as xpYaz } from "./xp";
 import { degerlendir } from "./rozet";
 import { anlikOdulVer } from "./kupon";
@@ -37,6 +44,15 @@ const OTURUM_OMRU_SAAT = 2;
 
 /** Bir oyun tamamlandığında yazılan XP (docs/06 §2.1). */
 const XP_OYUN = 50;
+
+/**
+ * Bölüm tamamlanmadığında yazılan XP (Ü48).
+ *
+ * Puanla aynı gerekçe: denemek de sayılıyor. XP tavansız ve hiçbir
+ * bütçeye dokunmuyor, o yüzden buradaki tek risk seviye enflasyonu —
+ * beşte bir tutarak onu da sınırlıyoruz.
+ */
+const XP_KATILIM = 10;
 
 /**
  * Cihaz kimliği vekili.
@@ -105,6 +121,14 @@ export type Kazanim = {
   xp: number;
   kupon: { baslik: string; kod: string; ertelendi: boolean } | null;
   taht: taht.DevirmeSonucu | null;
+  /**
+   * Skor eşiği bonusu (Ü48) — ulaşıldıysa hangi eşik ve ne yazıldı.
+   *
+   * Taban puandan **ayrı defter satırı**: ekranda "300 puan + 150 skor
+   * bonusu" diye ayrı görünüyor ve denetimde "bu puan neden yazıldı"
+   * sorusunun cevabı satırın kendisinde duruyor.
+   */
+  esik: { skor: number; puan: PuanSonucu } | null;
 };
 
 /**
@@ -129,7 +153,7 @@ async function kazanimIsle(
     bonusMu: boolean;
   },
 ): Promise<Kazanim> {
-  const bos: Kazanim = { puan: null, xp: 0, kupon: null, taht: null };
+  const bos: Kazanim = { puan: null, xp: 0, kupon: null, taht: null, esik: null };
   if (!opts.kazandirir || !opts.cafeId) return bos;
 
   const sonuc: Kazanim = { ...bos };
@@ -176,6 +200,52 @@ async function kazanimIsle(
         sonuc.kupon = { baslik: anlik.baslik, kod: anlik.kod, ertelendi: anlik.ertelendi };
       }
     }
+  } else {
+    // Ü48: bölüm tamamlanmasa da katılım puanı yazılıyor — "kazanım yok"
+    // ekranı, ilk kez oynayanı ilk denemede kaybettiriyordu. Çarpan
+    // uygulanmıyor: bonus günü bitirmeyi ödüllendiriyor, denemeyi değil.
+    sonuc.puan = await puanYaz(db, {
+      playerId: opts.playerId,
+      cafeId: opts.cafeId,
+      taban: KATILIM_PUANI,
+      carpan: 1,
+      sebep: "oyun_katilim",
+      refTipi: "play_session",
+      refId: opts.oturumId,
+      kanitSeviyesi: opts.proofLevel,
+    });
+
+    sonuc.xp = XP_KATILIM;
+    await xpYaz(db, {
+      playerId: opts.playerId,
+      cafeId: opts.cafeId,
+      delta: sonuc.xp,
+      kaynak: "GAME",
+      kaynakId: opts.oturumId,
+    });
+  }
+
+  // ── Skor eşiği (Ü48) ───────────────────────────────────
+  //
+  // Bölümü bitirmek tek başarı ölçüsü değil; iyi oynamanın da karşılığı
+  // var. Bu yüzden başarılı/başarısız ayrımının DIŞINDA: 2500 skor yapıp
+  // bölümü bitirememek de iyi oynamaktır.
+  //
+  // Ayrı `puanYaz` çağrısı, tavanı ikinci kez okuyor — taban puan yeni
+  // yazıldığı için bu doğru olan: tavan doluysa bonus da yazılmıyor (E4).
+  const esik = esikBul(opts.skor);
+  if (esik) {
+    const yazim = await puanYaz(db, {
+      playerId: opts.playerId,
+      cafeId: opts.cafeId,
+      taban: esik.bonus,
+      carpan: 1,
+      sebep: "skor_esigi",
+      refTipi: "play_session",
+      refId: opts.oturumId,
+      kanitSeviyesi: opts.proofLevel,
+    });
+    sonuc.esik = { skor: esik.skor, puan: yazim };
   }
 
   // ── Masa tahtı (Ö1) ────────────────────────────────────
@@ -280,8 +350,10 @@ export type BitirSonucu =
       /** Sunucunun hesapladığı skor — istemcininki değil. */
       skor: number;
       basarili: boolean;
-      /** Kafe dışıysa veya başarısızsa null. */
+      /** Kafe dışıysa null; başarısız bölümde katılım puanı (Ü48). */
       puan: PuanSonucu | null;
+      /** Ü48: skor eşiği bonusu — ulaşılmadıysa null. */
+      esik: { skor: number; puan: PuanSonucu } | null;
       xp: number;
       kazandirir: boolean;
       bonusMu: boolean;
@@ -459,6 +531,7 @@ export async function bitir(opts: {
       skor: sonuc.skor,
       basarili: sonuc.basarili,
       puan: kazanim.puan,
+      esik: kazanim.esik,
       xp: kazanim.xp,
       kazandirir,
       bonusMu,
@@ -511,6 +584,7 @@ export type MisafirYazSonucu =
       kazandirir: boolean;
       bonusMu: boolean;
       puan: PuanSonucu | null;
+      esik: { skor: number; puan: PuanSonucu } | null;
       xp: number;
       kupon: { baslik: string; kod: string; ertelendi: boolean } | null;
       taht: taht.DevirmeSonucu | null;
@@ -646,6 +720,7 @@ export async function misafirOyunuYaz(opts: {
       kazandirir,
       bonusMu,
       puan: kazanim.puan,
+      esik: kazanim.esik,
       xp: kazanim.xp,
       kupon: kazanim.kupon,
       taht: kazanim.taht,

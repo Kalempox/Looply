@@ -3,11 +3,13 @@ import { cookies } from "next/headers";
 import { biletCoz, MASA_COOKIE } from "@/domain/qr";
 import * as oturum from "@/domain/session";
 import * as misafir from "@/domain/misafir";
+import * as cark from "@/domain/cark";
 import { kodEkrandaGosterilir } from "@/sms";
 import { OYUNLAR } from "@/oyunlar";
 import { withBypass } from "@/db/context";
 import { Sayfa, Baslik, MasaKunyesi } from "@/components/ui";
 import { MisafirKabugu } from "./misafir-kabuk";
+import { MisafirCarki } from "./cark-kabuk";
 
 export const dynamic = "force-dynamic";
 
@@ -47,16 +49,30 @@ export default async function HemenSayfasi() {
   // Konum çerezden okunuyor: sayfa yenilense de ölçüm kaybolmasın.
   const konum = misafir.konumOku(c.get(misafir.KONUM_COOKIE)?.value, masaBilet.cafeId);
 
+  // Ü49: ilk karekodda çark. Zaten çevirdiyse sonucu duruyor; dilimler
+  // sunucudan geliyor ki istemci listeyi düzenleyip ödül uyduramasın.
+  const carkTalebi = cark.talepCoz(c.get(cark.TALEP_COOKIE)?.value);
+  const carkDurumu = await cark.misafirDurumu(masaBilet.cafeId);
+
   return (
     <Sayfa>
       <MasaKunyesi kafe={masa.cafe_adi} masa={masa.masa_adi} />
 
-      <Baslik ust="Hoş geldin">Önce oyna</Baslik>
+      <Baslik ust="Hoş geldin">Önce çevir</Baslik>
 
       <p className="mb-7 text-[15px] leading-relaxed text-yazi-sonuk">
-        Hesap açmadan oynayabilirsin. Kazandığın ödül sonucunla birlikte saklanır; hesabına
-        girdiğinde işlenir.
+        Hesap açmadan çevirebilir, oynayabilirsin. Kazandığın ödül sonucunla birlikte saklanır;
+        hesabına girdiğinde işlenir.
       </p>
+
+      {carkDurumu.length > 0 && (
+        <section className="mb-10 rounded-2xl border border-cizgi bg-yuzey px-5 py-7">
+          <MisafirCarki
+            dilimler={carkDurumu}
+            kazanilan={carkTalebi ? carkTalebi.baslik : null}
+          />
+        </section>
+      )}
 
       <MisafirKabugu
         oyunlar={OYUNLAR.map((o) => ({

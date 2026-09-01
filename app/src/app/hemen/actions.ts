@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { z } from "zod";
 import { biletCoz, MASA_COOKIE } from "@/domain/qr";
 import * as misafir from "@/domain/misafir";
+import * as cark from "@/domain/cark";
 import { isProduction } from "@/lib/env";
 import { kodEkrandaGosterilir } from "@/sms";
 import { withBypass } from "@/db/context";
@@ -153,4 +154,43 @@ export async function demoKafedeSay(): Promise<KonumCevabi> {
 
   (await cookies()).set(misafir.KONUM_COOKIE, sonuc.cerez, CEREZ_AYARI);
   return { durum: sonuc.durum, mesafeM: sonuc.mesafeM };
+}
+
+/* ── Şans çarkı (Ü49) ──────────────────────────────────────── */
+
+/**
+ * Misafirin çarkı çevirmesi.
+ *
+ * Kupon **üretilmiyor**: G13 gereği kaydolmamış ziyaretçinin veritabanında
+ * izi olmuyor. Kazanılan ödül imzalı çerezde bekliyor ve kayıt anında
+ * `giris/actions.ts` içinde normal kupon yolundan bozduruluyor — bütçe,
+ * kanıt kademesi ve erteleme kuralları orada işliyor.
+ *
+ * Kafe kimliği formdan değil **masa biletinden** okunuyor: aksi hâlde
+ * ziyaretçi istediği kafenin adını yazıp o kafenin bütçesinden ödül
+ * yazdırabilirdi.
+ */
+export async function carkiCevir(): Promise<
+  { ok: true; dilim: number; baslik: string } | { ok: false; hata: string }
+> {
+  const masa = await masaBileti();
+  if (!masa) return { ok: false, hata: "Masa bilgisi bulunamadı. Karekodu tekrar okut." };
+
+  const c = await cookies();
+
+  // Aynı ziyaretçi ikinci kez çeviremiyor: elindeki talep duruyorsa
+  // yenisini üretmek, kaydolmadan ödül biriktirmenin yolu olurdu.
+  if (cark.talepCoz(c.get(cark.TALEP_COOKIE)?.value)) {
+    return { ok: false, hata: "Çarkı zaten çevirdin. Ödülün hesabını açınca işlenecek." };
+  }
+
+  const sonuc = await cark.misafirCevir({ cafeId: masa.cafeId });
+  if (!sonuc.ok) return sonuc;
+
+  c.set(cark.TALEP_COOKIE, sonuc.cerez, {
+    ...CEREZ_AYARI,
+    maxAge: cark.TALEP_OMRU_SN,
+  });
+
+  return { ok: true, dilim: sonuc.dilim, baslik: sonuc.baslik };
 }

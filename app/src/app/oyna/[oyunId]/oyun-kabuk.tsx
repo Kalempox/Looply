@@ -221,7 +221,7 @@ function SonucEkrani({
     );
   }
 
-  const { skor, basarili, puan, xp, kazandirir, yeniRozetler, kupon, taht } = cevap;
+  const { skor, basarili, puan, esik, xp, kazandirir, yeniRozetler, kupon, taht } = cevap;
 
   return (
     <div>
@@ -257,22 +257,31 @@ function SonucEkrani({
             baslik="Kazanım yok"
             aciklama="Puan ve XP yalnızca bir CafePlay kafesinde, konumun doğrulandığında kazanılır."
           />
-        ) : !basarili ? (
-          <Satir
-            baslik="Kazanım yok"
-            aciklama="Puan bölümü tamamlayınca yazılıyor. Tekrar dene — bu sefer daha yakınsın."
-          />
         ) : (
           <>
+            {/* Ü48: bölüm bitmese de puan yazılıyor. Eski ekran burada
+                "Kazanım yok" diyordu ve ilk kez oynayan, ilk denemesinde
+                eli boş çıkıyordu. */}
             <Satir
               baslik={`+${(puan?.yazilan ?? 0).toLocaleString("tr-TR")} puan`}
               aciklama={
                 puan && puan.kesilen > 0
                   ? `Günlük 900 puan sınırına ulaştın; ${puan.kesilen.toLocaleString("tr-TR")} puan yazılmadı. Oynamaya devam edebilirsin, XP birikiyor.`
-                  : "Bu kafede harcanabilir."
+                  : basarili
+                    ? "Bu kafede harcanabilir."
+                    : "Bölümü bitirmedin ama denemenin de karşılığı var. Bitirirsen çok daha fazlası."
               }
               vurgu
             />
+
+            {esik && esik.puan.yazilan > 0 && (
+              <Satir
+                baslik={`+${esik.puan.yazilan.toLocaleString("tr-TR")} puan · skor bonusu`}
+                aciklama={`${esik.skor.toLocaleString("tr-TR")} skoru geçtin.`}
+                vurgu
+              />
+            )}
+
             <Satir
               baslik={`+${xp} XP`}
               aciklama="Seviyen bu kafede ilerledi. XP harcanmaz."

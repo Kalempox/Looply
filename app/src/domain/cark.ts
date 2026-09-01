@@ -1,0 +1,351 @@
+import { randomInt } from "node:crypto";
+import { imzala, imzaGecerliMi } from "@/lib/crypto";
+import { withBypass, type Db } from "@/db/context";
+import { log } from "@/lib/log";
+import * as acil from "./acil";
+
+/**
+ * Şans çarkı — Ü49.
+ *
+ * ── Ne değil ────────────────────────────────────────────────
+ *
+ * **Oyun değil.** Ürün sahibinin cümlesi: *"çark bir oyun değil, sadece 24
+ * saatte bir oluşan, çok da yüksek ödüller vermeyen bir çark."* Skoru yok,
+ * puanı yok, XP'si yok, liderlik tablosuna girmiyor. Tek işi kapıdan giren
+ * müşteriye elle tutulur bir şey vermek.
+ *
+ * ── Animasyon süs, karar sunucuda ───────────────────────────
+ *
+ * Çarkın dönüşü **göstermelik**: hangi dilimde duracağı sunucuda, bu
+ * dosyada belirleniyor ve istemciye yalnızca sonuç indeksi gidiyor.
+ * Tarayıcıda karar verilseydi çark, oyuncunun düzenleyebileceği bir
+ * kazanç makinesi olurdu.
+ *
+ * Ekranda dilimler **eşit görünüyor**, ağırlıklar eşit değil. Bu bir
+ * aldatmaca değil, sunum tercihi: ürün sahibinin kararı bu ve çarkın
+ * dağıttığı toplam değer zaten kafenin günlük bütçesinden (E10)
+ * karşılanıyor — yani "herkes en büyük ödülü kazansın" fiziksel olarak
+ * mümkün değil. Ağırlığı gizlemek, mümkün olmayan bir şeyi vaat etmemek
+ * için.
+ *
+ * ── Ağırlık: değerin karesiyle ters orantı ──────────────────
+ *
+ * `agirlik = 1 / (değer_kuruş)²`. Doğrusal ters orantı (1/değer) test
+ * edildiğinde 50 TL'lik ödül her on çevirmede bir çıkıyordu — "çok da
+ * yüksek ödüller vermeyen" tarifine uymuyor. Karesi alınınca aynı ödül
+ * ~40 çevirmede bire iniyor, ucuz ödüller çoğunluğu oluşturuyor.
+ *
+ * ── Bütçe ve kanıt aynen işliyor ────────────────────────────
+ *
+ * Çark kendi ödül havuzunu yaratmıyor: kazanılan şey kafenin **anlık ödül
+ * kataloğundan** çıkıyor ve normal kupon yolundan üretiliyor — bütçe
+ * rezervi (E10), kanıt kademesi (E6), erteleme eşiği (Ü39) ve denetim izi
+ * aynen uygulanıyor. Çark yalnızca "hangi ödül" sorusunu cevaplıyor.
+ */
+
+/** İki çevirme arasındaki en az süre. */
+export const ARALIK_SAAT = 24;
+
+/** Çarkta görünen dilim sayısı — ödül sayısı azsa liste tekrarlanıyor. */
+export const DILIM_SAYISI = 8;
+
+/** Misafirin kazandığı ödülü taşıyan çerez. */
+export const TALEP_COOKIE = "cp_cark";
+
+/** Misafir talebinin ömrü — masa bileti ve oyun talebiyle aynı. */
+export const TALEP_OMRU_SN = 30 * 60;
+
+const AMAC_TALEP = "cark-talep";
+
+/* ── Dilimler ──────────────────────────────────────────────── */
+
+export type Dilim = {
+  odulId: string;
+  baslik: string;
+  /** Ekranda gösterilmiyor; ağırlık hesabı ve bütçe için taşınıyor (E9). */
+  kurusDegeri: number;
+};
+
+type OdulSatiri = { id: string; title: string; cost_kurus: string };
+
+async function odulleriOku(db: Db, cafeId: string): Promise<Dilim[]> {
+  const satirlar = await db.all<OdulSatiri>(
+    `SELECT id, title, cost_kurus
+       FROM rewards
+      WHERE cafe_id = $1 AND kind = 'instant' AND active
+      ORDER BY cost_kurus, id`,
+    [cafeId],
+  );
+
+  return satirlar.map((r) => ({
+    odulId: r.id,
+    baslik: r.title,
+    kurusDegeri: Number(r.cost_kurus),
+  }));
+}
+
+/**
+ * Çarkın görünen dilimleri.
+ *
+ * ── Neden her zaman sekiz dilim değil ───────────────────────
+ *
+ * İlk hâli listeyi hep sekize tamamlıyordu. Tek ödülü olan bir kafede
+ * çark aynı ismi sekiz kez yazıyordu ve **bozuk** görünüyordu — çevirmeye
+ * değer bir şey yokmuş gibi.
+ *
+ * Kural şu: dört ve üstü ödül varsa her ödül **bir kez** görünüyor
+ * (en çok sekiz). Daha azsa liste, altı dilime yaklaşana kadar tam
+ * turlarla tekrarlanıyor: her ödül eşit sayıda göründüğü için görünen
+ * sıklık gerçek olasılıkla aynı yönde kalıyor — tekrar, hiçbir ödülü
+ * diğerinden avantajlı göstermiyor.
+ *
+ * Tek ödüllü kafede çark tek dilim: dönecek bir şey yok ve olmadığını
+ * göstermek, sekiz kez aynı şeyi yazmaktan dürüst.
+ */
+export function dilimleriYay(oduller: Dilim[]): Dilim[] {
+  const n = oduller.length;
+  if (n === 0) return [];
+  if (n >= 4) return oduller.slice(0, DILIM_SAYISI);
+  if (n === 1) return oduller;
+
+  const tur = Math.max(1, Math.floor(6 / n));
+  return Array.from({ length: n * tur }, (_, i) => oduller[i % n]);
+}
+
+/**
+ * Ağırlıklı seçim — ucuz ödül çok daha olası.
+ *
+ * `randomInt` kullanılıyor, `Math.random` değil: çarkın sonucu para
+ * değerinde ve öngörülebilir bir üreteç, sırayı tahmin etmeye çalışan biri
+ * için açık kapı olurdu.
+ */
+export function agirlikliSec(oduller: Dilim[]): number {
+  const agirliklar = oduller.map((o) => 1 / Math.max(1, o.kurusDegeri) ** 2);
+  const toplam = agirliklar.reduce((t, a) => t + a, 0);
+
+  // Kayan noktalı toplamı tam sayıya çeviriyoruz: randomInt tam sayı
+  // istiyor ve 1e-9 mertebesindeki ağırlıklar doğrudan kullanılamıyor.
+  const olcek = 1_000_000 / toplam;
+  const kovalar = agirliklar.map((a) => Math.max(1, Math.round(a * olcek)));
+  const tam = kovalar.reduce((t, k) => t + k, 0);
+
+  let atis = randomInt(tam);
+  for (let i = 0; i < kovalar.length; i++) {
+    atis -= kovalar[i];
+    if (atis < 0) return i;
+  }
+  return kovalar.length - 1;
+}
+
+/* ── Durum ─────────────────────────────────────────────────── */
+
+export type CarkDurumu =
+  | { acik: true; dilimler: Dilim[] }
+  | { acik: false; sebep: "odul_yok" | "durduruldu" }
+  | { acik: false; sebep: "sure"; sonrakiAn: Date; dilimler: Dilim[] };
+
+/**
+ * Kayıtlı oyuncunun çarkı açık mı?
+ *
+ * Süre kontrolü **kupon defterinden** okunuyor, ayrı bir "son çevirme"
+ * kolonundan değil: kupon zaten üretiliyor ve iki yerde tutulan aynı
+ * gerçek er ya da geç ayrışır. Çevirmenin izi, ürettiği kupondur.
+ */
+export async function durum(opts: {
+  playerId: string;
+  cafeId: string;
+}): Promise<CarkDurumu> {
+  if (await acil.durduruldu(acil.ANAHTARLAR.kupon)) {
+    return { acik: false, sebep: "durduruldu" };
+  }
+
+  return withBypass("çark durumu", async (db) => {
+    const oduller = await odulleriOku(db, opts.cafeId);
+    if (oduller.length === 0) return { acik: false as const, sebep: "odul_yok" as const };
+
+    const son = await sonCevirme(db, opts);
+    if (son) {
+      const sonraki = new Date(son.getTime() + ARALIK_SAAT * 3_600_000);
+      if (sonraki > new Date()) {
+        return {
+          acik: false as const,
+          sebep: "sure" as const,
+          sonrakiAn: sonraki,
+          dilimler: dilimleriYay(oduller),
+        };
+      }
+    }
+
+    return { acik: true as const, dilimler: dilimleriYay(oduller) };
+  });
+}
+
+async function sonCevirme(
+  db: Db,
+  opts: { playerId: string; cafeId: string },
+): Promise<Date | null> {
+  const r = await db.one<{ an: Date }>(
+    `SELECT max(c.issued_at) AS an
+       FROM coupons c
+       JOIN coupon_events e ON e.coupon_id = c.id AND e.event = 'issued'
+      WHERE c.player_id = $1 AND c.cafe_id = $2 AND e.reason = 'cark'`,
+    [opts.playerId, opts.cafeId],
+  );
+  return r?.an ?? null;
+}
+
+/**
+ * Yayılmış dilim listesinden ağırlıklı bir dilim seçer.
+ *
+ * Seçim **benzersiz ödüller** üzerinden yapılıyor, yayılmış liste
+ * üzerinden değil: aynı ödül listede iki kez geçiyorsa iki kat olası
+ * olurdu ve `DILIM_SAYISI`'nin ödül sayısına bölünmediği durumlarda
+ * ağırlıklar sessizce bozulurdu.
+ */
+export function sec(dilimler: Dilim[]): { dilim: Dilim; indeks: number } | null {
+  if (dilimler.length === 0) return null;
+
+  const benzersiz: Dilim[] = [];
+  for (const d of dilimler) {
+    if (!benzersiz.some((b) => b.odulId === d.odulId)) benzersiz.push(d);
+  }
+
+  const secilen = benzersiz[agirlikliSec(benzersiz)];
+  const indeks = dilimler.findIndex((d) => d.odulId === secilen.odulId);
+  return { dilim: secilen, indeks: indeks < 0 ? 0 : indeks };
+}
+
+/** Çark kapalıysa oyuncuya söylenecek cümle. */
+export function durumMetni(d: CarkDurumu): string {
+  if (d.acik) return "";
+  if (d.sebep !== "sure") {
+    return d.sebep === "odul_yok"
+      ? "Bu kafede şu an dağıtılan ödül yok."
+      : "Ödül dağıtımı geçici olarak durduruldu.";
+  }
+
+  const kalan = Math.max(0, d.sonrakiAn.getTime() - Date.now());
+  const saat = Math.ceil(kalan / 3_600_000);
+  return saat <= 1
+    ? "Çarkı az önce çevirdin. Bir saat içinde yeniden açılıyor."
+    : `Çarkı az önce çevirdin. ${saat} saat sonra yeniden açılıyor.`;
+}
+
+/**
+ * Misafire gösterilecek dilimler.
+ *
+ * Liste **sunucudan** geliyor: istemci kendi dilim listesini kursaydı
+ * ödülün adını da uydurabilir ve "kazandım" ekranı gerçekle ilgisiz
+ * olurdu. Ödülün TL değeri bu listede taşınıyor ama ekrana çıkmıyor (E9).
+ */
+export async function misafirDurumu(cafeId: string): Promise<Dilim[]> {
+  if (await acil.durduruldu(acil.ANAHTARLAR.kupon)) return [];
+  return withBypass("misafir çark dilimleri", async (db) =>
+    dilimleriYay(await odulleriOku(db, cafeId)),
+  );
+}
+
+/* ── Misafir çevirmesi ─────────────────────────────────────── */
+
+export type Talep = {
+  cafeId: string;
+  odulId: string;
+  baslik: string;
+  /** Animasyonun duracağı dilim — ekranın tek işi burada durmak. */
+  dilim: number;
+  son: number;
+};
+
+export type MisafirSonucu =
+  | { ok: true; dilim: number; baslik: string; cerez: string }
+  | { ok: false; hata: string };
+
+/**
+ * Kaydolmamış ziyaretçinin çevirmesi.
+ *
+ * ── Neden hemen kupon üretilmiyor ───────────────────────────
+ *
+ * G13: doğrulanmamış ziyaretçinin veritabanında izi olmamalı. Kazanılan
+ * ödül imzalı bir çerezde bekliyor; oyuncu kaydolduğunda `bozdur()` onu
+ * normal kupon yolundan geçiriyor — bütçe, kanıt ve erteleme kuralları
+ * orada işliyor.
+ *
+ * ── Neden kafe kimliği imzanın içinde ───────────────────────
+ *
+ * Çerez oyuncunun elinde. Kafe imzalı gövdede olmasaydı, A kafesinde
+ * çevrilen çark B kafesinin bütçesinden ödül yazdırabilirdi.
+ */
+export async function misafirCevir(opts: { cafeId: string }): Promise<MisafirSonucu> {
+  if (await acil.durduruldu(acil.ANAHTARLAR.kupon)) {
+    return { ok: false, hata: "Ödül dağıtımı geçici olarak durduruldu." };
+  }
+
+  return withBypass("misafir çark çevirme", async (db) => {
+    const oduller = await odulleriOku(db, opts.cafeId);
+    if (oduller.length === 0) {
+      return { ok: false as const, hata: "Bu kafede şu an dağıtılan ödül yok." };
+    }
+
+    // Kayıtlı oyuncuyla aynı seçim fonksiyonu: iki akışın olasılıkları
+    // ayrışırsa "misafirken daha iyi ödül çıkıyor" gibi bir fark doğar ve
+    // kimse bunu fark etmez.
+    const secim = sec(dilimleriYay(oduller));
+    if (!secim) return { ok: false as const, hata: "Bu kafede şu an dağıtılan ödül yok." };
+
+    const talep: Talep = {
+      cafeId: opts.cafeId,
+      odulId: secim.dilim.odulId,
+      baslik: secim.dilim.baslik,
+      dilim: secim.indeks,
+      son: Date.now() + TALEP_OMRU_SN * 1000,
+    };
+
+    // Ödülün TL değeri loga da girmiyor (E9).
+    log.info("misafir cark cevirdi", { cafeId: opts.cafeId, dilim: talep.dilim });
+
+    return {
+      ok: true as const,
+      dilim: talep.dilim,
+      baslik: talep.baslik,
+      cerez: paketle(talep),
+    };
+  });
+}
+
+/* ── İmzalı taşıyıcı ──────────────────────────────────────── */
+
+/**
+ * Gövde JSON, taşıma base64url, sonuna imza.
+ *
+ * `misafir.ts` ile aynı biçim ve aynı sıra: çözerken **önce imza
+ * doğrulanıyor**, sonra JSON ayrıştırılıyor. Kurcalanmış çerez
+ * ayrıştırıcıya hiç ulaşmıyor.
+ */
+function paketle(veri: Talep): string {
+  const govde = Buffer.from(JSON.stringify(veri), "utf8").toString("base64url");
+  return `${govde}.${imzala(AMAC_TALEP, govde)}`;
+}
+
+/** Talebi çözer. İmza tutmuyorsa, süresi geçtiyse veya biçim bozuksa null. */
+export function talepCoz(cerez: string | undefined): Talep | null {
+  if (!cerez) return null;
+
+  const nokta = cerez.lastIndexOf(".");
+  if (nokta < 1) return null;
+
+  const govde = cerez.slice(0, nokta);
+  if (!imzaGecerliMi(AMAC_TALEP, govde, cerez.slice(nokta + 1))) return null;
+
+  let t: Talep;
+  try {
+    t = JSON.parse(Buffer.from(govde, "base64url").toString("utf8")) as Talep;
+  } catch {
+    return null;
+  }
+
+  if (typeof t?.son !== "number" || t.son < Date.now()) return null;
+  if (typeof t.cafeId !== "string" || typeof t.odulId !== "string") return null;
+  if (typeof t.baslik !== "string" || typeof t.dilim !== "number") return null;
+
+  return t;
+}

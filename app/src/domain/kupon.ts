@@ -7,6 +7,7 @@ import * as butce from "./butce";
 import * as acil from "./acil";
 import * as happy from "./happy";
 import * as ayar from "./ayar";
+import * as cark from "./cark";
 import { harcaIle as puanHarca } from "./puan";
 import { idIleBul, odulKilidiBitis, takmaAdIle } from "./player";
 
@@ -295,6 +296,80 @@ export async function anlikOdulVer(
     kanitSeviyesi: opts.kanitSeviyesi,
     kaynak: pencereden ? "happy_hour" : "anlik",
     happyHourId: pencereden && pencere ? pencere.id : undefined,
+  });
+}
+
+/* ── Çark ödülü (Ü49) ──────────────────────────────────────── */
+
+/**
+ * Çarkın kazandırdığı ödülü kupona çevirir.
+ *
+ * ── Hangi ödül sorusu burada sorulmuyor ─────────────────────
+ *
+ * Seçimi `cark.ts` yapıyor (ağırlıklı, sunucuda). Burası yalnızca
+ * seçilen ödülü **normal kupon yolundan** geçiriyor: bütçe rezervi (E10),
+ * kanıt kademesi (E6), erteleme eşiği (Ü39), denetim izi. Çark kendine
+ * ait bir ödül havuzu ya da ayrı bir kupon türü açmıyor.
+ *
+ * ── 24 saat kilidi neden burada da var ──────────────────────
+ *
+ * `cark.durum()` de bakıyor ama o okuma ile bu yazma arasında zaman var:
+ * iki sekmeden aynı anda çevrilirse ikisi de "açık" cevabını alır ve iki
+ * kupon üretilirdi. Burada oyuncu satırı kilitleniyor ve kontrol **aynı
+ * işlemde** tekrar yapılıyor — yarışı kapatan yer burası.
+ */
+export async function carkOduluVer(opts: {
+  playerId: string;
+  cafeId: string;
+  odulId: string;
+  kanitSeviyesi: number;
+  /** Kayıt anında bozdurulan misafir talebinde 24 saat kilidi aranmıyor. */
+  ilkCevirme?: boolean;
+}): Promise<KuponSonucu> {
+  if (await acil.durduruldu(acil.ANAHTARLAR.kupon)) {
+    return { ok: false, hata: "Ödül dağıtımı geçici olarak durduruldu." };
+  }
+
+  const oyuncu = await idIleBul(opts.playerId);
+  if (!oyuncu) return { ok: false, hata: "Oyuncu bulunamadı." };
+
+  // G16: SIM swap koruması — numara değişiminden sonra 24 saat değer çıkmaz.
+  const kilit = odulKilidiBitis(oyuncu);
+  if (kilit) {
+    return { ok: false, hata: "Telefon numaran yakında değişti; güvenlik için ödül açılmıyor." };
+  }
+
+  return withBypass("çark ödülü", async (db) => {
+    await db.query(`SELECT id FROM players WHERE id = $1 FOR UPDATE`, [opts.playerId]);
+
+    if (!opts.ilkCevirme) {
+      const son = await db.one<{ an: Date }>(
+        `SELECT max(c.issued_at) AS an
+           FROM coupons c
+           JOIN coupon_events e ON e.coupon_id = c.id AND e.event = 'issued'
+          WHERE c.player_id = $1 AND c.cafe_id = $2 AND e.reason = 'cark'`,
+        [opts.playerId, opts.cafeId],
+      );
+      if (son?.an && son.an.getTime() + cark.ARALIK_SAAT * 3_600_000 > Date.now()) {
+        return { ok: false as const, hata: "Çark 24 saatte bir çevrilebilir." };
+      }
+    }
+
+    const odul = await db.one<OdulSatiri>(
+      `SELECT id, title, cost_kurus, min_proof_level, reward_type, percent
+         FROM rewards
+        WHERE id = $1 AND cafe_id = $2 AND active AND kind = 'instant'`,
+      [opts.odulId, opts.cafeId],
+    );
+    if (!odul) return { ok: false as const, hata: "Bu ödül artık yayında değil." };
+
+    return kuponUret(db, {
+      playerId: opts.playerId,
+      cafeId: opts.cafeId,
+      odul,
+      kanitSeviyesi: opts.kanitSeviyesi,
+      kaynak: "cark",
+    });
   });
 }
 

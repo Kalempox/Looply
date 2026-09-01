@@ -10,6 +10,8 @@ import * as oturum from "@/domain/session";
 import * as masaOturumu from "@/domain/masa";
 import * as misafir from "@/domain/misafir";
 import { misafirOyunuYaz } from "@/domain/oyun";
+import * as cark from "@/domain/cark";
+import { carkOduluVer } from "@/domain/kupon";
 import {
   girisDene as parolaDene,
   belirle as parolaBelirle,
@@ -187,6 +189,43 @@ async function talebiBozdur(playerId: string): Promise<void> {
     if (!sonuc.ok) log.warn("misafir talebi bozdurulamadi", { sebep: sonuc.hata });
   } catch (err) {
     log.warn("misafir talebi bozdurulurken hata", { hata: String(err) });
+  }
+
+  await carkTalebiniBozdur(playerId);
+}
+
+/**
+ * Kayıt öncesi çevrilen çarkın ödülünü kupona çevirir (Ü49).
+ *
+ * `talebiBozdur`'un sonunda çağrılıyor, yani masa oturumu açıldıktan ve
+ * misafir konumu işlendikten **sonra**: kanıt kademesi (E6) masa
+ * oturumundan okunuyor, sırası bozulsaydı kanıtı olmayan bir masaya düşer
+ * ve pahalı ödüller hiç açılmazdı.
+ *
+ * `ilkCevirme: true` — 24 saatlik kilit burada aranmıyor. Kilit "aynı
+ * oyuncu günde bir kez çevirsin" diyor; bu, oyuncunun hesabı açılmadan
+ * ÖNCE çevirdiği çark ve hesapta henüz hiçbir çevirme kaydı yok.
+ *
+ * Hata oyuncuyu yolda bırakmıyor: kayıt başarılı oldu, oyuncu içeride.
+ */
+async function carkTalebiniBozdur(playerId: string): Promise<void> {
+  const c = await cookies();
+  const talep = cark.talepCoz(c.get(cark.TALEP_COOKIE)?.value);
+  c.delete(cark.TALEP_COOKIE);
+  if (!talep) return;
+
+  try {
+    const masa = await masaOturumu.aktif(playerId);
+    const sonuc = await carkOduluVer({
+      playerId,
+      cafeId: talep.cafeId,
+      odulId: talep.odulId,
+      kanitSeviyesi: masa?.kanitSeviyesi ?? 0,
+      ilkCevirme: true,
+    });
+    if (!sonuc.ok) log.warn("cark talebi bozdurulamadi", { sebep: sonuc.hata });
+  } catch (err) {
+    log.warn("cark talebi bozdurulurken hata", { hata: String(err) });
   }
 }
 

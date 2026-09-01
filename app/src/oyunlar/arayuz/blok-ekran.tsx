@@ -1,22 +1,56 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { blok, type BlokDurumu, type BlokGirdisi, PARCA_HUCRELERI } from "../blok";
 import type { OyunEkraniProps } from "./ortak";
 
 /**
- * Blok ekranı — parça seç, ızgaraya dokun.
+ * Blok ekranı — parçayı sürükle, nereye ineceğini gör, bırak.
  *
- * Dokunma modeli mobil için seçildi: sürükle-bırak küçük ekranda parmağın
- * altında kalan hücreyi göstermez. Önce parça seçiliyor, sonra ızgarada
- * hedef hücreye dokunuluyor; dokunulan hücre parçanın **sol üst köşesi**
- * oluyor ve seçim yapılır yapılmaz geçerli konumlar ışıklandırılıyor —
- * böylece kural ezberlenmiyor, görünüyor.
+ * ── İki giriş yolu, tek kural ───────────────────────────────
+ *
+ * İlk sürüm yalnızca **dokunmayla** çalışıyordu: önce parça seç, sonra
+ * ızgarada bir kareye dokun. Test eden ilk kişi oyunu açtı, parçayı
+ * sürüklemeye çalıştı, hiçbir şey olmadı ve *"oyun açılmadı"* dedi —
+ * blok oyunu denince insanın beklediği şey sürüklemek.
+ *
+ * Şimdi ikisi de var:
+ *   · **Sürükle-bırak** — beklenen davranış, varsayılan yol.
+ *   · **Dokun-dokun** — parçaya dokun, kareye dokun. Klavyeyle
+ *     oynanabilen tek yol bu, o yüzden kaldırılmadı: ızgara hâlâ
+ *     gerçek `<button>`lardan oluşuyor.
+ *
+ * ── İniş önizlemesi ─────────────────────────────────────────
+ *
+ * Sürüklerken parçanın **kaplayacağı kareler** boyanıyor: sığıyorsa vurgu
+ * rengi, sığmıyorsa tehlike. Eski ekran yalnızca geçerli köşeleri
+ * ışıklandırıyordu ve "bu köşeye koyarsam parça nereye taşar" sorusunu
+ * oyuncunun kafasında çözmesini bekliyordu.
+ *
+ * ── Çapa: parçanın sol üst köşesi ───────────────────────────
+ *
+ * Parmağın altındaki kare, parçanın sol üst köşesi oluyor. Parmağın
+ * ortaya denk gelmesi daha "doğal" görünürdü ama parçalar farklı
+ * boyutta: kural her parçada değişirdi. Sabit çapa + görünür önizleme,
+ * tahmin etmeyi tamamen gereksiz kılıyor.
  */
 export function BlokEkrani({ tohum, bolum, bitti }: OyunEkraniProps) {
   const [durum, setDurum] = useState<BlokDurumu>(() => blok.baslat(tohum, bolum));
   const [girdiler, setGirdiler] = useState<BlokGirdisi[]>([]);
   const [secili, setSecili] = useState<number | null>(null);
+  /** Sürükleme sırasında parmağın altındaki kare. */
+  const [hedef, setHedef] = useState<{ t: number; s: number; k: number } | null>(null);
+  /**
+   * Basılı tutulan parça ve basma anındaki seçim.
+   *
+   * State yerine ref: `onPointerDown` içinde `setSecili` çağrıldığı için
+   * `onPointerUp` yeni render'ın kapanışını görüyor ve "zaten seçili
+   * miydi" sorusu state'ten okunamıyor — ilk dokunuş kendini iptal
+   * ederdi. Ref, basma anındaki gerçeği taşıyor.
+   */
+  const basili = useRef<{ t: number; oncekiSecili: number | null } | null>(null);
+  /** Parmak ızgaranın üstüne hiç geldi mi — gelmediyse bu bir dokunuş. */
+  const suruklendi = useRef(false);
 
   /** Seçili parçanın sığdığı köşeler — dokunmadan önce görünsün. */
   const gecerliKoseler = useMemo(() => {
@@ -30,10 +64,35 @@ export function BlokEkrani({ tohum, bolum, bitti }: OyunEkraniProps) {
     return kume;
   }, [durum, secili]);
 
+  /**
+   * Parçanın ineceği kareler.
+   *
+   * Izgara dışına taşan kareler listeye **girmiyor**: `(s + ds) * 8 + k`
+   * hesabı taşan bir kareyi bir alt satırın başına sarardı ve önizleme
+   * oyuncuya yalan söylerdi. Taşma zaten `gecerli`yi false yapıyor.
+   */
+  const onizleme = useMemo(() => {
+    if (!hedef) return null;
+    const parca = durum.teklifler[hedef.t];
+    if (parca < 0) return null;
+
+    const kareler = new Set<number>();
+    for (const [ds, dk] of PARCA_HUCRELERI[parca]) {
+      const s = hedef.s + ds;
+      const k = hedef.k + dk;
+      if (s < 8 && k < 8) kareler.add(s * 8 + k);
+    }
+
+    return {
+      kareler,
+      gecerli: !!blok.uygula(durum, { t: hedef.t, s: hedef.s, k: hedef.k }),
+    };
+  }, [hedef, durum]);
+
   const koy = useCallback(
-    (s: number, k: number) => {
-      if (secili === null) return;
-      const girdi: BlokGirdisi = { t: secili, s, k };
+    (s: number, k: number, t: number | null = secili) => {
+      if (t === null) return;
+      const girdi: BlokGirdisi = { t, s, k };
       const sonraki = blok.uygula(durum, girdi);
       if (!sonraki) return;
 
@@ -49,6 +108,22 @@ export function BlokEkrani({ tohum, bolum, bitti }: OyunEkraniProps) {
     [durum, girdiler, secili, bitti],
   );
 
+  /**
+   * Ekran koordinatını ızgara karesine çevirir.
+   *
+   * `elementFromPoint` kullanılıyor, ızgaranın dikdörtgeninden hesap
+   * yapılmıyor: aradaki boşluklar ve kenar payı hesaba katılmazsa parmak
+   * sınıra yaklaştıkça bir kare kayıyor. Tarayıcı zaten tam isabet
+   * biliyor — ona sormak, aynı geometriyi ikinci kez yazmaktan doğru.
+   */
+  const kareBul = (x: number, y: number) => {
+    const el = document.elementFromPoint(x, y);
+    const kare = el instanceof Element ? el.closest("[data-kare]") : null;
+    if (!(kare instanceof HTMLElement)) return null;
+    const i = Number(kare.dataset.kare);
+    return { s: Math.floor(i / 8), k: i % 8 };
+  };
+
   return (
     <div className="oyun-alani">
       <Sayaclar durum={durum} />
@@ -59,21 +134,27 @@ export function BlokEkrani({ tohum, bolum, bitti }: OyunEkraniProps) {
           const s = Math.floor(i / 8);
           const k = i % 8;
           const dolu = (durum.izgara[s] & (1 << k)) !== 0;
-          const hedef = gecerliKoseler.has(i);
+          const inecek = onizleme?.kareler.has(i) ?? false;
+          const kose = gecerliKoseler.has(i);
 
           return (
             <button
               key={i}
               type="button"
+              data-kare={i}
               onClick={() => koy(s, k)}
               disabled={secili === null}
               aria-label={`${s + 1}. satır ${k + 1}. sütun`}
               className={`aspect-square transition-colors ${
-                dolu
-                  ? "bg-vurgu"
-                  : hedef
-                    ? "bg-vurgu/45 ring-1 ring-vurgu/70"
-                    : "bg-cukur"
+                inecek
+                  ? onizleme!.gecerli
+                    ? "bg-vurgu/70 ring-1 ring-vurgu"
+                    : "bg-tehlike/40 ring-1 ring-tehlike/70"
+                  : dolu
+                    ? "bg-vurgu"
+                    : kose
+                      ? "bg-vurgu/25 ring-1 ring-vurgu/50"
+                      : "bg-cukur"
               }`}
             />
           );
@@ -87,8 +168,42 @@ export function BlokEkrani({ tohum, bolum, bitti }: OyunEkraniProps) {
             key={t}
             type="button"
             disabled={parca < 0}
-            onClick={() => setSecili(secili === t ? null : t)}
             aria-pressed={secili === t}
+            // touch-action: parmak sürüklerken sayfa kaymasın — yoksa
+            // sürükleme hareketi kaydırma olarak yorumlanıyor ve oyun
+            // hiç tepki vermemiş gibi görünüyor.
+            style={{ touchAction: "none" }}
+            onPointerDown={(e) => {
+              if (parca < 0) return;
+              e.currentTarget.setPointerCapture(e.pointerId);
+              basili.current = { t, oncekiSecili: secili };
+              suruklendi.current = false;
+              setSecili(t);
+              setHedef(null);
+            }}
+            onPointerMove={(e) => {
+              if (basili.current?.t !== t) return;
+              const kare = kareBul(e.clientX, e.clientY);
+              if (kare) suruklendi.current = true;
+              setHedef(kare ? { t, ...kare } : null);
+            }}
+            onPointerUp={() => {
+              if (basili.current?.t !== t) return;
+              const onceki = basili.current.oncekiSecili;
+              basili.current = null;
+
+              if (hedef?.t === t) {
+                koy(hedef.s, hedef.k, t);
+              } else if (!suruklendi.current && onceki === t) {
+                // Aynı parçaya ikinci kez dokunuldu — seçim kalkıyor.
+                setSecili(null);
+              }
+              setHedef(null);
+            }}
+            onPointerCancel={() => {
+              basili.current = null;
+              setHedef(null);
+            }}
             className={`flex min-h-[84px] items-center justify-center rounded-2xl border border-cizgi bg-yuzey px-2 py-3 disabled:opacity-25 ${
               secili === t ? "ring-2 ring-vurgu" : ""
             }`}
@@ -100,10 +215,14 @@ export function BlokEkrani({ tohum, bolum, bitti }: OyunEkraniProps) {
 
       <p className="mt-4 text-center text-[13px] text-yazi-sonuk">
         {secili === null
-          ? "Bir parça seç"
+          ? "Bir parçayı ızgaraya sürükle"
           : gecerliKoseler.size === 0
             ? "Bu parça hiçbir yere sığmıyor — başka parça dene"
-            : "Işıklı bir kareye dokun"}
+            : hedef
+              ? onizleme?.gecerli
+                ? "Bırak"
+                : "Buraya sığmıyor"
+              : "Işıklı bir kareye sürükle ya da dokun"}
       </p>
     </div>
   );

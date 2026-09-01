@@ -63,6 +63,50 @@ export const OYUN_PUANI = 300;
 /** Günün bonuslu oyunu çarpanı. */
 export const BONUS_CARPANI = 2;
 
+/**
+ * Bölüm tamamlanmasa da yazılan katılım puanı (Ü48).
+ *
+ * ── Neden var ───────────────────────────────────────────────
+ *
+ * Önce yalnızca **başarılı** bölüm puan yazıyordu ve gerekçesi sağlamdı:
+ * bölümü yarıda bırakıp yeniden başlamak en ucuz çiftlik yolu olmasın.
+ * Ama sonuç şuydu — ilk kez oynayan, oyunu bitiremeyince ekranda
+ * *"Kazanım yok"* görüyordu. Sadakat ürününde ilk deneyimin cezayla
+ * bitmesi, tam da istemediğimiz şey.
+ *
+ * ── Çiftlik neden açılmıyor ─────────────────────────────────
+ *
+ * Üç kilit birden duruyor: puan **günlük tavana** (E4) tabi, kafede ve
+ * konumu doğrulanmış olmayı gerektiriyor (Ü3), ve tutar başarılı bölümün
+ * altıda biri. Yarıda bırakarak tavanı doldurmak, oynayarak doldurmaktan
+ * yavaş — yani suistimalin ödülü yok.
+ */
+export const KATILIM_PUANI = 50;
+
+/**
+ * Skor eşikleri (Ü48) — yüksek skor doğrudan puan kazandırır.
+ *
+ * Ürün sahibinin örneği: *"1500, 2500"*. Bölümü bitirmek tek başarı ölçüsü
+ * değil; iyi oynamanın da karşılığı olmalı.
+ *
+ * **Kademeler birikmiyor**: 2500 yapan oyuncu 150 + 300 değil, yalnızca
+ * 300 alıyor. Toplasaydık eşikler arası fark yükseldikçe ödül katlanır,
+ * tek bir iyi oyun günlük tavanı tek başına doldururdu.
+ */
+export const SKOR_ESIKLERI = [
+  { skor: 1500, bonus: 150 },
+  { skor: 2500, bonus: 300 },
+] as const;
+
+export type SkorEsigi = (typeof SKOR_ESIKLERI)[number];
+
+/** Ulaşılan en yüksek kademe — hiçbirine ulaşılmadıysa null. */
+export function esikBul(skor: number): SkorEsigi | null {
+  let bulunan: SkorEsigi | null = null;
+  for (const e of SKOR_ESIKLERI) if (skor >= e.skor) bulunan = e;
+  return bulunan;
+}
+
 /** E4: günlük puan tavanı — oyuncu / kafe / gün. */
 export const GUNLUK_TAVAN = 900;
 

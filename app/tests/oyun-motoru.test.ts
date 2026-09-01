@@ -8,7 +8,13 @@ import { kaydet } from "@/domain/player";
 import { normalizePhone } from "@/lib/crypto";
 import * as masa from "@/domain/masa";
 import * as oyunDomain from "@/domain/oyun";
-import { GUNLUK_TAVAN } from "@/domain/puan";
+import {
+  GUNLUK_TAVAN,
+  KATILIM_PUANI,
+  OYUN_PUANI,
+  SKOR_ESIKLERI,
+  esikBul,
+} from "@/domain/puan";
 import { blok } from "@/oyunlar/blok";
 import { kelime, kurulabilir, kucult } from "@/oyunlar/kelime";
 import { dusen } from "@/oyunlar/dusen";
@@ -549,3 +555,50 @@ async function gunlukPuan(playerId: string): Promise<number> {
   );
   return Number(r?.toplam ?? 0);
 }
+
+/* ══════════════════════════════════════════════════════════════
+ * PUAN EKONOMİSİ — Ü48
+ *
+ * İki değişiklik sınanıyor: bölüm bitmese de puan yazılıyor (katılım) ve
+ * yüksek skor ayrıca ödüllendiriliyor (eşik). İkisi de para değil ama ikisi
+ * de ödüle giden yolu kısaltıyor; sessizce bozulmamalı.
+ * ═════════════════════════════════════════════════════════════ */
+describe("puan · katılım ve skor eşiği (Ü48)", () => {
+  test("eşiğin altındaki skor bonus üretmiyor", () => {
+    assert.equal(esikBul(0), null);
+    assert.equal(esikBul(1_499), null);
+  });
+
+  test("eşiğe ulaşan skor kendi kademesini alıyor", () => {
+    assert.equal(esikBul(1_500)?.bonus, 150);
+    assert.equal(esikBul(2_499)?.bonus, 150);
+  });
+
+  /**
+   * Kademeler toplanmıyor: 2500 yapan 150+300 değil, 300 alıyor.
+   * Toplansaydı tek bir iyi oyun günlük tavanı tek başına doldururdu.
+   */
+  test("üst kademe alt kademeyle toplanmıyor", () => {
+    assert.equal(esikBul(2_500)?.bonus, 300);
+    assert.equal(esikBul(999_999)?.bonus, 300, "en üst kademe tavan olmalı");
+  });
+
+  test("katılım puanı oyun puanından belirgin biçimde küçük", () => {
+    // Yarıda bırakıp yeniden başlamak, oynayarak puan toplamaktan
+    // kârlı olmamalı — aradaki farkın korunması bunun güvencesi.
+    assert.ok(KATILIM_PUANI * 4 < OYUN_PUANI, "katılım puanı çiftlik yapmaya değer hâle geldi");
+  });
+
+  test("eşikler artan sırada — sıra bozulursa esikBul yanlış kademe döner", () => {
+    for (let i = 1; i < SKOR_ESIKLERI.length; i++) {
+      assert.ok(
+        SKOR_ESIKLERI[i].skor > SKOR_ESIKLERI[i - 1].skor,
+        "eşik listesi artan sırada değil",
+      );
+      assert.ok(
+        SKOR_ESIKLERI[i].bonus > SKOR_ESIKLERI[i - 1].bonus,
+        "yüksek eşik daha az kazandırıyor",
+      );
+    }
+  });
+});

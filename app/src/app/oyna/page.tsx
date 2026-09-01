@@ -6,7 +6,8 @@ import { idIleBul, gorunum } from "@/domain/player";
 import { ozet } from "@/domain/puan";
 import { kafeSeviyesi, type KafeSeviyesi } from "@/domain/xp";
 import { OYUNLAR, gununOyunu, type HerhangiOyun } from "@/oyunlar";
-import * as tahtDomain from "@/domain/taht";
+import * as liderlik from "@/domain/liderlik";
+import * as cark from "@/domain/cark";
 import * as happy from "@/domain/happy";
 import { isGunu } from "@/lib/tarih";
 import { OyuncuNav, NavBosluk } from "@/components/oyuncu-nav";
@@ -43,17 +44,15 @@ export default async function OynaSayfasi() {
   // Ö3: açık Happy Hour penceresi — yalnızca kafedeyken anlamlı.
   const pencere = masa ? await happy.acikPencere(masa.cafeId) : null;
 
-  // Ö1: masanın tahtı — yalnızca masadayken anlamlı. Günün oyunu üzerinden
-  // tutuluyor ki skorlar karşılaştırılabilir olsun.
-  const taht = masa
-    ? await tahtDomain.masaTahti({
-        cafeId: masa.cafeId,
-        tableId: masa.tableId,
-        masaAdi: masa.masaAdi,
-        oyunId: bonus.id,
-        oyunAdi: bonus.ad,
-        bakanPlayerId: o.ozneId,
-      })
+  // Bugünün sıralaması — yalnızca kafedeyken anlamlı. Günün oyunu
+  // üzerinden tutuluyor ki skorlar karşılaştırılabilir olsun.
+  const lider = masa
+    ? await liderlik.bugun({ cafeId: masa.cafeId, oyunId: bonus.id, bakanId: o.ozneId })
+    : null;
+
+  // Ü49: günlük çark — yalnızca kafedeyken, ödül kafenin bütçesinden çıkıyor.
+  const carkDurumu = masa
+    ? await cark.durum({ playerId: o.ozneId, cafeId: masa.cafeId })
     : null;
 
   const seridDurumu = seridBelirle(masa);
@@ -110,7 +109,9 @@ export default async function OynaSayfasi() {
 
         {pencere && <HavuzKarti pencere={pencere} kafeAdi={masa!.cafeAdi} />}
 
-        {taht && <TahtKarti taht={taht} />}
+        {carkDurumu && <CarkKarti durum={carkDurumu} />}
+
+        {lider && <LiderKarti liste={lider} oyunAdi={bonus.ad} />}
 
         {/* ── Günün oyunu ───────────────────────────────── */}
         <section className="mb-10">
@@ -311,69 +312,127 @@ function HavuzKarti({ pencere, kafeAdi }: { pencere: happy.Pencere; kafeAdi: str
 }
 
 /**
- * Masa tahtı (Ö1).
+ * Günlük çark kartı (Ü49).
  *
- * Ekranın söylediği tek şey: *bu masada kim kral ve onu devirmek için kaç
- * lazım.* Taht statüden ibaret — puan, kupon veya çarpan vermiyor, bu yüzden
- * kart da kazanım vaat etmiyor.
+ * Kart çarkın kendisini göstermiyor, yalnızca durumunu: çarkın SVG'si ve
+ * animasyonu bu ekranı ikiye katlardı. Kapalıyken de duruyor — kaybolan
+ * bir kart "özellik kaldırıldı" diye okunuyor.
  */
-function TahtKarti({ taht }: { taht: tahtDomain.MasaTahti }) {
-  const bos = !taht.kalici;
+function CarkKarti({ durum }: { durum: cark.CarkDurumu }) {
+  const acik = durum.acik;
+
+  return (
+    <section className="mb-10">
+      <h2 className="etiket-caps mb-3 text-yazi-sonuk">Şans çarkı</h2>
+
+      <Link
+        href="/cark"
+        className={`block rounded-2xl border px-5 py-5 transition-colors ${
+          acik ? "border-odul bg-cukur" : "border-cizgi bg-yuzey"
+        }`}
+      >
+        <div className="flex items-center gap-4">
+          <span className="text-3xl leading-none" aria-hidden>
+            🎡
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block font-display text-lg leading-tight font-bold">
+              {acik ? "Çarkın hazır" : "Çark kapalı"}
+            </span>
+            <span className="mt-1 block text-[13px] leading-relaxed text-yazi-sonuk">
+              {acik
+                ? "Günde bir kez çevirebilirsin. Çıkan ödül hesabına işlenir."
+                : cark.durumMetni(durum)}
+            </span>
+          </span>
+          <span aria-hidden className="text-yazi-sonuk">
+            →
+          </span>
+        </div>
+      </Link>
+    </section>
+  );
+}
+
+/**
+ * Bugünün liderlik tablosu.
+ *
+ * ── Neden masa tahtının yerine geçti ────────────────────────
+ *
+ * Kart önce "Masa 3 tahtı" diyordu ve tek kişi gösteriyordu. İki şey
+ * yanlıştı: oyuncu hangi masada oturduğunu zaten biliyor (masa bilgisi ona
+ * bir şey söylemiyor) ve tek satırlık bir sıralamada yarışacak bir şey yok
+ * — ikinci sıradaki kendini göremiyordu.
+ *
+ * ── Ad neden maskeli ────────────────────────────────────────
+ *
+ * Ad + soyadın baş harfi: `Mert Y***`. Kafedeki bir başkasının ekranında
+ * tam ad görünmesi, oyuncunun kabul ettiği bir şey değil; sıralamanın işe
+ * yaraması için de gerekmiyor.
+ *
+ * Kart tıklanınca tüm zamanlar listesine gidiyor — bugünün ilk üçüne
+ * giremeyen için "hiç yokum" demek yerine gidilecek bir yer kalıyor.
+ */
+function LiderKarti({ liste, oyunAdi }: { liste: liderlik.Liste; oyunAdi: string }) {
+  const bos = liste.satirlar.length === 0;
 
   return (
     <section className="mb-10">
       <div className="mb-3 flex items-baseline justify-between">
-        <h2 className="etiket-caps text-yazi-sonuk">
-          {taht.masaAdi ? `${taht.masaAdi} tahtı` : "Kafe tahtı"}
-        </h2>
-        <span className="font-data text-[10px] text-yazi-sonuk">{taht.oyunAdi}</span>
+        <h2 className="etiket-caps text-yazi-sonuk">Bugünün liderleri</h2>
+        <span className="font-data text-[10px] text-yazi-sonuk">{oyunAdi}</span>
       </div>
 
       <Link
-        href={`/oyna/${taht.oyunId}`}
-        className={`block rounded-2xl border bg-yuzey px-5 py-5 ${
-          taht.kalici?.benMiyim ? "border-odul" : "border-cizgi"
-        }`}
+        href="/liderlik"
+        className="block rounded-2xl border border-cizgi bg-yuzey px-5 py-5 transition-colors hover:border-yazi-sonuk"
       >
         {bos ? (
           <>
-            <div className="font-display text-lg leading-tight font-bold">Taht boş</div>
+            <div className="font-display text-lg leading-tight font-bold">Liste boş</div>
             <p className="mt-1.5 text-[13px] leading-relaxed text-yazi-sonuk">
-              Bu masada henüz kimse oynamadı. İlk skoru sen yaz, taht senin olsun.
+              Bugün bu kafede henüz kimse oynamadı. İlk skoru sen yaz.
             </p>
           </>
         ) : (
-          <>
-            <div className="flex items-baseline justify-between gap-3">
-              <span className="min-w-0 flex-1 truncate font-display text-lg leading-tight font-bold">
-                <span aria-hidden>👑</span>{" "}
-                {taht.kalici!.benMiyim ? "Taht senin" : taht.kalici!.gorunenAd}
-              </span>
-              <span className="font-data text-xl leading-none font-bold text-vurgu tabular">
-                {taht.kalici!.skor.toLocaleString("tr-TR")}
-              </span>
-            </div>
-            <p className="mt-2 text-[13px] text-yazi-sonuk">
-              {taht.kalici!.benMiyim
-                ? "Devrilene kadar senin. Skorunu yükseltirsen fark açılır."
-                : `Devirmek için ${taht.devirmekIcin.toLocaleString("tr-TR")}`}
-            </p>
-          </>
+          <ol className="space-y-2.5">
+            {liste.satirlar.slice(0, 3).map((s) => (
+              <KucukSatir key={s.sira} satir={s} />
+            ))}
+          </ol>
         )}
 
-        {taht.haftalik && !taht.haftalik.benMiyim && (
-          <p className="mt-3 border-t border-cizgi pt-3 font-data text-[10px] text-yazi-sonuk">
-            Bu haftanın kralı: {taht.haftalik.gorunenAd} ·{" "}
-            {taht.haftalik.skor.toLocaleString("tr-TR")}
-          </p>
+        {liste.benimSiram && (
+          <ol className="mt-3 border-t border-cizgi pt-3">
+            <KucukSatir satir={liste.benimSiram} />
+          </ol>
         )}
-        {taht.haftalik?.benMiyim && (
-          <p className="mt-3 border-t border-cizgi pt-3 font-data text-[10px] text-odul-koyu">
-            Bu haftanın kralı sensin
-          </p>
-        )}
+
+        <p className="mt-4 font-data text-[10px] tracking-wide text-yazi-sonuk">
+          TÜM ZAMANLAR SIRALAMASI →
+        </p>
       </Link>
     </section>
+  );
+}
+
+function KucukSatir({ satir }: { satir: liderlik.LiderSatiri }) {
+  return (
+    <li className={`flex items-baseline gap-3 ${satir.benMiyim ? "text-odul-koyu" : ""}`}>
+      <span className="w-5 shrink-0 font-data text-[12px] text-yazi-sonuk tabular">
+        {satir.sira}
+      </span>
+      <span className="min-w-0 flex-1 truncate font-display text-[15px] font-bold">
+        {satir.benMiyim ? "Sen" : satir.gorunenAd}
+      </span>
+      <span
+        className={`font-data text-[15px] leading-none font-bold tabular ${
+          satir.benMiyim ? "text-odul-koyu" : "text-vurgu"
+        }`}
+      >
+        {satir.deger.toLocaleString("tr-TR")}
+      </span>
+    </li>
   );
 }
 
