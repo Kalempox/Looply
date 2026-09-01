@@ -1,6 +1,5 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import * as oturum from "@/domain/session";
 import * as masaOturumu from "@/domain/masa";
 import * as cark from "@/domain/cark";
@@ -55,8 +54,18 @@ export async function carkiCevir(): Promise<
     return { ok: false, hata: kupon.hata };
   }
 
-  revalidatePath("/oyna");
-  revalidatePath("/oduller");
-
+  /**
+   * ⚠️ Burada `revalidatePath` ÇAĞRILMIYOR — bir tur çağrıldı ve çarkı
+   * bozdu.
+   *
+   * Eylem `/cark` sayfasından tetikleniyor. `revalidatePath` yönlendirici
+   * önbelleğini boşaltınca sayfa yeniden çiziliyor, `cark.durum()` bu kez
+   * "24 saat kilidi" diyor ve çarkın yerine kapalı sürüm geçiyor. Sonuç:
+   * animasyon daha başlamadan bileşen söküldü, oyuncu ne dönüşü ne de
+   * kazandığı ödülü gördü — yalnızca "çarkı az önce çevirdin" yazısını.
+   *
+   * `/oyna` ve `/oduller` zaten `force-dynamic`; oraya gidildiğinde yeni
+   * kupon görünüyor. Tazelenecek bir önbellek yok.
+   */
   return { ok: true, dilim: secim.indeks, baslik: kupon.baslik };
 }

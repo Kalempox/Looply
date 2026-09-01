@@ -8,7 +8,6 @@ import * as acil from "./acil";
 import * as happy from "./happy";
 import * as ayar from "./ayar";
 import * as cark from "./cark";
-import { harcaIle as puanHarca } from "./puan";
 import { idIleBul, odulKilidiBitis, takmaAdIle } from "./player";
 
 /**
@@ -380,79 +379,16 @@ export async function carkOduluVer(opts: {
   });
 }
 
-/* ── Katalogdan satın alma ─────────────────────────────────── */
-
-/**
- * Oyuncu puanıyla katalog ödülü alır.
+/* ── Puanla satın alma KALDIRILDI (Ü52) ─────────────────────
  *
- * Oyuncu satırı işlemin başında kilitleniyor: iki eşzamanlı satın alma
- * kilitsiz kalsaydı ikisi de aynı bakiyeyi görüp iki ödül üretebilirdi.
+ * `katalogdanAl` buradaydı: oyuncu puanını harcayıp katalogdan ödül
+ * seçiyordu. Ürün sahibi kararı geri aldı — puan artık yalnızca sıralama
+ * ve seviye için birikiyor, harcanmıyor. Ödüle giden iki yol kaldı:
+ * oyun sonu anlık ödülü (Ü27) ve şans çarkı (Ü49).
+ *
+ * Fonksiyon silindi, yorumu kaldı: "puanla ödül alma nereye gitti"
+ * sorusunun cevabı, kodun içinde bulunmalı.
  */
-export async function katalogdanAl(opts: {
-  playerId: string;
-  cafeId: string;
-  odulId: string;
-  kanitSeviyesi: number;
-}): Promise<KuponSonucu> {
-  if (await acil.durduruldu(acil.ANAHTARLAR.kupon)) {
-    return { ok: false, hata: "Ödül dağıtımı geçici olarak durduruldu." };
-  }
-
-  const oyuncu = await idIleBul(opts.playerId);
-  if (!oyuncu) return { ok: false, hata: "Oyuncu bulunamadı." };
-
-  // G16: SIM swap koruması — numara değişiminden sonra 24 saat değer çıkmaz.
-  const kilit = odulKilidiBitis(oyuncu);
-  if (kilit) {
-    return {
-      ok: false,
-      hata: `Telefon numaran yakında değişti. Güvenlik için ${kilit.toLocaleString("tr-TR", { hour: "2-digit", minute: "2-digit", day: "numeric", month: "long" })} tarihine kadar ödül alınamıyor.`,
-    };
-  }
-
-  return withBypass("katalogdan ödül alma", async (db) => {
-    await db.query(`SELECT id FROM players WHERE id = $1 FOR UPDATE`, [opts.playerId]);
-
-    const odul = await db.one<OdulSatiri & { points_price: number; kind: string }>(
-      `SELECT id, title, cost_kurus, min_proof_level, reward_type, percent, points_price, kind
-         FROM rewards WHERE id = $1 AND cafe_id = $2 AND active`,
-      [opts.odulId, opts.cafeId],
-    );
-    if (!odul) return { ok: false as const, hata: "Bu ödül artık yayında değil." };
-    if (odul.kind !== "catalog") {
-      return { ok: false as const, hata: "Bu ödül puanla alınamaz." };
-    }
-
-    const harcandi = await puanHarca(db, {
-      playerId: opts.playerId,
-      cafeId: opts.cafeId,
-      puan: odul.points_price,
-      sebep: "odul",
-      refTipi: "reward",
-      refId: odul.id,
-    });
-    if (!harcandi) return { ok: false as const, hata: "Puanın yetmiyor." };
-
-    const sonuc = await kuponUret(db, {
-      playerId: opts.playerId,
-      cafeId: opts.cafeId,
-      odul,
-      kanitSeviyesi: opts.kanitSeviyesi,
-      kaynak: "katalog",
-    });
-
-    // Kupon üretilemezse puan da harcanmamış olmalı: işlem geri alınıyor.
-    if (!sonuc.ok) throw new KuponUretilemedi(sonuc.hata);
-
-    return sonuc;
-  }).catch((err) => {
-    if (err instanceof KuponUretilemedi) return { ok: false as const, hata: err.message };
-    throw err;
-  });
-}
-
-/** İşlemi geri almak için kullanılan iç hata. */
-class KuponUretilemedi extends Error {}
 
 /* ── Kasiyer tarafı ────────────────────────────────────────── */
 

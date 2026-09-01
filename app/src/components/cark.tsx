@@ -12,6 +12,14 @@ import { useState, useTransition } from "react";
  * tarayıcıya bıraksaydık çark, oyuncunun konsoldan düzenleyebileceği bir
  * kazanç makinesi olurdu.
  *
+ * ── Neden hiç sökülmüyor ────────────────────────────────────
+ *
+ * İlk sürümde çark, sunucu "artık kapalı" dediği anda başka bir bileşenle
+ * değiştiriliyordu. Çevirme anında tam olarak bu oluyordu: kupon
+ * yazılıyor, sayfa tazeleniyor, çark sökülüyor ve oyuncu ne dönüşü ne de
+ * ödülünü görüyordu. Artık kilitli hâl de aynı bileşende — `kilitli`
+ * yalnızca düğmeyi kapatıyor, bileşeni değiştirmiyor.
+ *
  * ── Dilimler eşit görünüyor ─────────────────────────────────
  *
  * Görsel olarak hepsi aynı büyüklükte; arka taraftaki ağırlıklar değil.
@@ -25,21 +33,30 @@ export type CevirmeCevabi =
   | { ok: true; dilim: number; baslik: string }
   | { ok: false; hata: string };
 
+/** Dönüş süresi (ms) — animasyon ve sonucun açılması bu süreye bağlı. */
+const DONUS_MS = 4600;
+
+/** Kaç tam tur atsın — az turda çark "kaydı" gibi duruyor. */
+const TUR = 6;
+
 export function Cark({
   dilimler,
   cevir,
+  kilitli = false,
   altMetin,
   kazandiMetni,
 }: {
   dilimler: CarkDilimi[];
   cevir: () => Promise<CevirmeCevabi>;
+  /** Kapalı çark: düğme çalışmıyor ama çark yerinde duruyor. */
+  kilitli?: boolean;
   /** Çevirmeden önce altta duran açıklama. */
   altMetin: string;
   /** Kazandıktan sonra ne yapması gerektiği — misafirde "hesap aç". */
   kazandiMetni: React.ReactNode;
 }) {
   const [aci, setAci] = useState(0);
-  const [sonuc, setSonuc] = useState<{ baslik: string } | null>(null);
+  const [sonuc, setSonuc] = useState<{ baslik: string; dilim: number } | null>(null);
   const [hata, setHata] = useState<string | null>(null);
   const [donuyor, setDonuyor] = useState(false);
   const [bekliyor, basla] = useTransition();
@@ -61,36 +78,38 @@ export function Cark({
        *
        * `aci` hiç azalmıyor, hep büyüyor: geriye dönen bir çark, CSS
        * geçişinde ters yönde dönüyor gibi görünür ve "hile yapıldı"
-       * hissi verir. Beş tam tur her seferinde ekleniyor.
+       * hissi verir.
        */
       const hedef = c.dilim * dilimAcisi + dilimAcisi / 2;
       const suanki = ((aci % 360) + 360) % 360;
-      const fark = ((360 - hedef - suanki) % 360 + 360) % 360;
+      const fark = (((360 - hedef - suanki) % 360) + 360) % 360;
 
       setDonuyor(true);
-      setAci(aci + 360 * 5 + fark);
+      setAci(aci + 360 * TUR + fark);
 
       // Sonucu animasyon bitmeden yazmıyoruz: yazsaydık çark hâlâ
       // dönerken "kazandın" görünür ve dönüşün bir anlamı kalmazdı.
       window.setTimeout(() => {
-        setSonuc({ baslik: c.baslik });
+        setSonuc({ baslik: c.baslik, dilim: c.dilim });
         setDonuyor(false);
-      }, 4200);
+      }, DONUS_MS);
     });
+
+  const dugmeKapali = kilitli || bekliyor || donuyor || !!sonuc;
 
   return (
     <div className="flex flex-col items-center">
-      <div className="relative w-full max-w-[300px]">
+      <div className={`relative w-full max-w-[320px] ${kilitli && !sonuc ? "opacity-45" : ""}`}>
         {/* Tepedeki işaret — çarkın nerede durduğunu okuyan tek nokta. */}
         <div
           aria-hidden
-          className="absolute top-0 left-1/2 z-10 -translate-x-1/2 -translate-y-1"
+          className="absolute top-0 left-1/2 z-20 -translate-x-1/2 -translate-y-[3px] drop-shadow"
           style={{
             width: 0,
             height: 0,
-            borderLeft: "10px solid transparent",
-            borderRight: "10px solid transparent",
-            borderTop: "16px solid var(--color-yazi)",
+            borderLeft: "12px solid transparent",
+            borderRight: "12px solid transparent",
+            borderTop: "20px solid var(--color-yazi)",
           }}
         />
 
@@ -98,11 +117,28 @@ export function Cark({
           className="aspect-square w-full"
           style={{
             transform: `rotate(${aci}deg)`,
-            transition: donuyor ? "transform 4s cubic-bezier(0.17, 0.67, 0.16, 1)" : "none",
+            // Yavaşlayarak duran eğri: çarkın son yarım turu belirgin
+            // biçimde ağırlaşıyor, gerçek bir çark gibi.
+            transition: donuyor
+              ? `transform ${DONUS_MS}ms cubic-bezier(0.12, 0.68, 0.06, 1)`
+              : "none",
           }}
         >
-          <Tekerlek dilimler={dilimler} />
+          <Tekerlek dilimler={dilimler} kazanan={sonuc?.dilim ?? null} />
         </div>
+
+        {/* Ortadaki çevir düğmesi — gerçek çarklarda göbek basılır. */}
+        <button
+          type="button"
+          onClick={cevirmeyeBasla}
+          disabled={dugmeKapali}
+          aria-label="Çarkı çevir"
+          className={`absolute top-1/2 left-1/2 z-10 flex size-[21%] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-4 border-yuzey font-display text-[13px] font-extrabold tracking-tight text-white shadow-lg transition-transform ${
+            dugmeKapali ? "bg-yazi-sonuk" : "bg-yazi hover:scale-105 active:scale-95"
+          }`}
+        >
+          {donuyor ? "…" : sonuc ? "✓" : "ÇEVİR"}
+        </button>
       </div>
 
       {hata && (
@@ -112,27 +148,20 @@ export function Cark({
       )}
 
       {sonuc ? (
-        <div className="mt-6 w-full rounded-2xl border border-odul bg-cukur px-5 py-5 text-center">
-          <div className="etiket-caps text-odul-koyu">Kazandın</div>
-          <div className="mt-2 font-display text-2xl leading-tight font-extrabold">
+        <div className="mt-6 w-full overflow-hidden rounded-2xl border border-odul bg-cukur px-5 py-6 text-center">
+          <div className="text-3xl leading-none" aria-hidden>
+            🎉
+          </div>
+          <div className="etiket-caps mt-3 text-odul-koyu">Kazandın</div>
+          <div className="mt-1.5 font-display text-2xl leading-tight font-extrabold">
             {sonuc.baslik}
           </div>
           <div className="mt-3 text-[14px] leading-relaxed text-yazi-sonuk">{kazandiMetni}</div>
         </div>
       ) : (
-        <>
-          <button
-            type="button"
-            onClick={cevirmeyeBasla}
-            disabled={bekliyor || donuyor}
-            className="mt-7 w-full rounded-lg bg-vurgu px-5 py-4 font-display text-[17px] font-bold tracking-tight text-white transition-colors hover:bg-vurgu/90 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {donuyor ? "Dönüyor…" : bekliyor ? "…" : "Çarkı çevir"}
-          </button>
-          <p className="mt-3 text-center text-[13px] leading-relaxed text-yazi-sonuk">
-            {altMetin}
-          </p>
-        </>
+        <p className="mt-5 max-w-[300px] text-center text-[13px] leading-relaxed text-yazi-sonuk">
+          {donuyor ? "Çark dönüyor…" : altMetin}
+        </p>
       )}
     </div>
   );
@@ -145,38 +174,49 @@ export function Cark({
  * kütüphanesi indirmek, kafede mobil veriyle açılan bir sayfada
  * ödeyeceğimiz en gereksiz bedel olurdu.
  */
-function Tekerlek({ dilimler }: { dilimler: CarkDilimi[] }) {
+function Tekerlek({ dilimler, kazanan }: { dilimler: CarkDilimi[]; kazanan: number | null }) {
   const n = Math.max(1, dilimler.length);
   const adim = 360 / n;
-  const R = 50;
+  const R = 47;
 
   return (
     <svg viewBox="0 0 100 100" className="size-full" aria-hidden>
+      {/* Dış çember — çarkın kasası. */}
+      <circle cx="50" cy="50" r="49" fill="var(--color-yazi)" />
+
       {dilimler.map((d, i) => {
         const bas = i * adim - 90;
         const son = bas + adim;
+        const kazandi = kazanan === i;
         return (
           <path
             key={i}
             d={dilimYolu(50, 50, R, bas, son)}
-            // Renkler paletten ve dönüşümlü: çark için yeni renk
-            // tanımlanmadı (isletme tarafındaki palet disiplini).
-            fill={i % 2 === 0 ? "var(--color-vurgu)" : "var(--color-yuzey)"}
-            stroke="var(--color-cizgi)"
-            strokeWidth="0.5"
+            fill={kazandi ? "var(--color-odul)" : DOLGULAR[i % DOLGULAR.length]}
+            stroke="var(--color-yazi)"
+            strokeWidth="0.6"
+            style={{ transition: "fill 400ms" }}
           />
         );
       })}
 
+      {/*
+        Yazılar **ışınsal**: merkezden dışa doğru okunuyor.
+
+        Bir ara sürüm yazıyı dilime teğet koyuyor ve alt yarıdakileri 180
+        derece çevirerek düzeltiyordu. O düzeltme yalnızca çark hiç
+        dönmemişken doğruydu: çark 2370 derecede durunca "alt yarı"
+        başka bir yere kayıyor ve altı dilimin beşi baş aşağı kalıyordu.
+
+        Işınsal yerleşimde yazının yönü dilime bağlı, çarkın konumuna
+        değil — nerede durursa dursun aynı görünüyor. Gerçek çarklar da
+        böyle yazıyor.
+      */}
       {dilimler.map((d, i) => {
         const ortaDeg = yuvarla(i * adim + adim / 2);
         const orta = (ortaDeg - 90) * (Math.PI / 180);
-        const x = yuvarla(50 + Math.cos(orta) * 32);
-        const y = yuvarla(50 + Math.sin(orta) * 32);
-        // Alt yarıdaki dilimlerde yazı ters duruyordu: dilimle birlikte
-        // döndüğü için saat 6 yönünde baş aşağı kalıyor. 180 derece daha
-        // çevirince okunur hâle geliyor.
-        const tersMi = ortaDeg > 90 && ortaDeg < 270;
+        const x = yuvarla(50 + Math.cos(orta) * 29);
+        const y = yuvarla(50 + Math.sin(orta) * 29);
         return (
           <text
             key={`y-${i}`}
@@ -184,20 +224,50 @@ function Tekerlek({ dilimler }: { dilimler: CarkDilimi[] }) {
             y={y}
             textAnchor="middle"
             dominantBaseline="middle"
-            fontSize="4.2"
-            fontWeight="700"
-            fill={i % 2 === 0 ? "#fff" : "var(--color-yazi)"}
-            transform={`rotate(${ortaDeg + (tersMi ? 180 : 0)} ${x} ${y})`}
+            fontSize="4.4"
+            fontWeight="800"
+            fill={YAZI_RENKLERI[i % DOLGULAR.length]}
+            transform={`rotate(${yuvarla(ortaDeg - 90)} ${x} ${y})`}
           >
             {kisalt(d.baslik)}
           </text>
         );
       })}
 
-      <circle cx="50" cy="50" r="7" fill="var(--color-yuzey)" stroke="var(--color-cizgi)" />
+      {/* Kasadaki ışıklar — çarkın "eğlenceli" duran tek süsü. */}
+      {Array.from({ length: n * 2 }, (_, i) => {
+        const a = ((i * (360 / (n * 2)) - 90) * Math.PI) / 180;
+        return (
+          <circle
+            key={`i-${i}`}
+            cx={yuvarla(50 + Math.cos(a) * 48)}
+            cy={yuvarla(50 + Math.sin(a) * 48)}
+            r="1.1"
+            fill="var(--color-odul)"
+          />
+        );
+      })}
     </svg>
   );
 }
+
+/**
+ * Dilim renkleri.
+ *
+ * Palet disiplini korunuyor: yeni renk tanımlanmadı, mevcut iki jeton
+ * (vurgu ve ödül) ve yüzey dönüşümlü kullanılıyor. Dördüncü bir renk
+ * uydurmak yerine tekrar etmeyi tercih ettik — çark, paleti bozmak için
+ * yeterli bir gerekçe değil.
+ */
+const DOLGULAR = [
+  "var(--color-vurgu)",
+  "var(--color-yuzey)",
+  "var(--color-odul)",
+  "var(--color-yuzey)",
+];
+
+/** Her dolgunun üstünde okunan yazı rengi. */
+const YAZI_RENKLERI = ["#ffffff", "var(--color-yazi)", "var(--color-yazi)", "var(--color-yazi)"];
 
 function dilimYolu(cx: number, cy: number, r: number, basDeg: number, sonDeg: number): string {
   const bas = (basDeg * Math.PI) / 180;
@@ -222,7 +292,13 @@ function yuvarla(n: number): number {
   return Math.round(n * 1000) / 1000;
 }
 
-/** Dilim dar; uzun başlık okunmuyor, taşıyor. */
+/**
+ * Dilim dar; uzun başlık okunmuyor, taşıyor.
+ *
+ * Işınsal yerleşimde yazı yarıçap boyunca uzuyor, yani sınır dilim
+ * sayısına değil çarkın yarıçapına bağlı — on beş karakter altı dilimde
+ * de sekiz dilimde de sığıyor.
+ */
 function kisalt(s: string): string {
-  return s.length > 14 ? `${s.slice(0, 13)}…` : s;
+  return s.length > 15 ? `${s.slice(0, 14)}…` : s;
 }

@@ -114,7 +114,7 @@ before(async () => {
     cafeId: kafeA,
     tip: "product",
     baslik: "KTEST Anlık kurabiye",
-    maliyetKurus: 1_200,
+    maliyetKurus: 25_00,
     puanFiyati: 0,
     anlik: true,
     aktorId: yoneticiA,
@@ -123,7 +123,7 @@ before(async () => {
     cafeId: kafeA,
     tip: "product",
     baslik: "KTEST Anlık çay",
-    maliyetKurus: 800,
+    maliyetKurus: 30_00,
     puanFiyati: 0,
     anlik: true,
     aktorId: yoneticiA,
@@ -132,7 +132,7 @@ before(async () => {
     cafeId: kafeA,
     tip: "product",
     baslik: "KTEST Küçük kahve",
-    maliyetKurus: 1_500,
+    maliyetKurus: 25_00,
     puanFiyati: 10,
     anlik: false,
     aktorId: yoneticiA,
@@ -141,7 +141,7 @@ before(async () => {
     cafeId: kafeA,
     tip: "product",
     baslik: "KTEST Büyük tatlı",
-    maliyetKurus: 12_000,
+    maliyetKurus: 50_00,
     puanFiyati: 20,
     anlik: false,
     aktorId: yoneticiA,
@@ -149,8 +149,8 @@ before(async () => {
   tutarOdulId = await ekle({
     cafeId: kafeA,
     tip: "amount",
-    baslik: "KTEST 20 TL indirim",
-    maliyetKurus: 2_000,
+    baslik: "KTEST 40 TL indirim",
+    maliyetKurus: 40_00,
     puanFiyati: 15,
     anlik: false,
     aktorId: yoneticiA,
@@ -159,7 +159,7 @@ before(async () => {
     cafeId: kafeA,
     tip: "percent",
     baslik: "KTEST Yüzde indirim",
-    maliyetKurus: 4_000,
+    maliyetKurus: 40_00,
     yuzde: 20,
     puanFiyati: 15,
     anlik: false,
@@ -178,8 +178,8 @@ before(async () => {
 
   await dogrulanmisOturum(oyuncuId);
 
-  // Katalogdan alabilmesi için puan. Günlük tavan 900 (E4) olduğu için test
-  // ödüllerinin puan fiyatları bilerek düşük — testler onlarca kupon alıyor.
+  // Puan artık ödül almıyor (Ü52) ama defterde bir hareket olsun: bazı
+  // testler oyuncunun kafede geçmişi olduğunu varsayıyor.
   await withBypass("test: puan verme", (db) =>
     puanYaz(db, {
       playerId: oyuncuId,
@@ -190,6 +190,41 @@ before(async () => {
       kanitSeviyesi: 2,
     }),
   );
+
+  /**
+   * Çark tavanını en üste çekiyoruz.
+   *
+   * Bu dosya kuponu `carkOduluVer` ile üretiyor ve o fonksiyon, çarkın
+   * üst sınırının üstündeki ödülleri reddediyor (Ü49). Varsayılan tavan
+   * 35 TL; testlerin 40 ve 50 TL'lik ödülleri onun üstünde kalıyor.
+   * Sınanan şey tavan değil (o `tests/cark.test.ts` içinde) — bütçe,
+   * kanıt kademesi ve erteleme.
+   */
+  await ayar.sayiYaz({
+    cafeId: kafeA,
+    anahtar: ayar.ANAHTARLAR.carkUstSinir,
+    deger: 50_00,
+    aktorId: kasiyerA,
+  });
+
+  /**
+   * Erteleme eşiği TAVANA çekiliyor: hiçbir ödül ertelenmiyor.
+   *
+   * İki sebep. Birincisi, kasa testlerinin çoğu kuponun **aktif** olmasını
+   * bekliyor; ertelenen kupon `pending` kalıyor ve kasiyer onaylayamıyor.
+   * İkincisi, demo kafesinde `cafe_config` satırı kalmış olabiliyor ve
+   * testler varsayılana güvenemez — bir tur tam olarak bu yüzden kırıldı,
+   * kod değişmeden, veritabanında duran eski bir ayardan.
+   *
+   * Ertelemeyi sınayan testler eşiği kendileri indiriyor ve geri
+   * yükseltiyor.
+   */
+  await ayar.sayiYaz({
+    cafeId: kafeA,
+    anahtar: ayar.ANAHTARLAR.ertelemeEsigi,
+    deger: 50_00,
+    aktorId: kasiyerA,
+  });
 });
 
 after(async () => {
@@ -213,13 +248,24 @@ after(async () => {
   await closePools();
 });
 
-/** Katalogdan bir kupon alır ve kimliğini döner. */
+/**
+ * Bir kupon üretir ve kimliğini döner.
+ *
+ * Ü52'ye kadar `katalogdanAl` kullanılıyordu; puanla satın alma kalkınca
+ * o fonksiyon silindi. Yerine çark yolu geçti — **aynı `kuponUret`**
+ * gövdesinden geçiyor: bütçe rezervi, kanıt kademesi, erteleme eşiği ve
+ * denetim izi, bu testlerin sınadığı şeylerin hepsi orada.
+ *
+ * `ilkCevirme: true` — 24 saatlik çark kilidi bu testlerin konusu değil;
+ * o kilit `tests/cark.test.ts` içinde ayrıca sınanıyor.
+ */
 async function kuponAl(odulId: string) {
-  const s = await kupon.katalogdanAl({
+  const s = await kupon.carkOduluVer({
     playerId: oyuncuId,
     cafeId: kafeA,
     odulId,
     kanitSeviyesi: 4,
+    ilkCevirme: true,
   });
   assert.ok(s.ok, s.ok === false ? s.hata : "");
   return s.ok ? s : null!;
@@ -235,11 +281,19 @@ describe("kupon üretimi", () => {
     await kuponAl(katalogOdulId);
     const sonra = await butce.durum(kafeA, bugun);
 
-    assert.equal(sonra.rezerveKurus, once.rezerveKurus + 1_500);
-    assert.equal(sonra.dagitilabilirKurus, once.dagitilabilirKurus - 1_500);
+    assert.equal(sonra.rezerveKurus, once.rezerveKurus + 25_00);
+    assert.equal(sonra.dagitilabilirKurus, once.dagitilabilirKurus - 25_00);
   });
 
   test("eşiğin üstündeki ödül 24 saat ertelenir (Ü28)", async () => {
+    // Eşiği tabana indir: 50 TL'lik ödül artık üstünde kalıyor.
+    await ayar.sayiYaz({
+      cafeId: kafeA,
+      anahtar: ayar.ANAHTARLAR.ertelemeEsigi,
+      deger: 25_00,
+      aktorId: kasiyerA,
+    });
+
     const s = await kuponAl(buyukOdulId);
     assert.equal(s.ertelendi, true, "büyük ödül hemen aktif oldu");
 
@@ -250,6 +304,16 @@ describe("kupon üretimi", () => {
     // 00:00" olsaydı sabah kazanan 15 saat, akşam kazanan 1 saat beklerdi.
     const saat = (detay!.aktiflesme.getTime() - Date.now()) / 3_600_000;
     assert.ok(saat > 23.5 && saat <= 24, `açılma 24 saat sonra olmalıydı (${saat.toFixed(1)} sa)`);
+
+    // Eşiği kurulum değerine geri çek: bırakılsaydı sonraki testlerin
+    // kuponları da ertelenir ve kasiyer onaylayamazdı. Bir tur böyle
+    // kırıldı — testin kendisi değil, ondan SONRAKİLER.
+    await ayar.sayiYaz({
+      cafeId: kafeA,
+      anahtar: ayar.ANAHTARLAR.ertelemeEsigi,
+      deger: 50_00,
+      aktorId: kasiyerA,
+    });
   });
 
   test("eşiğin altındaki ödül hemen aktif olur", async () => {
@@ -265,31 +329,42 @@ describe("kupon üretimi", () => {
    * başkasında sıradan. E6'nın kanıt kademesi bundan etkilenmiyor — o
    * ayrı bir kural ve `katalog.kanitSeviyesi` içinde duruyor.
    */
+  /**
+   * Ü52 sonrası eşik aralığı 25-50 TL (ödül aralığıyla aynı). "Eşiği
+   * sıfıra çek, her ödül ertelensin" senaryosu artık kurulamıyor: en
+   * küçük eşik en küçük ödüle eşit ve `tutar > esik` olduğu için 25 TL
+   * hiçbir ayarla ertelenmiyor. Sınanan şey aynı kaldı — eşiği
+   * oynatınca davranış değişiyor mu.
+   */
   test("kafe eşiği değiştirince erteleme davranışı değişiyor", async () => {
     const varsayilan = await ayar.sayiOku(kafeA, ayar.ANAHTARLAR.ertelemeEsigi);
-    assert.equal(varsayilan, 50_00, "varsayılan eşik 50 TL olmalı");
+    assert.equal(varsayilan, 50_00, "kurulumda yazılan eşik 50 TL olmalı");
 
-    // Eşiği sıfıra çek: artık küçük ödül de ertelenmeli
+    // Eşiği tabana çek: üstündeki her ödül ertelenmeli
     await ayar.sayiYaz({
       cafeId: kafeA,
       anahtar: ayar.ANAHTARLAR.ertelemeEsigi,
-      deger: 0,
+      deger: 25_00,
       aktorId: kasiyerA,
     });
-    assert.equal((await kuponAl(katalogOdulId)).ertelendi, true, "eşik 0 iken her ödül ertelenmeli");
+    assert.equal(
+      (await kuponAl(buyukOdulId)).ertelendi,
+      true,
+      "eşik tabandayken 50 TL'lik ödül ertelenmeli",
+    );
 
-    // Eşiği yükselt: artık büyük ödül de ertelenmemeli
+    // Eşiği tavana çek: artık büyük ödül de ertelenmemeli
     await ayar.sayiYaz({
       cafeId: kafeA,
       anahtar: ayar.ANAHTARLAR.ertelemeEsigi,
-      deger: 500_00,
+      deger: 50_00,
       aktorId: kasiyerA,
     });
     assert.equal((await kuponAl(buyukOdulId)).ertelendi, false, "eşik yüksekken erteleme olmamalı");
 
     // Kanıt kademesi ayardan ETKİLENMİYOR — platform kuralı
     assert.equal(katalog.kanitSeviyesi(60_00), 4, "51 TL+ hâlâ K4 istemeli");
-    assert.equal(katalog.kanitSeviyesi(15_00), 2);
+    assert.equal(katalog.kanitSeviyesi(25_00), 2);
 
     await ayar.sayiYaz({
       cafeId: kafeA,
@@ -299,41 +374,21 @@ describe("kupon üretimi", () => {
     });
   });
 
-  test("puan yetmezse kupon çıkmaz", async () => {
-    const yeni = (
-      await kaydet({
-        telefon: yeniTelefon(),
-        ad: "Puansiz",
-        soyad: "Oyuncu",
-        dogumYili: 1990,
-        pazarlamaIzni: false,
-      })
-    ).oyuncu.id;
-
-    const s = await kupon.katalogdanAl({
-      playerId: yeni,
-      cafeId: kafeA,
-      odulId: katalogOdulId,
-      kanitSeviyesi: 4,
-    });
-    assert.equal(s.ok, false);
-
-    const sayim = await withBypass("test: kupon sayımı", (db) =>
-      db.one<{ n: string }>(`SELECT count(*) AS n FROM coupons WHERE player_id = $1`, [yeni]),
-    );
-    assert.equal(Number(sayim?.n), 0, "puansız oyuncuya kupon üretildi");
-
-    await yoneticiSorgu(`DELETE FROM player_consents WHERE player_id = $1`, [yeni]);
-    await yoneticiSorgu(`DELETE FROM players WHERE id = $1`, [yeni]);
-  });
+  /*
+   * "Puan yetmezse kupon çıkmaz" testi Ü52 ile kalktı: puanla ödül alma
+   * yolu silindi, sınanacak bir yetmezlik kalmadı. Yerini alan güvence,
+   * ödülün ancak oyun sonunda (günde bir) ya da çarkta (24 saatte bir)
+   * düşmesi — ikisi de kendi testlerinde.
+   */
 
   test("kanıt seviyesi yetmezse ödül verilmez (E6)", async () => {
-    // Büyük tatlı 120 TL → K4 istiyor. K2 ile alınamamalı.
-    const s = await kupon.katalogdanAl({
+    // Büyük tatlı 50 TL → K3 istiyor (Ü52 bantları). K2 ile alınamamalı.
+    const s = await kupon.carkOduluVer({
       playerId: oyuncuId,
       cafeId: kafeA,
       odulId: buyukOdulId,
       kanitSeviyesi: 2,
+      ilkCevirme: true,
     });
     assert.equal(s.ok, false);
     assert.match(s.ok === false ? s.hata : "", /doğrulama/i);
@@ -352,11 +407,12 @@ describe("kupon üretimi", () => {
       }),
     );
 
-    const s = await kupon.katalogdanAl({
+    const s = await kupon.carkOduluVer({
       playerId: oyuncuId,
       cafeId: kafeA,
       odulId: katalogOdulId,
       kanitSeviyesi: 4,
+      ilkCevirme: true,
     });
     assert.equal(s.ok, false, "bütçe dolu iken kupon üretildi");
     assert.match(s.ok === false ? s.hata : "", /bütçe/i);
@@ -512,7 +568,7 @@ describe("kasiyer kuponu çözer", () => {
     const s = await kuponAl(katalogOdulId);
     const g = await kupon.coz(kafeA, s.kod);
     assert.ok(g.bulundu);
-    assert.equal(g.tutarKurus, 1_500);
+    assert.equal(g.tutarKurus, 25_00);
     assert.equal(g.gecerli, true);
   });
 
@@ -523,11 +579,27 @@ describe("kasiyer kuponu çözer", () => {
   });
 
   test("ertelenmiş kupon geçersiz döner ve sebebi söylenir", async () => {
+    // Eşiği tabana indir ki 50 TL'lik ödül ertelensin; kurulumda eşik
+    // tavanda (hiçbir ödül ertelenmiyor) çünkü kasa testlerinin çoğu
+    // aktif kupon bekliyor.
+    await ayar.sayiYaz({
+      cafeId: kafeA,
+      anahtar: ayar.ANAHTARLAR.ertelemeEsigi,
+      deger: 25_00,
+      aktorId: kasiyerA,
+    });
     const s = await kuponAl(buyukOdulId);
     const g = await kupon.coz(kafeA, s.kod);
     assert.ok(g.bulundu);
     assert.equal(g.gecerli, false);
     assert.match(g.sebep ?? "", /açılıyor/);
+
+    await ayar.sayiYaz({
+      cafeId: kafeA,
+      anahtar: ayar.ANAHTARLAR.ertelemeEsigi,
+      deger: 50_00,
+      aktorId: kasiyerA,
+    });
   });
 
   test("kafe kodu, müşterinin anonim kodunu gösterir — ad soyad değil (G1)", async () => {
@@ -549,11 +621,11 @@ describe("onay atomik (Faz 7 güvenlik kapısı)", () => {
 
     const sonuc = await kupon.onayla({ cafeId: kafeA, kuponId: s.kuponId, staffId: kasiyerA });
     assert.ok(sonuc.ok, sonuc.ok === false ? sonuc.hata : "");
-    assert.equal(sonuc.dusulenKurus, 1_500);
+    assert.equal(sonuc.dusulenKurus, 25_00);
 
     const sonra = await butce.durum(kafeA, bugun);
-    assert.equal(sonra.harcananKurus, once.harcananKurus + 1_500);
-    assert.equal(sonra.rezerveKurus, once.rezerveKurus - 1_500);
+    assert.equal(sonra.harcananKurus, once.harcananKurus + 25_00);
+    assert.equal(sonra.rezerveKurus, once.rezerveKurus - 25_00);
   });
 
   test("aynı kupon iki kez onaylanamaz", async () => {
@@ -582,7 +654,7 @@ describe("onay atomik (Faz 7 güvenlik kapısı)", () => {
     const sonra = await butce.durum(kafeA, bugun);
     assert.equal(
       sonra.harcananKurus,
-      once.harcananKurus + 1_500,
+      once.harcananKurus + 25_00,
       "bütçeden iki kez düşüldü",
     );
   });
@@ -620,9 +692,25 @@ describe("onay atomik (Faz 7 güvenlik kapısı)", () => {
   });
 
   test("ertelenmiş kupon onaylanamaz", async () => {
+    // Eşiği tabana indir ki 50 TL'lik ödül ertelensin; kurulumda eşik
+    // tavanda (hiçbir ödül ertelenmiyor) çünkü kasa testlerinin çoğu
+    // aktif kupon bekliyor.
+    await ayar.sayiYaz({
+      cafeId: kafeA,
+      anahtar: ayar.ANAHTARLAR.ertelemeEsigi,
+      deger: 25_00,
+      aktorId: kasiyerA,
+    });
     const s = await kuponAl(buyukOdulId);
     const sonuc = await kupon.onayla({ cafeId: kafeA, kuponId: s.kuponId, staffId: kasiyerA });
     assert.equal(sonuc.ok, false);
+
+    await ayar.sayiYaz({
+      cafeId: kafeA,
+      anahtar: ayar.ANAHTARLAR.ertelemeEsigi,
+      deger: 50_00,
+      aktorId: kasiyerA,
+    });
   });
 
   test("onaylayan personel kayda geçer — kupon oyuncu tarafından kapatılamaz (A4)", async () => {
@@ -648,21 +736,21 @@ describe("yüzdeli kuponda tutar kayıttan sınırlanır (Ü17)", () => {
     const s = await kuponAl(yuzdeOdulId);
     const once = await butce.durum(kafeA, bugun);
 
-    // Tavan 40 TL, adisyondaki indirim 15 TL.
+    // Tavan 40 TL, adisyondaki indirim 25 TL.
     const sonuc = await kupon.onayla({
       cafeId: kafeA,
       kuponId: s.kuponId,
       staffId: kasiyerA,
-      gerceklesenKurus: 1_500,
+      gerceklesenKurus: 25_00,
     });
     assert.ok(sonuc.ok);
-    assert.equal(sonuc.dusulenKurus, 1_500);
+    assert.equal(sonuc.dusulenKurus, 25_00);
 
     const sonra = await butce.durum(kafeA, bugun);
-    assert.equal(sonra.harcananKurus, once.harcananKurus + 1_500);
-    // Rezerve edilen 4.000'in tamamı çözülmeli: 1.500 harcandı, 2.500 iade.
-    assert.equal(sonra.rezerveKurus, once.rezerveKurus - 4_000);
-    assert.equal(sonra.iadeKurus, once.iadeKurus + 2_500);
+    assert.equal(sonra.harcananKurus, once.harcananKurus + 25_00);
+    // Rezerve edilen 40 TL'nin tamamı çözülmeli: 25 TL harcandı, 15 TL iade.
+    assert.equal(sonra.rezerveKurus, once.rezerveKurus - 40_00);
+    assert.equal(sonra.iadeKurus, once.iadeKurus + 15_00);
   });
 
   test("tavanın üstünde tutar iddiası tavana kırpılır", async () => {
@@ -676,7 +764,7 @@ describe("yüzdeli kuponda tutar kayıttan sınırlanır (Ü17)", () => {
       gerceklesenKurus: 50_000,
     });
     assert.ok(sonuc.ok);
-    assert.equal(sonuc.dusulenKurus, 4_000, "tavanın üstü kabul edildi");
+    assert.equal(sonuc.dusulenKurus, 40_00, "tavanın üstü kabul edildi");
   });
 
   test("ürün ödülünde girilen tutar dikkate alınmaz — değer kayıttan gelir", async () => {
@@ -689,7 +777,7 @@ describe("yüzdeli kuponda tutar kayıttan sınırlanır (Ü17)", () => {
       gerceklesenKurus: 99_999,
     });
     assert.ok(sonuc.ok);
-    assert.equal(sonuc.dusulenKurus, 1_500, "ürün ödülünde istemci tutarı kullanıldı");
+    assert.equal(sonuc.dusulenKurus, 25_00, "ürün ödülünde istemci tutarı kullanıldı");
   });
 });
 
@@ -710,7 +798,7 @@ describe("geri alma ve süre dolumu (E11)", () => {
     assert.equal(sonra.harcananKurus, baslangic.harcananKurus, "harcama iptal edilmedi");
     assert.equal(
       sonra.dagitilabilirKurus,
-      baslangic.dagitilabilirKurus + 1_500,
+      baslangic.dagitilabilirKurus + 25_00,
       "rezervasyon çözülmedi — kupon üretiminde bağlanan tutar geri dönmeliydi",
     );
   });
@@ -759,7 +847,7 @@ describe("geri alma ve süre dolumu (E11)", () => {
     const sonra = await butce.durum(kafeA, bugun);
     assert.equal(
       sonra.dagitilabilirKurus,
-      once.dagitilabilirKurus + 1_500,
+      once.dagitilabilirKurus + 25_00,
       "süresi dolan kuponun tutarı bütçeye dönmedi",
     );
   });
@@ -776,6 +864,13 @@ describe("geri alma ve süre dolumu (E11)", () => {
 
     const sonuc = await kupon.onayla({ cafeId: kafeA, kuponId: s.kuponId, staffId: kasiyerA });
     assert.equal(sonuc.ok, false);
+
+    await ayar.sayiYaz({
+      cafeId: kafeA,
+      anahtar: ayar.ANAHTARLAR.ertelemeEsigi,
+      deger: 50_00,
+      aktorId: kasiyerA,
+    });
   });
 });
 
@@ -1049,16 +1144,16 @@ describe("tutar indirimi ödülü", () => {
     const s = await kuponAl(tutarOdulId);
     const sonra = await butce.durum(kafeA, bugun);
 
-    assert.equal(sonra.rezerveKurus, once.rezerveKurus + 2_000, "tutar kadar rezerve edilmeliydi");
+    assert.equal(sonra.rezerveKurus, once.rezerveKurus + 40_00, "tutar kadar rezerve edilmeliydi");
 
     // Kasiyer tutar GİRMİYOR: yüzdelide gerçekleşen sorulur, sabit tutarda
     // gerçekleşen zaten tutarın kendisi.
     const onay = await kupon.onayla({ cafeId: kafeA, kuponId: s.kuponId, staffId: kasiyerA });
     assert.ok(onay.ok, onay.ok === false ? onay.hata : "");
-    assert.equal(onay.ok && onay.dusulenKurus, 2_000);
+    assert.equal(onay.ok && onay.dusulenKurus, 40_00);
 
     const bitti = await butce.durum(kafeA, bugun);
-    assert.equal(bitti.harcananKurus, once.harcananKurus + 2_000);
+    assert.equal(bitti.harcananKurus, once.harcananKurus + 40_00);
     assert.equal(bitti.rezerveKurus, once.rezerveKurus, "rezervasyon harcamaya dönmeliydi");
   });
 
@@ -1076,7 +1171,7 @@ describe("tutar indirimi ödülü", () => {
       gerceklesenKurus: 500, // yok sayılmalı
     });
     assert.ok(onay.ok);
-    assert.equal(onay.ok && onay.dusulenKurus, 2_000, "sabit tutarda kısmi kullanım yok");
+    assert.equal(onay.ok && onay.dusulenKurus, 40_00, "sabit tutarda kısmi kullanım yok");
   });
 
   test("kasa ekranı ödülü tutar indirimi olarak gösteriyor", async () => {
@@ -1085,7 +1180,7 @@ describe("tutar indirimi ödülü", () => {
     assert.ok(gorunum.bulundu);
     assert.equal(gorunum.bulundu && gorunum.tip, "amount");
     assert.equal(gorunum.bulundu && gorunum.yuzde, null);
-    assert.equal(gorunum.bulundu && gorunum.tutarKurus, 2_000);
+    assert.equal(gorunum.bulundu && gorunum.tutarKurus, 40_00);
   });
 
   test("tutar ödülünde oran verilemez", async () => {
@@ -1093,7 +1188,7 @@ describe("tutar indirimi ödülü", () => {
       cafeId: kafeA,
       tip: "amount",
       baslik: "KTEST Hatalı",
-      maliyetKurus: 2_000,
+      maliyetKurus: 25_00,
       yuzde: 20,
       puanFiyati: 10,
       anlik: false,

@@ -343,12 +343,47 @@ describe("ürün ve ödül kataloğu", () => {
     assert.equal(sonuc.ok, false);
   });
 
+  /**
+   * ⚠️ Bantlar Ü52 ile kaydı. Eskiden 1-15 → K2, 16-50 → K3'tü. Ödül
+   * tabanı 25 TL'ye çıkınca HER ödül K3 oldu ve çarkın ilk karekod akışı
+   * (oyuncu henüz K2'de) hiçbir zaman ödül veremez hâle geldi. İlke aynı
+   * kaldı — büyük ödül daha güçlü kanıt — kademeler yeni aralığa taşındı.
+   */
   test("kanıt seviyesi tutardan hesaplanır — E6", () => {
-    assert.equal(katalog.kanitSeviyesi(10_00), 2);
-    assert.equal(katalog.kanitSeviyesi(15_00), 2);
-    assert.equal(katalog.kanitSeviyesi(16_00), 3);
+    assert.equal(katalog.kanitSeviyesi(25_00), 2, "taban ödül konumla alınabilmeli");
+    assert.equal(katalog.kanitSeviyesi(35_00), 2);
+    assert.equal(katalog.kanitSeviyesi(40_00), 3, "üst yarı masada beş dakika istemeli");
     assert.equal(katalog.kanitSeviyesi(50_00), 3);
-    assert.equal(katalog.kanitSeviyesi(51_00), 4);
+    assert.equal(katalog.kanitSeviyesi(51_00), 4, "aralık dışı hâlâ K4");
+  });
+
+  test("ödül değeri 25-50 TL arası ve 5'er artışlı olmalı — Ü52", async () => {
+    for (const gecersiz of [20_00, 27_50, 55_00, 0]) {
+      const s = await katalog.ekle({
+        cafeId: kafeA,
+        tip: "amount",
+        baslik: `TEST gecersiz ${gecersiz}`,
+        maliyetKurus: gecersiz,
+        puanFiyati: 0,
+        anlik: true,
+        aktorId: yoneticiA,
+      });
+      assert.equal(s.ok, false, `${gecersiz / 100} TL kabul edildi`);
+    }
+
+    // Sınırdaki iki değer kabul edilmeli.
+    for (const gecerli of [25_00, 50_00]) {
+      const s = await katalog.ekle({
+        cafeId: kafeA,
+        tip: "amount",
+        baslik: `TEST gecerli ${gecerli}`,
+        maliyetKurus: gecerli,
+        puanFiyati: 0,
+        anlik: true,
+        aktorId: yoneticiA,
+      });
+      assert.ok(s.ok, s.ok === false ? s.hata : "");
+    }
   });
 
   test("ürün ödülü eklenir, kanıt seviyesi otomatik", async () => {
@@ -382,8 +417,10 @@ describe("ürün ve ödül kataloğu", () => {
       anlik: false,
       aktorId: yoneticiA,
     });
+    // Ü52 sonrası mesaj değer kuralından geliyor: sıfır zaten geçerli bir
+    // basamak değil. Reddin sebebi değişti, reddin kendisi değişmedi.
     assert.equal(sonuc.ok, false);
-    assert.match(sonuc.ok === false ? sonuc.hata : "", /tavan/i);
+    assert.match(sonuc.ok === false ? sonuc.hata : "", /25|50|artış/i);
   });
 
   test("yüzdesiz yüzdeli ödül reddedilir", async () => {
@@ -391,7 +428,7 @@ describe("ürün ve ödül kataloğu", () => {
       cafeId: kafeA,
       tip: "percent",
       baslik: "TEST Yüzdesiz",
-      maliyetKurus: 10_000,
+      maliyetKurus: 40_00,
       puanFiyati: 3_000,
       anlik: false,
       aktorId: yoneticiA,
@@ -404,7 +441,7 @@ describe("ürün ve ödül kataloğu", () => {
       withBypass("test: tutarsız ödül", (db) =>
         db.query(
           `INSERT INTO rewards (id, cafe_id, kind, reward_type, title, points_price, cost_kurus, percent)
-           VALUES ('rwd_test_bozuk', $1, 'catalog', 'percent', 'TEST bozuk', 100, 5000, NULL)`,
+           VALUES ('rwd_test_bozuk', $1, 'instant', 'percent', 'TEST bozuk', 0, 5000, NULL)`,
           [kafeA],
         ),
       ),
@@ -417,7 +454,7 @@ describe("ürün ve ödül kataloğu", () => {
       cafeId: kafeA,
       tip: "product",
       baslik: "TEST Anlık espresso",
-      maliyetKurus: 1_500,
+      maliyetKurus: 25_00,
       puanFiyati: 999,
       anlik: true,
       aktorId: yoneticiA,

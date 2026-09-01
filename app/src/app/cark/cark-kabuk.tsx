@@ -7,6 +7,13 @@ import { carkiCevir } from "./actions";
 /**
  * Günlük çarkın istemci sarmalayıcısı.
  *
+ * ── Kapalıyken de aynı bileşen ──────────────────────────────
+ *
+ * Önceki sürüm çarkı kapalıyken **başka bir ağaçla** değiştiriyordu ve
+ * çevirme anında tam olarak bu oluyordu: kupon yazılıyor, sunucu "artık
+ * kapalı" diyor, çark sökülüyor. Oyuncu ne dönüşü ne ödülünü görüyordu.
+ * Şimdi tek bir `Cark` var; `kilitli` yalnızca düğmeyi kapatıyor.
+ *
  * Çark kapalıyken de **dilimler gösteriliyor**: oyuncu neyi kaçırdığını
  * değil, yarın neyin döneceğini görüyor. Boş bir ekran "çark kaldırıldı"
  * diye okunurdu.
@@ -20,30 +27,15 @@ export function GunlukCark({
   acik: boolean;
   kapaliMetin: string;
 }) {
-  if (!acik) {
-    return (
-      <div className="rounded-2xl border border-cizgi bg-yuzey px-5 py-7">
-        <div className="pointer-events-none opacity-40">
-          <Cark
-            dilimler={dilimler}
-            cevir={async () => ({ ok: false as const, hata: kapaliMetin })}
-            altMetin=""
-            kazandiMetni=""
-          />
-        </div>
-        <p className="mt-5 text-center text-[14px] leading-relaxed text-yazi-sonuk">
-          {kapaliMetin}
-        </p>
-      </div>
-    );
-  }
-
   return (
     <div className="rounded-2xl border border-cizgi bg-yuzey px-5 py-7">
       <Cark
         dilimler={dilimler}
-        cevir={carkiCevir}
-        altMetin="Çark 24 saatte bir açılıyor. Çıkan ödül doğrudan hesabına işlenir."
+        cevir={acik ? carkiCevir : async () => ({ ok: false as const, hata: kapaliMetin })}
+        kilitli={!acik}
+        altMetin={
+          acik ? "Çark 24 saatte bir açılıyor. Çıkan ödül doğrudan hesabına işlenir." : kapaliMetin
+        }
         kazandiMetni={
           <>
             Ödülün hesabına işlendi.{" "}

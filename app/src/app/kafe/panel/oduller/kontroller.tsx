@@ -13,6 +13,9 @@ import { IsletmeDugme, IsletmeAlan, isletmeGirdi, IsletmeUyari } from "@/compone
 
 const BOS: OdulDurumu = {};
 
+/** Ü52: seçilebilir ödül değerleri — 25'ten 50'ye, 5'er artışla. */
+const DEGERLER = [25, 30, 35, 40, 45, 50];
+
 /**
  * Ödül ekleme formu.
  *
@@ -22,12 +25,16 @@ const BOS: OdulDurumu = {};
  * yanlış doldurmaya davet ederdi.
  *
  * Kanıt seviyesi formda **yok**: E6 onu tutardan hesaplıyor. Kafe seçebilseydi
- * en pahalı ödülü en zayıf kanıtla verebilirdi.
+ * en pahalı ödülü en zayıf kanıtla verebilirdi. Seçenek listesinde yine de
+ * yazıyor ("konum yeter" / "masada 5 dk") — kafe neyi seçtiğini bilsin.
+ *
+ * Ü52 ile iki alan kalktı: **puan fiyatı** (puanla satın alma yok) ve
+ * **anlık mı** sorusu (tek tip ödül kaldı). Tutar da serbest metin değil,
+ * sabit basamak.
  */
 export function OdulEkleme({ urunler }: { urunler: { id: string; ad: string }[] }) {
   const [durum, action, bekliyor] = useActionState(ekleEylemi, BOS);
   const [tip, setTip] = useState<"product" | "percent" | "amount">("product");
-  const [anlik, setAnlik] = useState(false);
 
   return (
     <form action={action} className="space-y-4">
@@ -77,78 +84,56 @@ export function OdulEkleme({ urunler }: { urunler: { id: string; ad: string }[] 
         </IsletmeAlan>
       )}
 
-      {tip === "percent" ? (
-        <div className="grid gap-4 sm:grid-cols-2">
-          <IsletmeAlan etiket="İndirim oranı (%)">
-            <input
-              name="yuzde"
-              type="text"
-              inputMode="numeric"
-              className={isletmeGirdi}
-              placeholder="20"
-            />
-          </IsletmeAlan>
-          <IsletmeAlan
-            etiket="En fazla indirim (TL)"
-            ipucu="Zorunlu. Bütçeden bu tutar rezerve edilir; kasada gerçekleşen düşülür, fark geri döner."
-          >
-            <input
-              name="tutar"
-              type="text"
-              inputMode="numeric"
-              className={isletmeGirdi}
-              placeholder="100"
-            />
-          </IsletmeAlan>
-        </div>
-      ) : (
-        <IsletmeAlan
-          etiket={tip === "amount" ? "İndirim tutarı (TL)" : "Ödülün TL değeri"}
-          ipucu={
-            tip === "amount"
+      {tip === "percent" && (
+        <IsletmeAlan etiket="İndirim oranı (%)">
+          <input
+            name="yuzde"
+            type="text"
+            inputMode="numeric"
+            className={isletmeGirdi}
+            placeholder="20"
+          />
+        </IsletmeAlan>
+      )}
+
+      {/* Ü52: serbest tutar yok — 25 ile 50 TL arası, 5'er artışla.
+          Metin kutusu bırakılsaydı kafe "27,50" yazar ve form her
+          seferinde hata döndürürdü; seçenek listesi kuralı anlatıyor. */}
+      <IsletmeAlan
+        etiket={
+          tip === "percent"
+            ? "En fazla indirim (TL)"
+            : tip === "amount"
+              ? "İndirim tutarı (TL)"
+              : "Ödülün TL değeri"
+        }
+        ipucu={
+          tip === "percent"
+            ? "Bütçeden bu tutar rezerve edilir; kasada gerçekleşen düşülür, fark geri döner."
+            : tip === "amount"
               ? "Adisyondan bir kez düşülür. Kalan tutar saklanmaz, sonraki ziyarete devretmez — bu bir bakiye değil (Ü18)."
               : "Ürünün perakende fiyatı. Kasada onaylandığında bütçeden bu kadar düşer."
-          }
-        >
-          <input
-            name="tutar"
-            type="text"
-            inputMode="numeric"
-            className={isletmeGirdi}
-            placeholder={tip === "amount" ? "50" : "45"}
-          />
-        </IsletmeAlan>
-      )}
+        }
+      >
+        <select name="tutar" className={isletmeGirdi} defaultValue="25">
+          {DEGERLER.map((tl) => (
+            <option key={tl} value={tl}>
+              {tl} TL{tl <= 35 ? " · konum yeter" : " · masada 5 dk"}
+            </option>
+          ))}
+        </select>
+      </IsletmeAlan>
 
-      <label className="flex items-start gap-2.5 text-[14px] leading-relaxed text-yazi">
-        <input
-          type="checkbox"
-          name="anlik"
-          value="evet"
-          checked={anlik}
-          onChange={(e) => setAnlik(e.target.checked)}
-          className="mt-1"
-        />
-        <span>
-          <strong>Anlık ödül</strong> — puan istemez, ilk doğrulanmış oyundan sonra otomatik
-          düşer. İlk kez oynayanın puanı sıfırdır; eli boş çıkmasın diye.
-        </span>
-      </label>
-
-      {!anlik && (
-        <IsletmeAlan etiket="Puan fiyatı" ipucu="Oyuncunun bu ödülü almak için biriktireceği puan.">
-          <input
-            name="puan"
-            type="text"
-            inputMode="numeric"
-            className={isletmeGirdi}
-            placeholder="6000"
-          />
-        </IsletmeAlan>
-      )}
+      {/* Ü52: "anlık mı" sorusu kalktı. Tek tip ödül var — oyunlardan ve
+          çarktan düşen ödül. Puanla satın alma yok, dolayısıyla puan
+          fiyatı alanı da yok. */}
+      <p className="rounded-lg border border-cizgi bg-cukur px-4 py-3 text-[13px] leading-relaxed text-yazi-sonuk">
+        Bu ödül oyun sonunda ve şans çarkında düşebilir. Oyuncu puanıyla satın alamaz — puan
+        yalnızca sıralama ve seviye için birikiyor.
+      </p>
 
       <IsletmeDugme type="submit" disabled={bekliyor}>
-        {bekliyor ? "Ekleniyor…" : "Kataloğa ekle"}
+        {bekliyor ? "Ekleniyor…" : "Ödülü ekle"}
       </IsletmeDugme>
     </form>
   );

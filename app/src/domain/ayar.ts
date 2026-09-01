@@ -68,15 +68,20 @@ export type Anahtar = (typeof ANAHTARLAR)[keyof typeof ANAHTARLAR];
  * açılmıyor" sorusunu çoğaltır. Aralık ikisini de görünür kılıyor.
  */
 export const SINIRLAR: Record<Anahtar, { en_az: number; en_cok: number; varsayilan: number }> = {
-  [ANAHTARLAR.ertelemeEsigi]: { en_az: 0, en_cok: 500_00, varsayilan: 50_00 },
+  // Ü52: ödüller 25-50 TL arasında. Eşik 50 TL kalsaydı hiçbir ödül
+  // ertelenmez ve Ü39'un getirdiği "ertesi ziyaret" döngüsü ölü kalırdı.
+  // 35 TL: üst yarı (40/45/50) erteleniyor, alt yarı anında açılıyor.
+  [ANAHTARLAR.ertelemeEsigi]: { en_az: 25_00, en_cok: 50_00, varsayilan: 35_00 },
   // Alt sınır Ü45'in günlük tabanı; üst sınır yok denecek kadar yüksek
   // tutuluyor — kafenin ne kadar dağıtacağı bizim kararımız değil.
   [ANAHTARLAR.gunlukButce]: { en_az: 1_500_00, en_cok: 100_000_00, varsayilan: 1_500_00 },
   // Bir kahveden ucuz olamaz, bir masanın toplam hesabından pahalı olmasın.
   [ANAHTARLAR.ortalamaAdisyon]: { en_az: 20_00, en_cok: 5_000_00, varsayilan: 150_00 },
-  // Varsayılan 25 TL: bir kahvenin altında, "küçük ödül" tarifine uyuyor.
-  // Üst sınır 200 TL — kafe isterse çarkı büyütebilir ama sınırsız değil.
-  [ANAHTARLAR.carkUstSinir]: { en_az: 5_00, en_cok: 200_00, varsayilan: 25_00 },
+  // Ü52: ödül aralığı 25-50 TL olduğu için çarkın tavanı da o aralıkta.
+  // Varsayılan 35 TL — çark alt yarıyı dağıtıyor, büyük ödüller oyunun
+  // kendisine kalıyor. 25 yazan kafede çark yalnızca en küçük ödülü
+  // dağıtır; 50 yazan kafede her ödül çarka girer.
+  [ANAHTARLAR.carkUstSinir]: { en_az: 25_00, en_cok: 50_00, varsayilan: 35_00 },
 };
 
 export async function sayiOku(cafeId: string, anahtar: Anahtar): Promise<number> {

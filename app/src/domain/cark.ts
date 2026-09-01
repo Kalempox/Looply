@@ -29,12 +29,13 @@ import * as ayar from "./ayar";
  * mümkün değil. Ağırlığı gizlemek, mümkün olmayan bir şeyi vaat etmemek
  * için.
  *
- * ── Ağırlık: değerin karesiyle ters orantı ──────────────────
+ * ── Ağırlık: sırada her basamak yarısı ──────────────────────
  *
- * `agirlik = 1 / (değer_kuruş)²`. Doğrusal ters orantı (1/değer) test
- * edildiğinde 50 TL'lik ödül her on çevirmede bir çıkıyordu — "çok da
- * yüksek ödüller vermeyen" tarifine uymuyor. Karesi alınınca aynı ödül
- * ~40 çevirmede bire iniyor, ucuz ödüller çoğunluğu oluşturuyor.
+ * Ödüller değere göre sıralanıyor ve her basamakta olasılık yarıya
+ * iniyor. Altı ödüllü bir kafede ~%51 / %25 / %13 / %6 / %3 / %2.
+ * Değere dayalı bir formül (1/değer²) denendi ve Ü52 aralığı 25–50 TL'ye
+ * daraltınca anlamını yitirdi — iki kat fark, kare alsan bile ayırt
+ * etmiyor. Sıra, aralık ne kadar dar olursa olsun aynı karakteri veriyor.
  *
  * ── Bütçe ve kanıt aynen işliyor ────────────────────────────
  *
@@ -137,20 +138,42 @@ export function dilimleriYay(oduller: Dilim[]): Dilim[] {
 /**
  * Ağırlıklı seçim — ucuz ödül çok daha olası.
  *
+ * ── Neden değere değil SIRAYA bakıyor ───────────────────────
+ *
+ * İlk sürüm `1 / değer²` kullanıyordu ve 5–45 TL aralığında iyi
+ * çalışıyordu: en pahalı ödül yüzde birde kalıyordu. Ü52 ödül aralığını
+ * **25–50 TL**'ye daralttı ve formül anlamını yitirdi — en ucuz ile en
+ * pahalı arasında yalnızca iki kat var, kare alsan bile en pahalı ödül
+ * yüzde on dörde çıkıyor. "Çok da yüksek ödüller vermeyen çark" tarifi
+ * bozuluyordu.
+ *
+ * Şimdi ağırlık **sıradan** geliyor: liste değere göre artan sıralı ve her
+ * basamakta ağırlık yarıya iniyor (32, 16, 8, 4, 2, 1). Altı ödüllü bir
+ * kafede dağılım ~%51 / %25 / %13 / %6 / %3 / %2 oluyor. Aralık ne kadar
+ * dar olursa olsun bu oran değişmiyor — kafenin ödül tutarlarını
+ * değiştirmesi çarkın karakterini bozamıyor.
+ *
  * `randomInt` kullanılıyor, `Math.random` değil: çarkın sonucu para
  * değerinde ve öngörülebilir bir üreteç, sırayı tahmin etmeye çalışan biri
  * için açık kapı olurdu.
  */
 export function agirlikliSec(oduller: Dilim[]): number {
-  const agirliklar = oduller.map((o) => 1 / Math.max(1, o.kurusDegeri) ** 2);
-  const toplam = agirliklar.reduce((t, a) => t + a, 0);
+  // Liste değere göre artan sıralı gelmeli (SQL öyle veriyor); yine de
+  // burada sıralıyoruz — çağıranın sırasına güvenmek, ağırlıkların sessizce
+  // ters dönmesi demek olurdu.
+  const sira = oduller
+    .map((o, i) => ({ i, kurus: o.kurusDegeri }))
+    .sort((a, b) => a.kurus - b.kurus || a.i - b.i);
 
-  // Kayan noktalı toplamı tam sayıya çeviriyoruz: randomInt tam sayı
-  // istiyor ve 1e-9 mertebesindeki ağırlıklar doğrudan kullanılamıyor.
-  const olcek = 1_000_000 / toplam;
-  const kovalar = agirliklar.map((a) => Math.max(1, Math.round(a * olcek)));
+  const n = sira.length;
+  const kovalar = new Array<number>(n).fill(0);
+  // 2^(n-1-basamak): en ucuz en ağır. Üs 30'da sınırlanıyor — otuzdan
+  // fazla ödülü olan bir kafede taşma riskini almaya değmez.
+  sira.forEach((o, basamak) => {
+    kovalar[o.i] = 2 ** Math.min(30, n - 1 - basamak);
+  });
+
   const tam = kovalar.reduce((t, k) => t + k, 0);
-
   let atis = randomInt(tam);
   for (let i = 0; i < kovalar.length; i++) {
     atis -= kovalar[i];

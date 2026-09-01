@@ -19,7 +19,6 @@ export async function ekleEylemi(_onceki: OdulDurumu, form: FormData): Promise<O
     return { hata: "Geçersiz ödül tipi." };
   }
 
-  const anlik = form.get("anlik") === "evet";
   const urunId = String(form.get("urunId") ?? "") || undefined;
 
   const sonuc = await katalog.ekle({
@@ -31,14 +30,17 @@ export async function ekleEylemi(_onceki: OdulDurumu, form: FormData): Promise<O
     // indirimin kendisi — üçü de aynı alan.
     maliyetKurus: sayi(form, "tutar") * 100,
     yuzde: tip === "percent" ? sayi(form, "yuzde") : undefined,
-    puanFiyati: sayi(form, "puan"),
-    anlik,
+    // Ü52: puanla satın alma kalktı, her ödül oyunlardan/çarktan düşüyor.
+    // İkisi de artık sabit; `katalog.ekle` zaten yok sayıyor ama imza
+    // korunuyor.
+    puanFiyati: 0,
+    anlik: true,
     urunId,
     aktorId: o.ozneId,
   });
 
   revalidatePath("/kafe/panel/oduller");
-  return sonuc.ok ? { bilgi: "Ödül kataloğa eklendi." } : { hata: sonuc.hata };
+  return sonuc.ok ? { bilgi: "Ödül eklendi. Oyun sonunda ve çarkta çıkabilir." } : { hata: sonuc.hata };
 }
 
 export async function durumEylemi(odulId: string, aktif: boolean): Promise<void> {

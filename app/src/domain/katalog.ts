@@ -51,9 +51,52 @@ export type Odul = {
 
 export type OdulSonucu = { ok: true; id: string } | { ok: false; hata: string };
 
-/** E6: ödül değerine göre gereken kanıt seviyesi. */
+/* ── Ödül değerleri (Ü52) ──────────────────────────────────────
+ *
+ * Ürün sahibinin kuralı: **en az 25 TL, 5'er artışla, en çok 50 TL.**
+ * Serbest tutar yerine sabit basamak olmasının iki faydası var: kafe
+ * "27,50 TL indirim" gibi anlamsız bir ödül tanımlayamıyor ve çarkın
+ * ağırlık hesabı öngörülebilir kalıyor.
+ */
+
+export const ODUL_EN_AZ = 25_00;
+export const ODUL_EN_COK = 50_00;
+export const ODUL_ADIM = 5_00;
+
+/** Seçilebilir bütün ödül değerleri — panelin listesi de bu. */
+export const ODUL_DEGERLERI: number[] = Array.from(
+  { length: (ODUL_EN_COK - ODUL_EN_AZ) / ODUL_ADIM + 1 },
+  (_, i) => ODUL_EN_AZ + i * ODUL_ADIM,
+);
+
+export function odulDegeriGecerliMi(kurus: number): boolean {
+  return ODUL_DEGERLERI.includes(kurus);
+}
+
+/**
+ * E6: ödül değerine göre gereken kanıt seviyesi.
+ *
+ * ── Kademeler neden kaydı (Ü52) ─────────────────────────────
+ *
+ * E6 önce şöyleydi: 1–15 TL → K2, 16–50 TL → K3, 51+ → K4. Ödül tabanı
+ * 25 TL'ye çıkınca **her ödül K3 oldu** ve bu, çarkın ilk karekod akışını
+ * sessizce öldürdü: karekodu yeni okutmuş bir ziyaretçi K2'de oluyor,
+ * masada beş dakika geçirmiş olamaz. Yani "çevir, kaydol, al" akışında
+ * ödül hiçbir zaman verilemezdi.
+ *
+ * E6'nın **ilkesi korundu** — büyük ödül daha güçlü kanıt ister — ama
+ * kademeler yeni aralığa taşındı:
+ *
+ *   · 25–35 TL → K2 (konum doğrulandı)
+ *   · 40–50 TL → K3 (masada beş dakika)
+ *   · 51 TL+   → K4 (fiş kodu) — aralık dışı, güvenlik payı olarak duruyor
+ *
+ * ⚠️ Bu, bir güvenlik kuralının gevşemesidir: 25 TL'lik ödül eskiden beş
+ * dakika isterken artık istemiyor. Bilerek yapıldı ve karar defterinde
+ * öyle yazıyor; ürün sahibi tersini isterse tek satır.
+ */
 export function kanitSeviyesi(maliyetKurus: number): number {
-  if (maliyetKurus <= 15_00) return 2;
+  if (maliyetKurus <= 35_00) return 2;
   if (maliyetKurus <= 50_00) return 3;
   return 4;
 }
@@ -116,15 +159,13 @@ export async function ekle(opts: {
   if (baslik.length < 2) return { ok: false, hata: "Ödül adı en az iki harf olmalı." };
   if (baslik.length > 60) return { ok: false, hata: "Ödül adı en fazla 60 karakter." };
 
-  if (!Number.isInteger(opts.maliyetKurus) || opts.maliyetKurus <= 0) {
+  // Ü52: sabit basamak. Serbest tutar kabul edilmiyor.
+  if (!odulDegeriGecerliMi(opts.maliyetKurus)) {
     return {
       ok: false,
-      hata:
-        opts.tip === "percent"
-          ? "TL tavanı sıfırdan büyük olmalı — tavansız yüzde indirimi tanımlanamaz."
-          : opts.tip === "amount"
-            ? "İndirim tutarı sıfırdan büyük olmalı."
-            : "Ödülün TL değeri sıfırdan büyük olmalı.",
+      hata: `Ödül değeri ${ODUL_EN_AZ / 100} ile ${ODUL_EN_COK / 100} TL arasında ve ${
+        ODUL_ADIM / 100
+      }'er artışlarla olmalı.`,
     };
   }
 
@@ -142,11 +183,16 @@ export async function ekle(opts: {
     };
   }
 
-  // E2: anlık ödül puan istemez. Şema da reddediyor; burada anlaşılır cümle.
-  const puanFiyati = opts.anlik ? 0 : opts.puanFiyati;
-  if (!opts.anlik && (!Number.isInteger(puanFiyati) || puanFiyati <= 0)) {
-    return { ok: false, hata: "Katalog ödülünün puan fiyatı sıfırdan büyük olmalı." };
-  }
+  /**
+   * Ü52: puanla ödül alma kalktı; her ödül **oyunlardan ve çarktan
+   * düşebilen** ödül. Bu yüzden `kind` her zaman `instant` ve puan
+   * fiyatı her zaman sıfır.
+   *
+   * `points_price` kolonu şemada duruyor ve sıfır yazılıyor: kolonu
+   * düşürmek eski kuponların bağlı olduğu satırları yeniden yazmayı
+   * gerektirirdi ve kazancı yok. Kimse okumuyor.
+   */
+  const puanFiyati = 0;
 
   return withCafe(opts.cafeId, async (db) => {
     if (opts.urunId) {
@@ -163,7 +209,7 @@ export async function ekle(opts: {
       [
         id,
         opts.cafeId,
-        opts.anlik ? "instant" : "catalog",
+        "instant",
         opts.tip,
         baslik,
         opts.aciklama?.trim() || null,

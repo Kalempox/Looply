@@ -20,10 +20,15 @@ export type KatalogOdulu = {
   id: string;
   baslik: string;
   aciklama: string | null;
-  /** Oyuncunun ödeyeceği puan. Anlık ödülde 0 (E2). */
-  puanFiyati: number;
-  /** E2: anlık ödül puan istemez — ilk kez oynayan eli boş çıkmasın. */
-  anlik: boolean;
+  /**
+   * Ödülün açılması için gereken kanıt (E6).
+   *
+   * Oyuncuya TL değeri **gösterilmiyor** (E9); gösterilen tek şey ödülün
+   * adı ve onu almak için ne gerektiği. Kanıt kademesi zaten tutardan
+   * hesaplandığı için bu satır dolaylı olarak "büyük ödül" diyor —
+   * rakamı söylemeden.
+   */
+  kanitSeviyesi: number;
 };
 
 export type YuzdeFirsati = {
@@ -40,17 +45,18 @@ export type Firsatlar = {
 
 export async function buradakiler(cafeId: string): Promise<Firsatlar> {
   return withCafe(cafeId, async (db) => {
+    // Ü52: puanla satın alma kalktı, `points_price` okunmuyor. Sıralama
+    // artık değere göre — oyuncu neyin büyük ödül olduğunu görüyor.
     const oduller = await db.all<{
       id: string;
       title: string;
       description: string | null;
-      points_price: number;
-      kind: string;
+      min_proof_level: number;
     }>(
-      `SELECT id, title, description, points_price, kind
+      `SELECT id, title, description, min_proof_level
          FROM rewards
         WHERE active
-        ORDER BY kind DESC, sort_order, points_price`,
+        ORDER BY cost_kurus, sort_order`,
     );
 
     // Yayında ve süresi dolmamış kampanyalar.
@@ -76,8 +82,7 @@ export async function buradakiler(cafeId: string): Promise<Firsatlar> {
         id: r.id,
         baslik: r.title,
         aciklama: r.description,
-        puanFiyati: r.points_price,
-        anlik: r.kind === "instant",
+        kanitSeviyesi: r.min_proof_level,
       })),
       kampanyalar: kampanyalar.map((r) => ({
         id: r.id,

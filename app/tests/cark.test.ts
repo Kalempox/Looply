@@ -7,6 +7,7 @@ import { closePools } from "@/db/pool";
 import { kaydet } from "@/domain/player";
 import { normalizePhone } from "@/lib/crypto";
 import * as cark from "@/domain/cark";
+import * as ayar from "@/domain/ayar";
 import { carkOduluVer } from "@/domain/kupon";
 import { newId } from "@/lib/ids";
 import { isGunu, gunEkle } from "@/lib/tarih";
@@ -43,9 +44,9 @@ async function kafeKur(ad: string, butceli: boolean): Promise<string> {
     );
 
     for (const [baslik, kurus] of [
-      ["Test ucuz", 5_00],
-      ["Test orta", 15_00],
-      ["Test pahali", 45_00],
+      ["Test ucuz", 25_00],
+      ["Test orta", 35_00],
+      ["Test pahali", 50_00],
     ] as const) {
       await db.query(
         `INSERT INTO rewards (id, cafe_id, kind, title, points_price, cost_kurus,
@@ -148,13 +149,14 @@ describe("çark · üst sınır", () => {
     assert.equal(durum.acik, true);
     if (!durum.acik) return;
 
+    const tavan = ayar.SINIRLAR[ayar.ANAHTARLAR.carkUstSinir].varsayilan;
     assert.ok(
-      durum.dilimler.every((d) => d.kurusDegeri <= 25_00),
+      durum.dilimler.every((d) => d.kurusDegeri <= tavan),
       `sınırın üstünde ödül çarkta: ${durum.dilimler.map((d) => d.kurusDegeri).join(", ")}`,
     );
     assert.ok(
       !durum.dilimler.some((d) => d.baslik === "Test pahali"),
-      "45 TL'lik ödül çarkta göründü",
+      "50 TL'lik ödül çarkta göründü",
     );
   });
 
@@ -185,27 +187,47 @@ describe("çark · üst sınır", () => {
 describe("çark · ağırlık", () => {
   /**
    * "Çok da yüksek ödüller vermeyen bir çark" tarifi bir sayıya dönüşmeli.
-   * 5 TL / 15 TL / 45 TL üçlüsünde ağırlık 1/değer² olduğu için ucuz ödül
-   * ezici çoğunlukta olmalı ve pahalı ödül nadir kalmalı.
+   *
+   * Ağırlık sıraya bağlı ve her basamakta yarıya iniyor. Üç ödülde
+   * beklenen dağılım 4/7, 2/7, 1/7 — yani ~%57 / %29 / %14.
    */
   test("ucuz ödül belirgin biçimde daha sık çıkıyor", () => {
     const oduller: cark.Dilim[] = [
-      { odulId: "ucuz", baslik: "5", kurusDegeri: 5_00 },
-      { odulId: "orta", baslik: "15", kurusDegeri: 15_00 },
-      { odulId: "pahali", baslik: "45", kurusDegeri: 45_00 },
+      { odulId: "ucuz", baslik: "25", kurusDegeri: 25_00 },
+      { odulId: "orta", baslik: "35", kurusDegeri: 35_00 },
+      { odulId: "pahali", baslik: "50", kurusDegeri: 50_00 },
     ];
 
     const sayim = { ucuz: 0, orta: 0, pahali: 0 };
-    for (let i = 0; i < 3000; i++) {
+    const N = 6000;
+    for (let i = 0; i < N; i++) {
       sayim[oduller[cark.agirlikliSec(oduller)].odulId as keyof typeof sayim]++;
     }
 
     assert.ok(sayim.ucuz > sayim.orta, "ucuz ödül ortadan seyrek çıktı");
     assert.ok(sayim.orta > sayim.pahali, "orta ödül pahalıdan seyrek çıktı");
-    // Beklenen oran ~0.88 / 0.10 / 0.011. Sınırlar geniş: bu bir dağılım
-    // testi, tam sayı testi değil.
-    assert.ok(sayim.ucuz > 3000 * 0.75, `ucuz ödül beklenenden az: ${sayim.ucuz}/3000`);
-    assert.ok(sayim.pahali < 3000 * 0.05, `pahalı ödül beklenenden sık: ${sayim.pahali}/3000`);
+    // Sınırlar geniş: bu bir dağılım testi, tam sayı testi değil.
+    assert.ok(sayim.ucuz > N * 0.5, `ucuz ödül beklenenden az: ${sayim.ucuz}/${N}`);
+    assert.ok(sayim.pahali < N * 0.2, `pahalı ödül beklenenden sık: ${sayim.pahali}/${N}`);
+  });
+
+  /**
+   * Ağırlık **değere** değil sıraya bakıyor. Aralık ne kadar daralırsa
+   * daralsın karakter aynı kalmalı — Ü52 aralığı 25-50'ye indirdiğinde
+   * eski formül tam olarak burada çökmüştü.
+   */
+  test("ödüller birbirine çok yakınken bile dağılım bozulmuyor", () => {
+    const yakin: cark.Dilim[] = [
+      { odulId: "a", baslik: "45", kurusDegeri: 45_00 },
+      { odulId: "b", baslik: "50", kurusDegeri: 50_00 },
+    ];
+
+    let a = 0;
+    const N = 4000;
+    for (let i = 0; i < N; i++) if (yakin[cark.agirlikliSec(yakin)].odulId === "a") a++;
+
+    // İki ödülde beklenen 2/3 - 1/3.
+    assert.ok(a > N * 0.55 && a < N * 0.78, `beklenen ~%67, çıkan %${Math.round((a / N) * 100)}`);
   });
 
   test("tek ödüllü kafede çark tek dilim — sekiz kez tekrarlamıyor", () => {

@@ -7,6 +7,7 @@ import { isGunu, gunFarki, gunEkle } from "@/lib/tarih";
 import * as masa from "@/domain/masa";
 import * as oyun from "@/domain/oyun";
 import * as kupon from "@/domain/kupon";
+import * as cark from "@/domain/cark";
 import * as butce from "@/domain/butce";
 import * as rapor from "@/domain/rapor";
 import { OYUNLAR } from "@/oyunlar";
@@ -403,17 +404,23 @@ async function birGun(
       }
     }
 
-    // Üçte biri puanını katalog ödülüne çeviriyor (yetiyorsa).
+    // Ü52: puanla katalog ödülü almak kalktı. Yerine günlük çark —
+    // ödüle giden ikinci yol artık bu ve simülasyonun onu üretmesi
+    // gerekiyor, yoksa rapordaki kupon sayısı gerçeği yansıtmaz.
     if (kafe.katalogOdulu && konumVar && rnd() < 0.35) {
       const aktif = await masa.aktif(oyuncu.id);
       if (aktif) {
-        const alim = await kupon.katalogdanAl({
-          playerId: oyuncu.id,
-          cafeId: kafe.id,
-          odulId: kafe.katalogOdulu,
-          kanitSeviyesi: aktif.kanitSeviyesi,
-        });
-        if (alim.ok) ozet.katalog++;
+        const durum = await cark.durum({ playerId: oyuncu.id, cafeId: kafe.id });
+        const secim = durum.acik ? cark.sec(durum.dilimler) : null;
+        if (secim) {
+          const alim = await kupon.carkOduluVer({
+            playerId: oyuncu.id,
+            cafeId: kafe.id,
+            odulId: secim.dilim.odulId,
+            kanitSeviyesi: aktif.kanitSeviyesi,
+          });
+          if (alim.ok) ozet.katalog++;
+        }
       }
     }
   }

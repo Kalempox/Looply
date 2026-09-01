@@ -66,20 +66,24 @@ export default async function FirsatlarSayfasi() {
       <Baslik ust="Fırsatlar">Buradaki fırsatlar</Baslik>
       <MasaKunyesi kafe={masa.cafeAdi} masa={masa.masaAdi} />
 
+      {/* Ü52: puan artık harcanmıyor. Ekranın başında puan bakiyesi
+          durursa "bunlarla ödül alacağım" diye okunuyor; oysa ödül
+          oyundan ve çarktan düşüyor. Puan sıralamada ve seviyede. */}
       <div className="mb-8 rounded-2xl border border-cizgi bg-yuzey px-4 py-3.5">
-        <div className="etiket-caps text-yazi-sonuk">
-          Bu kafedeki puanın
-        </div>
+        <div className="etiket-caps text-yazi-sonuk">Bu kafedeki puanın</div>
         <div className="mt-1.5 font-data text-2xl leading-none font-bold text-vurgu tabular">
           {(sayilar.kafePuani ?? 0).toLocaleString("tr-TR")}
         </div>
+        <p className="mt-1.5 text-[12px] leading-relaxed text-yazi-sonuk">
+          Puan sıralamanı ve seviyeni belirler — ödülle takas edilmez.
+        </p>
       </div>
 
       {bosMu && (
         <div className="rounded-2xl border border-cizgi bg-yuzey px-6 py-8">
           <p className="text-[15px] leading-relaxed text-yazi-sonuk">
-            {masa.cafeAdi} henüz ödül kataloğunu hazırlamadı. Oynamaya devam et — puanların
-            birikiyor, katalog açıldığında burada görünecek.
+            {masa.cafeAdi} henüz ödüllerini hazırlamadı. Oynamaya devam et — ödüller açıldığında
+            burada görünecek.
           </p>
         </div>
       )}
@@ -110,41 +114,33 @@ export default async function FirsatlarSayfasi() {
 
       {firsatlar.oduller.length > 0 && (
         <section>
-          <h2 className="mb-3 etiket-caps text-yazi-sonuk">
-            Ödül kataloğu
-          </h2>
+          <h2 className="mb-3 etiket-caps text-yazi-sonuk">Çıkabilecek ödüller</h2>
           <ul className="flex flex-col gap-2.5">
-            {firsatlar.oduller.map((odul) => {
-              const yeterli = (sayilar.kafePuani ?? 0) >= odul.puanFiyati;
-              return (
-                <li key={odul.id} className={`rounded-2xl border border-cizgi bg-yuzey px-5 py-4 ${yeterli ? "" : "opacity-55"}`}>
-                  <div className="font-display text-lg leading-tight font-bold">{odul.baslik}</div>
-                  {odul.aciklama && (
-                    <p className="mt-1 text-[13px] leading-relaxed text-yazi-sonuk">
-                      {odul.aciklama}
-                    </p>
-                  )}
-                  <div className="mt-3 etiket-caps">
-                    {odul.anlik ? (
-                      <span className="text-vurgu">Puan istemez</span>
-                    ) : (
-                      <span className={yeterli ? "text-odul-koyu" : "text-yazi-sonuk"}>
-                        {odul.puanFiyati.toLocaleString("tr-TR")} puan
-                      </span>
-                    )}
-                  </div>
-                </li>
-              );
-            })}
+            {firsatlar.oduller.map((odul) => (
+              <li key={odul.id} className="rounded-2xl border border-cizgi bg-yuzey px-5 py-4">
+                <div className="font-display text-lg leading-tight font-bold">{odul.baslik}</div>
+                {odul.aciklama && (
+                  <p className="mt-1 text-[13px] leading-relaxed text-yazi-sonuk">
+                    {odul.aciklama}
+                  </p>
+                )}
+                {/* E9: ödülün TL değeri oyuncuya GÖSTERİLMİYOR. Kasiyer
+                    ekranında ortaya çıkıyor; burada yalnızca adı var. */}
+                <div className="mt-3 etiket-caps text-vurgu">
+                  {odul.kanitSeviyesi >= 3 ? "Masada 5 dakika sonra" : "Konum doğrulanınca"}
+                </div>
+              </li>
+            ))}
           </ul>
         </section>
       )}
 
-      {/* Ekran bilgi verir, işlem yapmaz: ödül kazanma oyunun sonunda, kupon
-          kullanma kasada olur. Satırlara dokunulmaz. */}
+      {/* Ekran bilgi verir, işlem yapmaz: ödül kazanma oyunun sonunda ya da
+          çarkta olur, kupon kullanma kasada. Satırlara dokunulmaz. */}
       <p className="mt-10 border-l-2 border-cizgi pl-4 text-[13px] leading-relaxed text-yazi-sonuk">
-        Bu katalog kafeye özel. Puanların oynadıkça birikir, kazandığın kupon
-        &quot;Ödüllerim&quot; ekranında görünür ve kasada kullanılır.
+        Bu ödüller kafeye özel ve <strong className="text-yazi">satın alınmaz</strong>: oyun
+        sonunda ya da şans çarkında düşerler. Kazandığın kupon &quot;Ödüllerim&quot; ekranında
+        görünür ve kasada kullanılır.
       </p>
 
       <NavBosluk />
