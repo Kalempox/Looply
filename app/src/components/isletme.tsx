@@ -8,6 +8,23 @@
  * emoji yok. Buradaki her ekran iyi dizilmiş bir fatura gibi okunmalı.
  */
 
+/**
+ * İşletme sayfasının kabuğu.
+ *
+ * ── `genis` neden bu kadar genişledi (Ü58) ──────────────────
+ *
+ * Eskiden `max-w-4xl` (896px) idi ve panel yalnızca telefondan
+ * bakılacak varsayımıyla tasarlanmıştı. Kafe sahibi paneli
+ * **bilgisayardan da** açıyor: 2000 piksellik bir ekranda 896 piksellik
+ * bir sütun, ekranın üçte ikisini boş bırakıyordu. Referans yönetim
+ * panelleri içeriği tam genişliğe yayıyor.
+ *
+ * Üst sınır yine de var (`max-w-[1600px]`): sınırsız bırakılsaydı geniş
+ * ekranda satırlar okunamayacak kadar uzardı.
+ *
+ * `genis` OLMAYAN sayfalar dar kalıyor — onlar form sayfaları ve bir
+ * form ne kadar genişlerse o kadar zor doldurulur.
+ */
 export function IsletmeSayfa({
   children,
   genis,
@@ -17,7 +34,11 @@ export function IsletmeSayfa({
 }) {
   return (
     <main className="min-h-dvh bg-zemin text-yazi">
-      <div className={`mx-auto w-full ${genis ? "max-w-4xl" : "max-w-lg"} px-5 py-10 sm:px-8 sm:py-14`}>
+      <div
+        className={`mx-auto w-full px-5 py-10 sm:px-8 lg:py-10 ${
+          genis ? "max-w-[1600px] sm:py-10" : "max-w-lg sm:py-14"
+        }`}
+      >
         {children}
       </div>
     </main>

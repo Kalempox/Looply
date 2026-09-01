@@ -119,7 +119,7 @@ export default async function KafePaneli() {
       </section>
 
       <Bolum baslik="Kurulum ve yönetim">
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <Kart
             baslik="Kafe konumu"
             aciklama="Oyuncunun kafede olduğunu doğrulamanın tek yolu"
@@ -174,7 +174,10 @@ export default async function KafePaneli() {
         </div>
       </Bolum>
 
-      <nav className="mt-10 flex items-center gap-5 border-t border-cizgi pt-6 text-[14px]">
+      {/* Bilgisayarda çıkış kenar çubuğunun altında duruyor; burada
+          tekrar etmesi gereksiz. Telefonda kenar çubuğu yok, o yüzden
+          bu satır orada kalıyor. */}
+      <nav className="mt-10 flex items-center gap-5 border-t border-cizgi pt-6 text-[14px] lg:hidden">
         <form action={cikisYap}>
           <button type="submit" className="text-yazi-sonuk underline">
             Çıkış yap
@@ -543,28 +546,42 @@ function Kart({
   return (
     <Link
       href={yol}
-      className={`flex gap-3.5 rounded-2xl border bg-yuzey p-4 transition-colors hover:bg-cukur ${
-        eksik ? "border-tehlike/60" : "border-cizgi"
+      className={`group flex flex-col rounded-2xl border bg-yuzey p-4 transition-all hover:-translate-y-0.5 hover:shadow-md ${
+        eksik ? "border-tehlike/60" : "border-cizgi hover:border-yazi-sonuk/40"
       }`}
     >
-      <span className={`mt-0.5 shrink-0 ${eksik ? "text-tehlike" : "text-yazi-sonuk"}`}>
-        {IKONLAR[ikon]}
-      </span>
-      <span className="min-w-0">
-        <span className="flex flex-wrap items-center gap-2">
-          <span className="text-[15px] font-semibold">{baslik}</span>
-          {eksik && <Rozet tur="red">eksik</Rozet>}
+      <span className="flex items-start justify-between gap-2">
+        {/* İkon artık çıplak değil, kutunun içinde: gösterge kartlarıyla
+            aynı dil. Eksik olan kart kırmızı zeminle kendini söylüyor. */}
+        <span
+          className={`flex size-9 shrink-0 items-center justify-center rounded-xl ${
+            eksik ? "bg-tehlike/10 text-tehlike" : "bg-cukur text-yazi"
+          }`}
+        >
+          {IKONLAR[ikon]}
         </span>
-        <span className="mt-1 block text-[13px] leading-relaxed text-yazi-sonuk">{aciklama}</span>
+        {eksik ? (
+          <Rozet tur="red">eksik</Rozet>
+        ) : (
+          <span
+            aria-hidden
+            className="text-[15px] text-yazi-sonuk/40 transition-colors group-hover:text-yazi-sonuk"
+          >
+            →
+          </span>
+        )}
       </span>
+
+      <span className="mt-3 block text-[15px] leading-tight font-semibold">{baslik}</span>
+      <span className="mt-1.5 block text-[13px] leading-relaxed text-yazi-sonuk">{aciklama}</span>
     </Link>
   );
 }
 
 /* Satır içi SVG — işletme tarafında emoji yok (Ü31) ve dış kaynak da yok. */
 const cizgi = {
-  width: 22,
-  height: 22,
+  width: 19,
+  height: 19,
   viewBox: "0 0 24 24",
   fill: "none",
   stroke: "currentColor",
