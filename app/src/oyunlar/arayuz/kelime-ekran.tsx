@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useState } from "react";
-import { kelime, type KelimeDurumu, type KelimeGirdisi } from "../kelime";
+import { useCallback, useMemo, useState } from "react";
+import { kelime, olasiKelimeler, type KelimeDurumu, type KelimeGirdisi } from "../kelime";
 import type { OyunEkraniProps } from "./ortak";
 
 /**
@@ -15,7 +15,7 @@ import type { OyunEkraniProps } from "./ortak";
  * Reddedilen kelime **sessizce yutulmuyor**: neden geçersiz olduğu
  * söyleniyor. "Denedim, olmadı, neden bilmiyorum" en sinir bozucu hâl.
  */
-export function KelimeEkrani({ tohum, bolum, bitti }: OyunEkraniProps) {
+export function KelimeEkrani({ tohum, bolum, bitti, demoKapisi }: OyunEkraniProps) {
   const [durum, setDurum] = useState<KelimeDurumu>(() => kelime.baslat(tohum, bolum));
   const [girdiler, setGirdiler] = useState<KelimeGirdisi[]>([]);
   /** Seçilen harflerin **indeksleri** — aynı harften iki tane varsa ayrışsın. */
@@ -138,6 +138,42 @@ export function KelimeEkrani({ tohum, bolum, bitti }: OyunEkraniProps) {
       <p className="mt-6 text-center text-[12px] leading-relaxed text-yazi-sonuk">
         Bu harflerden {durum.olasi} kelime çıkıyor
       </p>
+
+      {/* Demo ipucu — yalnızca geliştirmede. Oyunu tanıtan kişinin hangi
+          kelimelerin kabul edildiğini bilmesi gerekiyor; yoksa rastgele
+          deneyip "kabul etmiyor" izlenimi bırakıyor. */}
+      {demoKapisi && <CevapIpucu harfler={durum.harfler} bulunan={durum.bulunan} />}
+    </div>
+  );
+}
+
+/* ── Demo ipucu ───────────────────────────────────────────── */
+
+/**
+ * Kabul edilen kelimelerin listesi.
+ *
+ * Kapalı başlıyor: açık dursaydı oyunun kendisi anlamsızlaşırdı. Canlıda
+ * hiç render edilmiyor — `demoKapisi` sunucudan geliyor ve orada hep false.
+ */
+function CevapIpucu({ harfler, bulunan }: { harfler: string[]; bulunan: string[] }) {
+  const [acik, setAcik] = useState(false);
+  const liste = useMemo(() => olasiKelimeler(harfler), [harfler]);
+  const kalan = liste.filter((k) => !bulunan.includes(k));
+
+  return (
+    <div className="mt-3 rounded-lg border border-odul/50 bg-cukur px-3 py-2.5">
+      <button
+        type="button"
+        onClick={() => setAcik((a) => !a)}
+        className="etiket-caps w-full text-left text-odul-koyu"
+      >
+        Geliştirme · kabul edilen kelimeler ({kalan.length}) {acik ? "▾" : "▸"}
+      </button>
+      {acik && (
+        <p className="mt-2 font-data text-[11px] leading-relaxed break-words text-yazi-sonuk">
+          {kalan.join(" · ")}
+        </p>
+      )}
     </div>
   );
 }

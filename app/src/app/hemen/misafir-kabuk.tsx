@@ -7,6 +7,7 @@ import {
   misafirBasla,
   misafirBitir,
   konumBildir,
+  demoKafedeSay,
   type BitirCevabi,
   type KonumCevabi,
 } from "./actions";
@@ -31,9 +32,12 @@ export function MisafirKabugu({
   oyunlar,
   kafeAdi,
   konumBaslangic,
+  demoKapisi,
 }: {
   oyunlar: Oyun[];
   kafeAdi: string;
+  /** Demo kısayolu görünsün mü — canlıda hep false. */
+  demoKapisi?: boolean;
   /** Sunucunun çerezden okuduğu konum durumu — sayfa yenilense de kaybolmasın. */
   konumBaslangic: { dogrulandi: boolean; mesafeM: number | null } | null;
 }) {
@@ -110,6 +114,7 @@ export function MisafirKabugu({
           oyunId={durum.oyun.id}
           tohum={durum.tohum}
           bolum={durum.bolum}
+          demoKapisi={demoKapisi}
           bitti={oyunBitti(durum.oyun, durum.bolum)}
         />
 
@@ -148,6 +153,20 @@ export function MisafirKabugu({
         not={konumNotu}
         bekliyor={bekliyor}
         iste={konumIste}
+        demo={
+          demoKapisi
+            ? () =>
+                basla(async () => {
+                  const c = await demoKafedeSay();
+                  if (c.durum === "dogrulandi") {
+                    setKonum({ dogrulandi: true, mesafeM: c.mesafeM });
+                    setKonumNotu(null);
+                  } else {
+                    setKonumNotu("Demo konumu uygulanamadı");
+                  }
+                })
+            : undefined
+        }
       />
 
       <h2 className="mt-8 mb-3 etiket-caps text-yazi-sonuk">Bir oyun seç</h2>
@@ -199,12 +218,15 @@ function KonumSeridi({
   not,
   bekliyor,
   iste,
+  demo,
 }: {
   kafeAdi: string;
   konum: { dogrulandi: boolean; mesafeM: number | null } | null;
   not: string | null;
   bekliyor: boolean;
   iste: () => void;
+  /** Demo kısayolu — kafenin kendi koordinatını kullanır. Canlıda yok. */
+  demo?: () => void;
 }) {
   const dogrulandi = !!konum?.dogrulandi;
 
@@ -233,14 +255,27 @@ function KonumSeridi({
           </div>
         </div>
         {!dogrulandi && (
-          <button
-            type="button"
-            onClick={iste}
-            disabled={bekliyor}
-            className="etiket-caps shrink-0 rounded border border-current px-3 py-1.5 text-odul-koyu disabled:opacity-50"
-          >
-            {bekliyor ? "…" : "Doğrula"}
-          </button>
+          <div className="flex shrink-0 items-center gap-1.5">
+            <button
+              type="button"
+              onClick={iste}
+              disabled={bekliyor}
+              className="etiket-caps rounded border border-current px-3 py-1.5 text-odul-koyu disabled:opacity-50"
+            >
+              {bekliyor ? "…" : "Doğrula"}
+            </button>
+            {demo && (
+              <button
+                type="button"
+                onClick={demo}
+                disabled={bekliyor}
+                className="etiket-caps rounded border border-odul px-2.5 py-1.5 text-odul-koyu disabled:opacity-50"
+                title="Yalnızca geliştirmede görünür"
+              >
+                Kafedeyim
+              </button>
+            )}
+          </div>
         )}
       </div>
     </div>

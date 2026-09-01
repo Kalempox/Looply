@@ -5,6 +5,8 @@ import { z } from "zod";
 import { biletCoz, MASA_COOKIE } from "@/domain/qr";
 import * as misafir from "@/domain/misafir";
 import { isProduction } from "@/lib/env";
+import { kodEkrandaGosterilir } from "@/sms";
+import { withBypass } from "@/db/context";
 import { dogrula } from "@/lib/validate";
 
 /**
@@ -113,6 +115,40 @@ export async function konumBildir(lat: number, lng: number): Promise<KonumCevabi
     lng: girdi.veri.lng,
   });
 
+  if (sonuc.durum === "kafe_konumu_yok") return { durum: "kafe_konumu_yok" };
+
+  (await cookies()).set(misafir.KONUM_COOKIE, sonuc.cerez, CEREZ_AYARI);
+  return { durum: sonuc.durum, mesafeM: sonuc.mesafeM };
+}
+
+/**
+ * Demo kolaylığı — misafiri kafede sayar.
+ *
+ * `/oyna` tarafındaki `demoKafedeSay` ile aynı gerekçe: kafenin **kendi
+ * koordinatı** okunup normal ölçüme veriliyor, mesafe gerçekten hesaplanıyor.
+ * Kural gevşemiyor, yalnızca koordinatın kaynağı değişiyor.
+ *
+ * Canlıda hiç çalışmaz.
+ */
+export async function demoKafedeSay(): Promise<KonumCevabi> {
+  if (!kodEkrandaGosterilir()) return { durum: "olmadi" };
+
+  const masa = await masaBileti();
+  if (!masa) return { durum: "olmadi" };
+
+  const kafe = await withBypass("demo — kafe koordinatı", (db) =>
+    db.one<{ lat: number | null; lng: number | null }>(
+      `SELECT lat, lng FROM cafes WHERE id = $1`,
+      [masa.cafeId],
+    ),
+  );
+  if (!kafe || kafe.lat == null || kafe.lng == null) return { durum: "kafe_konumu_yok" };
+
+  const sonuc = await misafir.konumDogrula({
+    cafeId: masa.cafeId,
+    lat: kafe.lat,
+    lng: kafe.lng,
+  });
   if (sonuc.durum === "kafe_konumu_yok") return { durum: "kafe_konumu_yok" };
 
   (await cookies()).set(misafir.KONUM_COOKIE, sonuc.cerez, CEREZ_AYARI);

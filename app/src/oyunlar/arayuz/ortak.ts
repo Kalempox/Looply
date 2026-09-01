@@ -19,4 +19,11 @@ export type OyunEkraniProps = {
    * ve ödül ondan çıkıyor (S5).
    */
   bitti: (girdiler: unknown[], istemciSkoru: number) => void;
+  /**
+   * Demo kapısı — geliştirmeye özel ipuçları görünsün mü.
+   *
+   * Sunucudan geliyor (`kodEkrandaGosterilir()`); canlıda hep false ve
+   * ipucu bileşenleri hiç render edilmiyor.
+   */
+  demoKapisi?: boolean;
 };

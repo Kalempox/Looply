@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { OyunEkrani } from "@/oyunlar/arayuz";
 import { baslaEylemi, bitirEylemi, type BitirCevabi } from "./actions";
 
@@ -26,6 +26,16 @@ type Ayar = {
   kazandirir: boolean;
   bonusMu: boolean;
   cafeAdi: string | null;
+  /** Demo ipuçları görünsün mü — canlıda hep false. */
+  demoKapisi?: boolean;
+  /**
+   * Sayfa açılır açılmaz 1. bölüm başlasın mı.
+   *
+   * Ana ekrandaki "Oyna" düğmesi oyunu açtığını söylüyordu ama bölüm
+   * listesine düşürüyordu; tek dokunuşla oynanması gereken yerde iki adım
+   * vardı. Liste hâlâ duruyor — "Bölümlere dön" ile ulaşılıyor.
+   */
+  hemenBasla?: boolean;
 };
 
 type Durum =
@@ -37,6 +47,7 @@ export function OyunKabugu(ayar: Ayar) {
   const [durum, setDurum] = useState<Durum>({ tur: "secim" });
   const [hata, setHata] = useState<string | null>(null);
   const [bekliyor, basla] = useTransition();
+  const otomatikBasladi = useRef(false);
 
   const bolumBaslat = useCallback(
     (bolum: number) => {
@@ -63,6 +74,14 @@ export function OyunKabugu(ayar: Ayar) {
     [],
   );
 
+  // "Oyna" düğmesi tek dokunuşta oynatmalı. Bir kez çalışıyor: oyuncu
+  // bölümlere döndüğünde yeniden tetiklenip listeyi ele geçirmesin.
+  useEffect(() => {
+    if (!ayar.hemenBasla || otomatikBasladi.current) return;
+    otomatikBasladi.current = true;
+    bolumBaslat(1);
+  }, [ayar.hemenBasla, bolumBaslat]);
+
   if (durum.tur === "oynuyor") {
     return (
       <div>
@@ -82,6 +101,7 @@ export function OyunKabugu(ayar: Ayar) {
           oyunId={ayar.oyunId}
           tohum={durum.tohum}
           bolum={durum.bolum}
+          demoKapisi={ayar.demoKapisi}
           bitti={oyunBitti(durum.oturumId, durum.bolum)}
         />
 

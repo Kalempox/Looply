@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { biletCoz, MASA_COOKIE } from "@/domain/qr";
 import * as oturum from "@/domain/session";
 import * as misafir from "@/domain/misafir";
+import { kodEkrandaGosterilir } from "@/sms";
 import { OYUNLAR } from "@/oyunlar";
 import { withBypass } from "@/db/context";
 import { Sayfa, Baslik, MasaKunyesi } from "@/components/ui";
@@ -67,6 +68,7 @@ export default async function HemenSayfasi() {
         }))}
         kafeAdi={masa.cafe_adi}
         konumBaslangic={konum ? { dogrulandi: konum.k2, mesafeM: konum.mesafeM } : null}
+        demoKapisi={kodEkrandaGosterilir()}
       />
 
       <p className="mt-8 font-data text-[10px] leading-relaxed tracking-wide text-yazi-sonuk">

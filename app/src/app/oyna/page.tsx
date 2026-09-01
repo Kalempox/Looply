@@ -10,6 +10,7 @@ import * as tahtDomain from "@/domain/taht";
 import * as happy from "@/domain/happy";
 import { isGunu } from "@/lib/tarih";
 import { OyuncuNav, NavBosluk } from "@/components/oyuncu-nav";
+import { kodEkrandaGosterilir } from "@/sms";
 import { DurumSeridi, type SeritDurumu } from "./durum-seridi";
 import { cikisYap } from "./actions";
 
@@ -61,7 +62,7 @@ export default async function OynaSayfasi() {
   return (
     <main className="min-h-dvh bg-zemin text-yazi">
       <div className="mx-auto w-full max-w-md px-5 pb-16">
-        <DurumSeridi durum={seridDurumu} />
+        <DurumSeridi durum={seridDurumu} demoKapisi={kodEkrandaGosterilir()} />
 
         {/* ── Kimlik ve sayılar ─────────────────────────── */}
         <section className="gir mb-10">
@@ -130,7 +131,7 @@ export default async function OynaSayfasi() {
             <p className="mt-1.5 text-[14px] leading-relaxed text-yazi-sonuk">{bonus.ozet}</p>
 
             <Link
-              href={`/oyna/${bonus.id}`}
+              href={`/oyna/${bonus.id}?basla=1`}
               className="mt-5 block w-full rounded-lg border border-odul/60 py-3 text-center font-display text-[15px] font-bold text-odul-koyu"
             >
               Oyna

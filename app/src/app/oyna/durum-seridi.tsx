@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { konumBildir, konumReddedildi } from "./actions";
+import { konumBildir, konumReddedildi, demoKafedeSay } from "./actions";
 
 /**
  * Durum şeridi — ekranın en üstünde, her zaman görünür.
@@ -22,7 +22,14 @@ export type SeritDurumu =
   | { tur: "uzak"; kafe: string; masa: string; mesafeM: number }
   | { tur: "konum_kapali"; kafe: string; masa: string };
 
-export function DurumSeridi({ durum }: { durum: SeritDurumu }) {
+export function DurumSeridi({
+  durum,
+  demoKapisi,
+}: {
+  durum: SeritDurumu;
+  /** Demo kısayolu görünsün mü — sunucu karar veriyor, canlıda hep false. */
+  demoKapisi?: boolean;
+}) {
   const [bekliyor, basla] = useTransition();
   const [gecici, setGecici] = useState<string | null>(null);
 
@@ -97,14 +104,37 @@ export function DurumSeridi({ durum }: { durum: SeritDurumu }) {
         </div>
 
         {(durum.tur === "konum_bekliyor" || durum.tur === "konum_kapali" || durum.tur === "uzak") && (
-          <button
-            type="button"
-            onClick={konumIste}
-            disabled={bekliyor}
-            className="etiket-caps shrink-0 rounded border border-current px-3 py-1.5 disabled:opacity-50"
-          >
-            {bekliyor ? "…" : durum.tur === "konum_bekliyor" ? "Doğrula" : "Tekrar"}
-          </button>
+          <div className="flex shrink-0 items-center gap-1.5">
+            <button
+              type="button"
+              onClick={konumIste}
+              disabled={bekliyor}
+              className="etiket-caps rounded border border-current px-3 py-1.5 disabled:opacity-50"
+            >
+              {bekliyor ? "…" : durum.tur === "konum_bekliyor" ? "Doğrula" : "Tekrar"}
+            </button>
+
+            {/* Demo kısayolu — kafenin kendi koordinatını kullanır, kural
+                gevşemez. Canlıda hiç render edilmiyor. */}
+            {demoKapisi && (
+              <button
+                type="button"
+                onClick={() =>
+                  basla(async () => {
+                    const c = await demoKafedeSay();
+                    setGecici(
+                      c.durum === "dogrulandi" ? null : "Demo konumu uygulanamadı",
+                    );
+                  })
+                }
+                disabled={bekliyor}
+                className="etiket-caps rounded border border-odul px-2.5 py-1.5 text-odul-koyu disabled:opacity-50"
+                title="Yalnızca geliştirmede görünür"
+              >
+                Kafedeyim
+              </button>
+            )}
+          </div>
         )}
       </div>
     </div>

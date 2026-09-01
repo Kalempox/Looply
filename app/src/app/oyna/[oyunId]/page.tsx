@@ -3,6 +3,7 @@ import * as oturum from "@/domain/session";
 import * as masaOturumu from "@/domain/masa";
 import { K2 } from "@/domain/masa";
 import { oyunBul, gununOyunu } from "@/oyunlar";
+import { kodEkrandaGosterilir } from "@/sms";
 import { isGunu } from "@/lib/tarih";
 import { Sayfa, Baslik } from "@/components/ui";
 import { OyunKabugu } from "./oyun-kabuk";
@@ -22,10 +23,13 @@ export const dynamic = "force-dynamic";
  */
 export default async function OyunSayfasi({
   params,
+  searchParams,
 }: {
   params: Promise<{ oyunId: string }>;
+  searchParams: Promise<{ basla?: string }>;
 }) {
   const { oyunId } = await params;
+  const sp = await searchParams;
 
   const o = await oturum.oku();
   if (!o || o.rol !== "oyuncu") redirect("/giris");
@@ -50,6 +54,8 @@ export default async function OyunSayfasi({
         kazandirir={kazandirir}
         bonusMu={bonusMu}
         cafeAdi={masa?.cafeAdi ?? null}
+        demoKapisi={kodEkrandaGosterilir()}
+        hemenBasla={sp.basla === "1"}
       />
     </Sayfa>
   );

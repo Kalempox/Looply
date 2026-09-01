@@ -117,6 +117,23 @@ function bolumunHarfleri(tohum: string, bolum: number): string[] {
   return r.karistir(enIyi);
 }
 
+/**
+ * Bu harflerden çıkan tüm geçerli kelimeler.
+ *
+ * Ekranın **demo ipucu** bunu kullanıyor: oyunu tanıtırken hangi kelimelerin
+ * kabul edildiğini bilmek gerekiyor, yoksa tanıtan kişi rastgele deneyip
+ * "kabul etmiyor" izlenimi bırakıyor. Liste yalnızca demo kapısının
+ * arkasında gösteriliyor; oyunun kendisi bundan etkilenmiyor.
+ */
+export function olasiKelimeler(harfler: readonly string[]): string[] {
+  const out: string[] = [];
+  for (const k of KELIMELER) {
+    if (k.length < EN_KISA || k.length > harfler.length) continue;
+    if (kurulabilir(k, harfler)) out.push(k);
+  }
+  return out;
+}
+
 /** Bu harflerden kaç geçerli kelime çıkar? Bölümün çözülebilir olduğunu doğrular. */
 function olasiKelimeSayisi(harfler: readonly string[]): number {
   let n = 0;
