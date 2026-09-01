@@ -352,3 +352,58 @@ export async function geriAlmaYaz(
   await defterYaz(db, opts.donemId, opts.cafeId, "undo", opts.kurus, opts.kuponId, "geri alma");
   await defterYaz(db, opts.donemId, opts.cafeId, "release", opts.kurus, opts.kuponId, "geri alma");
 }
+
+/* ── Son yedi gün (Ü62) ────────────────────────────────────── */
+
+export type ButceGunu = {
+  gun: string;
+  /** O gün taahhüt edilen tutar. Dönem açılmamışsa sıfır. */
+  taahhutKurus: number;
+  /** O gün kasada onaylanan tutar — kafenin fiilen ödediği. */
+  harcananKurus: number;
+};
+
+/**
+ * Son yedi günün bütçe hareketi.
+ *
+ * ── Neden `coupons`'tan okunuyor ────────────────────────────
+ *
+ * `budget_periods.committed_kurus` taahhüdü tutuyor ama **harcamayı**
+ * tutmuyor: harcanan, o döneme bağlı kuponların `committed_kurus`
+ * toplamı (E3 — bakiye kolonu yok, her sayı defterin toplamı). İki
+ * yerde tutulsaydı biri güncellenmeden kalırdı.
+ *
+ * ── Neden dönem yoksa sıfır ─────────────────────────────────
+ *
+ * Kafe her gün bütçe açmak zorunda değil; dönem ilk ihtiyaçta açılıyor
+ * (Ü45). O günler grafikte **boş** görünmeli, atlanmamalı — atlanan gün
+ * grafiği kaydırır ve "dün" yanlış güne denk gelir.
+ */
+export async function sonYediGun(cafeId: string, bugun = isGunu()): Promise<ButceGunu[]> {
+  const bas = gunEkle(bugun, -6);
+
+  return withCafe(cafeId, async (db) => {
+    const satirlar = await db.all<{ gun: string; taahhut: string; harcanan: string }>(
+      `SELECT bp.period_start::text AS gun,
+              bp.committed_kurus    AS taahhut,
+              COALESCE((SELECT sum(k.committed_kurus) FROM coupons k
+                         WHERE k.budget_period_id = bp.id AND k.status = 'redeemed'), 0)
+                                    AS harcanan
+         FROM budget_periods bp
+        WHERE bp.period_start >= $1::date AND bp.period_start <= $2::date`,
+      [bas, bugun],
+    );
+
+    const harita = new Map(satirlar.map((r) => [r.gun, r]));
+
+    return Array.from({ length: 7 }, (_, i) => {
+      const gun = gunEkle(bas, i);
+      const r = harita.get(gun);
+      return {
+        gun,
+        taahhutKurus: Number(r?.taahhut ?? 0),
+        harcananKurus: Number(r?.harcanan ?? 0),
+      };
+    });
+  });
+}

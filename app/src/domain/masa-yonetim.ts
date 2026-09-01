@@ -141,3 +141,54 @@ export async function durumDegistir(opts: {
     return { ok: true as const, id: opts.tableId };
   });
 }
+
+/* ── Kullanım (Ü62) ────────────────────────────────────────── */
+
+export type MasaKullanimi = {
+  masaAdi: string;
+  /** Son yedi günde bu masada tamamlanan oyun. */
+  oyun: number;
+  /** Kaç farklı gün kullanıldı — "her gün mü, bir kez mi" sorusu. */
+  gun: number;
+};
+
+/**
+ * Son yedi günün masa kullanımı.
+ *
+ * ── Neden bu ekranda ────────────────────────────────────────
+ *
+ * Masalar ekranı "hangi masa var" sorusunu cevaplıyordu; kafe sahibinin
+ * asıl merak ettiği **hangi masa çalışıyor**. Camdaki masaya yapıştırılan
+ * kodun hiç okutulmadığını görmek, kodu taşımak için tek sebep.
+ *
+ * ── Mahremiyet eşiği (Ü30) burada YOK ───────────────────────
+ *
+ * Eşik oyuncu **sayısını** koruyor: "saat 14'te 2 oyuncu" satırı kişiyi
+ * işaret edebilir. Burada oyuncu sayılmıyor, oyun sayılıyor — kaç kez
+ * oynandığı kimseyi işaret etmiyor ve kafe zaten masasında kimin
+ * oturduğunu görüyor.
+ */
+export async function kullanim(cafeId: string, gunSayisi = 7): Promise<MasaKullanimi[]> {
+  return withCafe(cafeId, async (db) => {
+    const satirlar = await db.all<{ masa: string; oyun: string; gun: string }>(
+      `SELECT t.label AS masa,
+              count(ps.id) AS oyun,
+              count(DISTINCT ps.business_date) AS gun
+         FROM cafe_tables t
+         LEFT JOIN play_sessions ps
+                ON ps.table_id = t.id
+               AND ps.status = 'completed'
+               AND ps.business_date > (CURRENT_DATE - $1::int)
+        WHERE t.active
+        GROUP BY t.id, t.label
+        ORDER BY count(ps.id) DESC, t.sort_order`,
+      [gunSayisi],
+    );
+
+    return satirlar.map((r) => ({
+      masaAdi: r.masa,
+      oyun: Number(r.oyun),
+      gun: Number(r.gun),
+    }));
+  });
+}
