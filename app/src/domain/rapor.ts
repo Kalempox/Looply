@@ -1,6 +1,7 @@
 import { withCafe, type Db } from "@/db/context";
 import { audit } from "@/lib/audit";
-import { isGunu, pazartesi, gunEkle } from "@/lib/tarih";
+import { demoOrtami } from "@/lib/env";
+import { isGunu, pazartesi, gunEkle, gunFarki } from "@/lib/tarih";
 
 /**
  * Kafe raporları — Faz 8.
@@ -34,6 +35,11 @@ import { isGunu, pazartesi, gunEkle } from "@/lib/tarih";
 /** Ü30: bu sayıdan az kişi içeren grup gizlenir. */
 export const GIZLEME_ESIGI = 5;
 
+/**
+ * Aralık **yarı açık**: `baslangic` dahil, `bitis` hariç. Her sorgu
+ * `>= $1 AND < $2` yazıyor; "son gün dahil mi" tartışması tek yerde,
+ * burada bitiyor.
+ */
 export type Aralik = { baslangic: string; bitis: string };
 
 /** Bu haftanın aralığı — pazartesiden pazartesiye (Ü25 ile aynı takvim). */
@@ -47,15 +53,122 @@ export function gecenHafta(gun = isGunu()): Aralik {
   return { baslangic: bas, bitis: gunEkle(bas, 7) };
 }
 
-/** Eşiğin altındaki sayıyı gizler. */
-function gizle(sayi: number): number | null {
+/* ── Tarih aralığı seçimi ──────────────────────────────────────
+ *
+ * Rapor önce "bu hafta / geçen hafta" iki sekmesiydi. Kafe sahibinin
+ * sorduğu şeyler oraya sığmıyordu: *"geçen ay ne oldu"*, *"maç günü ne
+ * oldu"*, *"kampanyayı açtığım haftadan beri"*. Şimdi hazır aralıklar
+ * hızlı yol, serbest tarih ise asıl cevap.
+ */
+
+/** Hazır aralıklar — ekrandaki düğme sırası da bu. */
+export const HAZIR_ARALIKLAR = [
+  { ad: "bugun", etiket: "Bugün", gun: 1 },
+  { ad: "7", etiket: "Son 7 gün", gun: 7 },
+  { ad: "30", etiket: "Son 30 gün", gun: 30 },
+] as const;
+
+export type HazirAralik = (typeof HAZIR_ARALIKLAR)[number]["ad"];
+
+/** Tek sorguda taranabilecek en uzun dönem. */
+export const EN_UZUN_GUN = 366;
+
+export type AralikSecimi = {
+  aralik: Aralik;
+  /** Hangi hazır düğme yanacak — serbest tarihte `null`. */
+  hazir: HazirAralik | null;
+  gunSayisi: number;
+  /** Ekranda ve CSV adında görünen düz metin. */
+  etiket: string;
+};
+
+/**
+ * Adres çubuğundaki tarihi aralığa çevirir.
+ *
+ * Girdi **kullanıcıdan** geliyor (URL) ve doğrudan SQL parametresi olacak.
+ * Tip zorlaması burada bitiyor: biçime uymayan, ters sıralı ya da çok uzun
+ * her istek sessizce varsayılana düşüyor. Sayfanın hata göstermesi gereken
+ * bir durum değil — bozuk bağlantıya tıklayan kafe sahibi raporu görsün.
+ */
+export function araligiCoz(
+  sp: { on?: string; bas?: string; bit?: string },
+  bugun = isGunu(),
+): AralikSecimi {
+  if (gunMu(sp.bas) && gunMu(sp.bit)) {
+    const gunSayisi = gunFarki(sp.bas, sp.bit) + 1; // bitiş günü dahil
+    if (gunSayisi >= 1 && gunSayisi <= EN_UZUN_GUN) {
+      return {
+        aralik: { baslangic: sp.bas, bitis: gunEkle(sp.bit, 1) },
+        hazir: null,
+        gunSayisi,
+        etiket:
+          sp.bas === sp.bit ? gunYaz(sp.bas) : `${gunYaz(sp.bas)} – ${gunYaz(sp.bit)}`,
+      };
+    }
+  }
+
+  const secilen =
+    HAZIR_ARALIKLAR.find((h) => h.ad === sp.on) ?? HAZIR_ARALIKLAR[1]; // varsayılan: son 7 gün
+
+  return {
+    aralik: { baslangic: gunEkle(bugun, -(secilen.gun - 1)), bitis: gunEkle(bugun, 1) },
+    hazir: secilen.ad,
+    gunSayisi: secilen.gun,
+    etiket: secilen.etiket,
+  };
+}
+
+/** `YYYY-MM-DD` mi — hem biçim hem takvim olarak geçerli mi? */
+function gunMu(s: string | undefined): s is string {
+  if (!s || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+  const d = new Date(`${s}T00:00:00Z`);
+  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === s;
+}
+
+function gunYaz(gun: string): string {
+  const [y, a, g] = gun.split("-");
+  return `${g}.${a}.${y}`;
+}
+
+/**
+ * Eşik bu çağrıda uygulanacak mı?
+ *
+ * Demo ortamında kapalı. Sebebi mahremiyet kuralının gevşemesi değil, demo
+ * verisinin küçük olması: on kişilik bir demo kafede her satır `<5` çıkıyor
+ * ve rapor ekranı boş görünüyordu — düzeltilecek şeyin ne olduğu
+ * anlaşılamıyordu. Canlıda `demoOrtami()` hiçbir koşulda true dönmez; eşik
+ * orada aynen duruyor.
+ *
+ * ── Neden parametre, neden doğrudan env okumuyoruz ──────────
+ *
+ * Testler de demo ortamında koşuyor. Karar fonksiyonun içinde okunsaydı Ü30
+ * sınamalarının hepsi eşik kapalıyken çalışır, yani **kuralı hiç sınamamış
+ * olurduk** — mahremiyet güvencesinin sessizce çürüdüğü tam olarak böyle bir
+ * yerdir. Karar dışarıdan verilebilir olunca testler üretim davranışını
+ * zorlayabiliyor; ekran hiçbir şey geçmiyor ve varsayılanı alıyor.
+ */
+export const esikVarsayilan = () => !demoOrtami();
+
+/** Eşiğin altındaki sayıyı gizler (Ü30). */
+function gizle(sayi: number, esikAcik: boolean): number | null {
+  if (!esikAcik) return sayi;
   return sayi > 0 && sayi < GIZLEME_ESIGI ? null : sayi;
 }
 
 /* ── Özet ──────────────────────────────────────────────────── */
 
 export type RaporOzeti = {
-  /** Ü29: satılan birim. Raporun baş sayısı. */
+  /**
+   * Ü29: satılan birim. Raporun baş sayısı.
+   *
+   * ⚠️ Adı "oyuncu" ama **saydığı şey ziyaret**: benzersizlik indeksi
+   * `(cafe_id, device_id_hash, business_date) WHERE is_qualified`, yani
+   * kural "1 nitelikli oturum / cihaz / kafe / **gün**" (S3). Aynı kişi
+   * ertesi gün geldiğinde yeniden sayılıyor — bu yüzden `tekilOyuncu`'dan
+   * büyük olabilir ve ekranda "kişi" diye yazılamaz. Rapor bir dönem
+   * boyunca tam tersini yazdı; fatura bu sayıdan kesildiği için yanlış
+   * tanım doğrudan yanlış faturaya dönüşüyordu.
+   */
   nitelikliOyuncu: number;
   /** Kaç farklı oyuncu geldi — nitelikli olmayanlar dahil. */
   tekilOyuncu: number;
@@ -77,11 +190,15 @@ export type RaporOzeti = {
   tekrarGelenOyuncu: number | null;
 };
 
-export async function ozet(cafeId: string, aralik: Aralik): Promise<RaporOzeti> {
-  return withCafe(cafeId, (db) => ozetIle(db, aralik));
+export async function ozet(
+  cafeId: string,
+  aralik: Aralik,
+  esikAcik = esikVarsayilan(),
+): Promise<RaporOzeti> {
+  return withCafe(cafeId, (db) => ozetIle(db, aralik, esikAcik));
 }
 
-async function ozetIle(db: Db, aralik: Aralik): Promise<RaporOzeti> {
+async function ozetIle(db: Db, aralik: Aralik, esikAcik: boolean): Promise<RaporOzeti> {
   const r = await db.one<{
     nitelikli: string;
     tekil: string;
@@ -146,8 +263,8 @@ async function ozetIle(db: Db, aralik: Aralik): Promise<RaporOzeti> {
     kuponKullanilan: Number(r?.kupon_kullanilan ?? 0),
     kazanilanIndirimKurus: Number(r?.kazanilan ?? 0),
     kullanilanIndirimKurus: Number(r?.kullanilan ?? 0),
-    yeniOyuncu: gizle(Number(r?.yeni ?? 0)),
-    tekrarGelenOyuncu: gizle(Number(r?.tekrar ?? 0)),
+    yeniOyuncu: gizle(Number(r?.yeni ?? 0), esikAcik),
+    tekrarGelenOyuncu: gizle(Number(r?.tekrar ?? 0), esikAcik),
   };
 }
 
@@ -223,7 +340,11 @@ export type MasaSatiri = {
   oyun: number;
 };
 
-export async function masaHareketi(cafeId: string, aralik: Aralik): Promise<MasaSatiri[]> {
+export async function masaHareketi(
+  cafeId: string,
+  aralik: Aralik,
+  esikAcik = esikVarsayilan(),
+): Promise<MasaSatiri[]> {
   const satirlar = await withCafe(cafeId, (db) =>
     db.all<{ masa: string; oyuncu: string; oyun: string }>(
       `SELECT t.label AS masa,
@@ -241,40 +362,96 @@ export async function masaHareketi(cafeId: string, aralik: Aralik): Promise<Masa
 
   return satirlar.map((r) => ({
     masa: r.masa,
-    oyuncu: gizle(Number(r.oyuncu)),
+    oyuncu: gizle(Number(r.oyuncu), esikAcik),
     oyun: Number(r.oyun),
   }));
 }
 
 /* ── Saatlik dağılım ───────────────────────────────────────── */
 
-export type SaatSatiri = { saat: number; oyuncu: number | null };
+export type SaatSatiri = {
+  saat: number;
+  oyuncu: number | null;
+  /**
+   * O saatte dolan masa oranı — 0 ile 1 arası.
+   *
+   * Payda, dönemdeki **gün sayısı × açık masa sayısı**: "saat 14'te üç
+   * masam doluydu" ile "on dört gün boyunca her gün saat 14'te üç masam
+   * doluydu" aynı şey değil. Gün sayısına bölünmezse iki haftalık rapor,
+   * bir günlük rapordan on dört kat "dolu" görünürdü.
+   */
+  oran: number;
+};
+
+export type SaatlikDagilim = {
+  saatler: SaatSatiri[];
+  /** Oranın paydası — ekran "3/9 masa" diye yazabilsin diye ayrıca duruyor. */
+  masaSayisi: number;
+  gunSayisi: number;
+};
 
 /**
  * Hangi saat doluyor.
  *
  * Satış konuşmasının en güçlü cümlesi buna dayanıyor: *"boş saatini
  * dolduruyorum."* İddiayı kanıtlayan tek şey bu dağılım.
+ *
+ * ── Neden sayı değil de oran ────────────────────────────────
+ *
+ * "Saat 15'te 4 oyuncu" cümlesi kafe sahibine bir şey söylemiyordu: dört
+ * çok mu az mı, kafenin kaç masası olduğuna bağlı. Oran ikisini birden
+ * cevaplıyor ve iki farklı büyüklükteki kafe aynı ölçekte konuşuyor.
+ *
+ * ── Neyin oranı olduğu ──────────────────────────────────────
+ *
+ * **Kafenin doluluğu değil**, CafePlay üzerinden dolan masa oranı. Oyun
+ * oynamadan oturan müşteriyi biz görmüyoruz; ekranın da öyle yazması
+ * gerekiyor, yoksa rapor kafenin kendi kasa verisiyle çelişir ve güveni
+ * ilk çelişkide kaybederiz.
  */
-export async function saatlikDagilim(cafeId: string, aralik: Aralik): Promise<SaatSatiri[]> {
-  const satirlar = await withCafe(cafeId, (db) =>
-    db.all<{ saat: string; oyuncu: string }>(
+export async function saatlikDagilim(
+  cafeId: string,
+  aralik: Aralik,
+  esikAcik = esikVarsayilan(),
+): Promise<SaatlikDagilim> {
+  const [satirlar, masa] = await withCafe(cafeId, async (db) => {
+    const s = await db.all<{ saat: string; oyuncu: string; masa: string }>(
       `SELECT extract(hour FROM ps.started_at AT TIME ZONE 'Europe/Istanbul')::int AS saat,
-              count(DISTINCT ps.player_id) AS oyuncu
+              count(DISTINCT ps.player_id) AS oyuncu,
+              count(DISTINCT (ps.table_id, ps.business_date)) AS masa
          FROM play_sessions ps
         WHERE ps.status = 'completed'
           AND ps.business_date >= $1 AND ps.business_date < $2
         GROUP BY 1 ORDER BY 1`,
       [aralik.baslangic, aralik.bitis],
-    ),
+    );
+    const m = await db.one<{ n: string }>(`SELECT count(*) AS n FROM cafe_tables WHERE active`);
+    return [s, m] as const;
+  });
+
+  const masaSayisi = Number(masa?.n ?? 0);
+  const gunSayisi = Math.max(1, gunFarki(aralik.baslangic, aralik.bitis));
+  const payda = masaSayisi * gunSayisi;
+
+  const harita = new Map(
+    satirlar.map((r) => [Number(r.saat), { oyuncu: Number(r.oyuncu), masa: Number(r.masa) }]),
   );
 
-  const harita = new Map(satirlar.map((r) => [Number(r.saat), Number(r.oyuncu)]));
   // Boş saatler de görünmeli — "burası hiç dolmuyor" da bir bilgi.
-  return Array.from({ length: 24 }, (_, saat) => ({
-    saat,
-    oyuncu: gizle(harita.get(saat) ?? 0),
-  }));
+  return {
+    saatler: Array.from({ length: 24 }, (_, saat) => {
+      const v = harita.get(saat);
+      return {
+        saat,
+        oyuncu: gizle(v?.oyuncu ?? 0, esikAcik),
+        // Masası olmayan kafede oran hesaplanamaz; sıfır göstermek
+        // "hiç dolmadı" demek olurdu, oysa ölçü yok.
+        oran: payda === 0 ? 0 : Math.min(1, (v?.masa ?? 0) / payda),
+      };
+    }),
+    masaSayisi,
+    gunSayisi,
+  };
 }
 
 /**
@@ -344,6 +521,180 @@ export async function kampanyaSonuclari(
   }));
 }
 
+/* ── Ödül dağılımı ─────────────────────────────────────────── */
+
+export type DagilimDilimi = { etiket: string; adet: number; kurus: number };
+
+/**
+ * Kullanılan kuponların ne olduğu — daire grafiğin verisi.
+ *
+ * Kafe sahibinin sorduğu şey: *"param nereye gidiyor?"* Toplam indirim
+ * tutarı bunu söylemiyor; ürün mü verildi, yüzde indirimi mi yapıldı,
+ * TL indirimi mi — üçünün maliyeti de aynı defterden çıkıyor ama üçü
+ * farklı karar.
+ */
+export async function odulDagilimi(cafeId: string, aralik: Aralik): Promise<DagilimDilimi[]> {
+  const satirlar = await withCafe(cafeId, (db) =>
+    db.all<{ tip: string; adet: string; kurus: string }>(
+      `SELECT COALESCE(r.reward_type, 'campaign') AS tip,
+              count(*) AS adet,
+              COALESCE(sum(k.committed_kurus), 0) AS kurus
+         FROM coupons k
+         LEFT JOIN rewards r ON r.id = k.reward_id
+        WHERE k.status = 'redeemed'
+          AND k.redeemed_at >= $1::date AND k.redeemed_at < $2::date
+        GROUP BY 1
+        ORDER BY sum(k.committed_kurus) DESC`,
+      [aralik.baslangic, aralik.bitis],
+    ),
+  );
+
+  const ETIKET: Record<string, string> = {
+    product: "Ürün ödülü",
+    percent: "Yüzde indirimi",
+    amount: "TL indirimi",
+    campaign: "Ürün kampanyası",
+  };
+
+  return satirlar.map((r) => ({
+    etiket: ETIKET[r.tip] ?? r.tip,
+    adet: Number(r.adet),
+    kurus: Number(r.kurus),
+  }));
+}
+
+/* ── Kim ne kullandı ───────────────────────────────────────── */
+
+export type KullanimSatiri = {
+  /** G1: kafeye özel anonim kod — ad, soyad, telefon yok. */
+  kod: string;
+  adet: number;
+  kurus: number;
+  sonKullanim: Date;
+};
+
+/**
+ * Kupon kullanımının kişi kırılımı.
+ *
+ * Kafe sahibi *"kim kaç kere kullanmış"* diye soruyor ve sorusu meşru: aynı
+ * kişinin on kuponu, on kişinin birer kuponundan çok farklı bir tablo. Ama
+ * cevabın adla verilmesi G1'i deler — kafe, kendi anonim koduyla görüyor.
+ *
+ * Eşik burada **uygulanmıyor**: satır zaten tek kişiyi gösteriyor, gizlenecek
+ * bir grup yok. Ü30 toplu görünümleri koruyor; bu defter kafenin kendi
+ * kasasında olan biteni denetlemesi için (S4 ile aynı gerekçe).
+ */
+export async function kuponKullanimi(
+  cafeId: string,
+  aralik: Aralik,
+  limit = 50,
+): Promise<KullanimSatiri[]> {
+  const satirlar = await withCafe(cafeId, (db) =>
+    db.all<{ kod: string | null; adet: string; kurus: string; son: Date }>(
+      `SELECT a.code AS kod,
+              count(*) AS adet,
+              COALESCE(sum(k.committed_kurus), 0) AS kurus,
+              max(k.redeemed_at) AS son
+         FROM coupons k
+         LEFT JOIN player_aliases a
+                ON a.cafe_id = k.cafe_id AND a.player_id = k.player_id
+        WHERE k.status = 'redeemed'
+          AND k.redeemed_at >= $1::date AND k.redeemed_at < $2::date
+        GROUP BY a.code
+        ORDER BY count(*) DESC, sum(k.committed_kurus) DESC
+        LIMIT $3`,
+      [aralik.baslangic, aralik.bitis, limit],
+    ),
+  );
+
+  return satirlar.map((r) => ({
+    kod: r.kod ?? "P-????",
+    adet: Number(r.adet),
+    kurus: Number(r.kurus),
+    sonKullanim: r.son,
+  }));
+}
+
+/* ── Getiri ────────────────────────────────────────────────── */
+
+export type Getiri = {
+  /** Kaç kere masaya oturuldu — aynı kişinin iki günü iki ziyaret. */
+  ziyaret: number;
+  /** Kupon karşılığı kasadan çıkan ürün adedi. */
+  urun: number;
+  /** Ziyaret × ortalama adisyon. **Tahmin.** */
+  tahminiCiroKurus: number;
+  /** Kasada onaylanan indirim. **Kesin.** */
+  indirimKurus: number;
+  /** Tahmini ciro − indirim. */
+  netKurus: number;
+  /** Tahminin dayandığı tek varsayım — ekranda yazılı duruyor. */
+  ortalamaAdisyonKurus: number;
+};
+
+/**
+ * Sistemin kafeye kazandırdığı — tahmini.
+ *
+ * ── Neden gerekiyor ─────────────────────────────────────────
+ *
+ * Kafe sahibi aboneliği yenilerken tek soru soruyor: *"bu bana ne
+ * kazandırdı?"* Rapor bugüne kadar bunu ziyaret ve kupon sayısıyla
+ * cevaplıyordu; ikisi de onun konuştuğu birim değil. Konuştuğu birim para.
+ *
+ * ── Neyin tahmin olduğu ─────────────────────────────────────
+ *
+ * Üç sayının ikisi sayılıyor, biri varsayılıyor:
+ *
+ *   · **ziyaret** ve **ürün** — defterden geliyor, kesin.
+ *   · **tahmini ciro** — ziyaret × kafenin girdiği ortalama adisyon.
+ *
+ * İkisi karıştırılmamalı. Ekranda "tahmin" etiketi kozmetik değil: kafe bu
+ * sayıyı kendi kasa raporuyla karşılaştıracak ve tutmadığında hangi sayıya
+ * güveneceğini bilmesi gerekiyor.
+ *
+ * ── Ne İDDİA ETMİYORUZ ──────────────────────────────────────
+ *
+ * "Bu ziyaretlerin hepsini biz getirdik" demiyoruz — o müşterilerin bir
+ * kısmı zaten gelecekti ve bunu ölçmenin yolu yok. Ekran da bu cümleyi
+ * kuruyor. Ölçemediğimiz şeyi ölçmüş gibi göstermek, ilk kasa
+ * karşılaştırmasında raporun tamamının güvenilirliğini götürür.
+ */
+export async function getiri(
+  cafeId: string,
+  aralik: Aralik,
+  ortalamaAdisyonKurus: number,
+): Promise<Getiri> {
+  const r = await withCafe(cafeId, (db) =>
+    db.one<{ ziyaret: string; urun: string; indirim: string }>(
+      `SELECT
+         (SELECT count(DISTINCT (player_id, business_date)) FROM play_sessions
+           WHERE is_qualified
+             AND business_date >= $1 AND business_date < $2)          AS ziyaret,
+         (SELECT count(*) FROM coupons k
+            JOIN rewards r ON r.id = k.reward_id
+           WHERE k.status = 'redeemed' AND r.product_id IS NOT NULL
+             AND k.redeemed_at >= $1::date AND k.redeemed_at < $2::date) AS urun,
+         (SELECT COALESCE(sum(committed_kurus), 0) FROM coupons
+           WHERE status = 'redeemed'
+             AND redeemed_at >= $1::date AND redeemed_at < $2::date)  AS indirim`,
+      [aralik.baslangic, aralik.bitis],
+    ),
+  );
+
+  const ziyaret = Number(r?.ziyaret ?? 0);
+  const indirimKurus = Number(r?.indirim ?? 0);
+  const tahminiCiroKurus = ziyaret * ortalamaAdisyonKurus;
+
+  return {
+    ziyaret,
+    urun: Number(r?.urun ?? 0),
+    tahminiCiroKurus,
+    indirimKurus,
+    netKurus: tahminiCiroKurus - indirimKurus,
+    ortalamaAdisyonKurus,
+  };
+}
+
 /* ── Denetim izi ───────────────────────────────────────────── */
 
 /**
@@ -392,11 +743,15 @@ export async function goruntulemeyiKaydet(opts: {
  * Alan içindeki `;` ve satır sonu kaçırılıyor — kafenin yazdığı masa veya
  * ürün adı noktalı virgül içerirse sütunlar kayar.
  */
-export async function disaAktar(cafeId: string, aralik: Aralik): Promise<string> {
+export async function disaAktar(
+  cafeId: string,
+  aralik: Aralik,
+  esikAcik = esikVarsayilan(),
+): Promise<string> {
   const [o, masalar, saatler, kampanyalar, defter] = await Promise.all([
-    ozet(cafeId, aralik),
-    masaHareketi(cafeId, aralik),
-    saatlikDagilim(cafeId, aralik),
+    ozet(cafeId, aralik, esikAcik),
+    masaHareketi(cafeId, aralik, esikAcik),
+    saatlikDagilim(cafeId, aralik, esikAcik),
     kampanyaSonuclari(cafeId, aralik),
     ziyaretler(cafeId, aralik),
   ]);
@@ -429,8 +784,12 @@ export async function disaAktar(cafeId: string, aralik: Aralik): Promise<string>
     ...masalar.map((m) => [m.masa, say(m.oyuncu), String(m.oyun)]),
     [],
     ["SAATLİK DAĞILIM"],
-    ["Saat", "Oyuncu"],
-    ...saatler.filter((s) => s.oyuncu !== 0).map((s) => [`${s.saat}:00`, say(s.oyuncu)]),
+    // Oran ekranla aynı paydadan çıkıyor (masa × gün); CSV'yi açan kişi
+    // yüzdeyi ekranda gördüğüyle karşılaştıracak.
+    ["Saat", "Oyuncu", "Doluluk %"],
+    ...saatler.saatler
+      .filter((s) => s.oyuncu !== 0)
+      .map((s) => [`${s.saat}:00`, say(s.oyuncu), String(Math.round(s.oran * 100))]),
     [],
     ["KAMPANYA SONUÇLARI"],
     ["Ürün", "Yüzde", "Durum", "Verilen", "Kullanılan", "Kasada (TL)"],

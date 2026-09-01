@@ -1,4 +1,4 @@
-import { env } from "@/lib/env";
+import { env, demoOrtami } from "@/lib/env";
 import { log } from "@/lib/log";
 import { withBypass } from "@/db/context";
 import { newId } from "@/lib/ids";
@@ -40,14 +40,11 @@ export type GonderimSonucu =
  * Geliştirmede doğrulama kodu ekranda gösterilir mi?
  *
  * Kodu görmek için sunucu logu okumak, test etmeyi gereksiz zorlaştırıyordu.
- * İki şart birden aranıyor ve ikisi de canlıda sağlanamaz:
- *   · APP_ENV canlı değil
- *   · Sahte sağlayıcı kullanılıyor — env.ts canlıda bunu zaten reddediyor
- *
- * Yani canlı ortamda bu fonksiyon hiçbir koşulda true dönemez.
+ * Kapının kendisi `demoOrtami()` — koşulları orada, tek yerde duruyor;
+ * canlı ortamda hiçbir koşulda true dönmez.
  */
 export function kodEkrandaGosterilir(): boolean {
-  return env().APP_ENV !== "production" && env().SMS_PROVIDER === "console";
+  return demoOrtami();
 }
 
 export interface SmsSaglayici {

@@ -30,6 +30,18 @@ export const ANAHTARLAR = {
    * günü ayrıca değiştirebiliyor — "yarın maç var, havuzu artırayım".
    */
   gunlukButce: "gunluk_butce_kurus",
+  /**
+   * Bir müşterinin ortalama hesabı (kuruş).
+   *
+   * Yalnızca **raporun getiri tahmininde** kullanılıyor: "bu kadar ziyaret
+   * geldi" sayısını kafenin anladığı birime, paraya çevirmek için. Ödül
+   * dağıtımına, bütçeye, kupon tutarına hiç girmiyor — yanlış girilmesi
+   * kimseye para kaybettirmez, yalnızca tahmini bozar.
+   *
+   * Varsayılanı biz uyduramayız; kafeden başka kimse bilmiyor. O yüzden
+   * rapor, tahmini gösterirken hangi tutarı kullandığını da yazıyor.
+   */
+  ortalamaAdisyon: "ortalama_adisyon_kurus",
 } as const;
 
 export type Anahtar = (typeof ANAHTARLAR)[keyof typeof ANAHTARLAR];
@@ -47,6 +59,8 @@ export const SINIRLAR: Record<Anahtar, { en_az: number; en_cok: number; varsayil
   // Alt sınır Ü45'in günlük tabanı; üst sınır yok denecek kadar yüksek
   // tutuluyor — kafenin ne kadar dağıtacağı bizim kararımız değil.
   [ANAHTARLAR.gunlukButce]: { en_az: 1_500_00, en_cok: 100_000_00, varsayilan: 1_500_00 },
+  // Bir kahveden ucuz olamaz, bir masanın toplam hesabından pahalı olmasın.
+  [ANAHTARLAR.ortalamaAdisyon]: { en_az: 20_00, en_cok: 5_000_00, varsayilan: 150_00 },
 };
 
 export async function sayiOku(cafeId: string, anahtar: Anahtar): Promise<number> {

@@ -150,7 +150,7 @@ describe("nitelikli oyuncu sayımı (Ü29)", () => {
 
 describe("mahremiyet eşiği (Ü30)", () => {
   test("beş kişiden az içeren masa gizlenir", async () => {
-    const masalar = await rapor.masaHareketi(kafeA, aralik);
+    const masalar = await rapor.masaHareketi(kafeA, aralik, true);
 
     const az = masalar.find((m) => m.masa === azMasaAdi);
     assert.ok(az, `${azMasaAdi} raporda yok`);
@@ -160,8 +160,8 @@ describe("mahremiyet eşiği (Ü30)", () => {
   test("hiçbir satır eşiğin altında sayı göstermiyor — asıl güvence", async () => {
     // Belirli bir satırı sınamak kırılgan: masada başka trafik olabilir.
     // Asıl iddia şu — dönen HİÇBİR satırda 1..4 arası bir sayı görünmemeli.
-    const masalar = await rapor.masaHareketi(kafeA, aralik);
-    const saatler = await rapor.saatlikDagilim(kafeA, aralik);
+    const masalar = await rapor.masaHareketi(kafeA, aralik, true);
+    const { saatler } = await rapor.saatlikDagilim(kafeA, aralik, true);
 
     for (const m of masalar) {
       assert.ok(
@@ -178,14 +178,14 @@ describe("mahremiyet eşiği (Ü30)", () => {
   });
 
   test("eşiğin üstündeki masa gerçek sayıyı gösterir", async () => {
-    const masalar = await rapor.masaHareketi(kafeA, aralik);
+    const masalar = await rapor.masaHareketi(kafeA, aralik, true);
     const cok = masalar.find((m) => (m.oyuncu ?? 0) >= rapor.GIZLEME_ESIGI);
     assert.ok(cok, "eşiğin üstünde masa bulunamadı");
     assert.ok(cok.oyuncu !== null);
   });
 
   test("beş kişiden az içeren saat gizlenir", async () => {
-    const saatler = await rapor.saatlikDagilim(kafeA, aralik);
+    const { saatler } = await rapor.saatlikDagilim(kafeA, aralik, true);
 
     const dokuz = saatler.find((s) => s.saat === 9);
     const onbes = saatler.find((s) => s.saat === 15);
@@ -201,7 +201,7 @@ describe("mahremiyet eşiği (Ü30)", () => {
   });
 
   test("sıfır olan grup gizlenmiş sayılmaz", async () => {
-    const saatler = await rapor.saatlikDagilim(kafeA, aralik);
+    const { saatler } = await rapor.saatlikDagilim(kafeA, aralik, true);
     const bos = saatler.find((s) => s.saat === 4);
     assert.equal(bos?.oyuncu, 0, "boş saat `<5` gibi gösterildi — bilgi kaybı");
   });
@@ -211,7 +211,7 @@ describe("mahremiyet eşiği (Ü30)", () => {
     // saatleri sıfır sayıyor ve üç oyunun oynandığı haftada "bu dönemde
     // henüz oyun oynanmadı" yazıyordu. Rapor satılan şeyin kanıtı; boş
     // olmadığı hâlde boş demesi yanlış beyandır.
-    const hepsiBos = Array.from({ length: 24 }, (_, saat) => ({ saat, oyuncu: 0 }));
+    const hepsiBos = Array.from({ length: 24 }, (_, saat) => ({ saat, oyuncu: 0, oran: 0 }));
     const biriGizli = hepsiBos.map((s) => (s.saat === 21 ? { ...s, oyuncu: null } : s));
 
     assert.equal(rapor.donemBos(hepsiBos), true);
@@ -219,7 +219,7 @@ describe("mahremiyet eşiği (Ü30)", () => {
   });
 
   test("dışa aktarmada da eşik geçerli", async () => {
-    const csv = await rapor.disaAktar(kafeA, aralik);
+    const csv = await rapor.disaAktar(kafeA, aralik, true);
     assert.match(csv, new RegExp(`<${rapor.GIZLEME_ESIGI}`), "CSV'de gizleme uygulanmamış");
     assert.match(csv, /mahremiyet için gizlenmiştir/);
   });
@@ -468,5 +468,139 @@ describe("yeni ve tekrar gelen müşteri (Ü44)", () => {
       (a.yeniOyuncu ?? 0) > 0,
       "B kafesindeki geçmiş, A kafesinde bu kişiyi 'tekrar gelen' yapmamalı",
     );
+  });
+});
+
+/* ══════════════════════════════════════════════════════════════
+ * TARİH ARALIĞI (Ü46)
+ *
+ * `araligiCoz` kullanıcıdan gelen ham metni SQL parametresine çeviriyor.
+ * Saf bir fonksiyon ama girdisi adres çubuğundan geliyor: buradaki her
+ * kabul, veritabanına giden bir tarih demek.
+ * ═════════════════════════════════════════════════════════════ */
+describe("rapor · tarih aralığı", () => {
+  const BUGUN = "2026-03-15";
+
+  test("hazır aralık bugünü içerir ve doğru sayıda gün sayar", () => {
+    const s = rapor.araligiCoz({ on: "7" }, BUGUN);
+    assert.equal(s.aralik.baslangic, "2026-03-09");
+    assert.equal(s.aralik.bitis, "2026-03-16", "aralık yarı açık — bugün dahil olmalı");
+    assert.equal(s.gunSayisi, 7);
+    assert.equal(s.hazir, "7");
+  });
+
+  test("bugün seçimi tek günlük aralık verir", () => {
+    const s = rapor.araligiCoz({ on: "bugun" }, BUGUN);
+    assert.equal(s.aralik.baslangic, BUGUN);
+    assert.equal(s.aralik.bitis, "2026-03-16");
+    assert.equal(s.gunSayisi, 1);
+  });
+
+  test("serbest tarihte bitiş günü dahil", () => {
+    const s = rapor.araligiCoz({ bas: "2026-02-01", bit: "2026-02-28" }, BUGUN);
+    assert.equal(s.aralik.baslangic, "2026-02-01");
+    assert.equal(s.aralik.bitis, "2026-03-01", "şubatın son günü rapora girmeli");
+    assert.equal(s.gunSayisi, 28);
+    assert.equal(s.hazir, null);
+  });
+
+  test("aynı gün seçilebilir", () => {
+    const s = rapor.araligiCoz({ bas: BUGUN, bit: BUGUN }, BUGUN);
+    assert.equal(s.gunSayisi, 1);
+    assert.equal(s.aralik.bitis, "2026-03-16");
+  });
+
+  /**
+   * Bozuk girdi hata değil, varsayılan.
+   *
+   * Kafe sahibi bozuk bir bağlantıya tıkladığında raporu görmeli. Ama
+   * bozuk metin SQL'e geçmemeli — ikisi birden ancak sessiz varsayılanla
+   * sağlanıyor.
+   */
+  for (const kotu of [
+    { bas: "2026-13-45", bit: "2026-03-01" },
+    { bas: "bugün", bit: "yarın" },
+    { bas: "2026-03-10' OR 1=1--", bit: "2026-03-11" },
+    { bas: "2026-02-30", bit: "2026-03-01" },
+    { bas: "2026-03-20", bit: "2026-03-10" },
+    { bas: "2020-01-01", bit: "2026-03-01" },
+    { on: "9999" },
+    {},
+  ]) {
+    test(`bozuk girdi varsayılana düşüyor: ${JSON.stringify(kotu)}`, () => {
+      const s = rapor.araligiCoz(kotu, BUGUN);
+      assert.equal(s.hazir, "7", "varsayılan son 7 gün olmalı");
+      assert.match(s.aralik.baslangic, /^\d{4}-\d{2}-\d{2}$/);
+      assert.match(s.aralik.bitis, /^\d{4}-\d{2}-\d{2}$/);
+    });
+  }
+
+  test("en uzun dönem sınırı aşılamıyor", () => {
+    const tam = rapor.araligiCoz({ bas: "2025-03-15", bit: "2026-03-15" }, BUGUN);
+    assert.equal(tam.gunSayisi, rapor.EN_UZUN_GUN, "sınırdaki aralık kabul edilmeli");
+
+    const asan = rapor.araligiCoz({ bas: "2025-03-14", bit: "2026-03-15" }, BUGUN);
+    assert.equal(asan.hazir, "7", "sınırı aşan aralık varsayılana düşmeli");
+  });
+});
+
+/* ══════════════════════════════════════════════════════════════
+ * GİZLEME KAPISI
+ *
+ * Eşik demo ortamında kapalı (kullanıcı isteği). Kapalıyken bile
+ * kapatılmaması gereken tek şey var: kararın **dışarıdan** verilebilmesi.
+ * Bu olmasaydı yukarıdaki Ü30 sınamalarının hepsi eşik kapalıyken koşar,
+ * yani kuralı hiç sınamamış olurduk.
+ * ═════════════════════════════════════════════════════════════ */
+describe("rapor · gizleme kapısı", () => {
+  test("eşik kapalıyken gerçek sayı görünüyor", async () => {
+    // Kaç kişi olduğunu sabitlemek kırılgan — o saatte başka testin
+    // verisi de olabilir. Asıl iddia: eşiğin ALTINDA kalan bir sayı
+    // gizlenmiyor, olduğu gibi görünüyor.
+    const { saatler } = await rapor.saatlikDagilim(kafeA, aralik, false);
+    const dokuz = saatler.find((s) => s.saat === 9);
+    assert.ok(dokuz && dokuz.oyuncu !== null, "eşik kapalıyken sayı gizlenmemeli");
+    assert.ok(
+      dokuz.oyuncu > 0 && dokuz.oyuncu < rapor.GIZLEME_ESIGI,
+      `saat 9 eşiğin altında olmalıydı: ${dokuz.oyuncu}`,
+    );
+  });
+
+  test("eşik açıkken aynı saat gizleniyor — kural duruyor", async () => {
+    const { saatler } = await rapor.saatlikDagilim(kafeA, aralik, true);
+    assert.equal(saatler.find((s) => s.saat === 9)?.oyuncu, null);
+  });
+});
+
+/* ══════════════════════════════════════════════════════════════
+ * DOLULUK ORANI ve GETİRİ (Ü46)
+ * ═════════════════════════════════════════════════════════════ */
+describe("rapor · doluluk ve getiri", () => {
+  test("doluluk oranı gün sayısına bölünüyor", async () => {
+    const d = await rapor.saatlikDagilim(kafeA, aralik, false);
+    assert.ok(d.masaSayisi > 0, "kafenin masası olmalı");
+    assert.equal(d.gunSayisi, 7, "haftalık aralık yedi gün saymalı");
+
+    for (const s of d.saatler) {
+      assert.ok(s.oran >= 0 && s.oran <= 1, `${s.saat}:00 oranı aralık dışı: ${s.oran}`);
+    }
+  });
+
+  test("getiri ziyareti ortalama adisyonla çarpıyor", async () => {
+    const g = await rapor.getiri(kafeA, aralik, 150_00);
+    assert.equal(g.tahminiCiroKurus, g.ziyaret * 150_00);
+    assert.equal(g.netKurus, g.tahminiCiroKurus - g.indirimKurus);
+    assert.equal(g.ortalamaAdisyonKurus, 150_00, "varsayım çıktıda görünmeli");
+  });
+
+  /**
+   * Getiri kişisel veri içermiyor — sayı ve tutar dışında hiçbir şey
+   * dönmüyor. Kupon kullanım defteri ise anonim kodla dönüyor (G1).
+   */
+  test("kupon kullanım defterinde kimlik yok", async () => {
+    const satirlar = await rapor.kuponKullanimi(kafeA, aralik);
+    for (const s of satirlar) {
+      assert.match(s.kod, /^P-/, `kimlik sızdı: ${s.kod}`);
+    }
   });
 });

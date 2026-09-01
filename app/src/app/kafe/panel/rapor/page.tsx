@@ -1,8 +1,9 @@
 import { kafeYoneticisiGerekli } from "@/domain/yetki";
 import * as rapor from "@/domain/rapor";
+import * as ayar from "@/domain/ayar";
 import { bakim } from "@/domain/bakim";
 import { IsletmeSayfa, IsletmeBaslik, Bolum, Rozet } from "@/components/isletme";
-import { DisaAktarma } from "./kontroller";
+import { DisaAktarma, TarihAraligi, AdisyonAyari } from "./kontroller";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Rapor · CafePlay" };
@@ -10,47 +11,67 @@ export const metadata = { title: "Rapor · CafePlay" };
 /**
  * Kafe raporu — Faz 8.
  *
- * ── Baş sayı: nitelikli oyuncu (Ü29) ────────────────────────
+ * ── Kimin okuduğu ───────────────────────────────────────────
  *
- * Rapor, satılan şeyin kanıtı. Satılan birim nitelikli oyuncu olduğu için
- * ekranın en üstünde o duruyor; geri kalan her sayı onu açıklıyor.
+ * Bu ekranı açan kişi rapor okumayı meslek edinmiş biri değil; kafeyi
+ * işleten kişi ve çoğu zaman vardiya arasında bakıyor. İlk sürümde
+ * "nitelikli oyuncu", "kanıt seviyesi", "mahremiyet eşiği" gibi terimler
+ * açıklamasız duruyordu — bizim iç dilimiz, onun dili değil. Her terim
+ * artık yanında düz cümlesiyle geçiyor; terimi tamamen atmıyoruz çünkü
+ * fatura o birimden kesiliyor (Ü29) ve kafenin faturada gördüğü kelimeyi
+ * raporda da görmesi gerekiyor.
  *
- * ── İkinci sayı: fiilen kullanılan indirim ──────────────────
+ * ── Sıralama ────────────────────────────────────────────────
  *
- * "Kazanılan" ile "kullanılan" bilerek ayrı gösteriliyor ve **asıl sayı
- * ikincisi**. Kafenin ödediği tek şey kasada onaylanan tutar; verilip
- * kullanılmayan kuponun maliyeti yok (Ü7). Bu ayrım satış konuşmasının
- * merkezinde: *"alt sınırı siz koyuyorsunuz, kullanılmayanın maliyeti yok."*
+ * En üstte **getiri** var. Abonelik yenileme anında sorulan tek soru
+ * "bu bana ne kazandırdı" ve cevabı ekranın en altında aramak zorunda
+ * kalmamalı. Altındaki her bölüm o sayıyı açıklıyor: kim geldi, geri
+ * geldi mi, ne kadar indirim gitti, hangi saat doldu.
+ *
+ * ── Neyi İDDİA ETMİYORUZ ────────────────────────────────────
+ *
+ * Getiri bir **tahmin** ve ekran bunu saklamıyor. Sayılan şey ziyaret;
+ * paraya çevirmek için kafenin kendi girdiği ortalama adisyon
+ * kullanılıyor. Ölçemediğimiz şeyi (bu müşteri zaten gelecek miydi)
+ * ölçmüş gibi göstermek, ilk kasa karşılaştırmasında raporun tamamının
+ * güvenilirliğini götürürdü.
  *
  * ── G1 · Kişisel veri yok ───────────────────────────────────
  *
- * Ekranın hiçbir yerinde ad, soyad, telefon yok. Oyuncular kafeye özel anonim
- * kodla görünüyor ve o kod her kafede farklı — iki kafe verisini birleştirip
- * aynı kişiyi izleyemiyor.
+ * Ekranın hiçbir yerinde ad, soyad, telefon yok. Müşteriler kafeye özel
+ * anonim kodla görünüyor ve o kod her kafede farklı — iki kafe verisini
+ * birleştirip aynı kişiyi izleyemiyor.
  */
 export default async function RaporSayfasi({
   searchParams,
 }: {
-  searchParams: Promise<{ hafta?: string }>;
+  searchParams: Promise<{ on?: string; bas?: string; bit?: string }>;
 }) {
   const o = await kafeYoneticisiGerekli();
   await bakim();
   const sp = await searchParams;
-  const gecen = sp.hafta === "gecen";
-  const aralik = gecen ? rapor.gecenHafta() : rapor.buHafta();
+  const secim = rapor.araligiCoz(sp);
+  const aralik = secim.aralik;
 
-  const [ozet, ziyaretler, masalar, saatler, kampanyalar] = await Promise.all([
-    rapor.ozet(o.cafeId, aralik),
-    rapor.ziyaretler(o.cafeId, aralik),
-    rapor.masaHareketi(o.cafeId, aralik),
-    rapor.saatlikDagilim(o.cafeId, aralik),
-    rapor.kampanyaSonuclari(o.cafeId, aralik),
-  ]);
+  const adisyonKurus = await ayar.sayiOku(o.cafeId, ayar.ANAHTARLAR.ortalamaAdisyon);
+
+  const [ozet, ziyaretler, masalar, dagilim, kampanyalar, odul, kullanim, getiri] =
+    await Promise.all([
+      rapor.ozet(o.cafeId, aralik),
+      rapor.ziyaretler(o.cafeId, aralik),
+      rapor.masaHareketi(o.cafeId, aralik),
+      rapor.saatlikDagilim(o.cafeId, aralik),
+      rapor.kampanyaSonuclari(o.cafeId, aralik),
+      rapor.odulDagilimi(o.cafeId, aralik),
+      rapor.kuponKullanimi(o.cafeId, aralik),
+      rapor.getiri(o.cafeId, aralik, adisyonKurus),
+    ]);
 
   // Faz 8 güvenlik kapısı: her rapor görüntüleme denetim izine düşer.
   await rapor.goruntulemeyiKaydet({ cafeId: o.cafeId, aktorId: o.ozneId, aralik });
 
-  const enYogun = Math.max(1, ...saatler.map((s) => s.oyuncu ?? 0));
+  const saatler = dagilim.saatler;
+  const enYuksekOran = Math.max(0.01, ...saatler.map((s) => s.oran));
 
   /**
    * Ü30: eşiğin altındaki saat `null` dönüyor.
@@ -62,92 +83,170 @@ export default async function RaporSayfasi({
    */
   const gizliSaatVar = saatler.some((s) => s.oyuncu === null);
 
+  const sonGun = rapor.HAZIR_ARALIKLAR.some((h) => h.ad === secim.hazir);
+
   return (
     <IsletmeSayfa genis>
-      <IsletmeBaslik ust="İşletme paneli" alt={`${gun(aralik.baslangic)} – ${gun(aralik.bitis, -1)}`}>
+      <IsletmeBaslik ust="İşletme paneli" alt={secim.etiket}>
         Rapor
       </IsletmeBaslik>
 
-      <nav className="mb-7 flex gap-1 border-b border-cizgi">
-        <Sekme yol="/kafe/panel/rapor" secili={!gecen}>
-          Bu hafta
-        </Sekme>
-        <Sekme yol="/kafe/panel/rapor?hafta=gecen" secili={gecen}>
-          Geçen hafta
-        </Sekme>
-      </nav>
+      <TarihAraligi
+        hazir={secim.hazir}
+        bas={aralik.baslangic}
+        bit={geriGun(aralik.bitis)}
+        secenekler={rapor.HAZIR_ARALIKLAR}
+      />
+
+      {/* ── Getiri ─────────────────────────────────────────
+          Ekranın baş sayısı. Kesin olanla tahmin olan bilerek ayrı
+          kutularda: kafe bu sayıyı kendi kasa raporuyla karşılaştıracak
+          ve tutmadığında hangisine güveneceğini bilmesi gerekiyor. */}
+      <Bolum baslik="Bu dönemde ne kazandırdı">
+        <div className="rounded-2xl border border-cizgi bg-yuzey px-5 py-6">
+          <div className="etiket-caps text-yazi-sonuk">Tahmini ciro</div>
+          <div className="mt-1.5 font-data text-4xl leading-none font-bold text-vurgu tabular">
+            {tl(getiri.tahminiCiroKurus)} <span className="text-[16px]">TL</span>
+          </div>
+          <p className="mt-3 text-[13px] leading-relaxed text-yazi-sonuk">
+            <strong className="text-yazi">{getiri.ziyaret} ziyaret</strong> ×{" "}
+            {tl(getiri.ortalamaAdisyonKurus)} TL ortalama hesap. Ziyaret sayısı defterden
+            geliyor, ortalama hesabı sen giriyorsun — <strong className="text-yazi">bu
+            yüzden sonuç bir tahmin</strong>.
+          </p>
+        </div>
+
+        <div className="mt-2.5 grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-cizgi bg-cizgi sm:grid-cols-4">
+          <Sayi etiket="Ziyaret" deger={String(getiri.ziyaret)} ipucu="sayıldı" />
+          <Sayi etiket="Verilen ürün" deger={String(getiri.urun)} ipucu="sayıldı" />
+          <Sayi
+            etiket="İndirim gideri"
+            deger={`${tl(getiri.indirimKurus)} TL`}
+            ipucu="sayıldı"
+          />
+          <Sayi
+            etiket="Fark"
+            deger={`${tl(getiri.netKurus)} TL`}
+            ipucu="tahmin − gider"
+            vurgulu={getiri.netKurus > 0}
+          />
+        </div>
+
+        <div className="mt-4 rounded-xl border border-cizgi bg-cukur px-4 py-3.5">
+          <AdisyonAyari mevcutTl={Math.round(adisyonKurus / 100)} />
+          <p className="mt-2 text-[12px] leading-relaxed text-yazi-sonuk">
+            Bu müşterilerin bir kısmı zaten gelecekti; onu ölçmenin yolu yok. Rakam
+            &ldquo;CafePlay üzerinden gelen müşterinin kafede bıraktığı tahmini tutar&rdquo;
+            demek, &ldquo;CafePlay olmasa hiç gelmezdi&rdquo; demek değil.
+          </p>
+        </div>
+      </Bolum>
 
       {/* ── Baş sayı ───────────────────────────────────── */}
-      <Bolum baslik="Kafene gelen oyuncu" alt="CafePlay üzerinden gelip oyunu tamamlayan, konumu doğrulanmış müşteriler.">
+      <Bolum baslik="Kafene gelen müşteri">
         <div className="rounded-2xl border border-cizgi bg-yuzey px-5 py-6">
-          <div className="etiket-caps text-yazi-sonuk">Nitelikli oyuncu</div>
+          <div className="etiket-caps text-yazi-sonuk">Sayılan ziyaret</div>
           <div className="mt-1.5 font-data text-5xl leading-none font-bold tabular">
             {ozet.nitelikliOyuncu}
           </div>
+          {/* Bu sayının ziyaret olduğunu açıkça yazmak zorundayız: eski
+              metin "gelen kişi, ziyaret değil" diyordu ve YANLIŞTI. Kural
+              "1 nitelikli oturum / cihaz / kafe / GÜN" (S3) — aynı müşteri
+              ertesi gün geldiğinde yeniden sayılıyor. Fatura bu sayıdan
+              kesildiği için yanlış tanım, yanlış faturaya dönüşür. */}
           <p className="mt-3 text-[13px] leading-relaxed text-yazi-sonuk">
-            Günde bir kez, cihaz başına sayılır. Aynı müşterinin ikinci oyunu tekrar sayılmaz —
-            bu sayı ziyaret sayısı değil, <strong className="text-yazi">gelen kişi</strong>.
+            Kafeye gelip <strong className="text-yazi">konumu doğrulanan</strong> ve oyunu{" "}
+            <strong className="text-yazi">tamamlayan</strong> müşteri. Aynı müşteri günde bir kez
+            sayılır — ertesi gün yine gelirse yeniden sayılır.
+          </p>
+          {ozet.tekilOyuncu > 0 && (
+            <p className="mt-2 text-[13px] leading-relaxed text-yazi-sonuk">
+              Bu dönemde <strong className="text-yazi">{ozet.nitelikliOyuncu} ziyaret</strong>,{" "}
+              <strong className="text-yazi">{ozet.tekilOyuncu} farklı kişiden</strong> geldi.
+            </p>
+          )}
+          <p className="mt-2 text-[12px] leading-relaxed text-yazi-sonuk">
+            Faturada bu satır <em>nitelikli oyuncu</em> diye geçiyor; ikisi aynı sayı.
           </p>
         </div>
 
         <div className="mt-2.5 grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-cizgi bg-cizgi sm:grid-cols-3">
-          <Sayi etiket="Tekil oyuncu" deger={String(ozet.tekilOyuncu)} />
-          <Sayi etiket="Tamamlanan oyun" deger={String(ozet.toplamOyun)} />
-          <Sayi etiket="Verilen kupon" deger={String(ozet.kuponVerilen)} />
+          <Sayi
+            etiket="Gelen kişi"
+            deger={String(ozet.tekilOyuncu)}
+            ipucu="oyunu tamamlayan herkes"
+          />
+          <Sayi
+            etiket="Oynanan oyun"
+            deger={String(ozet.toplamOyun)}
+            ipucu="aynı kişi birden çok oynayabilir"
+          />
+          <Sayi
+            etiket="Verilen kupon"
+            deger={String(ozet.kuponVerilen)}
+            ipucu="kazanıldı, henüz kullanılmamış olabilir"
+            genis
+          />
         </div>
       </Bolum>
 
       {/* ── Tekrar gelen müşteri ───────────────────────────
           Ü44: raporun en önemli iki sayısı. "Kaç oyun oynandı" bir
           etkinlik ölçüsü; kafenin parasını ilgilendiren soru ise
-          "gelen bir daha geliyor mu". O yüzden ayrı bir bölümde ve
-          nitelikli oyuncunun hemen ardında duruyor. */}
-      <Bolum
-        baslik="Tekrar gelen müşteri"
-        alt="CafePlay'in asıl vaadi bu: oyun oynayan müşteri geri geliyor mu."
-      >
-        <div className="grid gap-px overflow-hidden rounded-2xl border border-cizgi bg-cizgi sm:grid-cols-2">
-          <div className="bg-yuzey px-5 py-5">
-            <div className="etiket-caps text-yazi-sonuk">Tekrar gelen</div>
-            <div className="mt-2 font-data text-2xl leading-none font-bold text-vurgu tabular">
-              {sayiYaz(ozet.tekrarGelenOyuncu)}
-            </div>
-            <p className="mt-2 text-[12px] leading-relaxed text-yazi-sonuk">
-              Bu dönemde gelen ve daha önce de gelmiş müşteri
-            </p>
-          </div>
+          "gelen bir daha geliyor mu". */}
+      <Bolum baslik="Tekrar gelen müşteri">
+        <div className="grid gap-5 sm:grid-cols-[auto_1fr] sm:items-center">
+          <Halka
+            dilimler={[
+              {
+                etiket: "Tekrar gelen",
+                deger: ozet.tekrarGelenOyuncu ?? 0,
+                renk: "var(--color-vurgu)",
+              },
+              {
+                etiket: "İlk kez gelen",
+                deger: ozet.yeniOyuncu ?? 0,
+                renk: "var(--color-cizgi)",
+              },
+            ]}
+            ortaUst={String(ozet.tekilOyuncu)}
+            ortaAlt="kişi"
+          />
 
-          <div className="bg-yuzey px-5 py-5">
-            <div className="etiket-caps text-yazi-sonuk">İlk kez gelen</div>
-            <div className="mt-2 font-data text-2xl leading-none font-bold text-yazi-sonuk tabular">
-              {sayiYaz(ozet.yeniOyuncu)}
+          <div className="grid gap-px overflow-hidden rounded-2xl border border-cizgi bg-cizgi">
+            <div className="bg-yuzey px-5 py-4">
+              <div className="etiket-caps text-yazi-sonuk">Tekrar gelen</div>
+              <div className="mt-1.5 font-data text-2xl leading-none font-bold text-vurgu tabular">
+                {say(ozet.tekrarGelenOyuncu)}
+              </div>
+              <p className="mt-1.5 text-[12px] leading-relaxed text-yazi-sonuk">
+                Bu dönemde geldi, daha önce de gelmişti
+              </p>
             </div>
-            <p className="mt-2 text-[12px] leading-relaxed text-yazi-sonuk">
-              Bu kafede ilk oyununu bu dönemde oynadı
-            </p>
+
+            <div className="bg-yuzey px-5 py-4">
+              <div className="etiket-caps text-yazi-sonuk">İlk kez gelen</div>
+              <div className="mt-1.5 font-data text-2xl leading-none font-bold text-yazi-sonuk tabular">
+                {say(ozet.yeniOyuncu)}
+              </div>
+              <p className="mt-1.5 text-[12px] leading-relaxed text-yazi-sonuk">
+                Bu kafede ilk oyununu bu dönemde oynadı
+              </p>
+            </div>
           </div>
         </div>
-
-        {ozet.tekrarGelenOyuncu !== null && ozet.tekilOyuncu > 0 && (
-          <p className="mt-3 text-[13px] leading-relaxed text-yazi-sonuk">
-            Bu dönemde gelen{" "}
-            <strong className="text-yazi">{ozet.tekilOyuncu} kişinin</strong>{" "}
-            <strong className="text-yazi">{ozet.tekrarGelenOyuncu}&apos;i</strong> daha önce de
-            gelmişti.
-          </p>
-        )}
       </Bolum>
 
       {/* ── İndirim ────────────────────────────────────── */}
-      <Bolum baslik="İndirim" alt="Kazanılan ile kullanılan ayrı sayılır — ödediğin yalnızca ikincisi.">
+      <Bolum baslik="İndirim">
         <div className="grid gap-px overflow-hidden rounded-2xl border border-cizgi bg-cizgi sm:grid-cols-2">
           <div className="bg-yuzey px-5 py-5">
             <div className="etiket-caps text-yazi-sonuk">Kazanılan</div>
             <div className="mt-2 font-data text-2xl leading-none font-bold text-yazi-sonuk tabular">
               {tl(ozet.kazanilanIndirimKurus)} <span className="text-[11px]">TL</span>
             </div>
-            <p className="mt-2 text-[12px] text-yazi-sonuk">
-              Dağıtılan {ozet.kuponVerilen} kuponun toplam değeri
+            <p className="mt-2 text-[12px] leading-relaxed text-yazi-sonuk">
+              Dağıtılan {ozet.kuponVerilen} kuponun toplam değeri. Kullanılmayanın maliyeti yok.
             </p>
           </div>
 
@@ -156,19 +255,62 @@ export default async function RaporSayfasi({
             <div className="mt-2 font-data text-2xl leading-none font-bold tabular">
               {tl(ozet.kullanilanIndirimKurus)} <span className="text-[11px]">TL</span>
             </div>
-            <p className="mt-2 text-[12px] text-yazi-sonuk">
-              {ozet.kuponKullanilan} kupon · <strong className="text-yazi">ödediğin tutar</strong>
+            <p className="mt-2 text-[12px] leading-relaxed text-yazi-sonuk">
+              {ozet.kuponKullanilan} kupon ·{" "}
+              <strong className="text-yazi">gerçekten ödediğin tutar</strong>
             </p>
           </div>
         </div>
+
+        {odul.length > 0 && (
+          <div className="mt-5 grid gap-5 sm:grid-cols-[auto_1fr] sm:items-center">
+            <Halka
+              dilimler={odul.map((d, i) => ({
+                etiket: d.etiket,
+                deger: d.kurus,
+                renk: PASTA_RENKLERI[i % PASTA_RENKLERI.length],
+              }))}
+              ortaUst={tl(ozet.kullanilanIndirimKurus)}
+              ortaAlt="TL"
+            />
+
+            <ul className="space-y-2.5">
+              {odul.map((d, i) => (
+                <li key={d.etiket} className="flex items-center gap-2.5">
+                  <span
+                    aria-hidden
+                    className="size-3 shrink-0 rounded-sm"
+                    style={{ background: PASTA_RENKLERI[i % PASTA_RENKLERI.length] }}
+                  />
+                  <span className="flex-1 text-[14px]">{d.etiket}</span>
+                  <span className="font-data text-[13px] tabular">
+                    {tl(d.kurus)} TL
+                    <span className="ml-2 text-yazi-sonuk">{d.adet} adet</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </Bolum>
 
-      {/* ── Saatlik ────────────────────────────────────── */}
-      <Bolum baslik="Hangi saat doluyor" alt="Boş saatini doldurma iddiasının kanıtı burada.">
+      {/* ── Saatlik ──────────────────────────────────────
+          Sayı değil oran: "saat 15'te 4 oyuncu" cümlesi kafenin kaç
+          masası olduğu bilinmeden bir şey söylemiyor. */}
+      <Bolum baslik="Hangi saat doluyor">
         {rapor.donemBos(saatler) ? (
           <p className="text-[14px] text-yazi-sonuk">Bu dönemde henüz oyun oynanmadı.</p>
         ) : (
           <>
+            <p className="mb-3.5 text-[13px] leading-relaxed text-yazi-sonuk">
+              Doluluk oranı = o saatte CafePlay ile dolan masa ÷{" "}
+              <strong className="text-yazi">
+                {dagilim.masaSayisi} masa × {dagilim.gunSayisi} gün
+              </strong>
+              . Oyun oynamadan oturan müşteri bu orana girmiyor — bu, kafenin doluluğu değil,
+              CafePlay üzerinden dolan masa oranı.
+            </p>
+
             <ul className="flex flex-col gap-1">
               {saatler
                 .filter((s) => s.oyuncu !== 0)
@@ -177,22 +319,27 @@ export default async function RaporSayfasi({
                     <span className="w-12 font-data text-[11px] text-yazi-sonuk tabular">
                       {String(s.saat).padStart(2, "0")}:00
                     </span>
-                    <span className="h-3 flex-1 overflow-hidden rounded-sm bg-cukur">
+                    <span className="h-3.5 flex-1 overflow-hidden rounded-sm bg-cukur">
                       <span
-                        className="block h-full rounded-sm bg-yazi"
-                        style={{ width: `${((s.oyuncu ?? 0) / enYogun) * 100}%` }}
+                        className="block h-full rounded-sm bg-vurgu"
+                        style={{ width: `${(s.oran / enYuksekOran) * 100}%` }}
                       />
                     </span>
-                    <span className="w-10 text-right font-data text-[11px] tabular">
-                      {say(s.oyuncu)}
+                    <span className="w-11 text-right font-data text-[12px] font-semibold tabular">
+                      %{Math.round(s.oran * 100)}
+                    </span>
+                    <span className="w-14 text-right font-data text-[11px] text-yazi-sonuk tabular">
+                      {say(s.oyuncu)} kişi
                     </span>
                   </li>
                 ))}
             </ul>
+
             {gizliSaatVar && (
               <p className="mt-3 text-[12px] leading-relaxed text-yazi-sonuk">
-                {`<${rapor.GIZLEME_ESIGI}`} yazan saatlerde oyuncu var ama sayısı mahremiyet
-                eşiğinin altında. Çubuk yalnızca gösterilen sayıları karşılaştırır.
+                {`<${rapor.GIZLEME_ESIGI}`} yazan saatlerde müşteri var ama sayısı gizlilik
+                eşiğinin altında kaldığı için tam sayı gösterilmiyor. Doluluk oranı ve
+                toplamlar bundan etkilenmiyor.
               </p>
             )}
           </>
@@ -204,12 +351,18 @@ export default async function RaporSayfasi({
         {masalar.length === 0 ? (
           <p className="text-[14px] text-yazi-sonuk">Henüz masa hareketi yok.</p>
         ) : (
-          <ul className="divide-y divide-cizgi border-y border-cizgi">
+          <ul className="flex flex-col gap-1.5">
             {masalar.map((m) => (
-              <li key={m.masa} className="flex items-center gap-4 py-3">
-                <span className="flex-1 text-[15px] font-semibold">{m.masa}</span>
-                <span className="font-data text-[12px] text-yazi-sonuk tabular">
-                  {say(m.oyuncu)} oyuncu · {m.oyun} oyun
+              <li key={m.masa} className="flex items-center gap-3">
+                <span className="w-20 shrink-0 truncate text-[14px] font-semibold">{m.masa}</span>
+                <span className="h-3.5 flex-1 overflow-hidden rounded-sm bg-cukur">
+                  <span
+                    className="block h-full rounded-sm bg-yazi"
+                    style={{ width: `${(m.oyun / Math.max(1, masalar[0].oyun)) * 100}%` }}
+                  />
+                </span>
+                <span className="w-28 text-right font-data text-[11px] text-yazi-sonuk tabular">
+                  {say(m.oyuncu)} kişi · {m.oyun} oyun
                 </span>
               </li>
             ))}
@@ -242,6 +395,32 @@ export default async function RaporSayfasi({
         </Bolum>
       )}
 
+      {/* ── Kim ne kullandı ────────────────────────────── */}
+      {kullanim.length > 0 && (
+        <Bolum baslik="Kim kaç kupon kullandı">
+          <ul className="divide-y divide-cizgi border-y border-cizgi">
+            {kullanim.map((k) => (
+              <li key={k.kod} className="flex items-center gap-4 py-2.5">
+                <span className="font-data text-[13px]">{k.kod}</span>
+                <span className="flex-1 text-right font-data text-[12px] text-yazi-sonuk tabular">
+                  son: {k.sonKullanim.toLocaleDateString("tr-TR", { day: "numeric", month: "short" })}
+                </span>
+                <span className="w-16 text-right font-data text-[13px] font-semibold tabular">
+                  {k.adet} kupon
+                </span>
+                <span className="w-20 text-right font-data text-[13px] tabular">
+                  {tl(k.kurus)} TL
+                </span>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-3 text-[12px] leading-relaxed text-yazi-sonuk">
+            En çok kullanandan aza doğru. Aynı kodun çok sayıda kuponu, sadık müşteri de
+            olabilir suistimal de — kod üstünden doğrulama defterine bakabilirsin.
+          </p>
+        </Bolum>
+      )}
+
       {/* ── Doğrulama defteri ──────────────────────────── */}
       <Bolum
         baslik="Doğrulama defteri"
@@ -257,7 +436,7 @@ export default async function RaporSayfasi({
                   <th className="py-2 pr-4">Müşteri</th>
                   <th className="py-2 pr-4">Zaman</th>
                   <th className="py-2 pr-4">Masa</th>
-                  <th className="py-2 pr-4">Kanıt</th>
+                  <th className="py-2 pr-4">Sayıldı mı</th>
                   <th className="py-2">Oyun</th>
                 </tr>
               </thead>
@@ -276,10 +455,10 @@ export default async function RaporSayfasi({
                     <td className="py-2 pr-4 text-yazi-sonuk">{z.masa ?? "—"}</td>
                     <td className="py-2 pr-4">
                       {z.nitelikli ? (
-                        <Rozet tur="onayli">nitelikli</Rozet>
+                        <Rozet tur="onayli">sayıldı</Rozet>
                       ) : (
-                        <span className="font-data text-[11px] text-yazi-sonuk">
-                          K{z.kanitSeviyesi}
+                        <span className="text-[12px] text-yazi-sonuk">
+                          {kanitCumlesi(z.kanitSeviyesi)}
                         </span>
                       )}
                     </td>
@@ -298,14 +477,88 @@ export default async function RaporSayfasi({
       </Bolum>
 
       <Bolum baslik="Dışa aktar">
-        <DisaAktarma hafta={gecen ? "gecen" : "bu"} />
+        <DisaAktarma
+          sorgu={sp}
+          dosyaAdi={sonGun ? `${secim.hazir}-gun` : `${aralik.baslangic}_${geriGun(aralik.bitis)}`}
+        />
       </Bolum>
-
     </IsletmeSayfa>
   );
 }
 
 /* ── Parçalar ──────────────────────────────────────────── */
+
+/**
+ * Daire grafiğin renkleri.
+ *
+ * Palet disiplini bozulmuyor: yeni renk tanımlanmadı, mevcut dört jeton
+ * sırayla kullanılıyor. Beşinci dilim gelirse başa dönüyor — grafik
+ * okunmaz olur ama uydurma renk üretmekten iyi; dört ödül tipi var ve
+ * beşincisi olduğunda paleti bilerek genişletmemiz gerekecek.
+ */
+const PASTA_RENKLERI = [
+  "var(--color-vurgu)",
+  "var(--color-odul)",
+  "var(--color-yazi)",
+  "var(--color-yazi-sonuk)",
+];
+
+/**
+ * Halka (donut) grafik.
+ *
+ * Kütüphane yok: tek bir SVG çemberi ve `stroke-dasharray` yetiyor. Grafik
+ * için istemciye JavaScript göndermek, bu ekranın kazandıracağından fazlasını
+ * götürürdü.
+ *
+ * Ekran okuyucu için grafik `aria-hidden`: aynı sayılar yanındaki listede
+ * zaten metin olarak duruyor, ikinci kez okunması gürültü olur.
+ */
+function Halka({
+  dilimler,
+  ortaUst,
+  ortaAlt,
+}: {
+  dilimler: { etiket: string; deger: number; renk: string }[];
+  ortaUst: string;
+  ortaAlt: string;
+}) {
+  const toplam = dilimler.reduce((t, d) => t + d.deger, 0);
+  const R = 52;
+  const CEVRE = 2 * Math.PI * R;
+
+  let birikim = 0;
+
+  return (
+    <div className="relative mx-auto size-[136px] shrink-0 sm:mx-0">
+      <svg viewBox="0 0 128 128" className="size-full -rotate-90" aria-hidden>
+        <circle cx="64" cy="64" r={R} fill="none" stroke="var(--color-cukur)" strokeWidth="18" />
+        {toplam > 0 &&
+          dilimler.map((d) => {
+            const pay = (d.deger / toplam) * CEVRE;
+            const offset = birikim;
+            birikim += pay;
+            return (
+              <circle
+                key={d.etiket}
+                cx="64"
+                cy="64"
+                r={R}
+                fill="none"
+                stroke={d.renk}
+                strokeWidth="18"
+                strokeDasharray={`${pay} ${CEVRE - pay}`}
+                strokeDashoffset={-offset}
+              />
+            );
+          })}
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="font-data text-xl leading-none font-bold tabular">{ortaUst}</span>
+        <span className="etiket-caps mt-1 text-[10px] text-yazi-sonuk">{ortaAlt}</span>
+      </div>
+    </div>
+  );
+}
 
 function tl(kurus: number): string {
   return (kurus / 100).toLocaleString("tr-TR", { maximumFractionDigits: 0 });
@@ -316,51 +569,52 @@ function say(n: number | null): string {
   return n === null ? `<${rapor.GIZLEME_ESIGI}` : String(n);
 }
 
-function gun(iso: string, ekle = 0): string {
+/** Yarı açık aralığın bitişini, ekranda gösterilecek son güne çevirir. */
+function geriGun(iso: string): string {
   const d = new Date(`${iso}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + ekle);
-  return d.toLocaleDateString("tr-TR", { day: "numeric", month: "long", timeZone: "UTC" });
+  d.setUTCDate(d.getUTCDate() - 1);
+  return d.toISOString().slice(0, 10);
 }
 
-/**
- * Ü30 eşiğinin altındaki sayı gizleniyor.
- *
- * Küçük bir kafede "bu hafta 2 yeni müşteri" satırı, işletmecinin o günkü
- * hafızasıyla birleşince kişiyi işaret eder. Toplamlar bozulmuyor; yalnızca
- * beşten az kişi içeren kırılım sayı yerine eşiği gösteriyor.
- */
-function sayiYaz(deger: number | null): string {
-  return deger === null ? "<5" : String(deger);
+/** E6'nın kademesini kafenin diliyle anlatır — "K2" kimseye bir şey söylemez. */
+function kanitCumlesi(seviye: number): string {
+  if (seviye >= 4) return "fiş kodu girdi";
+  if (seviye === 3) return "masada 5 dk kaldı";
+  if (seviye === 2) return "konumu doğrulandı";
+  return "karekod okuttu";
 }
 
-function Sayi({ etiket, deger }: { etiket: string; deger: string }) {
-  return (
-    <div className="bg-yuzey px-4 py-4">
-      <div className="etiket-caps text-[10px] text-yazi-sonuk">{etiket}</div>
-      <div className="mt-1.5 font-data text-xl leading-none font-bold tabular">{deger}</div>
-    </div>
-  );
-}
-
-function Sekme({
-  yol,
-  secili,
-  children,
+function Sayi({
+  etiket,
+  deger,
+  ipucu,
+  vurgulu,
+  genis,
 }: {
-  yol: string;
-  secili: boolean;
-  children: React.ReactNode;
+  etiket: string;
+  deger: string;
+  ipucu?: string;
+  vurgulu?: boolean;
+  /**
+   * Dar ekranda iki sütunu birden kaplar.
+   *
+   * Üç kutuluk bir ızgara iki sütuna sığmıyor ve sonuncusunun yanında
+   * ızgaranın zemin rengi boş bir kare olarak görünüyordu — kart gibi
+   * duran ama içi olmayan bir alan, "veri yüklenmedi" diye okunuyor.
+   */
+  genis?: boolean;
 }) {
   return (
-    <a
-      href={yol}
-      className={`border-b-2 px-3 py-2.5 text-[14px] ${
-        secili
-          ? "border-yazi font-semibold text-yazi"
-          : "border-transparent text-yazi-sonuk"
-      }`}
-    >
-      {children}
-    </a>
+    <div className={`bg-yuzey px-4 py-4 ${genis ? "col-span-2 sm:col-span-1" : ""}`}>
+      <div className="etiket-caps text-[10px] text-yazi-sonuk">{etiket}</div>
+      <div
+        className={`mt-1.5 font-data text-xl leading-none font-bold tabular ${
+          vurgulu ? "text-vurgu" : ""
+        }`}
+      >
+        {deger}
+      </div>
+      {ipucu && <div className="mt-1.5 text-[11px] leading-snug text-yazi-sonuk">{ipucu}</div>}
+    </div>
   );
 }

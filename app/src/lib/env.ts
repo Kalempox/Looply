@@ -88,3 +88,18 @@ export function env(): Env {
 
 export const isProduction = () => env().APP_ENV === "production";
 export const isDevelopment = () => env().APP_ENV === "development";
+
+/**
+ * Demo/test ortamında mıyız?
+ *
+ * İki şart birden aranıyor ve ikisi de canlıda sağlanamaz:
+ *   · APP_ENV canlı değil
+ *   · Sahte SMS sağlayıcısı kullanılıyor — env.ts canlıda bunu zaten reddediyor
+ *
+ * Tek tanım olması önemli: bu kapının arkasında canlıda asla açılmaması
+ * gereken şeyler duruyor (doğrulama kodunun ekranda görünmesi, oyun
+ * ipuçları, raporda mahremiyet eşiğinin kalkması). İki ayrı yerde iki ayrı
+ * koşul yazılsaydı biri gevşediğinde diğeri fark edilmezdi.
+ */
+export const demoOrtami = () =>
+  env().APP_ENV !== "production" && env().SMS_PROVIDER === "console";
