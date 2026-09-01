@@ -4,6 +4,7 @@ import { withCafe } from "@/db/context";
 import { kafeYoneticisiGerekli } from "@/domain/yetki";
 import * as oturum from "@/domain/session";
 import { durum as butceDurumu } from "@/domain/butce";
+import * as panel from "@/domain/panel";
 import { IsletmeSayfa, IsletmeBaslik, Bolum, Rozet, IsletmeUyari } from "@/components/isletme";
 
 export const dynamic = "force-dynamic";
@@ -53,7 +54,10 @@ export default async function KafePaneli() {
     };
   });
 
-  const butce = await butceDurumu(o.cafeId);
+  const [butce, gosterge] = await Promise.all([
+    butceDurumu(o.cafeId),
+    panel.ozet(o.cafeId),
+  ]);
 
   return (
     <IsletmeSayfa genis>
@@ -75,8 +79,44 @@ export default async function KafePaneli() {
         </div>
       )}
 
-      {/* ── Bugün ────────────────────────────────────────
-          Kafe sahibinin ilk baktığı yer: bugünkü bütçe ve kurulumun sayıları. */}
+      {/* ── Bugünün göstergesi ───────────────────────────
+          Vardiya arasında iki saniye bakılan yer. Dört sayı ve bir
+          grafik; karar vermek için rapora gidiliyor. */}
+      <section className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Gosterge
+          etiket="Bugün gelen"
+          deger={String(gosterge.ziyaret)}
+          alt="sayılan ziyaret"
+          renk="vurgu"
+          ikon="kisi"
+        />
+        <Gosterge
+          etiket="Verilen kupon"
+          deger={String(gosterge.kuponVerilen)}
+          alt="kazanıldı"
+          renk="odul"
+          ikon="kupon"
+        />
+        <Gosterge
+          etiket="Kullanılan"
+          deger={String(gosterge.kuponKullanilan)}
+          alt="kasada onaylandı"
+          renk="yazi"
+          ikon="onay"
+        />
+        <Gosterge
+          etiket="Bugün ödediğin"
+          deger={`${(gosterge.kullanilanKurus / 100).toLocaleString("tr-TR", { maximumFractionDigits: 0 })} TL`}
+          alt="gerçekleşen indirim"
+          renk="vurgu"
+          ikon="para"
+        />
+      </section>
+
+      <section className="mb-9">
+        <YediGunGrafigi gunler={gosterge.sonYedi} />
+      </section>
+
       <section className="mb-9 grid gap-3 sm:grid-cols-2">
         <ButceKarti butce={butce} />
         <div className="grid grid-cols-3 gap-3">
@@ -151,6 +191,152 @@ export default async function KafePaneli() {
       </nav>
     </IsletmeSayfa>
   );
+}
+
+/**
+ * Gösterge kutusu — panelin üstündeki dört sayı.
+ *
+ * ── Renk neden var ──────────────────────────────────────────
+ *
+ * İşletme tarafı bugüne kadar tek renkli ve bilerek sakindi. Ürün sahibi
+ * paneli "daha görsel ve kullanıcı dostu" istedi ve örnek olarak yönetim
+ * paneli şablonları verdi; oradaki ortak öge, sayıyı renkli bir ikon
+ * kutusuyla eşleştirmek.
+ *
+ * Palet **genişlemedi**: mevcut üç jeton (vurgu, ödül, yazı) dönüşümlü
+ * kullanılıyor. Renk burada bir anlam taşımıyor, yalnızca dört kutuyu
+ * birbirinden ayırıyor — anlam taşısaydı (kırmızı = kötü) sayıların
+ * yorumunu ekrana gömmüş olurduk ve "bugün 0 kupon" iyi mi kötü mü
+ * sorusunun cevabı kafeye göre değişir.
+ */
+function Gosterge({
+  etiket,
+  deger,
+  alt,
+  renk,
+  ikon,
+}: {
+  etiket: string;
+  deger: string;
+  alt: string;
+  renk: "vurgu" | "odul" | "yazi";
+  ikon: keyof typeof GOSTERGE_IKONLARI;
+}) {
+  const zemin =
+    renk === "vurgu" ? "bg-vurgu/10 text-vurgu" : renk === "odul" ? "bg-odul/15 text-odul-koyu" : "bg-cukur text-yazi";
+
+  return (
+    <div className="rounded-2xl border border-cizgi bg-yuzey px-4 py-4">
+      <span className={`flex size-9 items-center justify-center rounded-xl ${zemin}`}>
+        {GOSTERGE_IKONLARI[ikon]}
+      </span>
+      <div className="mt-3 font-data text-2xl leading-none font-bold tabular">{deger}</div>
+      <div className="etiket-caps mt-2 text-[10px] text-yazi-sonuk">{etiket}</div>
+      <div className="mt-0.5 text-[11px] leading-snug text-yazi-sonuk">{alt}</div>
+    </div>
+  );
+}
+
+const IKON_ORTAK = {
+  width: 18,
+  height: 18,
+  viewBox: "0 0 24 24",
+  fill: "none",
+  stroke: "currentColor",
+  strokeWidth: 1.8,
+  strokeLinecap: "round",
+  strokeLinejoin: "round",
+  "aria-hidden": true,
+} as const;
+
+const GOSTERGE_IKONLARI = {
+  kisi: (
+    <svg {...IKON_ORTAK}>
+      <circle cx="12" cy="8" r="3.5" />
+      <path d="M4.5 20a7.5 7.5 0 0 1 15 0" />
+    </svg>
+  ),
+  kupon: (
+    <svg {...IKON_ORTAK}>
+      <path d="M3 9V6.5A1.5 1.5 0 0 1 4.5 5h15A1.5 1.5 0 0 1 21 6.5V9a3 3 0 0 0 0 6v2.5a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5V15a3 3 0 0 0 0-6Z" />
+      <path d="M14 5v14" strokeDasharray="2 2.5" />
+    </svg>
+  ),
+  onay: (
+    <svg {...IKON_ORTAK}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="m8.5 12.2 2.4 2.4 4.6-5" />
+    </svg>
+  ),
+  para: (
+    <svg {...IKON_ORTAK}>
+      <rect x="2.5" y="6" width="19" height="12" rx="2" />
+      <circle cx="12" cy="12" r="2.6" />
+    </svg>
+  ),
+} as const;
+
+/**
+ * Son yedi günün ziyaret grafiği.
+ *
+ * ── Neden çubuk, neden yedi ─────────────────────────────────
+ *
+ * Kafe sahibinin panelde sorduğu ikinci soru: *"bu hafta nasıl gidiyor?"*
+ * Tek sayı bunu söylemiyor, tam rapor ise fazla. Yedi çubuk, haftanın
+ * şeklini bir bakışta veriyor ve bugünü ayrı renkle işaretliyor.
+ *
+ * Boş günler de çiziliyor: eksik sütun, o günü hiç olmamış gibi gösterip
+ * grafiği yanıltırdı.
+ */
+function YediGunGrafigi({ gunler }: { gunler: { gun: string; ziyaret: number }[] }) {
+  const enYuksek = Math.max(1, ...gunler.map((g) => g.ziyaret));
+  const toplam = gunler.reduce((t, g) => t + g.ziyaret, 0);
+
+  return (
+    <div className="rounded-2xl border border-cizgi bg-yuzey px-5 py-5">
+      <div className="flex items-baseline justify-between">
+        <span className="etiket-caps text-yazi-sonuk">Son 7 gün</span>
+        <span className="font-data text-[13px] tabular">
+          <strong className="text-[15px]">{toplam}</strong>{" "}
+          <span className="text-yazi-sonuk">ziyaret</span>
+        </span>
+      </div>
+
+      {/*
+        Çubuğun yüzde yüksekliği, yüksekliği ÇÖZÜLMÜŞ bir kapsayıcı ister.
+        Bir tur çubuklar hiç görünmedi: sütun `flex-col` idi ve yüksekliği
+        içeriğinden geliyordu, yani `height: 60%` sıfıra çözülüyordu.
+        Aradaki `flex-1` kutu bu yüzden var — ölçüyü o veriyor.
+      */}
+      <div className="mt-4 flex h-28 gap-1.5">
+        {gunler.map((g, i) => {
+          const bugunMu = i === gunler.length - 1;
+          return (
+            <div key={g.gun} className="flex flex-1 flex-col items-center gap-1.5">
+              <span className="font-data text-[10px] text-yazi-sonuk tabular">
+                {g.ziyaret > 0 ? g.ziyaret : ""}
+              </span>
+              <span className="flex w-full flex-1 items-end">
+                <span
+                  className={`w-full rounded-t-sm ${bugunMu ? "bg-vurgu" : "bg-cukur"}`}
+                  style={{ height: `${Math.max(4, (g.ziyaret / enYuksek) * 100)}%` }}
+                />
+              </span>
+              <span className="etiket-caps text-[9px] text-yazi-sonuk">{gunAdi(g.gun)}</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/** Grafik ekseni için kısa gün adı — "Pzt", "Sal"… */
+function gunAdi(iso: string): string {
+  return new Date(`${iso}T00:00:00Z`).toLocaleDateString("tr-TR", {
+    weekday: "short",
+    timeZone: "UTC",
+  });
 }
 
 function tlYaz(kurus: number): string {

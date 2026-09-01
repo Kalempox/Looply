@@ -221,7 +221,7 @@ function SonucEkrani({
     );
   }
 
-  const { skor, basarili, puan, esik, xp, kazandirir, yeniRozetler, kupon, taht } = cevap;
+  const { skor, basarili, puan, esik, seri, xp, kazandirir, yeniRozetler, kupon, taht } = cevap;
 
   return (
     <div>
@@ -278,6 +278,17 @@ function SonucEkrani({
               <Satir
                 baslik={`+${esik.puan.yazilan.toLocaleString("tr-TR")} puan · skor bonusu`}
                 aciklama={`${esik.skor.toLocaleString("tr-TR")} skoru geçtin.`}
+                vurgu
+              />
+            )}
+
+            {/* Ü54: günlük seri. Gün sayısı burada söyleniyor çünkü
+                oyuncunun seriyi fark ettiği tek an bu — ana ekrandaki
+                kart onu ancak ertesi gün hatırlatıyor. */}
+            {seri && seri.puan.yazilan > 0 && (
+              <Satir
+                baslik={`+${seri.puan.yazilan.toLocaleString("tr-TR")} puan · ${seri.gun} günlük seri`}
+                aciklama="Yarın da gelirsen seri büyür. Bir gün atlarsan sıfırlanır."
                 vurgu
               />
             )}

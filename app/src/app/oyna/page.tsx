@@ -8,6 +8,8 @@ import { kafeSeviyesi, type KafeSeviyesi } from "@/domain/xp";
 import { OYUNLAR, gununOyunu, type HerhangiOyun } from "@/oyunlar";
 import * as liderlik from "@/domain/liderlik";
 import * as cark from "@/domain/cark";
+import * as seri from "@/domain/seri";
+import { withBypass } from "@/db/context";
 import * as happy from "@/domain/happy";
 import { isGunu } from "@/lib/tarih";
 import { OyuncuNav, NavBosluk } from "@/components/oyuncu-nav";
@@ -53,6 +55,15 @@ export default async function OynaSayfasi() {
   // Ü49: günlük çark — yalnızca kafedeyken, ödül kafenin bütçesinden çıkıyor.
   const carkDurumu = masa
     ? await cark.durum({ playerId: o.ozneId, cafeId: masa.cafeId })
+    : null;
+
+  // Ü54: günlük seri. Kafe başına — seri, o kafenin müşterisini geri
+  // getirme aracı; kafeler arası ortak olsaydı A'da oynayıp B'de
+  // ödüllenmek mümkün olurdu.
+  const seriDurumu = masa
+    ? await withBypass("günlük seri", (db) =>
+        seri.hesapla(db, { playerId: o.ozneId, cafeId: masa.cafeId }),
+      )
     : null;
 
   const seridDurumu = seridBelirle(masa);
@@ -108,6 +119,8 @@ export default async function OynaSayfasi() {
         )}
 
         {pencere && <HavuzKarti pencere={pencere} kafeAdi={masa!.cafeAdi} />}
+
+        {seriDurumu && seriDurumu.gun > 0 && <SeriKarti seri={seriDurumu} />}
 
         {carkDurumu && <CarkKarti durum={carkDurumu} />}
 
@@ -307,6 +320,53 @@ function HavuzKarti({ pencere, kafeAdi }: { pencere: happy.Pencere; kafeAdi: str
         {kafeAdi} bu saate ödül ayırdı. Havuz bitmeden oynarsan bugün{" "}
         <strong className="text-yazi">ikinci bir ödül</strong> daha kazanabilirsin.
       </p>
+    </section>
+  );
+}
+
+/**
+ * Günlük seri kartı (Ü54).
+ *
+ * ── Neden yalnızca seri varken görünüyor ────────────────────
+ *
+ * "0 günlük serin var" diye bir şey yok: ilk gün gelen için seri henüz
+ * bir şey ifade etmiyor ve boş bir sayaç ekranı doldurmaktan başka iş
+ * yapmıyor. Kart, kaybedilecek bir şey olduğunda çıkıyor.
+ *
+ * ── Riskteyken dili değişiyor ───────────────────────────────
+ *
+ * Bugün oynanmadıysa seri **kırılmış sayılmıyor** — gün henüz bitmedi.
+ * Kart o zaman hatırlatıyor; kırıldığını söylemek, akşam gelecek
+ * müşteriyi sabahtan kaybetmek olurdu.
+ */
+function SeriKarti({ seri: s }: { seri: seri.Seri }) {
+  const bonus = seri.bonusPuani(s.gun + (s.bugunOynadi ? 1 : 0));
+
+  return (
+    <section className="mb-10">
+      <h2 className="etiket-caps mb-3 text-yazi-sonuk">Günlük seri</h2>
+
+      <div
+        className={`rounded-2xl border px-5 py-5 ${
+          s.riskte ? "border-odul bg-cukur" : "border-cizgi bg-yuzey"
+        }`}
+      >
+        <div className="flex items-center gap-4">
+          <span className="text-3xl leading-none" aria-hidden>
+            🔥
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block font-display text-lg leading-tight font-bold">
+              {s.gun} gün üst üste
+            </span>
+            <span className="mt-1 block text-[13px] leading-relaxed text-yazi-sonuk">
+              {s.riskte
+                ? `Bugün oynamazsan seri sıfırlanır. Oynarsan ${bonus} puan bonus.`
+                : `Bugün sayıldı. Yarın da gelirsen ${bonus} puan bonus.`}
+            </span>
+          </span>
+        </div>
+      </div>
     </section>
   );
 }

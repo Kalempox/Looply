@@ -9,6 +9,7 @@ import { K2 } from "./masa";
 import * as acil from "./acil";
 import * as davet from "./davet";
 import * as taht from "./taht";
+import * as seri from "./seri";
 import {
   yazIle as puanYaz,
   OYUN_PUANI,
@@ -129,6 +130,8 @@ export type Kazanim = {
    * sorusunun cevabı satırın kendisinde duruyor.
    */
   esik: { skor: number; puan: PuanSonucu } | null;
+  /** Ü54: günlük seri — kaçıncı gün ve bugün ne kadar bonus yazıldı. */
+  seri: { gun: number; puan: PuanSonucu } | null;
 };
 
 /**
@@ -153,7 +156,7 @@ async function kazanimIsle(
     bonusMu: boolean;
   },
 ): Promise<Kazanim> {
-  const bos: Kazanim = { puan: null, xp: 0, kupon: null, taht: null, esik: null };
+  const bos: Kazanim = { puan: null, xp: 0, kupon: null, taht: null, esik: null, seri: null };
   if (!opts.kazandirir || !opts.cafeId) return bos;
 
   const sonuc: Kazanim = { ...bos };
@@ -246,6 +249,34 @@ async function kazanimIsle(
       kanitSeviyesi: opts.proofLevel,
     });
     sonuc.esik = { skor: esik.skor, puan: yazim };
+  }
+
+  // ── Günlük seri (Ü54) ──────────────────────────────────
+  //
+  // Günde bir kez: defterde bugüne ait `seri` satırı varsa ikincisi
+  // yazılmıyor. Kontrol AYNI İŞLEMDE — ayrı bağlantıdan sorulsaydı bu
+  // oyunun satırı henüz commit edilmemiş olur ve aynı gün ikinci oyunda
+  // bonus tekrar yazılırdı.
+  //
+  // Seri hesabı bu oturumu da sayıyor: satır yukarıda yazıldı ve aynı
+  // işlemin içindeyiz, yani "bugün oynadı" doğru çıkıyor.
+  if (!(await seri.bugunYazildiMi(db, { playerId: opts.playerId, cafeId: opts.cafeId }))) {
+    const durum = await seri.hesapla(db, { playerId: opts.playerId, cafeId: opts.cafeId });
+    const bonus = seri.bonusPuani(durum.gun);
+
+    if (bonus > 0) {
+      const yazim = await puanYaz(db, {
+        playerId: opts.playerId,
+        cafeId: opts.cafeId,
+        taban: bonus,
+        carpan: 1,
+        sebep: "seri",
+        refTipi: "play_session",
+        refId: opts.oturumId,
+        kanitSeviyesi: opts.proofLevel,
+      });
+      sonuc.seri = { gun: durum.gun, puan: yazim };
+    }
   }
 
   // ── Masa tahtı (Ö1) ────────────────────────────────────
@@ -354,6 +385,8 @@ export type BitirSonucu =
       puan: PuanSonucu | null;
       /** Ü48: skor eşiği bonusu — ulaşılmadıysa null. */
       esik: { skor: number; puan: PuanSonucu } | null;
+      /** Ü54: günlük seri bonusu — bugün yazıldıysa. */
+      seri: { gun: number; puan: PuanSonucu } | null;
       xp: number;
       kazandirir: boolean;
       bonusMu: boolean;
@@ -532,6 +565,7 @@ export async function bitir(opts: {
       basarili: sonuc.basarili,
       puan: kazanim.puan,
       esik: kazanim.esik,
+      seri: kazanim.seri,
       xp: kazanim.xp,
       kazandirir,
       bonusMu,
@@ -585,6 +619,7 @@ export type MisafirYazSonucu =
       bonusMu: boolean;
       puan: PuanSonucu | null;
       esik: { skor: number; puan: PuanSonucu } | null;
+      seri: { gun: number; puan: PuanSonucu } | null;
       xp: number;
       kupon: { baslik: string; kod: string; ertelendi: boolean } | null;
       taht: taht.DevirmeSonucu | null;
@@ -721,6 +756,7 @@ export async function misafirOyunuYaz(opts: {
       bonusMu,
       puan: kazanim.puan,
       esik: kazanim.esik,
+      seri: kazanim.seri,
       xp: kazanim.xp,
       kupon: kazanim.kupon,
       taht: kazanim.taht,

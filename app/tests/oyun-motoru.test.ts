@@ -8,6 +8,7 @@ import { kaydet } from "@/domain/player";
 import { normalizePhone } from "@/lib/crypto";
 import * as masa from "@/domain/masa";
 import * as oyunDomain from "@/domain/oyun";
+import * as seri from "@/domain/seri";
 import {
   GUNLUK_TAVAN,
   KATILIM_PUANI,
@@ -600,5 +601,112 @@ describe("puan · katılım ve skor eşiği (Ü48)", () => {
         "yüksek eşik daha az kazandırıyor",
       );
     }
+  });
+});
+
+/* ══════════════════════════════════════════════════════════════
+ * GÜNLÜK SERİ — Ü54
+ *
+ * Seri ayrı tablo tutmuyor, `play_sessions`'tan hesaplanıyor. Sınanan üç
+ * iddia: arka arkaya günler doğru sayılıyor, bir gün atlanınca sıfırlanıyor
+ * ve bonus günde bir kez yazılıyor.
+ * ═════════════════════════════════════════════════════════════ */
+describe("günlük seri (Ü54)", () => {
+  test("bonus ilk günde yok, sonra artıyor ve tavanda duruyor", () => {
+    assert.equal(seri.bonusPuani(0), 0);
+    assert.equal(seri.bonusPuani(1), 0, "tek ziyaret henüz seri değil");
+    assert.equal(seri.bonusPuani(2), 25);
+    assert.equal(seri.bonusPuani(5), 100);
+    assert.equal(seri.bonusPuani(9), 200);
+    assert.equal(seri.bonusPuani(60), 200, "tavan aşılmamalı");
+  });
+
+  /**
+   * Tavan, günlük puan tavanının (E4) dörtte birini geçmemeli: geçseydi
+   * "oyna" yerine "sadece uğra" davranışını ödüllendirirdi.
+   */
+  test("seri bonusu günlük puan tavanının dörtte birini aşmıyor", () => {
+    assert.ok(seri.bonusPuani(99) <= GUNLUK_TAVAN / 4);
+  });
+
+  test("arka arkaya günler sayılıyor, atlanan gün seriyi sıfırlıyor", async () => {
+    const oyuncu = (
+      await kaydet({
+        telefon: yeniTelefon(),
+        ad: "Seri",
+        soyad: "Testi",
+        dogumYili: 1990,
+        pazarlamaIzni: false,
+      })
+    ).oyuncu.id;
+
+    const bugun = isGunu();
+    const gunEkleIso = (g: number) => {
+      const d = new Date(`${bugun}T00:00:00Z`);
+      d.setUTCDate(d.getUTCDate() + g);
+      return d.toISOString().slice(0, 10);
+    };
+
+    // Bugün, dün, evvelsi gün → 3 günlük seri. Dört gün önce boş.
+    for (const g of [0, -1, -2, -4]) {
+      await yoneticiSorgu(
+        `INSERT INTO play_sessions
+           (id, cafe_id, table_id, player_id, device_id_hash, game_id, seed,
+            started_at, ended_at, server_score, proof_mask, proof_level,
+            business_date, status, is_qualified)
+         VALUES ($1,$2,NULL,$3,decode(md5($3),'hex'),'blok',$4,
+                 now(), now(), 100, 3, 2, $5::date, 'completed', false)`,
+        [`oyn_seri_${oyuncu}_${g}`, kafeA, oyuncu, `thm_seri_${g}`, gunEkleIso(g)],
+      );
+    }
+
+    const d = await withBypass("test seri", (db) =>
+      seri.hesapla(db, { playerId: oyuncu, cafeId: kafeA, bugun }),
+    );
+    assert.equal(d.gun, 3, "atlanan günün ötesi seriye katılmamalı");
+    assert.equal(d.bugunOynadi, true);
+    assert.equal(d.riskte, false);
+  });
+
+  /**
+   * Bugün oynanmadıysa seri KIRILMIŞ sayılmıyor — gün henüz bitmedi.
+   * Kırıldığını söylemek, akşam gelecek müşteriyi sabahtan kaybetmek olurdu.
+   */
+  test("bugün oynanmadıysa seri düne kadar sayılıyor ve riskte işaretleniyor", async () => {
+    const oyuncu = (
+      await kaydet({
+        telefon: yeniTelefon(),
+        ad: "Riskte",
+        soyad: "Testi",
+        dogumYili: 1990,
+        pazarlamaIzni: false,
+      })
+    ).oyuncu.id;
+
+    const bugun = isGunu();
+    const gunEkleIso = (g: number) => {
+      const d = new Date(`${bugun}T00:00:00Z`);
+      d.setUTCDate(d.getUTCDate() + g);
+      return d.toISOString().slice(0, 10);
+    };
+
+    for (const g of [-1, -2]) {
+      await yoneticiSorgu(
+        `INSERT INTO play_sessions
+           (id, cafe_id, table_id, player_id, device_id_hash, game_id, seed,
+            started_at, ended_at, server_score, proof_mask, proof_level,
+            business_date, status, is_qualified)
+         VALUES ($1,$2,NULL,$3,decode(md5($3),'hex'),'blok',$4,
+                 now(), now(), 100, 3, 2, $5::date, 'completed', false)`,
+        [`oyn_risk_${oyuncu}_${g}`, kafeA, oyuncu, `thm_risk_${g}`, gunEkleIso(g)],
+      );
+    }
+
+    const d = await withBypass("test seri riskte", (db) =>
+      seri.hesapla(db, { playerId: oyuncu, cafeId: kafeA, bugun }),
+    );
+    assert.equal(d.gun, 2);
+    assert.equal(d.bugunOynadi, false);
+    assert.equal(d.riskte, true, "seri sıfırlanmış gibi gösterildi");
   });
 });
