@@ -156,6 +156,18 @@ body {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+    /*
+      Gecikme de sıfırlanıyor.
+
+      Sürenin kısaltılması tek başına yetmiyor: `both` dolgusuyla
+      çalışan bir animasyon, gecikme boyunca başlangıç karesinde
+      (çoğunlukla `opacity: 0`) bekliyor. Oyun sonu ekranındaki
+      kazanım satırları 150-500 ms kademeli geliyor, hediye kutusu
+      1,5 saniye; hareketi kapatan biri bu sürelerde boş bir ekrana
+      bakıyordu. Gecikme sıfırlanınca her şey anında yerinde.
+    */
+    animation-delay: 0s !important;
+    transition-delay: 0s !important;
   }
 }
 

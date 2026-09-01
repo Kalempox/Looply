@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { OyunEkrani } from "@/oyunlar/arayuz";
+import { KoyuKart } from "@/components/oyuncu";
 import { baslaEylemi, bitirEylemi, type BitirCevabi } from "./actions";
 
 /**
@@ -14,6 +15,15 @@ import { baslaEylemi, bitirEylemi, type BitirCevabi } from "./actions";
  *
  * Tohum **sunucudan** geliyor. İstemci tohum seçebilseydi, kolay dizi veren
  * tohumu arayıp her seferinde onu oynardı.
+ *
+ * ── Görsel dil (Ü64) ────────────────────────────────────────
+ *
+ * Kabuğun iki ekranı da (bölüm seçimi ve sonuç) koyu: burası oyunun
+ * kendisi, uygulamanın en heyecanlı yeri. Aradaki **oyun alanı** koyu
+ * değil — oyunun kendi görünümü var ve kabuk onun üstüne renk basmıyor.
+ *
+ * Tek istisna hata ekranı: "kayıt doğrulanamadı" kutlanacak bir şey
+ * değil, sakin ve okunur kalıyor.
  */
 
 type Ayar = {
@@ -85,14 +95,15 @@ export function OyunKabugu(ayar: Ayar) {
   if (durum.tur === "oynuyor") {
     return (
       <div>
-        <div className="mb-4 flex items-baseline justify-between">
-          <span className="etiket-caps text-yazi-sonuk">
-            {ayar.ad} · {durum.bolum}. bölüm
-          </span>
-          {!ayar.kazandirir && (
-            <span className="etiket-caps text-odul-koyu">
-              Kazandırmaz
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <h1 className="inline-flex items-center gap-2 rounded-full bg-cukur px-3 py-1.5">
+            <span aria-hidden>{ayar.emoji}</span>
+            <span className="etiket-caps text-yazi-sonuk">
+              {ayar.ad} · {durum.bolum}. bölüm
             </span>
+          </h1>
+          {!ayar.kazandirir && (
+            <span className="etiket-caps text-odul-koyu">Kazandırmaz</span>
           )}
         </div>
 
@@ -137,49 +148,92 @@ export function OyunKabugu(ayar: Ayar) {
         </div>
       )}
 
+      {/* Uyarı koyu kartın ÜSTÜNDE: altına konsaydı oyuncu bölüme
+          dokunduktan sonra okurdu. */}
       {!ayar.kazandirir && (
-        <div className="mb-6 border-l-2 border-odul pl-4 text-[13px] leading-relaxed text-yazi-sonuk">
+        <div className="mb-5 border-l-2 border-odul pl-4 text-[13px] leading-relaxed text-yazi-sonuk">
           {ayar.cafeAdi
             ? "Konumun doğrulanmadığı için bu oyunlar puan ve XP kazandırmaz. Ana ekrandaki şeritten doğrulayabilirsin."
             : "Kafe dışındasın: oynayabilirsin ama puan, XP ve kupon kazanamazsın."}
         </div>
       )}
 
-      {ayar.bonusMu && ayar.kazandirir && (
-        <div className="mb-6 rounded-lg border border-odul/50 bg-cukur px-4 py-3">
-          <span className="etiket-caps text-odul-koyu">
-            Bugünün oyunu · ×2 puan
+      <KoyuKart>
+        <div className="flex items-start gap-3.5">
+          <span
+            className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-white/12 text-2xl leading-none"
+            aria-hidden
+          >
+            {ayar.emoji}
           </span>
+          <div className="min-w-0 flex-1">
+            <h1 className="font-display text-2xl leading-tight font-extrabold tracking-tight">
+              {ayar.ad}
+            </h1>
+            <p className="mt-1 text-[13px] leading-relaxed text-white/60">{ayar.ozet}</p>
+          </div>
         </div>
-      )}
 
-      <h2 className="mb-3 etiket-caps text-yazi-sonuk">
-        Bölümler
-      </h2>
+        {ayar.bonusMu && ayar.kazandirir && (
+          <div className="mt-4 inline-block rounded-full border border-odul/50 bg-odul/[0.14] px-3 py-1 etiket-caps text-[10px] text-odul">
+            Bugünün oyunu · ×2 puan
+          </div>
+        )}
 
-      <ul className="flex flex-col gap-2.5">
-        {Array.from({ length: ayar.bolumSayisi }, (_, i) => i + 1).map((bolum) => (
-          <li key={bolum}>
-            <button
-              type="button"
-              disabled={bekliyor}
-              onClick={() => bolumBaslat(bolum)}
-              className="flex w-full items-center justify-between rounded-2xl border border-cizgi bg-yuzey px-5 py-4 text-left disabled:opacity-50"
-            >
-              <span>
-                <span className="block font-display text-lg font-bold">{bolum}. bölüm</span>
-                <span className="mt-0.5 block text-[13px] text-yazi-sonuk">{ayar.ozet}</span>
-              </span>
-              <span className="font-data text-vurgu">→</span>
-            </button>
-          </li>
-        ))}
-      </ul>
+        <div className="mt-6">
+          <div className="etiket-caps text-white/55">Bölüm seç</div>
+          <ul className="mt-2.5 grid grid-cols-3 gap-2.5">
+            {Array.from({ length: ayar.bolumSayisi }, (_, i) => i + 1).map((bolum) => (
+              <li key={bolum}>
+                <BolumKutusu
+                  bolum={bolum}
+                  bekliyor={bekliyor}
+                  onSec={() => bolumBaslat(bolum)}
+                />
+              </li>
+            ))}
+          </ul>
+        </div>
+      </KoyuKart>
 
-      <Link href="/oyna" className="mt-8 inline-block text-[14px] text-vurgu underline">
+      <Link href="/oyna" className="mt-7 inline-block text-[14px] text-vurgu underline">
         Ana ekrana dön
       </Link>
     </div>
+  );
+}
+
+/**
+ * Tek bölüm kutusu.
+ *
+ * Eskiden her bölüm tam genişlikte bir satırdı ve altında oyunun özeti
+ * tekrar ediyordu — beş bölümde aynı cümle beş kez. Özet artık tek
+ * yerde, başlıkta; bölümler kare kutulara indi ve hepsi tek bakışta
+ * görünüyor.
+ *
+ * Bölümler kilitli değil: oyuncu istediğinden başlayabiliyor. Kilit
+ * koymak sırayla ilerlemeyi zorunlu kılardı ve kafede on beş dakikası
+ * olan birine göre bir ürün değil bu.
+ */
+function BolumKutusu({
+  bolum,
+  bekliyor,
+  onSec,
+}: {
+  bolum: number;
+  bekliyor: boolean;
+  onSec: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={bekliyor}
+      onClick={onSec}
+      className="flex aspect-square w-full flex-col items-center justify-center rounded-2xl border border-white/15 bg-white/10 transition-all hover:border-odul hover:bg-white/[0.18] active:scale-95 disabled:opacity-40"
+    >
+      <span className="font-data text-2xl leading-none font-bold text-white tabular">{bolum}</span>
+      <span className="mt-1 etiket-caps text-[9px] text-white/50">bölüm</span>
+    </button>
   );
 }
 
@@ -203,8 +257,8 @@ function SonucEkrani({
   if (!cevap.ok) {
     return (
       <div>
-        <div className="rounded-2xl border border-odul bg-yuzey px-6 py-7">
-          <h2 className="font-display text-2xl font-extrabold">Kayıt doğrulanamadı</h2>
+        <div className="rounded-2xl border border-tehlike/60 bg-yuzey px-6 py-7">
+          <h1 className="font-display text-2xl font-extrabold">Kayıt doğrulanamadı</h1>
           <p className="mt-3 text-[14px] leading-relaxed text-yazi-sonuk">
             {cevap.hata}
             {cevap.reddedildi && (
@@ -223,147 +277,160 @@ function SonucEkrani({
 
   const { skor, basarili, puan, esik, seri, xp, kazandirir, yeniRozetler, kupon, taht } = cevap;
 
+  /*
+   * Kazanım satırları önce diziye toplanıyor, sonra çiziliyor.
+   *
+   * Sebebi giriş animasyonunun **kademesi**: her satır bir öncekinden
+   * 90 ms sonra beliriyor ve bunun için satırın kaçıncı olduğunu bilmek
+   * gerek. JSX'in içine serpiştirilmiş koşullarla bu sayı bilinmiyordu.
+   */
+  const satirlar: { baslik: string; aciklama: string; vurgu?: boolean }[] = [];
+
+  if (!kazandirir) {
+    satirlar.push({
+      baslik: "Kazanım yok",
+      aciklama:
+        "Puan ve XP yalnızca bir CafePlay kafesinde, konumun doğrulandığında kazanılır.",
+    });
+  } else {
+    // Ü48: bölüm bitmese de puan yazılıyor. Eski ekran burada "Kazanım
+    // yok" diyordu ve ilk kez oynayan, ilk denemesinde eli boş çıkıyordu.
+    satirlar.push({
+      baslik: `+${(puan?.yazilan ?? 0).toLocaleString("tr-TR")} puan`,
+      aciklama:
+        puan && puan.kesilen > 0
+          ? `Günlük 900 puan sınırına ulaştın; ${puan.kesilen.toLocaleString("tr-TR")} puan yazılmadı. Oynamaya devam edebilirsin, XP birikiyor.`
+          : basarili
+            ? "Bu kafede harcanabilir."
+            : "Bölümü bitirmedin ama denemenin de karşılığı var. Bitirirsen çok daha fazlası.",
+      vurgu: true,
+    });
+
+    if (esik && esik.puan.yazilan > 0) {
+      satirlar.push({
+        baslik: `+${esik.puan.yazilan.toLocaleString("tr-TR")} puan · skor bonusu`,
+        aciklama: `${esik.skor.toLocaleString("tr-TR")} skoru geçtin.`,
+        vurgu: true,
+      });
+    }
+
+    // Ü54: günlük seri. Gün sayısı burada söyleniyor çünkü oyuncunun
+    // seriyi fark ettiği tek an bu — ana ekrandaki kart onu ancak ertesi
+    // gün hatırlatıyor.
+    if (seri && seri.puan.yazilan > 0) {
+      satirlar.push({
+        baslik: `+${seri.puan.yazilan.toLocaleString("tr-TR")} puan · ${seri.gun} günlük seri`,
+        aciklama: "Yarın da gelirsen seri büyür. Bir gün atlarsan sıfırlanır.",
+        vurgu: true,
+      });
+    }
+
+    satirlar.push({
+      baslik: `+${xp} XP`,
+      aciklama: "Seviyen bu kafede ilerledi. XP harcanmaz.",
+      vurgu: true,
+    });
+  }
+
+  // Ö1: taht statüden ibaret — puan, kupon veya çarpan vermiyor. Satır
+  // bu yüzden bir kazanım değil, bir haber.
+  if (taht?.devirdi) {
+    satirlar.push({
+      baslik: taht.eskiSkor === null ? "Tahta oturdun" : "Tahtı devirdin",
+      aciklama:
+        taht.eskiSkor === null
+          ? "Bu masada ilk skoru sen yazdın. Devrilene kadar kral sensin."
+          : `Önceki kral ${taht.eskiSkor.toLocaleString("tr-TR")} yapmıştı. Adın bu masada kalıyor.`,
+      vurgu: true,
+    });
+  }
+
+  if (yeniRozetler.length > 0) {
+    satirlar.push({
+      baslik: `${yeniRozetler.length} yeni rozet`,
+      aciklama: "Profilinde görebilirsin.",
+      vurgu: true,
+    });
+  }
+
   return (
     <div>
-      <div
-        className={`rounded-2xl border bg-yuzey px-6 py-7 ${
-          basarili ? "border-vurgu" : "border-cizgi"
-        }`}
-      >
-        <div className="etiket-caps text-yazi-sonuk">
+      <KoyuKart>
+        <div className="etiket-caps text-white/55">
           {ayar.ad} · {bolum}. bölüm
         </div>
-        <h2 className="mt-2 font-display text-3xl leading-none font-extrabold">
+        <h1 className="mt-1.5 font-display text-3xl leading-none font-extrabold tracking-tight">
           {basarili ? "Bölüm tamam" : "Bölüm bitti"}
-        </h2>
+        </h1>
 
-        <div className="mt-6">
-          <div className="etiket-caps text-yazi-sonuk">
-            Skor
-          </div>
-          <div className="mt-1 font-data text-4xl leading-none font-bold text-vurgu tabular">
+        {/* Skor tek başına ortada: ekranın tek büyük sayısı o. */}
+        <div className="mt-6 text-center">
+          <div className="etiket-caps text-white/55">Skor</div>
+          <div
+            className={`patla mt-1 font-data text-6xl leading-none font-bold tabular ${
+              basarili ? "text-odul" : "text-white"
+            }`}
+          >
             {skor.toLocaleString("tr-TR")}
           </div>
-          <div className="mt-1.5 font-data text-[9px] text-yazi-sonuk">
-            sunucuda doğrulandı
-          </div>
+          <div className="mt-2 font-data text-[9px] text-white/40">sunucuda doğrulandı</div>
         </div>
-      </div>
 
-      {/* ── Kazanım ────────────────────────────────── */}
-      <div className="mt-4 flex flex-col gap-2.5">
-        {!kazandirir ? (
-          <Satir
-            baslik="Kazanım yok"
-            aciklama="Puan ve XP yalnızca bir CafePlay kafesinde, konumun doğrulandığında kazanılır."
-          />
-        ) : (
-          <>
-            {/* Ü48: bölüm bitmese de puan yazılıyor. Eski ekran burada
-                "Kazanım yok" diyordu ve ilk kez oynayan, ilk denemesinde
-                eli boş çıkıyordu. */}
-            <Satir
-              baslik={`+${(puan?.yazilan ?? 0).toLocaleString("tr-TR")} puan`}
-              aciklama={
-                puan && puan.kesilen > 0
-                  ? `Günlük 900 puan sınırına ulaştın; ${puan.kesilen.toLocaleString("tr-TR")} puan yazılmadı. Oynamaya devam edebilirsin, XP birikiyor.`
-                  : basarili
-                    ? "Bu kafede harcanabilir."
-                    : "Bölümü bitirmedin ama denemenin de karşılığı var. Bitirirsen çok daha fazlası."
-              }
-              vurgu
-            />
+        <div className="mt-6 flex flex-col gap-2">
+          {satirlar.map((s, i) => (
+            <KazanimSatiri key={s.baslik} {...s} gecikme={150 + i * 90} />
+          ))}
 
-            {esik && esik.puan.yazilan > 0 && (
-              <Satir
-                baslik={`+${esik.puan.yazilan.toLocaleString("tr-TR")} puan · skor bonusu`}
-                aciklama={`${esik.skor.toLocaleString("tr-TR")} skoru geçtin.`}
-                vurgu
-              />
-            )}
-
-            {/* Ü54: günlük seri. Gün sayısı burada söyleniyor çünkü
-                oyuncunun seriyi fark ettiği tek an bu — ana ekrandaki
-                kart onu ancak ertesi gün hatırlatıyor. */}
-            {seri && seri.puan.yazilan > 0 && (
-              <Satir
-                baslik={`+${seri.puan.yazilan.toLocaleString("tr-TR")} puan · ${seri.gun} günlük seri`}
-                aciklama="Yarın da gelirsen seri büyür. Bir gün atlarsan sıfırlanır."
-                vurgu
-              />
-            )}
-
-            <Satir
-              baslik={`+${xp} XP`}
-              aciklama="Seviyen bu kafede ilerledi. XP harcanmaz."
-              vurgu
-            />
-          </>
-        )}
-
-        {/* E2: anlık ödül. Oyuncuya ödülün ADI söyleniyor, TL değeri değil (E9). */}
-        {kupon && (
-          <Link
-            href="/oduller"
-            className="block rounded-2xl border border-odul bg-cukur px-4 py-4 transition-colors hover:border-odul/70"
-          >
-            <div className="etiket-caps text-odul-koyu">
-              🎟️ Ödül kazandın
-            </div>
-            <div className="mt-1.5 font-display text-lg font-bold">{kupon.baslik}</div>
-            <p className="mt-1 text-[13px] leading-relaxed text-yazi-sonuk">
-              {kupon.ertelendi
-                ? "24 saat sonra açılıyor. Ödüllerim ekranından takip edebilirsin."
-                : "Ödüllerim ekranından kasada gösterebilirsin."}
-            </p>
-          </Link>
-        )}
-
-        {/* Ö1: taht statüden ibaret — puan, kupon veya çarpan vermiyor.
-            Satır bu yüzden bir kazanım değil, bir haber. */}
-        {taht?.devirdi && (
-          <Satir
-            baslik={taht.eskiSkor === null ? "Tahta oturdun" : "Tahtı devirdin"}
-            aciklama={
-              taht.eskiSkor === null
-                ? "Bu masada ilk skoru sen yazdın. Devrilene kadar kral sensin."
-                : `Önceki kral ${taht.eskiSkor.toLocaleString("tr-TR")} yapmıştı. Adın bu masada kalıyor.`
-            }
-            vurgu
-          />
-        )}
-
-        {yeniRozetler.length > 0 && (
-          <Satir
-            baslik={`${yeniRozetler.length} yeni rozet`}
-            aciklama="Profilinde görebilirsin."
-            vurgu
-          />
-        )}
-      </div>
+          {/* E2: anlık ödül. Oyuncuya ödülün ADI söyleniyor, TL değeri
+              değil (E9). Kupon en sonda ve en görünür: bu ekranda
+              kazanılan başka her şey puan, bu ise kasada gösterilecek
+              gerçek bir şey. */}
+          {kupon && (
+            <Link
+              href="/oduller"
+              className="gir block rounded-xl border border-odul bg-odul/[0.16] px-4 py-4 transition-colors hover:bg-odul/25"
+              style={{ animationDelay: `${150 + satirlar.length * 90}ms` }}
+            >
+              <div className="etiket-caps text-odul">Ödül kazandın</div>
+              <div className="mt-1.5 font-display text-lg leading-tight font-bold text-white">
+                {kupon.baslik}
+              </div>
+              <p className="mt-1 text-[13px] leading-relaxed text-white/60">
+                {kupon.ertelendi
+                  ? "24 saat sonra açılıyor. Ödüllerim ekranından takip edebilirsin."
+                  : "Ödüllerim ekranından kasada gösterebilirsin."}
+              </p>
+            </Link>
+          )}
+        </div>
+      </KoyuKart>
 
       <Dugmeler tekrar={tekrar} sonraki={basarili ? sonraki : undefined} geri={geri} />
     </div>
   );
 }
 
-function Satir({
+function KazanimSatiri({
   baslik,
   aciklama,
   vurgu,
+  gecikme,
 }: {
   baslik: string;
   aciklama: string;
   vurgu?: boolean;
+  gecikme: number;
 }) {
   return (
-    <div className="rounded-lg border border-cizgi bg-cukur px-4 py-3.5">
+    <div className="gir rounded-xl bg-white/10 px-4 py-3" style={{ animationDelay: `${gecikme}ms` }}>
       <div
-        className={`font-display text-[16px] font-bold ${vurgu ? "text-odul-koyu" : "text-yazi-sonuk"}`}
+        className={`font-display text-[16px] leading-tight font-bold ${
+          vurgu ? "text-odul" : "text-white/70"
+        }`}
       >
         {baslik}
       </div>
-      <p className="mt-1 text-[13px] leading-relaxed text-yazi-sonuk">{aciklama}</p>
+      <p className="mt-1 text-[13px] leading-relaxed text-white/60">{aciklama}</p>
     </div>
   );
 }

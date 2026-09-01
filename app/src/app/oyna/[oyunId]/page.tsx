@@ -5,7 +5,7 @@ import { K2 } from "@/domain/masa";
 import { oyunBul, gununOyunu } from "@/oyunlar";
 import { kodEkrandaGosterilir } from "@/sms";
 import { isGunu } from "@/lib/tarih";
-import { Sayfa, Baslik } from "@/components/ui";
+import { Sayfa } from "@/components/ui";
 import { OyunKabugu } from "./oyun-kabuk";
 
 export const dynamic = "force-dynamic";
@@ -43,8 +43,10 @@ export default async function OyunSayfasi({
 
   return (
     <Sayfa>
-      <Baslik ust={`${oyun.emoji} Oyun`}>{oyun.ad}</Baslik>
-
+      {/* Başlık kabuğun içinde: üç durumun üçü de oyunun adını farklı
+          yerde söylüyor (kartın tepesinde, oynarken şeritte, sonuçta
+          bölüm satırında). Sayfanın da ayrıca söylemesi, oyun adını
+          ekranda iki kez yazıyordu. */}
       <OyunKabugu
         oyunId={oyun.id}
         ad={oyun.ad}
