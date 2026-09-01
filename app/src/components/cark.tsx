@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { OdulAcilisi } from "./odul-acilisi";
 
 /**
  * Şans çarkı (Ü49) — animasyon burada, karar sunucuda.
@@ -100,18 +101,26 @@ export function Cark({
   return (
     <div className="flex flex-col items-center">
       <div className={`relative w-full max-w-[320px] ${kilitli && !sonuc ? "opacity-45" : ""}`}>
-        {/* Tepedeki işaret — çarkın nerede durduğunu okuyan tek nokta. */}
-        <div
+        {/*
+          Tepedeki işaret — çarkın nerede durduğunu okuyan tek nokta.
+
+          Damla biçimi: referанс çarklarda ok sivri üçgen değil, ucu
+          aşağı bakan yuvarlak bir damla. Üçgen sert duruyordu ve
+          çarkın yumuşak hatlarıyla çelişiyordu.
+        */}
+        <svg
           aria-hidden
-          className="absolute top-0 left-1/2 z-20 -translate-x-1/2 -translate-y-[3px] drop-shadow"
-          style={{
-            width: 0,
-            height: 0,
-            borderLeft: "12px solid transparent",
-            borderRight: "12px solid transparent",
-            borderTop: "20px solid var(--color-yazi)",
-          }}
-        />
+          viewBox="0 0 24 34"
+          className="absolute top-0 left-1/2 z-20 w-7 -translate-x-1/2 translate-y-1 drop-shadow-md"
+        >
+          <path
+            d="M12 34C12 34 2 20.5 2 12a10 10 0 1 1 20 0c0 8.5-10 22-10 22Z"
+            fill="var(--color-odul)"
+            stroke="#fff"
+            strokeWidth="2"
+          />
+          <circle cx="12" cy="12" r="3.4" fill="#fff" />
+        </svg>
 
         <div
           className="aspect-square w-full"
@@ -133,8 +142,13 @@ export function Cark({
           onClick={cevirmeyeBasla}
           disabled={dugmeKapali}
           aria-label="Çarkı çevir"
-          className={`absolute top-1/2 left-1/2 z-10 flex size-[21%] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-4 border-yuzey font-display text-[13px] font-extrabold tracking-tight text-white shadow-lg transition-transform ${
-            dugmeKapali ? "bg-yazi-sonuk" : "bg-yazi hover:scale-105 active:scale-95"
+          // Göbek koyu değil sıcak: siyah bir daire, pastel çarkın
+          // ortasında delik gibi duruyordu. Referans çarklarda göbek
+          // kasayla aynı aileden ve çarkın parçası gibi görünüyor.
+          className={`absolute top-1/2 left-1/2 z-10 flex size-[23%] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-[5px] border-white font-display text-[12px] font-extrabold tracking-tight shadow-lg transition-transform ${
+            dugmeKapali
+              ? "bg-[#f0d9a8] text-[#8a7145]"
+              : "bg-[#ffcf3f] text-[#2b1b33] hover:scale-105 active:scale-95"
           }`}
         >
           {donuyor ? "…" : sonuc ? "✓" : "ÇEVİR"}
@@ -148,15 +162,10 @@ export function Cark({
       )}
 
       {sonuc ? (
-        <div className="mt-6 w-full overflow-hidden rounded-2xl border border-odul bg-cukur px-5 py-6 text-center">
-          <div className="text-3xl leading-none" aria-hidden>
-            🎉
-          </div>
-          <div className="etiket-caps mt-3 text-odul-koyu">Kazandın</div>
-          <div className="mt-1.5 font-display text-2xl leading-tight font-extrabold">
-            {sonuc.baslik}
-          </div>
-          <div className="mt-3 text-[14px] leading-relaxed text-yazi-sonuk">{kazandiMetni}</div>
+        <div className="mt-6 w-full">
+          {/* Ü56: emoji yerine açılan hediye kutusu. Ürün sahibinin
+              verdiği Lottie örneğindeki hareket, kütüphanesiz. */}
+          <OdulAcilisi baslik={sonuc.baslik} altMetin={kazandiMetni} />
         </div>
       ) : (
         <p className="mt-5 max-w-[300px] text-center text-[13px] leading-relaxed text-yazi-sonuk">
@@ -177,24 +186,33 @@ export function Cark({
 function Tekerlek({ dilimler, kazanan }: { dilimler: CarkDilimi[]; kazanan: number | null }) {
   const n = Math.max(1, dilimler.length);
   const adim = 360 / n;
-  const R = 47;
+  const R = 43;
 
   return (
     <svg viewBox="0 0 100 100" className="size-full" aria-hidden>
-      {/* Dış çember — çarkın kasası. */}
-      <circle cx="50" cy="50" r="49" fill="var(--color-yazi)" />
+      <defs>
+        {/* Kasanın hafif hacmi — düz renk çemberi yassı duruyordu. */}
+        <linearGradient id="cark-kasa" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#ff7a9c" />
+          <stop offset="100%" stopColor="#e5316b" />
+        </linearGradient>
+      </defs>
+
+      {/* Dış kasa — ampullerin oturduğu renkli halka. */}
+      <circle cx="50" cy="50" r="48.5" fill="url(#cark-kasa)" />
+      <circle cx="50" cy="50" r="44.5" fill="#fff" />
 
       {dilimler.map((d, i) => {
-        const bas = i * adim - 90;
-        const son = bas + adim;
+        const dilimBas = i * adim - 90;
+        const dilimSon = dilimBas + adim;
         const kazandi = kazanan === i;
         return (
           <path
             key={i}
-            d={dilimYolu(50, 50, R, bas, son)}
-            fill={kazandi ? "var(--color-odul)" : DOLGULAR[i % DOLGULAR.length]}
-            stroke="var(--color-yazi)"
-            strokeWidth="0.6"
+            d={dilimYolu(50, 50, R, dilimBas, dilimSon)}
+            fill={kazandi ? KAZANAN_DOLGU : DOLGULAR[i % DOLGULAR.length]}
+            stroke="#fff"
+            strokeWidth="1"
             style={{ transition: "fill 400ms" }}
           />
         );
@@ -205,18 +223,21 @@ function Tekerlek({ dilimler, kazanan }: { dilimler: CarkDilimi[]; kazanan: numb
 
         Bir ara sürüm yazıyı dilime teğet koyuyor ve alt yarıdakileri 180
         derece çevirerek düzeltiyordu. O düzeltme yalnızca çark hiç
-        dönmemişken doğruydu: çark 2370 derecede durunca "alt yarı"
+        dönmemişken doğruydu: çark 2490 derecede durunca "alt yarı"
         başka bir yere kayıyor ve altı dilimin beşi baş aşağı kalıyordu.
 
         Işınsal yerleşimde yazının yönü dilime bağlı, çarkın konumuna
-        değil — nerede durursa dursun aynı görünüyor. Gerçek çarklar da
-        böyle yazıyor.
+        değil — nerede durursa dursun aynı görünüyor.
+
+        Tek yazı rengi: dilimler pastel ve hepsi açık, koyu mor her
+        birinde okunuyor. Dolguya göre değişen renk listesi, dilim sayısı
+        ile renk sayısı bölünmediğinde yanlış eşleşiyordu.
       */}
       {dilimler.map((d, i) => {
         const ortaDeg = yuvarla(i * adim + adim / 2);
         const orta = (ortaDeg - 90) * (Math.PI / 180);
-        const x = yuvarla(50 + Math.cos(orta) * 29);
-        const y = yuvarla(50 + Math.sin(orta) * 29);
+        const x = yuvarla(50 + Math.cos(orta) * 27);
+        const y = yuvarla(50 + Math.sin(orta) * 27);
         return (
           <text
             key={`y-${i}`}
@@ -224,9 +245,9 @@ function Tekerlek({ dilimler, kazanan }: { dilimler: CarkDilimi[]; kazanan: numb
             y={y}
             textAnchor="middle"
             dominantBaseline="middle"
-            fontSize="4.4"
+            fontSize="4.2"
             fontWeight="800"
-            fill={YAZI_RENKLERI[i % DOLGULAR.length]}
+            fill="#2b1b33"
             transform={`rotate(${yuvarla(ortaDeg - 90)} ${x} ${y})`}
           >
             {kisalt(d.baslik)}
@@ -234,16 +255,24 @@ function Tekerlek({ dilimler, kazanan }: { dilimler: CarkDilimi[]; kazanan: numb
         );
       })}
 
-      {/* Kasadaki ışıklar — çarkın "eğlenceli" duran tek süsü. */}
-      {Array.from({ length: n * 2 }, (_, i) => {
-        const a = ((i * (360 / (n * 2)) - 90) * Math.PI) / 180;
+      {/*
+        Kasadaki ampuller.
+
+        Sayı dilim sayısından **bağımsız** ve sabit on altı: dilim başına
+        iki ampul konsaydı üç ödüllü bir kafede altı ampullü seyrek bir
+        çember çıkardı. Sabit sayı her boyutta dolu duruyor.
+      */}
+      {Array.from({ length: 16 }, (_, i) => {
+        const a = ((i * (360 / 16) - 90) * Math.PI) / 180;
         return (
           <circle
-            key={`i-${i}`}
-            cx={yuvarla(50 + Math.cos(a) * 48)}
-            cy={yuvarla(50 + Math.sin(a) * 48)}
-            r="1.1"
-            fill="var(--color-odul)"
+            key={`a-${i}`}
+            cx={yuvarla(50 + Math.cos(a) * 46.4)}
+            cy={yuvarla(50 + Math.sin(a) * 46.4)}
+            r="1.5"
+            fill="#fff2b8"
+            stroke="#ffd24a"
+            strokeWidth="0.5"
           />
         );
       })}
@@ -252,22 +281,37 @@ function Tekerlek({ dilimler, kazanan }: { dilimler: CarkDilimi[]; kazanan: numb
 }
 
 /**
- * Dilim renkleri.
+ * Dilim renkleri — **paletin bilinçli istisnası**.
  *
- * Palet disiplini korunuyor: yeni renk tanımlanmadı, mevcut iki jeton
- * (vurgu ve ödül) ve yüzey dönüşümlü kullanılıyor. Dördüncü bir renk
- * uydurmak yerine tekrar etmeyi tercih ettik — çark, paleti bozmak için
- * yeterli bir gerekçe değil.
+ * ── Neden istisna ───────────────────────────────────────────
+ *
+ * Ürünün paleti dört jetonla sınırlı ve işletme tarafında bu disiplin
+ * aynen korunuyor. Çark tek renk ailesiyle çizildiğinde (mavi/beyaz/
+ * altın) ürün sahibinin deyimiyle *"ucuz ve kalitesiz"* duruyordu ve
+ * haklıydı: bir şans çarkı anlamını renk çeşitliliğinden alıyor.
+ * Referans çarkların hepsi altı yedi pastel tonla çiziliyor.
+ *
+ * ── Neden burada, globals.css'te değil ──────────────────────
+ *
+ * Bu renkler **yalnızca çarkta** geçerli. `globals.css` içine jeton
+ * olarak konsalardı ürünün her yerinden erişilebilir olur ve palet
+ * fiilen genişlerdi — bir sonraki ekranda "bu mor da var madem" denirdi.
+ * Burada durdukları sürece kapsam tek bileşen.
+ *
+ * Tonlar bilerek pastel: ekranın geri kalanı sakin kalıyor, çark tek
+ * başına parlıyor.
  */
 const DOLGULAR = [
-  "var(--color-vurgu)",
-  "var(--color-yuzey)",
-  "var(--color-odul)",
-  "var(--color-yuzey)",
+  "#8b7cf6", // menekşe
+  "#fef3c7", // krem
+  "#5eead4", // nane
+  "#fecdd3", // pembe
+  "#fde68a", // sarı
+  "#a5b4fc", // lavanta
 ];
 
-/** Her dolgunun üstünde okunan yazı rengi. */
-const YAZI_RENKLERI = ["#ffffff", "var(--color-yazi)", "var(--color-yazi)", "var(--color-yazi)"];
+/** Kazanan dilim — kasanın rengiyle aynı aileden, en doygun ton. */
+const KAZANAN_DOLGU = "#ffcf3f";
 
 function dilimYolu(cx: number, cy: number, r: number, basDeg: number, sonDeg: number): string {
   const bas = (basDeg * Math.PI) / 180;

@@ -83,33 +83,25 @@ export default async function KafePaneli() {
           Vardiya arasında iki saniye bakılan yer. Dört sayı ve bir
           grafik; karar vermek için rapora gidiliyor. */}
       <section className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Gosterge
-          etiket="Bugün gelen"
-          deger={String(gosterge.ziyaret)}
-          alt="sayılan ziyaret"
-          renk="vurgu"
-          ikon="kisi"
-        />
-        <Gosterge
-          etiket="Verilen kupon"
-          deger={String(gosterge.kuponVerilen)}
-          alt="kazanıldı"
-          renk="odul"
-          ikon="kupon"
-        />
+        <Gosterge etiket="Bugün gelen" alt="sayılan ziyaret" olcu={gosterge.ziyaret} ikon="kisi" />
+        <Gosterge etiket="Verilen kupon" alt="kazanıldı" olcu={gosterge.kuponVerilen} ikon="kupon" />
         <Gosterge
           etiket="Kullanılan"
-          deger={String(gosterge.kuponKullanilan)}
           alt="kasada onaylandı"
-          renk="yazi"
+          olcu={gosterge.kuponKullanilan}
           ikon="onay"
         />
+        {/* Vurgu kartı: kafenin cebinden çıkan tek sayı. Referans
+            panellerde de kartlardan biri dolu renkli — göz önce oraya
+            gidiyor ve gitmesi gereken yer burası. */}
         <Gosterge
           etiket="Bugün ödediğin"
-          deger={`${(gosterge.kullanilanKurus / 100).toLocaleString("tr-TR", { maximumFractionDigits: 0 })} TL`}
           alt="gerçekleşen indirim"
-          renk="vurgu"
+          olcu={gosterge.kullanilanKurus}
           ikon="para"
+          birim="TL"
+          kurus
+          vurgulu
         />
       </section>
 
@@ -196,44 +188,137 @@ export default async function KafePaneli() {
 /**
  * Gösterge kutusu — panelin üstündeki dört sayı.
  *
- * ── Renk neden var ──────────────────────────────────────────
+ * ── Referanstan alınan üç parça ─────────────────────────────
  *
- * İşletme tarafı bugüne kadar tek renkli ve bilerek sakindi. Ürün sahibi
- * paneli "daha görsel ve kullanıcı dostu" istedi ve örnek olarak yönetim
- * paneli şablonları verdi; oradaki ortak öge, sayıyı renkli bir ikon
- * kutusuyla eşleştirmek.
+ * Ürün sahibinin verdiği yönetim paneli şablonlarında (Orchid, Valex)
+ * gösterge kartı hep aynı üç parçadan kuruluyor:
  *
- * Palet **genişlemedi**: mevcut üç jeton (vurgu, ödül, yazı) dönüşümlü
- * kullanılıyor. Renk burada bir anlam taşımıyor, yalnızca dört kutuyu
- * birbirinden ayırıyor — anlam taşısaydı (kırmızı = kötü) sayıların
- * yorumunu ekrana gömmüş olurduk ve "bugün 0 kupon" iyi mi kötü mü
- * sorusunun cevabı kafeye göre değişir.
+ *   1. Küçük etiket + sağ üstte renkli ikon kutusu
+ *   2. Büyük sayı
+ *   3. **Düne göre değişim rozeti** (↑ %12) ve kartın altına yayılan
+ *      **kıvılcım grafik**
+ *
+ * İlk sürümde yalnızca birincisi vardı; sayı tek başına "iyi mi kötü mü"
+ * sorusunu cevaplamıyordu. Rozet ve kıvılcım, aynı sayıya yön veriyor.
+ *
+ * ── Renk anlam taşımıyor, YÖN taşıyor ───────────────────────
+ *
+ * Kartların dolgusu tek renk (beyaz) ve yalnızca biri vurgulu. Rozetin
+ * rengi ise **yönü** söylüyor: artış yeşil değil vurgu mavisi, azalış
+ * tehlike kırmızısı değil sönük gri. Sebep: "bugün 2 kupon az verildi"
+ * kafe için kötü bir haber değil — bütçe korunuyor demek. Kırmızı
+ * boyamak, yorumu ekrana gömmek olurdu ve o yorum kafeye göre değişir.
  */
 function Gosterge({
   etiket,
-  deger,
   alt,
-  renk,
+  olcu,
   ikon,
+  birim,
+  kurus = false,
+  vurgulu = false,
 }: {
   etiket: string;
-  deger: string;
   alt: string;
-  renk: "vurgu" | "odul" | "yazi";
+  olcu: panel.Olcu;
   ikon: keyof typeof GOSTERGE_IKONLARI;
+  birim?: string;
+  /** Değer kuruş cinsindense TL'ye çevrilip yazılıyor. */
+  kurus?: boolean;
+  /** Dolu renkli kart — panelde yalnızca bir tane olmalı. */
+  vurgulu?: boolean;
 }) {
-  const zemin =
-    renk === "vurgu" ? "bg-vurgu/10 text-vurgu" : renk === "odul" ? "bg-odul/15 text-odul-koyu" : "bg-cukur text-yazi";
+  const deger = kurus ? Math.round(olcu.bugun / 100) : olcu.bugun;
 
   return (
-    <div className="rounded-2xl border border-cizgi bg-yuzey px-4 py-4">
-      <span className={`flex size-9 items-center justify-center rounded-xl ${zemin}`}>
-        {GOSTERGE_IKONLARI[ikon]}
-      </span>
-      <div className="mt-3 font-data text-2xl leading-none font-bold tabular">{deger}</div>
-      <div className="etiket-caps mt-2 text-[10px] text-yazi-sonuk">{etiket}</div>
-      <div className="mt-0.5 text-[11px] leading-snug text-yazi-sonuk">{alt}</div>
+    <div
+      className={`relative overflow-hidden rounded-2xl border px-4 pt-4 pb-8 ${
+        vurgulu ? "border-vurgu bg-vurgu text-white" : "border-cizgi bg-yuzey"
+      }`}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <span
+          className={`etiket-caps text-[10px] ${vurgulu ? "text-white/75" : "text-yazi-sonuk"}`}
+        >
+          {etiket}
+        </span>
+        <span
+          className={`flex size-8 shrink-0 items-center justify-center rounded-xl ${
+            vurgulu ? "bg-white/20 text-white" : "bg-cukur text-yazi"
+          }`}
+        >
+          {GOSTERGE_IKONLARI[ikon]}
+        </span>
+      </div>
+
+      <div className="mt-2.5 font-data text-2xl leading-none font-bold tabular">
+        {deger.toLocaleString("tr-TR")}
+        {birim && <span className="ml-1 text-[13px] font-semibold">{birim}</span>}
+      </div>
+
+      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+        {olcu.degisim !== null && (
+          <span
+            className={`rounded-full px-1.5 py-0.5 font-data text-[10px] font-bold tabular ${
+              vurgulu
+                ? "bg-white/20 text-white"
+                : olcu.degisim >= 0
+                  ? "bg-vurgu/10 text-vurgu"
+                  : "bg-cukur text-yazi-sonuk"
+            }`}
+          >
+            {olcu.degisim >= 0 ? "↑" : "↓"} %{Math.abs(olcu.degisim)}
+          </span>
+        )}
+        <span className={`text-[11px] ${vurgulu ? "text-white/75" : "text-yazi-sonuk"}`}>
+          {olcu.degisim !== null ? "düne göre" : alt}
+        </span>
+      </div>
+
+      {/* Kıvılcım grafik kartın alt kenarına yapışıyor: referans
+          panellerde de kartın içinde yüzen değil, tabanını oluşturan
+          bir şerit. */}
+      <Kivilcim seri={olcu.seri} vurgulu={vurgulu} />
     </div>
+  );
+}
+
+/**
+ * Kıvılcım grafik — yedi günün şekli, eksensiz.
+ *
+ * Sayı yok, ızgara yok, etiket yok: kart zaten sayıyı yazıyor. Buranın
+ * tek işi "yükseliyor mu düşüyor mu" sorusunu bir bakışta cevaplamak.
+ *
+ * Tek nokta varsa (ya da hepsi eşitse) düz bir çizgi çiziliyor — bölme
+ * sıfıra düşmesin diye aralık en az bir kabul ediliyor.
+ */
+function Kivilcim({ seri, vurgulu }: { seri: number[]; vurgulu: boolean }) {
+  if (seri.length < 2) return null;
+
+  const enAz = Math.min(...seri);
+  const enCok = Math.max(...seri);
+  const aralik = Math.max(1, enCok - enAz);
+
+  const nokta = seri.map((v, i) => {
+    const x = (i / (seri.length - 1)) * 100;
+    const y = 24 - ((v - enAz) / aralik) * 20;
+    return `${Math.round(x * 100) / 100},${Math.round(y * 100) / 100}`;
+  });
+
+  const cizgi = `M ${nokta.join(" L ")}`;
+  const dolgu = `${cizgi} L 100,26 L 0,26 Z`;
+  const renk = vurgulu ? "#ffffff" : "var(--color-vurgu)";
+
+  return (
+    <svg
+      viewBox="0 0 100 26"
+      preserveAspectRatio="none"
+      className="pointer-events-none absolute inset-x-0 bottom-0 h-7 w-full"
+      aria-hidden
+    >
+      <path d={dolgu} fill={renk} opacity={vurgulu ? 0.22 : 0.1} />
+      <path d={cizgi} fill="none" stroke={renk} strokeWidth="1.6" vectorEffect="non-scaling-stroke" />
+    </svg>
   );
 }
 

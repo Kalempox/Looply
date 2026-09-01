@@ -170,3 +170,61 @@ body {
   -webkit-touch-callout: none;
   touch-action: manipulation;
 }
+
+/* ── Ödül açılışı (Ü56) ──────────────────────────────────────
+   Referans bir Lottie animasyonuydu: zıplayarak açılan hediye
+   kutusu. Lottie'nin kendisi alınmadı — kütüphane ~250 KB, JSON
+   90–330 KB ve bu ekran kafede mobil veriyle açılıyor. Aynı
+   hareket CSS ile sıfır bayta kuruluyor.
+
+   Sıra: kutu titrer → kapak zıplayarak uçar → konfeti dağılır →
+   ödül yazısı büyüyerek gelir. Gecikmeler bileşende değil burada,
+   çünkü hepsi tek bir zaman çizgisinin parçası. */
+
+@keyframes kutu-titre {
+  0%, 100%      { transform: rotate(0deg); }
+  20%, 60%      { transform: rotate(-6deg); }
+  40%, 80%      { transform: rotate(6deg); }
+}
+.kutu-titre { animation: kutu-titre 0.5s ease-in-out 2; }
+
+@keyframes kapak-uc {
+  0%   { transform: translateY(0) rotate(0deg); opacity: 1; }
+  35%  { transform: translateY(-46px) rotate(-14deg); opacity: 1; }
+  100% { transform: translateY(-96px) rotate(-34deg); opacity: 0; }
+}
+.kapak-uc { animation: kapak-uc 0.85s cubic-bezier(0.2, 0.8, 0.3, 1) 1s both; }
+
+@keyframes kutu-zipla {
+  0%   { transform: scale(1); }
+  45%  { transform: scale(1.14, 0.88); }
+  70%  { transform: scale(0.95, 1.06); }
+  100% { transform: scale(1); }
+}
+.kutu-zipla { animation: kutu-zipla 0.6s ease-out 1s both; }
+
+/* Konfeti parçacığı. Yön ve mesafe her parçacıkta ayrı: bileşen
+   `--u` ve `--v` değişkenlerini veriyor. Rastgelelik render
+   sırasında ÜRETİLMİYOR — sabit bir dizi kullanılıyor, yoksa
+   sunucu ile istemci farklı değer basar ve React hidrasyon
+   uyarısı verir. */
+@keyframes konfeti {
+  0%   { transform: translate(0, 0) rotate(0deg); opacity: 0; }
+  15%  { opacity: 1; }
+  100% { transform: translate(var(--u), var(--v)) rotate(var(--d)); opacity: 0; }
+}
+.konfeti { animation: konfeti 1.1s cubic-bezier(0.15, 0.7, 0.4, 1) 1.15s both; }
+
+@keyframes odul-gel {
+  0%   { transform: scale(0.6); opacity: 0; }
+  55%  { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.odul-gel { animation: odul-gel 0.55s cubic-bezier(0.2, 0.9, 0.3, 1) 1.5s both; }
+
+@keyframes isik-yayil {
+  0%   { transform: scale(0.3); opacity: 0; }
+  40%  { opacity: 0.55; }
+  100% { transform: scale(1.9); opacity: 0; }
+}
+.isik-yayil { animation: isik-yayil 1.1s ease-out 1.1s both; }
