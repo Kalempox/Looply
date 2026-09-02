@@ -6,7 +6,7 @@
 > Yan dosyalar: neyin **var** olduğu → `21-looply-kapsam-haritasi.md` ·
 > demoda neyin **yapılabildiği** → `22-demo-yapilabilirlik.md`
 
-**Son güncelleme:** 2026-09-02 · **Kararlar:** Ü76 – Ü89
+**Son güncelleme:** 2026-09-02 · **Kararlar:** Ü76 – Ü90
 
 ---
 
@@ -92,10 +92,16 @@ Ayrı ayrı yazılırsa üçüncüsü ilk ikisini bozar.
   %1,5, ortalama 26–27 TL. Ucuz ürünler her koşulda baskın.
   418 test.
 
-- [ ] **6b · Dağıtım penceresi gece yarısını aşamıyor** ⚠️ *bilinen sınır*
-  Gece 02:00'ye kadar açık bir kafede yarım geceden sonrası yeni iş gününün
-  başlangıç payına (%10) düşüyor. Varsayılan 09:00–23:00 için önemsiz;
-  kafenin gerçek çalışma saatleri sisteme girdiğinde yeniden bakılmalı.
+- [x] **6b · Kafe kapalıyken ödül yok + panelde çalışma saatleri** ✅ **BİTTİ**
+  — Ü90, 2026-09-03. Ü87 kapanıştan sonra bütçenin tamamını açıyordu; artık
+  sıfır. Kapanışa yarım saatlik pay var (son masanın turu bitsin).
+  Açılış/kapanış panelden seçiliyor, bütçenin hemen altında.
+
+- [ ] **6c · Çalışma saati penceresi gece yarısını aşamıyor** ⚠️ *bilinen sınır*
+  Gece 02:00'ye kadar açık bir kafe kapanışını 23 yazmak zorunda ve yarım
+  geceden sonrası kapalı sayılıyor. Panel bunu açıkça reddediyor
+  ("gece yarısını aşan saatler henüz desteklenmiyor").
+  Gerçek gece kafeleri geldiğinde iş günü tanımıyla birlikte ele alınmalı.
 
 - [ ] **7 · Oyun içi ödül bloğu**
   Motorun görünen yüzü: tahtaya kahve/tatlı bloğu düşer, oyuncu yakalar.
