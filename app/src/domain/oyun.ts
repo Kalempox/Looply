@@ -20,7 +20,7 @@ import {
 } from "./puan";
 import { yazIle as xpYaz } from "./xp";
 import { degerlendir } from "./rozet";
-import { anlikOdulVer } from "./kupon";
+import { anlikOdulVer, kampanyaKuponuVer } from "./kupon";
 
 /**
  * Oyun oturumu — Faz 5'in çekirdeği.
@@ -132,6 +132,15 @@ export type Kazanim = {
   esik: { skor: number; puan: PuanSonucu } | null;
   /** Ü54: günlük seri — kaçıncı gün ve bugün ne kadar bonus yazıldı. */
   seri: { gun: number; puan: PuanSonucu } | null;
+  /**
+   * Ü82: kafenin yayındaki yüzde kampanyasından düşen kupon.
+   *
+   * `kupon`dan **ayrı alan**: o oynamanın ödülü, bu kafenin pazarlaması
+   * (Ö4). Aynı turda ikisi birden çıkabilir ve ekranda ikisi ayrı ayrı
+   * görünmeli — oyuncu "kazandığım ödül" ile "kafenin verdiği indirim"i
+   * karıştırmasın.
+   */
+  kampanya: { baslik: string; kod: string; ertelendi: boolean } | null;
 };
 
 /**
@@ -156,7 +165,15 @@ async function kazanimIsle(
     bonusMu: boolean;
   },
 ): Promise<Kazanim> {
-  const bos: Kazanim = { puan: null, xp: 0, kupon: null, taht: null, esik: null, seri: null };
+  const bos: Kazanim = {
+    puan: null,
+    xp: 0,
+    kupon: null,
+    taht: null,
+    esik: null,
+    seri: null,
+    kampanya: null,
+  };
   if (!opts.kazandirir || !opts.cafeId) return bos;
 
   const sonuc: Kazanim = { ...bos };
@@ -226,6 +243,27 @@ async function kazanimIsle(
       kaynak: "GAME",
       kaynakId: opts.oturumId,
     });
+  }
+
+  // ── Kampanya kuponu (Ö4, Ü82) ──────────────────────────
+  //
+  // **Başarı şartı yok** ve bu kasıtlı: anlık ödül oynamanın karşılığı,
+  // kampanya kafenin pazarlaması. Oyunu bitirememiş müşteriye latte
+  // indirimi vermemek için sebep yok — kafenin istediği şey o lattenin
+  // satılması. Nitelikli oturum şartı (kafede olmak, K2) yine geçerli:
+  // buraya `kazandirir` false ise zaten hiç gelinmiyor.
+  //
+  // Acil durdurma kupon dağıtımını kapatıyorsa kampanya da düşmüyor —
+  // G18 "kupon dağıtımını durdur" düğmesi her yolu kapatmalı.
+  if (!(await acil.durduruldu(acil.ANAHTARLAR.kupon))) {
+    const kmp = await kampanyaKuponuVer(db, {
+      playerId: opts.playerId,
+      cafeId: opts.cafeId,
+      kanitSeviyesi: opts.proofLevel,
+    });
+    if (kmp?.ok) {
+      sonuc.kampanya = { baslik: kmp.baslik, kod: kmp.kod, ertelendi: kmp.ertelendi };
+    }
   }
 
   // ── Skor eşiği (Ü48) ───────────────────────────────────
@@ -394,6 +432,8 @@ export type BitirSonucu =
       yeniRozetler: string[];
       /** E2: anlık ödül düştüyse. Oyuncuya TL değeri GÖSTERİLMEZ (E9). */
       kupon: { baslik: string; kod: string; ertelendi: boolean } | null;
+      /** Ö4 · Ü82: kafenin kampanya kuponu düştüyse. Ödülden ayrı. */
+      kampanya: { baslik: string; kod: string; ertelendi: boolean } | null;
       /**
        * Bu oturum "kafeye yapılan sayılabilir ziyaret" olarak işaretlendi mi?
        *
@@ -572,6 +612,7 @@ export async function bitir(opts: {
       // Rozetler işlemin dışında değerlendiriliyor; burada boş başlıyor.
       yeniRozetler: [] as string[],
       kupon: kazanim.kupon,
+      kampanya: kazanim.kampanya,
       nitelikliOldu: nitelikli,
       cafeId: oturum.cafe_id,
       taht: kazanim.taht,
@@ -622,6 +663,8 @@ export type MisafirYazSonucu =
       seri: { gun: number; puan: PuanSonucu } | null;
       xp: number;
       kupon: { baslik: string; kod: string; ertelendi: boolean } | null;
+      /** Ö4 · Ü82: kayıt anında bozdurulan misafir turunda da düşebiliyor. */
+      kampanya: { baslik: string; kod: string; ertelendi: boolean } | null;
       taht: taht.DevirmeSonucu | null;
       nitelikliOldu: boolean;
     }
@@ -759,6 +802,7 @@ export async function misafirOyunuYaz(opts: {
       seri: kazanim.seri,
       xp: kazanim.xp,
       kupon: kazanim.kupon,
+      kampanya: kazanim.kampanya,
       taht: kazanim.taht,
       nitelikliOldu: nitelikli,
     };

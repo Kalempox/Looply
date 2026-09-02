@@ -134,6 +134,24 @@ async function kafeKur(t: KafeTohum, playerId: string) {
     [newId("rwd"), cafeId],
   );
 
+  // Ö4 · Ü82: yayında bir yüzde kampanyası.
+  //
+  // Tohumda kampanya YOKTU ve özellik bu yüzden ekranda hiç görünmüyordu:
+  // `db:seed` sonrası kafenin tek bir kampanyası olmuyor, oyuncuya da
+  // doğal olarak hiçbir şey düşmüyordu. Kampanya teslim yolu yazılınca
+  // (Ü82) tohumun da bir örnek taşıması gerekti — yoksa çalıştığı
+  // yalnızca testlerde görülürdü.
+  //
+  // Üç sınır da dolu (Ü8): tavan 3.600 kuruş (18 TL'lik tiramisunun
+  // %20'si), günlük 20 adet, bir hafta süre.
+  await db.query(
+    `INSERT INTO percentage_campaigns
+       (id, cafe_id, product_id, percent, max_discount_kurus, daily_limit, total_limit,
+        starts_at, ends_at, status, created_by)
+     VALUES ($1,$2,$3,20,3600,20,NULL, now(), now() + interval '7 days', 'active', $4)`,
+    [newId("cmp"), cafeId, productId, managerId],
+  );
+
   // Oyuncunun bu kafedeki anonim kodu — her kafede FARKLI (G1)
   await db.query(
     `INSERT INTO player_aliases (cafe_id, player_id, code) VALUES ($1,$2,$3)`,

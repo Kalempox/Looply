@@ -1,4 +1,4 @@
-import { withCafe } from "@/db/context";
+import { withCafe, type Db } from "@/db/context";
 import { audit } from "@/lib/audit";
 import { newId } from "@/lib/ids";
 import { log } from "@/lib/log";
@@ -96,6 +96,89 @@ export async function listele(cafeId: string): Promise<Kampanya[]> {
     bugunKullanilan: Number(r.bugun),
     toplamKullanilan: Number(r.toplam),
   }));
+}
+
+/* ── Teslim: hangi kampanya düşecek (Ü82) ──────────────────── */
+
+export type UygunKampanya = {
+  id: string;
+  yuzde: number;
+  urunAdi: string;
+  /** Ü17: bütçeden rezerve edilecek TL tavanı (kuruş). */
+  tavanKurus: number;
+};
+
+/**
+ * Bu oyuncuya şu an düşebilecek kampanyayı seçer — yoksa `null`.
+ *
+ * ── Dört süzgeç, hepsi SQL'de ───────────────────────────────
+ *
+ * 1. **Yayında ve tarih aralığında** — `active`, `starts_at ≤ now < ends_at`
+ * 2. **Günlük limit dolmamış** — bugün çıkan kupon sayısı `daily_limit`in altında
+ * 3. **Toplam limit dolmamış** — `total_limit` doluysa ona da bakılıyor
+ * 4. **Oyuncu bugün bu kampanyadan almamış** — günde bir, kampanya başına
+ *
+ * Dördü de tek sorguda ve **aynı işlemde**: ayrı okunsalardı iki eşzamanlı
+ * oyun bitişi aynı son kupon hakkını iki kez görürdü. Yarışın tamamen
+ * kapanması için sayım `FOR UPDATE` ile kilitlenen kampanya satırında
+ * yapılıyor.
+ *
+ * ── Birden fazla uygunsa ────────────────────────────────────
+ *
+ * **Bugün en az kupon çıkanı** seçiliyor. Kafenin iki kampanyası varsa
+ * ikisi de dönüşümlü teşhir alıyor; ilk sıradaki günlük limitini doldurup
+ * ikincisini gölgede bırakmıyor. Eşitlikte önce **biteni** — süresi
+ * yaklaşan kampanya kullanılmadan kapanmasın.
+ *
+ * Rastgelelik yok: hangi kampanyanın çıkacağı kafenin kendi ayarlarından
+ * türüyor ve panelde gösterilen sayaçla birebir tutuyor.
+ */
+export async function uygunOlan(
+  db: Db,
+  cafeId: string,
+  playerId: string,
+): Promise<UygunKampanya | null> {
+  const r = await db.one<{
+    id: string;
+    percent: number;
+    urun_adi: string;
+    max_discount_kurus: string;
+  }>(
+    `SELECT pc.id, pc.percent, p.name AS urun_adi, pc.max_discount_kurus
+       FROM percentage_campaigns pc
+       JOIN products p ON p.id = pc.product_id
+      WHERE pc.cafe_id = $1
+        AND pc.status = 'active'
+        AND pc.starts_at <= now() AND pc.ends_at > now()
+        -- Günlük limit: gün başlangıcı İstanbul gece yarısı, sunucunun UTC günü değil.
+        AND (SELECT count(*) FROM coupons k
+              WHERE k.campaign_id = pc.id
+                AND k.issued_at >= ($3::date::timestamp AT TIME ZONE 'Europe/Istanbul')
+            ) < pc.daily_limit
+        AND (pc.total_limit IS NULL
+             OR (SELECT count(*) FROM coupons k WHERE k.campaign_id = pc.id) < pc.total_limit)
+        -- Oyuncu bugün bu kampanyadan almadıysa
+        AND NOT EXISTS (
+              SELECT 1 FROM coupons k
+               WHERE k.campaign_id = pc.id AND k.player_id = $2
+                 AND k.issued_at >= ($3::date::timestamp AT TIME ZONE 'Europe/Istanbul'))
+      ORDER BY (SELECT count(*) FROM coupons k
+                 WHERE k.campaign_id = pc.id
+                   AND k.issued_at >= ($3::date::timestamp AT TIME ZONE 'Europe/Istanbul')),
+               pc.ends_at
+      LIMIT 1
+      FOR UPDATE OF pc`,
+    [cafeId, playerId, isGunu()],
+  );
+
+  if (!r) return null;
+
+  return {
+    id: r.id,
+    yuzde: r.percent,
+    urunAdi: r.urun_adi,
+    tavanKurus: Number(r.max_discount_kurus),
+  };
 }
 
 export async function olustur(opts: {

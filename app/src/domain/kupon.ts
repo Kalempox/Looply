@@ -8,6 +8,8 @@ import * as acil from "./acil";
 import * as happy from "./happy";
 import * as ayar from "./ayar";
 import * as cark from "./cark";
+import * as kampanya from "./kampanya";
+import { kanitSeviyesi } from "./katalog";
 import { idIleBul, odulKilidiBitis, takmaAdIle } from "./player";
 
 /**
@@ -80,10 +82,43 @@ type OdulSatiri = {
 };
 
 /**
+ * Kuponun arkasındaki şey — katalog ödülü ya da yüzde kampanyası.
+ *
+ * ── Neden tek tip (Ü82) ─────────────────────────────────────
+ *
+ * `kuponUret` başlangıçta yalnızca `rewards` satırı alıyordu ve kampanya
+ * kuponu bu yüzden hiç yazılamadı: `coupons.campaign_id` kolonu şemada
+ * vardı, **hiçbir kod ona yazmıyordu.** Kafe kampanya açıyor, panelde
+ * görüyor, tek bir oyuncuya ulaşmıyordu (403 ödül kuponuna karşılık 0
+ * kampanya kuponu).
+ *
+ * İki ayrı üretim yolu yazmak yerine ortak alanlar bu tipe çıkarıldı.
+ * Kupon yolunun tamamı — bütçe rezervi (E10), kanıt kademesi (E6),
+ * erteleme eşiği (Ü28), takma ad (G1), defter — ikisinde de aynı işliyor;
+ * ayrılsalardı biri düzeltilirken diğeri geride kalırdı.
+ */
+type KuponKaynagi = {
+  /** `rewards.id` ya da `percentage_campaigns.id`. */
+  id: string;
+  /**
+   * Hangi kolona yazılacağı. Şema **tam olarak birini** istiyor:
+   * `CHECK ((reward_id IS NOT NULL) <> (campaign_id IS NOT NULL))`.
+   */
+  kolon: "reward_id" | "campaign_id";
+  /** Oyuncunun göreceği ad. TL yok (E9). */
+  baslik: string;
+  /** Bütçeden rezerve edilecek tutar. Yüzdede TL tavanı (Ü17). */
+  tutarKurus: number;
+  /** E6: bu değeri açmak için gereken en düşük kanıt kademesi. */
+  enAzKanit: number;
+};
+
+/**
  * Kuponu üretir ve bütçeden rezerve eder.
  *
- * Rezervasyon **her zaman `cost_kurus` kadar**: ürün ödülünde perakende
- * değeri, yüzdeli ödülde TL tavanı (Ü17). Tek mantık iki tipte de çalışıyor.
+ * Rezervasyon **her zaman değerin tamamı kadar**: ürün ödülünde perakende
+ * değeri, yüzdeli ödülde ve kampanyada TL tavanı (Ü17). Tek mantık üç
+ * tipte de çalışıyor.
  *
  * Bütçe yetmiyorsa kupon **hiç üretilmiyor** (E10). Kafe hiçbir senaryoda
  * taahhüdünün üstünü ödemiyor.
@@ -93,17 +128,17 @@ async function kuponUret(
   opts: {
     playerId: string;
     cafeId: string;
-    odul: OdulSatiri;
+    kaynakNesnesi: KuponKaynagi;
     kanitSeviyesi: number;
     kaynak: string;
     /** Ö3: kupon bir Happy Hour penceresinde üretildiyse o pencerenin kimliği. */
     happyHourId?: string;
   },
 ): Promise<KuponSonucu> {
-  const tutar = Number(opts.odul.cost_kurus);
+  const tutar = opts.kaynakNesnesi.tutarKurus;
 
   // E6: ödül değerine göre kanıt. Yetmiyorsa ödül verilmiyor.
-  if (opts.kanitSeviyesi < opts.odul.min_proof_level) {
+  if (opts.kanitSeviyesi < opts.kaynakNesnesi.enAzKanit) {
     return { ok: false, hata: "Bu ödül için daha yüksek doğrulama gerekiyor." };
   }
 
@@ -139,17 +174,25 @@ async function kuponUret(
   const kod = couponCode();
   const jeton = randomToken(24);
 
+  // İki kimlik kolonundan biri dolu, diğeri NULL — hangisi olduğunu
+  // `kolon` söylüyor. Kolon adını SQL'e gömmek yerine iki parametre
+  // gönderiliyor: şemadaki CHECK zaten "tam olarak biri" diyor ve sorgu
+  // metni sabit kalıyor.
+  const odulId = opts.kaynakNesnesi.kolon === "reward_id" ? opts.kaynakNesnesi.id : null;
+  const kampanyaId = opts.kaynakNesnesi.kolon === "campaign_id" ? opts.kaynakNesnesi.id : null;
+
   await db.query(
     `INSERT INTO coupons
-       (id, cafe_id, player_id, reward_id, code, qr_token, status,
+       (id, cafe_id, player_id, reward_id, campaign_id, code, qr_token, status,
         activates_at, expires_at, budget_period_id, reserved_kurus, proof_level,
         happy_hour_id)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`,
     [
       kuponId,
       opts.cafeId,
       opts.playerId,
-      opts.odul.id,
+      odulId,
+      kampanyaId,
       kod,
       jeton,
       ertelendi ? "pending" : "active",
@@ -176,7 +219,18 @@ async function kuponUret(
 
   log.info("kupon uretildi", { ertelendi, kaynak: opts.kaynak });
 
-  return { ok: true, kuponId, kod, baslik: opts.odul.title, ertelendi };
+  return { ok: true, kuponId, kod, baslik: opts.kaynakNesnesi.baslik, ertelendi };
+}
+
+/** `rewards` satırını ortak kupon kaynağına çevirir. */
+function odulKaynagi(odul: OdulSatiri): KuponKaynagi {
+  return {
+    id: odul.id,
+    kolon: "reward_id",
+    baslik: odul.title,
+    tutarKurus: Number(odul.cost_kurus),
+    enAzKanit: odul.min_proof_level,
+  };
 }
 
 async function olayYaz(
@@ -291,7 +345,7 @@ export async function anlikOdulVer(
   return kuponUret(db, {
     playerId: opts.playerId,
     cafeId: opts.cafeId,
-    odul,
+    kaynakNesnesi: odulKaynagi(odul),
     kanitSeviyesi: opts.kanitSeviyesi,
     kaynak: pencereden ? "happy_hour" : "anlik",
     happyHourId: pencereden && pencere ? pencere.id : undefined,
@@ -372,10 +426,64 @@ export async function carkOduluVer(opts: {
     return kuponUret(db, {
       playerId: opts.playerId,
       cafeId: opts.cafeId,
-      odul,
+      kaynakNesnesi: odulKaynagi(odul),
       kanitSeviyesi: opts.kanitSeviyesi,
       kaynak: "cark",
     });
+  });
+}
+
+/* ── Kampanya kuponu (Ö4, Ü82) ─────────────────────────────── */
+
+/**
+ * Kafenin yayındaki yüzde kampanyasını oyuncuya kupon olarak düşürür.
+ *
+ * ── Neden başarı şartı yok ──────────────────────────────────
+ *
+ * Anlık ödül `basarili` istiyor: o bir **ödül**, oynamanın karşılığı.
+ * Kampanya bir ödül değil, kafenin **pazarlaması** — "bugün latte itiyoruz."
+ * Oyunu bitirememiş müşteriye latte indirimi vermemek için bir sebep yok;
+ * kafenin istediği şey zaten o lattenin satılması.
+ *
+ * Oturumun nitelikli olması (kafede olmak, K2) yine şart — Ü3 gevşemiyor.
+ *
+ * ── Günde bir, kampanya başına ──────────────────────────────
+ *
+ * Aynı oyuncu beş oyun oynayıp beş kupon toplayamıyor. Kafenin iki
+ * kampanyası varsa ikisinden de birer kupon alabiliyor; onlar farklı
+ * ürünler ve kafe ikisini de itmek istiyor.
+ *
+ * ── Limitler ────────────────────────────────────────────────
+ *
+ * Günlük limit, toplam limit ve tarih aralığı `kampanya.uygunOlan()`
+ * içinde; bütçe rezervi (E10) ve kanıt kademesi (E6) ortak kupon yolunda.
+ * Rezerve edilen tutar **TL tavanı** (Ü17): gerçekleşen indirim daha küçük
+ * çıkarsa fark kasada kapanışta bütçeye dönüyor.
+ *
+ * Var olan bir işlemin içinde çalışır — oyun bitişiyle aynı işlemde olmalı.
+ */
+export async function kampanyaKuponuVer(
+  db: Db,
+  opts: { playerId: string; cafeId: string; kanitSeviyesi: number },
+): Promise<KuponSonucu | null> {
+  const uygun = await kampanya.uygunOlan(db, opts.cafeId, opts.playerId);
+  if (!uygun) return null;
+
+  return kuponUret(db, {
+    playerId: opts.playerId,
+    cafeId: opts.cafeId,
+    kaynakNesnesi: {
+      id: uygun.id,
+      kolon: "campaign_id",
+      // Envanterdeki başlıkla aynı biçim (`odul.ts` → `baslikYaz`).
+      baslik: `%${uygun.yuzde} · ${uygun.urunAdi}`,
+      tutarKurus: uygun.tavanKurus,
+      // Kampanyanın `min_proof_level` kolonu yok; kanıt kademesi
+      // tavandan hesaplanıyor — E6 tutara bakıyor, tabloya değil.
+      enAzKanit: kanitSeviyesi(uygun.tavanKurus),
+    },
+    kanitSeviyesi: opts.kanitSeviyesi,
+    kaynak: "kampanya",
   });
 }
 

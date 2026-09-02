@@ -67,12 +67,18 @@ async function kuponYaz(opts: {
 }): Promise<string> {
   const id = newId("kpn");
   await yoneticiSorgu(
+    // Dönem alt sorgudan geliyor: 0023'ten beri rezerve eden kupon
+    // hangi dönemden ayırdığını söylemek zorunda (Ü17 + Ü82). Bu test
+    // bütçeyi sınamıyor ama gerçek bir kupon satırına benzemek zorunda.
     `INSERT INTO coupons
        (id, cafe_id, player_id, reward_id, code, qr_token, status,
-        issued_at, activates_at, expires_at, reserved_kurus, proof_level)
+        issued_at, activates_at, expires_at, reserved_kurus, proof_level,
+        budget_period_id)
      VALUES ($1,$2,$3,$4,$5,$6,'active',
              now() - interval '1 hour', now() - interval '1 minute',
-             now() + ($7 || ' hours')::interval, 2000, 3)`,
+             now() + ($7 || ' hours')::interval, 2000, 3,
+             (SELECT id FROM budget_periods
+               WHERE cafe_id = $2 ORDER BY period_start DESC LIMIT 1))`,
     [id, kafeId, opts.playerId, odulId, `H${sayac++}${randomInt(90000) + 10000}`.slice(0, 6), newId("qrt"), String(opts.kalanSaat ?? 120)],
   );
   olusturulanKuponlar.push(id);

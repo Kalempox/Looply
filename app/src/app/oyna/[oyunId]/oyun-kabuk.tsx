@@ -7,6 +7,7 @@ import { KartDokusu, kartStili } from "@/components/oyuncu";
 import { RENK, oyunRengi } from "@/components/oyuncu-renk";
 import { oyunGorseli } from "@/components/oyuncu-gorsel";
 import { OyunIkonu, HediyeIkonu, TacIkonu } from "@/components/oyuncu-ikon";
+import { Gorsel } from "@/components/oyuncu-gorsel";
 import { baslaEylemi, bitirEylemi, type BitirCevabi } from "./actions";
 
 /**
@@ -293,7 +294,8 @@ function SonucEkrani({
     );
   }
 
-  const { skor, basarili, puan, esik, seri, xp, kazandirir, yeniRozetler, kupon, taht } = cevap;
+  const { skor, basarili, puan, esik, seri, xp, kazandirir, yeniRozetler, kupon, taht, kampanya } =
+    cevap;
 
   /*
    * Kazanım satırları önce diziye toplanıyor, sonra çiziliyor.
@@ -440,6 +442,33 @@ function SonucEkrani({
                   {kupon.ertelendi
                     ? "24 saat sonra açılıyor. Ödüllerim ekranından takip edebilirsin."
                     : "Ödüllerim ekranından kasada gösterebilirsin."}
+                </span>
+              </span>
+            </Link>
+          )}
+
+          {/* Ö4 · kampanya kuponu (Ü82). Ödülden AYRI kart ve altında:
+              ödül oynamanın karşılığı, bu kafenin ikramı. Aynı görünseler
+              oyuncu "iki ödül kazandım" sanır ve ikincisi kazanılmış bir
+              şey değil. Sakin çerçeve, altın yok. */}
+          {kampanya && (
+            <Link
+              href="/oduller"
+              className="gir flex items-center gap-3 rounded-2xl border border-cizgi bg-yuzey px-4 py-3.5 transition-colors hover:border-yazi-sonuk/40"
+              style={{ animationDelay: `${240 + satirlar.length * 90}ms` }}
+            >
+              <span className="flex-none text-yazi-sonuk">
+                <Gorsel ad="etiket" boy={30} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block etiket-caps text-yazi-sonuk">Kafeden indirim</span>
+                <span className="mt-1 block font-display text-[16px] leading-tight font-bold">
+                  {kampanya.baslik}
+                </span>
+                <span className="mt-0.5 block text-[13px] leading-relaxed text-yazi-sonuk">
+                  {kampanya.ertelendi
+                    ? "24 saat sonra açılıyor."
+                    : "Kuponlarının arasında, kasada gösterebilirsin."}
                 </span>
               </span>
             </Link>
