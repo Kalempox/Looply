@@ -143,49 +143,55 @@ export function Sahne({ ad, boy = 150 }: { ad: KuponGorseli; boy?: number }) {
 }
 
 const SAHNE: Record<KuponGorseli, React.ReactElement> = {
-  /** Sıcak içecek — fincan, tabak, buhar, çekirdekler. */
+  /**
+   * Sıcak içecek — `coffee-cup.png`.
+   *
+   * Krem fincan, sağda halka kulp, geniş tabak, üstte üç buhar kıvrımı,
+   * sol altta iki turuncu çekirdek. Referansın düzeni birebir; tek
+   * fark ölçek (200'lük kutu) ve koyu kart zeminine göre bir tık
+   * açılmış tonlar.
+   */
   icecek: (
     <g>
-      {/* Buhar */}
-      <g stroke="#ffffff" strokeOpacity="0.5" strokeWidth="5" strokeLinecap="round" fill="none">
-        <path d="M74 46c-9-10 9-16 0-26" />
-        <path d="M100 38c-9-10 9-16 0-26" />
-        <path d="M126 46c-9-10 9-16 0-26" />
+      {/* Buhar — açık uçlu üç kıvrım */}
+      {/* Buhar ince: 9 birimlik çizgide üç kıvrım kalın parantezlere
+          dönüşüyor ve fincanla ilgisi kopuyordu. */}
+      <g stroke="#fbd9b6" strokeWidth="6" strokeLinecap="round" fill="none">
+        <path d="M80 66c-9-6-9-19 0-25" />
+        <path d="M104 58c-9-6-9-19 0-25" />
+        <path d="M128 66c-9-6-9-19 0-25" />
       </g>
 
-      {/* Tabak */}
-      <ellipse cx="100" cy="166" rx="76" ry="16" fill="#c9a882" />
-      <ellipse cx="100" cy="162" rx="76" ry="16" fill="#e8d3ba" />
-
-      {/* Kulp */}
+      {/* Kulp — halka */}
       <path
-        d="M146 78h18a26 26 0 0 1 0 52h-14v-14h14a12 12 0 0 0 0-24h-18Z"
-        fill="#e8d3ba"
+        d="M148 92h10a30 30 0 0 1 0 60h-12v-18h12a12 12 0 0 0 0-24h-10Z"
+        fill="#fbdcb9"
       />
 
       {/* Fincan gövdesi */}
-      <path d="M36 72h114v50a50 50 0 0 1-50 50h-14a50 50 0 0 1-50-50V72Z" fill="#faf1e6" />
-      <path d="M36 72h114v50a50 50 0 0 1-50 50h-6c22-16 30-42 30-78Z" fill="#e2cdb2" />
+      <path d="M38 88h114v34a48 48 0 0 1-48 48H86a48 48 0 0 1-48-48V88Z" fill="#fdf0e0" />
+      <path d="M120 88h32v34a48 48 0 0 1-48 48h-14c30-6 30-46 30-82Z" fill="#fbdcb9" />
+      <rect x="38" y="88" width="114" height="12" fill="#f9cfa0" />
 
-      {/* Kahve yüzeyi */}
-      <ellipse cx="93" cy="72" rx="57" ry="14" fill="#43220f" />
-      <ellipse cx="93" cy="70" rx="45" ry="9" fill="#5c3520" />
+      {/* Tabak */}
+      <path d="M18 168h164a14 14 0 0 1-14 14H32a14 14 0 0 1-14-14Z" fill="#f9cfa0" />
+      <rect x="14" y="160" width="172" height="10" rx="5" fill="#fdf0e0" />
 
       {/* Çekirdekler */}
       <g>
-        <ellipse cx="34" cy="150" rx="14" ry="19" transform="rotate(-28 34 150)" fill="#43220f" />
+        <ellipse cx="46" cy="150" rx="19" ry="15" transform="rotate(-24 46 150)" fill="#e2801e" />
         <path
-          d="M34 133c-7 10-7 24 0 34"
-          stroke="#8a5a33"
-          strokeWidth="3.5"
+          d="M38 141c6 6 10 12 12 20"
+          stroke="#b85c14"
+          strokeWidth="4.5"
           fill="none"
           strokeLinecap="round"
         />
-        <ellipse cx="170" cy="146" rx="12" ry="17" transform="rotate(22 170 146)" fill="#43220f" />
+        <ellipse cx="76" cy="158" rx="19" ry="15" transform="rotate(12 76 158)" fill="#c1611a" />
         <path
-          d="M170 131c-6 9-6 21 0 30"
-          stroke="#8a5a33"
-          strokeWidth="3.2"
+          d="M66 152c8 3 14 8 18 15"
+          stroke="#94470d"
+          strokeWidth="4.5"
           fill="none"
           strokeLinecap="round"
         />
@@ -193,86 +199,95 @@ const SAHNE: Record<KuponGorseli, React.ReactElement> = {
     </g>
   ),
 
-  /** Tatlı — kremalı tart, kiraz, makaron. */
+  /**
+   * Tatlı — `icons8-cheesecake-96.png`.
+   *
+   * Ürün sahibinin düzeltmesi: *"tatlı için de bir cheesecake
+   * koymalıydın."* Önceki tart çizimi kendi uydurmamdı; bu dilim
+   * referanstaki gibi — kremalı dalga katmanları, macenta gövde,
+   * üstte koyu böğürtlenler.
+   */
   tatli: (
     <g>
-      {/* Tabak */}
-      <ellipse cx="100" cy="172" rx="80" ry="16" fill="#f4c9d9" />
+      {/* Dilim gövdesi — sol üst köşe kesik (dilimin kesildiği yer) */}
+      <path d="M26 158V100L92 52h76a10 10 0 0 1 10 10v96a10 10 0 0 1-10 10H36a10 10 0 0 1-10-10Z" fill="#f0567f" />
 
-      {/* Tart kabuğu */}
-      <path d="M28 118h144l-10 44a12 12 0 0 1-12 10H50a12 12 0 0 1-12-10l-10-44Z" fill="#c98a4b" />
-      <path d="M28 112h144v14H28z" fill="#e0a765" />
-      <g fill="#c98a4b">
-        <rect x="34" y="112" width="10" height="14" rx="3" />
-        <rect x="60" y="112" width="10" height="14" rx="3" />
-        <rect x="86" y="112" width="10" height="14" rx="3" />
-        <rect x="112" y="112" width="10" height="14" rx="3" />
-        <rect x="138" y="112" width="10" height="14" rx="3" />
-        <rect x="160" y="112" width="10" height="14" rx="3" />
+      {/* Sağ yüz koyu: dilime hacim veren tek detay */}
+      <path d="M152 52h16a10 10 0 0 1 10 10v96a10 10 0 0 1-10 10h-16Z" fill="#d8386a" />
+
+      {/* Üst yüzey */}
+      <path d="M92 52h76a10 10 0 0 1 10 10v10H70l22-20Z" fill="#e11d55" />
+
+      {/* Kremalı dalga katmanları */}
+      <path d="M26 106c13 0 13-9 26-9s13 9 26 9 13-9 26-9 13 9 26 9 13-9 26-9 13 9 22 9v18c-9 0-9-9-22-9s-13 9-26 9-13-9-26-9-13 9-26 9-13-9-26-9-13 9-26 9Z" fill="#fde3c8" />
+      <path d="M26 140c13 0 13-9 26-9s13 9 26 9 13-9 26-9 13 9 26 9 13-9 26-9 13 9 22 9v18c-9 0-9-9-22-9s-13 9-26 9-13-9-26-9-13 9-26 9-13-9-26-9-13 9-26 9Z" fill="#fde3c8" />
+
+      {/* Böğürtlenler */}
+      <g fill="#4b3f72">
+        <circle cx="112" cy="46" r="15" />
+        <circle cx="140" cy="38" r="15" />
+        <circle cx="166" cy="46" r="13" />
       </g>
-
-      {/* Krema */}
-      <path
-        d="M34 116c14 0 14-16 33-16s19 16 33 16 14-16 33-16 19 16 33 16v-6c0-18-30-32-66-32S34 92 34 110Z"
-        fill="#fff6fa"
-      />
-      <path
-        d="M52 92c10-8 28-13 48-13s38 5 48 13c-14-6-30-9-48-9s-34 3-48 9Z"
-        fill="#ffe3ee"
-      />
-
-      {/* Kiraz */}
-      <circle cx="100" cy="60" r="20" fill="#d81e4a" />
-      <circle cx="93" cy="53" r="6" fill="#f0577c" />
-      <path
-        d="M100 40c2-16 12-22 24-21"
-        stroke="#5f8f36"
-        strokeWidth="6"
-        fill="none"
-        strokeLinecap="round"
-      />
-
-      {/* Makaron */}
-      <g>
-        <ellipse cx="36" cy="150" rx="24" ry="13" fill="#ffc2d6" />
-        <ellipse cx="36" cy="142" rx="24" ry="13" fill="#ffd9e6" />
-        <ellipse cx="36" cy="134" rx="24" ry="13" fill="#ffc2d6" />
+      <g fill="#6a5c96">
+        <circle cx="107" cy="41" r="5" />
+        <circle cx="135" cy="33" r="5" />
+        <circle cx="162" cy="42" r="4" />
       </g>
     </g>
   ),
 
-  /** Para — banknot destesi ve madeni paralar. */
+  /**
+   * Para — `icons8-money-64.png`.
+   *
+   * Yeşil banknot destesi: arkada hafif dönük iki not, önde tam
+   * hizalı bir not ve ortasında koyu daire. Kartın zemini koyu yeşil
+   * olduğu için notlar referanstaki sarımsı yeşilde bırakıldı —
+   * kartın kendi yeşiliyle aynı ton olsalardı kaybolurlardı.
+   */
   para: (
     <g>
-      {/* Banknot destesi */}
-      <g>
-        <rect x="18" y="96" width="150" height="76" rx="8" fill="#0f4a28" />
-        <rect x="18" y="86" width="150" height="76" rx="8" fill="#1c7a44" />
-        <rect x="18" y="76" width="150" height="76" rx="8" fill="#34a35f" />
-        <rect x="30" y="88" width="126" height="52" rx="5" fill="none" stroke="#0f4a28" strokeWidth="4" />
-        <circle cx="93" cy="114" r="20" fill="#0f4a28" />
-        <circle cx="93" cy="114" r="13" fill="#34a35f" />
-        <path
-          d="M93 104v20M87 109h12M87 116h12"
-          stroke="#0f4a28"
-          strokeWidth="4"
-          strokeLinecap="round"
-        />
-      </g>
+      {/* Arkadaki notlar — desteyi anlatan tek şey, hafif dönük */}
+      <rect
+        x="34"
+        y="52"
+        width="140"
+        height="80"
+        rx="10"
+        fill="#3f7522"
+        transform="rotate(-8 104 92)"
+      />
+      <rect
+        x="32"
+        y="62"
+        width="142"
+        height="80"
+        rx="10"
+        fill="#5f9e33"
+        transform="rotate(-4 103 102)"
+      />
 
-      {/* Madeni para yığını */}
-      <g>
-        <ellipse cx="156" cy="158" rx="38" ry="15" fill="#c08a08" />
-        <rect x="118" y="132" width="76" height="26" fill="#e0a800" />
-        <ellipse cx="156" cy="132" rx="38" ry="15" fill="#ffd24a" />
-        <ellipse cx="156" cy="132" rx="26" ry="10" fill="#e0a800" />
-        <path
-          d="M156 122v20M148 128h16M148 136h16"
-          stroke="#a97a06"
-          strokeWidth="4"
-          strokeLinecap="round"
-        />
-      </g>
+      {/* Öndeki not */}
+      <rect x="30" y="74" width="146" height="82" rx="10" fill="#8cc63e" />
+      <rect x="30" y="74" width="146" height="15" rx="7" fill="#a5d65c" />
+      <rect
+        x="42"
+        y="97"
+        width="122"
+        height="47"
+        rx="6"
+        fill="none"
+        stroke="#5f9e33"
+        strokeWidth="5"
+      />
+
+      {/* Ortadaki daire ve tutar işareti */}
+      <circle cx="103" cy="120" r="22" fill="#4f8a2b" />
+      <path
+        d="M103 107v27M93 114h20M93 124h20"
+        stroke="#a5d65c"
+        strokeWidth="5"
+        strokeLinecap="round"
+      />
     </g>
   ),
 };
