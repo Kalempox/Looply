@@ -6,11 +6,11 @@
 > Yan dosyalar: neyin **var** olduğu → `21-looply-kapsam-haritasi.md` ·
 > demoda neyin **yapılabildiği** → `22-demo-yapilabilirlik.md`
 
-**Son güncelleme:** 2026-09-02 · **Kararlar:** Ü76 – Ü85
+**Son güncelleme:** 2026-09-02 · **Kararlar:** Ü76 – Ü86
 
 ---
 
-# DALGA 1 · Şimdi — ürün bugün söylediğini yapmıyor
+# DALGA 1 · ✅ TAMAMLANDI — 2026-09-02
 
 - [x] **1 · Kampanya teslim yolu** ✅ **BİTTİ** — Ü82, 2026-09-02
   Nitelikli oyun sonunda, kampanya başına günde bir kupon. Başarı şartı yok
@@ -64,7 +64,7 @@
 
 ---
 
-# DALGA 2 · Hemen ardından — ekonomik motor
+# DALGA 2 · ŞİMDİ — ekonomik motor ⬅️
 
 Üçü tek bir soruyu cevaplıyor: *bu turda ödül çıkacak mı, hangisi, ne kadar?*
 Ayrı ayrı yazılırsa üçüncüsü ilk ikisini bozar.
