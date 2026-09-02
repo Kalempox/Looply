@@ -133,6 +133,22 @@ export const DESEN: Record<KuponGorseli, string> = {
      </g>`,
   ),
 
+  /* Tost, simit, çatal — yiyecek. */
+  yiyecek: karo(
+    `<g fill='${AK}'>
+       <path d='M8 30c0-12 8-20 18-20h12c10 0 18 8 18 20v14H8z'/>
+       <rect x='6' y='44' width='52' height='10' rx='3'/>
+       <circle cx='72' cy='24' r='16'/>
+       <path d='M52 70h34v18a8 8 0 0 1-8 8H60a8 8 0 0 1-8-8z'/>
+       <rect x='16' y='68' width='6' height='26' rx='3'/>
+       <rect x='28' y='68' width='6' height='26' rx='3'/>
+     </g>
+     <g fill='${AK_VURGU}'>
+       <circle cx='72' cy='24' r='6'/>
+       <rect x='14' y='22' width='36' height='6' rx='3'/>
+     </g>`,
+  ),
+
   /* Banknot ve madeni para. */
   para: karo(
     `<g fill='${AK}'>
@@ -302,6 +318,41 @@ const SAHNE: Record<KuponGorseli, React.ReactElement> = {
         <circle cx="135" cy="33" r="5" />
         <circle cx="162" cy="42" r="4" />
       </g>
+    </g>
+  ),
+
+  /**
+   * Yiyecek — tost dilimi.
+   *
+   * Kategori türlerinden `yiyecek` için. Tatlı sahnesiyle
+   * karıştırılmasın diye kabuk ve iç malzeme belirgin: kafe menüsünde
+   * tost ile cheesecake yan yana duruyor ve kuponda ayırt edilmeli.
+   */
+  yiyecek: (
+    <g>
+      {/* Alt dilim */}
+      <path d="M30 96c0-30 22-52 52-52h36c30 0 52 22 52 52v58a16 16 0 0 1-16 16H46a16 16 0 0 1-16-16Z" fill="#e8bd7a" />
+      <path d="M30 96c0-30 22-52 52-52h36c30 0 52 22 52 52H30Z" fill="#f6dcae" />
+
+      {/* İç malzeme — yeşillik ve domates */}
+      <path
+        d="M34 116c22 0 22 16 44 16s22-16 44-16 22 16 44 16"
+        stroke="#7fae4a"
+        strokeWidth="16"
+        strokeLinecap="round"
+        fill="none"
+      />
+      <path
+        d="M34 142c22 0 22 14 44 14s22-14 44-14 22 14 44 14"
+        stroke="#d9503f"
+        strokeWidth="14"
+        strokeLinecap="round"
+        fill="none"
+      />
+
+      {/* Üst dilim */}
+      <path d="M34 158h136v22a20 20 0 0 1-20 20H54a20 20 0 0 1-20-20Z" fill="#e8bd7a" />
+      <rect x="34" y="158" width="136" height="9" fill="#c99a54" />
     </g>
   ),
 

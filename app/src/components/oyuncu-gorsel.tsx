@@ -40,6 +40,7 @@ export type GorselAdi =
   | "icecek"
   | "soguk"
   | "tatli"
+  | "yiyecek"
   | "para"
   /* Oyunlar */
   | "blok"
@@ -67,7 +68,7 @@ export type GorselAdi =
  * daha çok kelime tanımak zorunda kalır ve tanımadığında sessizce
  * yanlış çizim koyar.
  */
-export type KuponGorseli = "icecek" | "soguk" | "tatli" | "para";
+export type KuponGorseli = "icecek" | "soguk" | "tatli" | "yiyecek" | "para";
 
 /**
  * Kupon başlığından çizim seçer.
@@ -104,14 +105,42 @@ const ESLESME: [KuponGorseli, string[]][] = [
   ],
 ];
 
+/** Kafenin seçtiği kategori türünden çizime — Ü75. */
+const KATEGORI_GORSELI: Record<string, KuponGorseli> = {
+  sicak: "icecek",
+  soguk: "soguk",
+  tatli: "tatli",
+  yiyecek: "yiyecek",
+};
+
 /**
+ * Kuponun çizimi.
+ *
+ * ── Önce kategori, sonra tahmin (Ü75) ───────────────────────
+ *
+ * Kafe ürüne kategori atadıysa çizim oradan geliyor ve metne hiç
+ * bakılmıyor. Aşağıdaki kelime eşleştirmesi artık **yedek**: kategorisi
+ * olmayan ürünler ve ürüne hiç bağlı olmayan kuponlar ("50 TL indirim")
+ * için.
+ *
+ * Bu sıralamanın sebebi somut: kafe "Ice Americano" yerine "ize
+ * amreicano" yazdığında hiçbir kelime tutmuyor ve kupon yeşil para
+ * kartı olarak çıkıyordu. Kategori beyan; beyan tahminden önce gelir.
+ *
  * @param metin Kuponun başlığı — "Ücretsiz filtre kahve", "Tatlıda %10".
- * @param tur   Hiçbir kelime tutmazsa devreye giren yedek. Ürün ödülü
- *              olduğu bilinen ama adı tanınmayan bir kupon ("Sürpriz")
- *              para çizimiyle çıkmamalı — kafede satılan ürünlerin
+ * @param tur   Hiçbir kelime tutmazsa devreye giren son yedek. Ürün
+ *              ödülü olduğu bilinen ama adı tanınmayan bir kupon
+ *              ("Sürpriz") para çizimiyle çıkmamalı — kafede satılanın
  *              çoğunluğu içecek olduğu için oraya düşüyor.
+ * @param kategoriTuru Kafenin ürüne atadığı kategori türü.
  */
-export function gorselSec(metin: string, tur?: "urun" | "yuzde" | "tutar"): KuponGorseli {
+export function gorselSec(
+  metin: string,
+  tur?: "urun" | "yuzde" | "tutar",
+  kategoriTuru?: string | null,
+): KuponGorseli {
+  if (kategoriTuru && KATEGORI_GORSELI[kategoriTuru]) return KATEGORI_GORSELI[kategoriTuru];
+
   const m = metin.toLocaleLowerCase("tr");
   for (const [ad, kelimeler] of ESLESME) {
     if (kelimeler.some((k) => m.includes(k))) return ad;
@@ -132,6 +161,7 @@ export const GORSEL_RENGI = {
   icecek: "kahve",
   soguk: "buz",
   tatli: "pembe",
+  yiyecek: "amber",
   para: "yesil",
 } as const;
 
@@ -231,6 +261,17 @@ const CIZIM: Record<GorselAdi, React.ReactElement> = {
       {/* Kremalar */}
       <path d="M14 316c34 0 34-26 68-26s34 26 68 26 34-26 68-26 34 26 68 26 34-26 68-26 34 26 68 26" />
       <path d="M14 380c34 0 34-26 68-26s34 26 68 26 34-26 68-26 34 26 68 26 34-26 68-26 34 26 68 26" />
+    </g>
+  ),
+
+  /** Yiyecek — tost dilimi ve iç malzeme. */
+  yiyecek: (
+    <g>
+      <path d="M52 208c0-70 46-118 104-118h72c58 0 104 48 104 118" />
+      <path d="M36 208h440v40H36z" />
+      <path d="M60 248c26 0 26 24 52 24s26-24 52-24 26 24 52 24 26-24 52-24 26 24 52 24 26-24 52-24" />
+      <path d="M60 300c26 0 26 24 52 24s26-24 52-24 26 24 52 24 26-24 52-24 26 24 52 24" />
+      <path d="M76 344h360v78a40 40 0 0 1-40 40H116a40 40 0 0 1-40-40z" />
     </g>
   ),
 

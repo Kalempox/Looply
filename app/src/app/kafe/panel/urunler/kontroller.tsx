@@ -1,12 +1,20 @@
 "use client";
 
 import { useActionState, useTransition } from "react";
-import { ekleEylemi, durumEylemi, type UrunDurumu } from "./actions";
+import {
+  ekleEylemi,
+  durumEylemi,
+  kategoriEkleEylemi,
+  kategoriDurumEylemi,
+  type UrunDurumu,
+  type KategoriDurumu,
+} from "./actions";
 import { IsletmeDugme, IsletmeAlan, isletmeGirdi, IsletmeUyari } from "@/components/isletme";
+import { TURLER, TUR_ETIKETI, type Kategori } from "@/domain/kategori-tur";
 
 const BOS: UrunDurumu = {};
 
-export function UrunEkleme() {
+export function UrunEkleme({ kategoriler }: { kategoriler: Kategori[] }) {
   const [durum, action, bekliyor] = useActionState(ekleEylemi, BOS);
 
   return (
@@ -29,10 +37,102 @@ export function UrunEkleme() {
         </IsletmeAlan>
       </div>
 
+      {/*
+        Kategori isteğe bağlı ama **ipucu ne işe yaradığını söylüyor**:
+        kafe sahibi "neden kategori isteniyor" diye sorduğunda cevabı
+        formun içinde bulmalı. Ü75'ten önce kupon kartındaki çizim
+        ödülün adı okunarak tahmin ediliyordu ve ilk yazım hatasında
+        yanlış çizim çıkıyordu.
+      */}
+      <IsletmeAlan
+        etiket="Kategori"
+        ipucu={
+          kategoriler.length === 0
+            ? "Önce yandan bir kategori ekle — kuponun görseli kategoriden geliyor."
+            : "Oyuncunun kupon kartındaki görsel bu kategoriden geliyor."
+        }
+      >
+        <select name="kategoriId" className={isletmeGirdi} defaultValue="">
+          <option value="">Kategorisiz</option>
+          {kategoriler
+            .filter((k) => k.aktif)
+            .map((k) => (
+              <option key={k.id} value={k.id}>
+                {k.ad} · {TUR_ETIKETI[k.tur]}
+              </option>
+            ))}
+        </select>
+      </IsletmeAlan>
+
       <IsletmeDugme type="submit" disabled={bekliyor}>
         {bekliyor ? "Ekleniyor…" : "Ürün ekle"}
       </IsletmeDugme>
     </form>
+  );
+}
+
+/* ── Kategori — Ü75 ───────────────────────────────────────── */
+
+const KATEGORI_BOS: KategoriDurumu = {};
+
+/**
+ * Kategori ekleme formu.
+ *
+ * İki alan var ve ayrımı forma da yazılı: **ad** kafenin menüsündeki
+ * karşılığı, **tür** ise oyuncunun kupon kartında hangi çizimi
+ * göreceği. Kafe "Kahvaltılıklar" diyebilir, biz onun yiyecek
+ * olduğunu türden öğreniriz.
+ */
+export function KategoriEkleme() {
+  const [durum, action, bekliyor] = useActionState(kategoriEkleEylemi, KATEGORI_BOS);
+
+  return (
+    <form action={action} className="space-y-4">
+      {durum.hata && <IsletmeUyari>{durum.hata}</IsletmeUyari>}
+      {durum.bilgi && <IsletmeUyari tur="bilgi">{durum.bilgi}</IsletmeUyari>}
+
+      <IsletmeAlan etiket="Kategori adı" ipucu="Menünde ne yazıyorsa onu yaz.">
+        <input name="ad" className={isletmeGirdi} placeholder="Soğuk içecekler" maxLength={40} />
+      </IsletmeAlan>
+
+      <IsletmeAlan
+        etiket="Türü"
+        ipucu="Oyuncunun kupon kartında görünecek çizimi bu belirliyor."
+      >
+        <select name="tur" className={isletmeGirdi} defaultValue="sicak">
+          {TURLER.map((t) => (
+            <option key={t} value={t}>
+              {TUR_ETIKETI[t]}
+            </option>
+          ))}
+        </select>
+      </IsletmeAlan>
+
+      <IsletmeDugme type="submit" disabled={bekliyor}>
+        {bekliyor ? "Ekleniyor…" : "Kategori ekle"}
+      </IsletmeDugme>
+    </form>
+  );
+}
+
+export function KategoriDurumDugmesi({
+  kategoriId,
+  aktif,
+}: {
+  kategoriId: string;
+  aktif: boolean;
+}) {
+  const [bekliyor, basla] = useTransition();
+
+  return (
+    <button
+      type="button"
+      disabled={bekliyor}
+      onClick={() => basla(async () => void (await kategoriDurumEylemi(kategoriId, !aktif)))}
+      className="etiket-caps text-yazi-sonuk underline disabled:opacity-50"
+    >
+      {bekliyor ? "…" : aktif ? "kaldır" : "geri aç"}
+    </button>
   );
 }
 

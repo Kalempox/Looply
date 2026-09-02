@@ -23,6 +23,8 @@ export type Islem =
   | "campaign.stop"
   | "happyhour.open"
   | "happyhour.close"
+  | "category.create"
+  | "category.update"
   | "product.create"
   | "product.update"
   | "reward.create"

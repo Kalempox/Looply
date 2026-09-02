@@ -1,4 +1,5 @@
 import { withBypass } from "@/db/context";
+import type { KategoriTuru } from "./kategori-tur";
 
 /**
  * Oyuncunun ödül envanteri — "Ödüllerim" ekranının kaynağı.
@@ -42,6 +43,13 @@ export type EnvanterKuponu = {
   /** Ödülün adı — "1 Filtre Kahve" veya "%20 · Latte". TL yok (E9). */
   baslik: string;
   tur: KuponTuru;
+  /**
+   * Ü75: bağlı ürünün kategori türü — kartın çizimini bu seçiyor.
+   *
+   * `null` ise kupon bir ürüne bağlı değil ya da ürünün kategorisi yok;
+   * ekran o zaman başlıktan tahmin etmeye düşüyor.
+   */
+  kategoriTuru: KategoriTuru | null;
   cafeId: string;
   cafeAdi: string;
   durum: KuponDurumu;
@@ -69,6 +77,7 @@ type Satir = {
   odul_tipi: string | null;
   kampanya_yuzde: number | null;
   urun_adi: string | null;
+  kategori_turu: string | null;
 };
 
 /**
@@ -127,12 +136,18 @@ export async function envanter(playerId: string): Promise<Envanter> {
               r.title    AS odul_adi,
               r.reward_type AS odul_tipi,
               pc.percent AS kampanya_yuzde,
-              p.name     AS urun_adi
+              p.name     AS urun_adi,
+              COALESCE(rk.kind, pk.kind) AS kategori_turu
          FROM coupons k
          JOIN cafes c ON c.id = k.cafe_id
          LEFT JOIN rewards r ON r.id = k.reward_id
          LEFT JOIN percentage_campaigns pc ON pc.id = k.campaign_id
          LEFT JOIN products p ON p.id = pc.product_id
+         -- Ü75: kategori iki yoldan gelebiliyor — ödülün kendi ürünü ya
+         -- da kampanyanın ürünü. COALESCE hangisi doluysa onu alıyor.
+         LEFT JOIN products rp ON rp.id = r.product_id
+         LEFT JOIN product_categories rk ON rk.id = rp.category_id
+         LEFT JOIN product_categories pk ON pk.id = p.category_id
         WHERE k.player_id = $1
         ORDER BY k.issued_at DESC`,
       [playerId],
@@ -148,6 +163,7 @@ export async function envanter(playerId: string): Promise<Envanter> {
       id: r.id,
       baslik: baslikYaz(r),
       tur: turBelirle(r),
+      kategoriTuru: (r.kategori_turu as KategoriTuru | null) ?? null,
       cafeId: r.cafe_id,
       cafeAdi: r.cafe_adi,
       durum,
@@ -169,6 +185,7 @@ export type KuponDetayi = {
   id: string;
   baslik: string;
   tur: KuponTuru;
+  kategoriTuru: KategoriTuru | null;
   cafeAdi: string;
   durum: KuponDurumu;
   /** Kasiyerin okutacağı QR jetonu. İçinde ödül bilgisi yok (Ü19). */
@@ -196,12 +213,18 @@ export async function kuponDetayi(playerId: string, kuponId: string): Promise<Ku
               r.title    AS odul_adi,
               r.reward_type AS odul_tipi,
               pc.percent AS kampanya_yuzde,
-              p.name     AS urun_adi
+              p.name     AS urun_adi,
+              COALESCE(rk.kind, pk.kind) AS kategori_turu
          FROM coupons k
          JOIN cafes c ON c.id = k.cafe_id
          LEFT JOIN rewards r ON r.id = k.reward_id
          LEFT JOIN percentage_campaigns pc ON pc.id = k.campaign_id
          LEFT JOIN products p ON p.id = pc.product_id
+         -- Ü75: kategori iki yoldan gelebiliyor — ödülün kendi ürünü ya
+         -- da kampanyanın ürünü. COALESCE hangisi doluysa onu alıyor.
+         LEFT JOIN products rp ON rp.id = r.product_id
+         LEFT JOIN product_categories rk ON rk.id = rp.category_id
+         LEFT JOIN product_categories pk ON pk.id = p.category_id
         WHERE k.id = $1 AND k.player_id = $2`,
       [kuponId, playerId],
     ),
@@ -213,6 +236,7 @@ export async function kuponDetayi(playerId: string, kuponId: string): Promise<Ku
     id: r.id,
     baslik: baslikYaz(r),
     tur: turBelirle(r),
+    kategoriTuru: (r.kategori_turu as KategoriTuru | null) ?? null,
     cafeAdi: r.cafe_adi,
     durum: durumBelirle(r, Date.now()),
     jeton: r.qr_token,

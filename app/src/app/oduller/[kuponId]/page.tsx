@@ -47,8 +47,8 @@ export default async function KuponSayfasi({
       <SayfaBasi
         ust={kupon.cafeAdi}
         baslik={kupon.baslik}
-        renk={GORSEL_RENGI[gorselSec(kupon.baslik, kupon.tur)]}
-        gorsel={gorselSec(kupon.baslik, kupon.tur)}
+        renk={GORSEL_RENGI[gorselSec(kupon.baslik, kupon.tur, kupon.kategoriTuru)]}
+        gorsel={gorselSec(kupon.baslik, kupon.tur, kupon.kategoriTuru)}
       />
 
       {kullanilabilir ? (

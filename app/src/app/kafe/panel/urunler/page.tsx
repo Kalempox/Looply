@@ -1,5 +1,7 @@
 import { kafeYoneticisiGerekli } from "@/domain/yetki";
 import * as urun from "@/domain/urun";
+import * as kategori from "@/domain/kategori";
+import { TUR_ETIKETI } from "@/domain/kategori-tur";
 import { SayiKarti, IKON } from "@/components/gosterge";
 import {
   IsletmeSayfa,
@@ -8,7 +10,12 @@ import {
   Rozet,
   IkiKolon,
 } from "@/components/isletme";
-import { UrunEkleme, DurumDugmesi } from "./kontroller";
+import {
+  UrunEkleme,
+  DurumDugmesi,
+  KategoriEkleme,
+  KategoriDurumDugmesi,
+} from "./kontroller";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Ürünler · CafePlay" };
@@ -22,7 +29,10 @@ export const metadata = { title: "Ürünler · CafePlay" };
  */
 export default async function UrunlerSayfasi() {
   const o = await kafeYoneticisiGerekli();
-  const urunler = await urun.listele(o.cafeId);
+  const [urunler, kategoriler] = await Promise.all([
+    urun.listele(o.cafeId),
+    kategori.listele(o.cafeId),
+  ]);
 
   /**
    * Ü62: ürünler ödülün dayanağı — ortalama fiyat, ödül değerlerinin
@@ -41,6 +51,7 @@ export default async function UrunlerSayfasi() {
     (en, u) => (en === null || u.fiyatKurus > en.fiyatKurus ? u : en),
     null,
   );
+  const kategorisiz = aktifUrun.filter((u) => !u.kategoriId).length;
 
   return (
     <IsletmeSayfa genis>
@@ -74,13 +85,58 @@ export default async function UrunlerSayfasi() {
           ikon={IKON.odul}
           alan="urun"
         />
+        {/* Ü75: kategorisiz ürün, kuponunda yanlış görsel çıkma
+            riski demek. Sayı sıfır olduğunda kart görünmüyor —
+            "sorun yok" mesajı da bir gürültü. */}
+        {kategorisiz > 0 && (
+          <SayiKarti
+            etiket="Kategorisiz ürün"
+            deger={String(kategorisiz)}
+            alt="kupon görseli tahmine kalıyor"
+            ikon={IKON.urun}
+            alan="kampanya"
+          />
+        )}
       </section>
 
       <IkiKolon
         sol={
-          <Bolum baslik="Yeni ürün">
-            <UrunEkleme />
-          </Bolum>
+          <>
+            <Bolum baslik="Yeni ürün">
+              <UrunEkleme kategoriler={kategoriler} />
+            </Bolum>
+
+            {/* Kategori formu ürünün ALTINDA: kafe sahibinin ilk işi
+                ürün girmek, kategori onun hizmetinde. Üste konsaydı
+                "önce kategori kurman lazım" gibi bir engel olurdu. */}
+            <Bolum baslik={`Kategoriler · ${kategoriler.filter((k) => k.aktif).length}`}>
+              <KategoriEkleme />
+
+              {kategoriler.length > 0 && (
+                <ul className="mt-5 grid gap-2">
+                  {kategoriler.map((k) => (
+                    <li
+                      key={k.id}
+                      className={`flex items-center gap-3 rounded-xl border border-cizgi bg-yuzey px-4 py-3 ${
+                        k.aktif ? "" : "opacity-55"
+                      }`}
+                    >
+                      <span className="min-w-0 flex-1">
+                        <span className="flex flex-wrap items-center gap-2">
+                          <span className="text-[14px] leading-tight font-semibold">{k.ad}</span>
+                          {!k.aktif && <Rozet tur="pasif">kaldırıldı</Rozet>}
+                        </span>
+                        <span className="mt-1 block text-[12px] text-yazi-sonuk">
+                          {TUR_ETIKETI[k.tur]} · {k.urunSayisi} ürün
+                        </span>
+                      </span>
+                      <KategoriDurumDugmesi kategoriId={k.id} aktif={k.aktif} />
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Bolum>
+          </>
         }
         sag={
           <Bolum
@@ -114,8 +170,19 @@ export default async function UrunlerSayfasi() {
                           <Rozet tur="pasif">kullanımda değil</Rozet>
                         )}
                       </span>
-                      <span className="mt-1.5 inline-block rounded-full bg-urun-zemin px-2 py-0.5 font-data text-[11px] font-bold text-urun tabular">
-                        {(u.fiyatKurus / 100).toLocaleString("tr-TR")} TL
+                      <span className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                        <span className="rounded-full bg-urun-zemin px-2 py-0.5 font-data text-[11px] font-bold text-urun tabular">
+                          {(u.fiyatKurus / 100).toLocaleString("tr-TR")} TL
+                        </span>
+                        {u.kategoriTuru ? (
+                          <span className="rounded-full bg-cukur px-2 py-0.5 text-[11px] text-yazi-sonuk">
+                            {TUR_ETIKETI[u.kategoriTuru]}
+                          </span>
+                        ) : (
+                          <span className="rounded-full bg-kampanya-zemin px-2 py-0.5 text-[11px] text-kampanya">
+                            kategorisiz
+                          </span>
+                        )}
                       </span>
                     </span>
                     <DurumDugmesi urunId={u.id} aktif={u.aktif} />

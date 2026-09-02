@@ -158,7 +158,7 @@ const DURUM_ETIKETI: Record<EnvanterKuponu["durum"], string> = {
  * görünsün, üstünde bir tutar yazmıyor.
  */
 function BiletKarti({ kupon }: { kupon: EnvanterKuponu }) {
-  const gorsel = gorselSec(kupon.baslik, kupon.tur);
+  const gorsel = gorselSec(kupon.baslik, kupon.tur, kupon.kategoriTuru);
 
   return (
     <Bilet
@@ -188,7 +188,7 @@ function BiletKarti({ kupon }: { kupon: EnvanterKuponu }) {
 function SakinKart({ kupon }: { kupon: EnvanterKuponu }) {
   const bekliyor = kupon.durum === "beklemede";
   const tarih = bekliyor ? kupon.aktiflesme : kupon.sonKullanim;
-  const r = RENK[GORSEL_RENGI[gorselSec(kupon.baslik, kupon.tur)]];
+  const r = RENK[GORSEL_RENGI[gorselSec(kupon.baslik, kupon.tur, kupon.kategoriTuru)]];
 
   const govde = (
     <>
