@@ -15,7 +15,7 @@ import {
 } from "@/components/isletme";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "İşletme paneli · CafePlay" };
+export const metadata = { title: "İşletme paneli · Looply" };
 
 /**
  * Kafe paneli.

@@ -11,7 +11,7 @@ import { SayiKarti, IKON } from "@/components/gosterge";
 import { KonumOkuyucu } from "./kontroller";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Kafe konumu · CafePlay" };
+export const metadata = { title: "Kafe konumu · Looply" };
 
 /**
  * Kafe konumu — kurulumun en kritik adımı.

@@ -6,7 +6,7 @@ import { IsletmeSayfa, IsletmeBaslik, Rozet, IsletmeUyari } from "@/components/i
 import { KararKontrolleri, TelefonAcma } from "./kontroller";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Başvurular · CafePlay" };
+export const metadata = { title: "Başvurular · Looply" };
 
 /**
  * Kafe başvuruları — G5'in insan tarafı.

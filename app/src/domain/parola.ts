@@ -85,7 +85,7 @@ const KUKLA_HASH =
  *
  * Tek hata mesajı tek başına yetmiyordu. Kayıtlı ve parolalı bir numarada
  * scrypt çalışıyor (~55 ms), kayıtsız numarada fonksiyon anında dönüyordu
- * (~5 ms). Aradaki fark, mesajı hiç okumadan "bu numara CafePlay'de mi"
+ * (~5 ms). Aradaki fark, mesajı hiç okumadan "bu numara Looply'de mi"
  * sorusunu cevaplıyor — yani metinde gizlediğimiz şeyi kronometre söylüyor.
  *
  * Eşitlenen, baskın maliyet olan scrypt. Geriye kalan tek fark bir SELECT

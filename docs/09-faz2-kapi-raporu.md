@@ -69,7 +69,7 @@ Aşağıdakilerin her biri artık beyan değil, çalıştırılabilir bir testin
 
 ```
 1. Şifre çözülüyor…      ✓ 71.6 KB çözüldü — anahtar doğru
-2. Tatbikat veritabanı…  ✓ cafeplay_tatbikat
+2. Tatbikat veritabanı…  ✓ looply_tatbikat
 3. Yedek geri yükleniyor ✓ yüklendi
 4. Doğrulanıyor…
    ✓ cafes            2 satır

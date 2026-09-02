@@ -30,7 +30,7 @@ const mono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "CafePlay",
+  title: "Looply",
   description: "Masadaki karekodu okut, oyna, kazan.",
 };
 

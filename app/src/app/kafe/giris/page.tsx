@@ -6,7 +6,7 @@ import { OtpGirisFormu } from "@/components/otp-giris";
 import { yoneticiKodGonder, yoneticiKodDogrula } from "./actions";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "İşletme girişi · CafePlay" };
+export const metadata = { title: "İşletme girişi · Looply" };
 
 export default async function KafeGiris() {
   const o = await oturum.oku();
@@ -14,7 +14,7 @@ export default async function KafeGiris() {
 
   return (
     <IsletmeSayfa>
-      <IsletmeBaslik ust="CafePlay" alt="Başvuru sırasında verdiğin yetkili numarasıyla gir.">
+      <IsletmeBaslik ust="Looply" alt="Başvuru sırasında verdiğin yetkili numarasıyla gir.">
         İşletme girişi
       </IsletmeBaslik>
 

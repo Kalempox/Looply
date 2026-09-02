@@ -3,7 +3,7 @@ import * as oturum from "@/domain/session";
 import { KasaGirisFormu } from "./form";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Kasa · CafePlay" };
+export const metadata = { title: "Kasa · Looply" };
 
 /**
  * Kasa girişi.
@@ -21,7 +21,7 @@ export default async function KasaGirisi() {
     <main className="flex min-h-dvh flex-col items-center justify-center bg-zemin px-6 text-yazi">
       <div className="mb-10 text-center">
         <div className="etiket-caps text-vurgu">
-          CafePlay
+          Looply
         </div>
         <h1 className="mt-2 font-display text-3xl font-extrabold tracking-tight">Kasa</h1>
         <p className="mt-3 max-w-xs text-[14px] leading-relaxed text-yazi-sonuk">

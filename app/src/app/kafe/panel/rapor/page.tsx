@@ -12,7 +12,7 @@ import { SayiKarti, IKON } from "@/components/gosterge";
 import { DisaAktarma, TarihAraligi, AdisyonAyari } from "./kontroller";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Rapor · CafePlay" };
+export const metadata = { title: "Rapor · Looply" };
 
 /**
  * Kafe raporu — Faz 8.
@@ -177,8 +177,8 @@ export default async function RaporSayfasi({
           <AdisyonAyari mevcutTl={Math.round(adisyonKurus / 100)} />
           <p className="mt-2 text-[12px] leading-relaxed text-yazi-sonuk">
             Bu müşterilerin bir kısmı zaten gelecekti; onu ölçmenin yolu yok.
-            Rakam &ldquo;CafePlay üzerinden gelen müşterinin kafede bıraktığı
-            tahmini tutar&rdquo; demek, &ldquo;CafePlay olmasa hiç
+            Rakam &ldquo;Looply üzerinden gelen müşterinin kafede bıraktığı
+            tahmini tutar&rdquo; demek, &ldquo;Looply olmasa hiç
             gelmezdi&rdquo; demek değil.
           </p>
         </div>
@@ -367,12 +367,12 @@ export default async function RaporSayfasi({
         ) : (
           <>
             <p className="mb-3.5 text-[13px] leading-relaxed text-yazi-sonuk">
-              Doluluk oranı = o saatte CafePlay ile dolan masa ÷{" "}
+              Doluluk oranı = o saatte Looply ile dolan masa ÷{" "}
               <strong className="text-yazi">
                 {dagilim.masaSayisi} masa × {dagilim.gunSayisi} gün
               </strong>
               . Oyun oynamadan oturan müşteri bu orana girmiyor — bu, kafenin
-              doluluğu değil, CafePlay üzerinden dolan masa oranı.
+              doluluğu değil, Looply üzerinden dolan masa oranı.
             </p>
 
             <ul className="flex flex-col gap-1">
@@ -552,7 +552,7 @@ export default async function RaporSayfasi({
 
         <p className="mt-4 text-[12px] leading-relaxed text-yazi-sonuk">
           Müşteriler işletmene özel anonim kodla görünür. Ad, soyad ve telefon
-          CafePlay&apos;de kalır, hiçbir ekranda gösterilmez.
+          Looply&apos;de kalır, hiçbir ekranda gösterilmez.
         </p>
       </Bolum>
 

@@ -18,7 +18,7 @@ import {
 } from "./kontroller";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Ürünler · CafePlay" };
+export const metadata = { title: "Ürünler · Looply" };
 
 /**
  * Ürün listesi — kafenin menüsü.

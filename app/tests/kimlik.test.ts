@@ -613,7 +613,7 @@ describe("oyuncu parolası (Ü36)", () => {
 
   /**
    * Bu testin varlık sebebi bir sızıntı: "numara kayıtlı değil" ile "parola
-   * yanlış" ayrı ayrı söylenirse, saldırgan hangi numaraların CafePlay'de
+   * yanlış" ayrı ayrı söylenirse, saldırgan hangi numaraların Looply'de
    * olduğunu tek tek öğrenir. Üç başarısız durum da aynı cümleyi görüyor.
    */
   test("tek hata mesajı — kayıtsız numara, yanlış parola ve parolasız hesap ayırt edilemiyor", async () => {
@@ -645,7 +645,7 @@ describe("oyuncu parolası (Ü36)", () => {
    *
    * Düzeltmeden önce kayıtsız numara ~5 ms'de dönüyor, parolalı hesap scrypt
    * yüzünden ~55 ms sürüyordu: saldırgan mesajı hiç okumadan, kronometreyle
-   * hangi numaraların CafePlay'de olduğunu öğrenebiliyordu.
+   * hangi numaraların Looply'de olduğunu öğrenebiliyordu.
    *
    * Ölçüm kaba bilerek — makine hızından bağımsız olsun diye üç koşunun **en
    * küçüğü** alınıyor (en küçük değer, zamanlayıcı gürültüsünden en az

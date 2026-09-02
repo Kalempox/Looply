@@ -79,7 +79,7 @@ export function SeriSahnesi({
     olduğu için davranış aynı.
   */
   useEffect(() => {
-    const anahtar = "cafeplay:seri-gosterildi";
+    const anahtar = "looply:seri-gosterildi";
     const damga = `${new Date().toDateString()}:${gun}`;
 
     try {

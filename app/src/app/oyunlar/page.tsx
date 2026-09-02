@@ -17,7 +17,7 @@ import { oyunGorseli } from "@/components/oyuncu-gorsel";
 import { OyunIkonu } from "@/components/oyuncu-ikon";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Oyunlar · CafePlay" };
+export const metadata = { title: "Oyunlar · Looply" };
 
 /**
  * Oyun kataloğu — Ü66.

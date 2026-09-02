@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-export const metadata = { title: "Aydınlatma metni · CafePlay" };
+export const metadata = { title: "Aydınlatma metni · Looply" };
 
 /**
  * F1 · KVKK aydınlatma metni.
@@ -101,8 +101,8 @@ export default function AydinlatmaSayfasi() {
 
           <Bolum baslik="Bize nasıl ulaşırsınız">
             <p>
-              Veri sorumlusu: CafePlay. Sorularını ve taleplerini{" "}
-              <span className="font-data text-[14px] text-yazi">kvkk@cafeplay.com</span> adresine
+              Veri sorumlusu: Looply. Sorularını ve taleplerini{" "}
+              <span className="font-data text-[14px] text-yazi">kvkk@looply.com</span> adresine
               iletebilirsin.
             </p>
           </Bolum>

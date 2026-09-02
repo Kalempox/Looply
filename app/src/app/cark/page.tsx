@@ -8,7 +8,7 @@ import { OyuncuNav, NavBosluk } from "@/components/oyuncu-nav";
 import { GunlukCark } from "./cark-kabuk";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Şans çarkı · CafePlay" };
+export const metadata = { title: "Şans çarkı · Looply" };
 
 /**
  * Günlük şans çarkı (Ü49).
@@ -35,7 +35,7 @@ export default async function CarkSayfasi() {
       <Sayfa>
         <Baslik ust="Şans çarkı">Çark kafede döner</Baslik>
         <p className="text-[15px] leading-relaxed text-yazi-sonuk">
-          Çarkı çevirmek için bir CafePlay kafesinde olman ve masadaki karekodu okutman
+          Çarkı çevirmek için bir Looply kafesinde olman ve masadaki karekodu okutman
           gerekiyor. Ödül o kafenin bütçesinden çıkıyor.
         </p>
         <Link href="/oyna" className="mt-6 inline-block text-[15px] font-semibold underline">

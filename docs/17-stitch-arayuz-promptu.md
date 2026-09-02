@@ -1,6 +1,6 @@
 # 17 — Google Stitch Arayüz Promptu
 
-> CafePlay'in **tüm arayüzünü** Google Stitch'te baştan tasarlatmak için hazırlanmış
+> Looply'in **tüm arayüzünü** Google Stitch'te baştan tasarlatmak için hazırlanmış
 > tam prompt seti. Kodda bugün var olan her ekran + linki verilmiş ama henüz
 > yazılmamış ekranlar + karara bağlanmış ileri faz ekranları.
 
@@ -71,11 +71,11 @@ reddediyor.
 > Bunu her ekran promptunun başına yapıştır.
 
 ```
-You are designing CafePlay, a Turkish mobile web product. Read this context first,
+You are designing Looply, a Turkish mobile web product. Read this context first,
 then design ONLY the screen described after it.
 
 ── PRODUCT ─────────────────────────────────────────────────────────────
-CafePlay is a gamified customer-acquisition and loyalty network for cafés in Turkey.
+Looply is a gamified customer-acquisition and loyalty network for cafés in Turkey.
 A guest at a café table scans a printed QR code on the table, registers with phone +
 name, plays a short casual game, earns points and discount coupons, and redeems the
 coupon at the cash register. The café pays for measurable foot traffic, not for a game.
@@ -406,7 +406,7 @@ This is the first screen of the product; the palette you choose here becomes the
 palette for all 31 screens. Single column, max-width 512px, centered, 20px padding.
 
 Layout top to bottom:
-1. Header. "CafePlay" in the display face, extrabold, ~48px, tight tracking.
+1. Header. "Looply" in the display face, extrabold, ~48px, tight tracking.
    Below it, body face 15px text-muted: "Masadaki karekodu okut, oyna, kazandığın
    indirimi kasada kullan."
 2. OPTIONAL open-session strip (design it as a second variant of this screen):
@@ -467,12 +467,12 @@ Layout:
    · "CEP TELEFONU"  placeholder "0532 123 45 67"
      hint "Doğrulama kodu bu numaraya gelecek"
    · Two fields side by side in a 2-column grid: "AD" and "SOYAD"
-   · "DOĞUM YILI"  placeholder "1995"  hint "CafePlay 18 yaş ve üzeri içindir"
+   · "DOĞUM YILI"  placeholder "1995"  hint "Looply 18 yaş ve üzeri içindir"
 5. A hairline divider, then two consent checkboxes. 20px checkboxes taking the accent
    when checked, 12px gap, text in 13px text-muted with 1.6 line-height:
    · "Aydınlatma metnini okudum, kişisel verilerimin işlenmesini kabul ediyorum."
      — the words "Aydınlatma metnini" are an underlined accent link.
-   · "CafePlay'den kampanya ve fırsat bildirimleri almak istiyorum."
+   · "Looply'den kampanya ve fırsat bildirimleri almak istiyorum."
    These two must look clearly SEPARATE and the second must render UNCHECKED. Do not
    merge them into one line and do not pre-check anything.
 6. Primary button, full width: solid accent fill, display face bold 16px, 16px vertical
@@ -609,7 +609,7 @@ Single column, max-width 448px, 20px side padding, 64px bottom padding for the n
    kataloğu ve ürün indirimleri".
 
 9. EXPLANATION NOTE, only when the player cannot earn: no box, just a 2px neutral left
-   rule with 16px left padding, 13px text-muted: "Puan ve kupon yalnızca bir CafePlay
+   rule with 16px left padding, 13px text-muted: "Puan ve kupon yalnızca bir Looply
    kafesinde, masadaki karekodu okutunca kazanılır."
 
 10. Footer links above the nav, separated by a hairline top border: an underlined accent
@@ -736,7 +736,7 @@ Screen: "Bölüm sonucu" — what the player earned. Max-width 448px, 20px side 
    · "+50 XP"     /  "Seviyen bu kafede ilerledi. XP harcanmaz."
    Daily-cap variant of the first row's description: "Günlük 900 puan sınırına ulaştın;
    150 puan yazılmadı. Oynamaya devam edebilirsin, XP birikiyor."
-   No-gain variant: title "Kazanım yok", description "Puan ve XP yalnızca bir CafePlay
+   No-gain variant: title "Kazanım yok", description "Puan ve XP yalnızca bir Looply
    kafesinde, konumun doğrulandığında kazanılır."
 3. REWARD CARD — only when a coupon was won. A tappable box with a solid reward border
    on surface-sunk: micro-label in reward "🎟️ ÖDÜL KAZANDIN", then the reward title in
@@ -790,7 +790,7 @@ Max-width 448px, 20px side padding, bottom nav visible with "ÖDÜLLERİM" activ
    Right-side date labels: "Son kullanım 12 Eylül" or, for pending, "Açılış 27 Ağustos".
    NO TL amount anywhere on this screen.
 4. EMPTY STATE — one card, 24px/32px padding: a 30px "🎟️" glyph, then 15px text-muted:
-   "Henüz ödülün yok. Bir CafePlay kafesinde masadaki karekodu okutup oynadığında
+   "Henüz ödülün yok. Bir Looply kafesinde masadaki karekodu okutup oynadığında
    kazandıkların burada birikir."
 
 All quoted text is Turkish final copy — do not translate.
@@ -1005,7 +1005,7 @@ Screen: "Kasa girişi" — staff PIN entry on a counter tablet or phone.
 Same visual system as the player screens, but everything one size larger.
 Vertically centered on a full-height page, content max-width 320px.
 
-1. Centered header: monospaced 11px UPPERCASE accent, wide letter-spacing, "CAFEPLAY";
+1. Centered header: monospaced 11px UPPERCASE accent, wide letter-spacing, "LOOPLY";
    under it H1 display face, extrabold ~30px "Kasa"; under that a 14px text-muted
    paragraph, max-width 288px: "Kupon onaylamak için personel PIN'inle gir. Oturum
    sekiz saat açık kalır."
@@ -1044,7 +1044,7 @@ Screen set: "Kasa" — the coupon approval flow, five states of ONE screen.
 Counter scale. Content column max-width 448px, centered on the page.
 
 PERSISTENT HEADER (all states): centered monospaced 10px accent, wide letter-spacing,
-"CAFEPLAY KASA"; under it display face, extrabold 24px "Kupon onayı".
+"LOOPLY KASA"; under it display face, extrabold 24px "Kupon onayı".
 
 STATE C2 · IDLE
   · A huge primary button, full width, solid accent, display face bold 20px, 24px
@@ -1138,7 +1138,7 @@ aligned numbers. NO EMOJI. No decorative accents.
 Max-width 512px, 20px side padding on mobile / 32px on desktop, 40px top.
 
 1. Header block with a bottom hairline and 24px bottom padding: a micro-label
-   "CAFEPLAY", then H1 display face, BOLD (not extrabold) ~30px "İşletme başvurusu",
+   "LOOPLY", then H1 display face, BOLD (not extrabold) ~30px "İşletme başvurusu",
    then a 15px text-muted paragraph: "Vergi levhanla başvur. Ücretsiz — onaylanana
    kadar hiçbir karekod üretilmez."
 2. Form fields. Business-style field: a 13px SEMIBOLD label above (not a micro-label —
@@ -1195,7 +1195,7 @@ All quoted text is Turkish final copy — do not translate.
 Screen: "İşletme girişi" — manager OTP login. BUSINESS surface, max-width 512px.
 Identical structure to D1's header pattern.
 
-Header: micro-label "CAFEPLAY", H1 "İşletme girişi", subtitle "Başvuru sırasında
+Header: micro-label "LOOPLY", H1 "İşletme girişi", subtitle "Başvuru sırasında
 verdiğin yetkili numarasıyla gir."
 
 Two states of one form:
@@ -1469,7 +1469,7 @@ Header: micro-label "İŞLETME PANELİ", H1 "Rapor", subtitle "24 Ağustos – 3
 1. TABS — two text tabs on a hairline bottom border, no pills: "Bu hafta" (active: a
    2px full-strength bottom border, semibold) and "Geçen hafta" (muted, transparent
    border).
-2. SECTION "Kafene gelen oyuncu" with the sub-line: "CafePlay üzerinden gelip oyunu
+2. SECTION "Kafene gelen oyuncu" with the sub-line: "Looply üzerinden gelip oyunu
    tamamlayan, konumu doğrulanmış müşteriler."
    · A hero block with a hairline border, 20px/24px padding: micro-label "NİTELİKLİ
      OYUNCU", then a monospaced BOLD ~48px tabular number "127", then a 13px text-muted
@@ -1506,7 +1506,7 @@ Header: micro-label "İŞLETME PANELİ", H1 "Rapor", subtitle "24 Ağustos – 3
    A row: "K-4821" monospaced · "26 Ağu 14:32" muted tabular · "Masa 3" · a badge
    "nitelikli" or a monospaced 11px text-muted "K1" · a tabular count "3".
    Under the table, 12px text-muted: "Müşteriler işletmene özel anonim kodla görünür.
-   Ad, soyad ve telefon CafePlay'de kalır, hiçbir ekranda gösterilmez."
+   Ad, soyad ve telefon Looply'de kalır, hiçbir ekranda gösterilmez."
    Where a count is below the privacy threshold, the cell shows "<5" instead of a
    number — design at least one such cell.
 8. SECTION "Dışa aktar" — an outlined button "CSV indir" and a 13px text-muted line
@@ -1558,7 +1558,7 @@ All quoted text is Turkish final copy — do not translate.
 ```
 Screen: "Platform girişi". BUSINESS surface, max-width 512px.
 Identical structure to D3 (two-step OTP), with:
-  header micro-label "CAFEPLAY", H1 "Platform girişi",
+  header micro-label "LOOPLY", H1 "Platform girişi",
   subtitle "Yalnızca platform ekibi. Yetkili numaranla gir."
   field label "Cep telefonu"
 No application link in the footer. Nothing else on the page.

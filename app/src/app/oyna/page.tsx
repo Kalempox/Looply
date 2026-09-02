@@ -200,7 +200,7 @@ export default async function OynaSayfasi() {
           <p className="mb-10 border-l-2 border-cizgi pl-4 text-[13px] leading-relaxed text-yazi-sonuk">
             {masa
               ? "Konumunu doğrulayana kadar oyunlar puan kazandırmaz. Yukarıdaki şeritten doğrulayabilirsin."
-              : "Puan ve kupon yalnızca bir CafePlay kafesinde, masadaki karekodu okutunca kazanılır."}
+              : "Puan ve kupon yalnızca bir Looply kafesinde, masadaki karekodu okutunca kazanılır."}
           </p>
         )}
 

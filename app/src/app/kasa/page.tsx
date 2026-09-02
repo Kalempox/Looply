@@ -4,7 +4,7 @@ import { KasaTarayici } from "./tarayici";
 import { cikisEylemi } from "./actions";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Kasa · CafePlay" };
+export const metadata = { title: "Kasa · Looply" };
 
 /**
  * Kasa ekranı — E7.
@@ -24,7 +24,7 @@ export default async function KasaSayfasi() {
     <main className="flex min-h-dvh flex-col items-center bg-zemin px-5 py-8 text-yazi">
       <div className="mb-7 text-center">
         <div className="etiket-caps text-vurgu">
-          CafePlay Kasa
+          Looply Kasa
         </div>
         <h1 className="mt-1.5 font-display text-2xl font-extrabold tracking-tight">
           Kupon onayı

@@ -16,7 +16,7 @@ import {
 } from "./kontroller";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Personel · CafePlay" };
+export const metadata = { title: "Personel · Looply" };
 
 export default async function PersonelSayfasi() {
   const o = await kafeYoneticisiGerekli();

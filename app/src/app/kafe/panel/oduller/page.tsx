@@ -15,7 +15,7 @@ import { OdulSekmeleri } from "../odul-sekmeleri";
 import { SayiKarti, IKON } from "@/components/gosterge";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Ödül kataloğu · CafePlay" };
+export const metadata = { title: "Ödül kataloğu · Looply" };
 
 /**
  * Ödül kataloğu.

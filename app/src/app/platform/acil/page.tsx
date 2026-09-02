@@ -4,7 +4,7 @@ import { IsletmeSayfa, IsletmeBaslik, IsletmeUyari, Bolum } from "@/components/i
 import { AnahtarDugmesi, KafeKontrolu, OturumKontrolu } from "./kontroller";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Acil durdurma · CafePlay" };
+export const metadata = { title: "Acil durdurma · Looply" };
 
 /**
  * Acil durdurma — G18.

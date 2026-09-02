@@ -9,7 +9,7 @@ import { bakim } from "@/domain/bakim";
 import { BaglantiKopyala } from "./kontroller";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Arkadaşını çağır · CafePlay" };
+export const metadata = { title: "Arkadaşını çağır · Looply" };
 
 /**
  * "Arkadaşını çağır" — davet ekranı (Faz 9, Ü20).
@@ -18,7 +18,7 @@ export const metadata = { title: "Arkadaşını çağır · CafePlay" };
  *
  * Davet edilenlerin adı, telefonu, kodu **hiç yok**. Davet eden yalnızca bir
  * davetin hangi aşamada olduğunu görüyor. Aksi hâlde davet bağlantısı,
- * tanıdığın birinin CafePlay'de ne yaptığını izleme aracına dönerdi —
+ * tanıdığın birinin Looply'de ne yaptığını izleme aracına dönerdi —
  * G1'in oyuncular arası karşılığı.
  *
  * ── Neden alt gezinmede değil ───────────────────────────────
@@ -38,7 +38,7 @@ export default async function DavetSayfasi() {
 
   // Paylaşılabilir bağlantı istekten türüyor: ortam değişkeni eklemek,
   // hazırlık ve canlı arasında sessizce yanlış adres üretme riskini getirirdi.
-  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "cafeplay";
+  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "looply";
   const sema = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
   const baglanti = `${sema}://${host}/r/${ozet.kod}`;
 
@@ -47,7 +47,7 @@ export default async function DavetSayfasi() {
       <Baslik ust="Davet">Arkadaşını çağır</Baslik>
 
       <p className="mb-8 text-[15px] leading-relaxed text-yazi-sonuk">
-        Çağırdığın arkadaşın bir CafePlay kafesinde oynadığında ikiniz de XP
+        Çağırdığın arkadaşın bir Looply kafesinde oynadığında ikiniz de XP
         kazanırsınız. XP harcanmaz — seviyeni yükseltir.
       </p>
 
@@ -115,7 +115,7 @@ export default async function DavetSayfasi() {
       {/* Ödülün ne zaman geldiğini söylemek, gelmediğinde sorulacak soruyu
           önceden cevaplıyor. */}
       <p className="mt-8 border-l-2 border-cizgi pl-4 text-[13px] leading-relaxed text-yazi-sonuk">
-        Davet, arkadaşın bir CafePlay kafesinde masadaki karekodu okutup oyunu
+        Davet, arkadaşın bir Looply kafesinde masadaki karekodu okutup oyunu
         tamamladığında sayılır. Yalnızca hesap açmak yetmez — ödül gerçek bir kafe
         ziyaretine bağlı.
       </p>

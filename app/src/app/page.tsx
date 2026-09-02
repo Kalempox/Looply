@@ -57,7 +57,7 @@ export default async function GirisNoktasi() {
       <div className="mx-auto w-full max-w-lg px-5 py-10 sm:py-14">
         <header className="mb-10">
           <h1 className="font-display text-5xl leading-none font-extrabold tracking-tight">
-            CafePlay
+            Looply
           </h1>
           <p className="mt-3 text-[15px] leading-relaxed text-yazi-sonuk">
             Masadaki karekodu okut, oyna, kazandığın indirimi kasada kullan.

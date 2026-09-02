@@ -87,7 +87,7 @@ export function PanelGezinme() {
       >
         <div className="border-b border-cizgi px-5 py-5">
           <div className="font-display text-lg leading-none font-extrabold tracking-tight">
-            CafePlay
+            Looply
           </div>
           <div className="etiket-caps mt-1.5 text-[10px] text-yazi-sonuk">İşletme paneli</div>
         </div>

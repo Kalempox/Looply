@@ -54,15 +54,15 @@ export interface SmsSaglayici {
 
 /* ── Şablonlar ────────────────────────────────────────────────
  * SMS metninde kafe adı ve link YOK — kimlik avı yüzeyi açılmasın
- * (docs/07 §2.3). Gönderen başlığı zaten CafePlay olacak.
+ * (docs/07 §2.3). Gönderen başlığı zaten Looply olacak.
  */
 
 const SABLONLAR: Record<Sablon, (d: Record<string, string>) => string> = {
-  otp: (d) => `CafePlay dogrulama kodunuz: ${d.kod}. 3 dakika gecerli. Kimseyle paylasmayin.`,
-  phone_changed: () => `CafePlay hesabinizin telefon numarasi degistirildi. Bu islemi siz yapmadiysaniz hemen bize ulasin.`,
-  new_device: () => `CafePlay hesabiniza yeni bir cihazdan giris yapildi. Siz degilseniz bize ulasin.`,
-  account_deleted: () => `CafePlay hesabiniz silinme talebiniz alindi. 30 gun icinde vazgecebilirsiniz.`,
-  incident: (d) => `CafePlay guvenlik bildirimi: ${d.mesaj ?? ""}`,
+  otp: (d) => `Looply dogrulama kodunuz: ${d.kod}. 3 dakika gecerli. Kimseyle paylasmayin.`,
+  phone_changed: () => `Looply hesabinizin telefon numarasi degistirildi. Bu islemi siz yapmadiysaniz hemen bize ulasin.`,
+  new_device: () => `Looply hesabiniza yeni bir cihazdan giris yapildi. Siz degilseniz bize ulasin.`,
+  account_deleted: () => `Looply hesabiniz silinme talebiniz alindi. 30 gun icinde vazgecebilirsiniz.`,
+  incident: (d) => `Looply guvenlik bildirimi: ${d.mesaj ?? ""}`,
 
   // ── Kupon hatırlatmaları ────────────────────────────────────
   //
@@ -73,9 +73,9 @@ const SABLONLAR: Record<Sablon, (d: Record<string, string>) => string> = {
   // buraya "yeni tatlımızı dene" eklenirse mesaj ticari iletiye döner ve
   // G7'nin izin + İYS kaydı şartı doğar.
   coupon_active: () =>
-    `CafePlay odulunuz kullanima acildi. Oduller ekranindan kasada gosterebilirsiniz.`,
+    `Looply odulunuz kullanima acildi. Oduller ekranindan kasada gosterebilirsiniz.`,
   coupon_expiring: () =>
-    `CafePlay odulunuzun kullanim suresi yarin doluyor.`,
+    `Looply odulunuzun kullanim suresi yarin doluyor.`,
 };
 
 /**

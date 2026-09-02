@@ -30,7 +30,7 @@ export function VeriIndirmeDugmesi() {
               const url = URL.createObjectURL(new Blob([json], { type: "application/json" }));
               const a = document.createElement("a");
               a.href = url;
-              a.download = `cafeplay-verilerim-${new Date().toISOString().slice(0, 10)}.json`;
+              a.download = `looply-verilerim-${new Date().toISOString().slice(0, 10)}.json`;
               a.click();
               URL.revokeObjectURL(url);
             } catch {

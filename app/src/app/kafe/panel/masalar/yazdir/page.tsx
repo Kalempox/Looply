@@ -41,7 +41,7 @@ export default async function YazdirSayfasi() {
   ]);
 
   const acik = masalar.filter((m) => m.aktif);
-  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "cafeplay";
+  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "looply";
   const sema = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
 
   return (

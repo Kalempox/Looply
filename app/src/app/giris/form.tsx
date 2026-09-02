@@ -269,7 +269,7 @@ function KayitSekmesi({
       <Alan
         etiket="Doğum yılı"
         hata={durum.hatalar?.dogumYili}
-        ipucu="CafePlay 18 yaş ve üzeri içindir"
+        ipucu="Looply 18 yaş ve üzeri içindir"
       >
         <input
           name="dogumYili"
@@ -318,7 +318,7 @@ function KayitSekmesi({
           ad="pazarlama"
           isaretli={pazarlama}
           degistir={setPazarlama}
-          metin="CafePlay'den kampanya ve fırsat bildirimleri almak istiyorum."
+          metin="Looply'den kampanya ve fırsat bildirimleri almak istiyorum."
         />
       </div>
 

@@ -35,11 +35,11 @@ export type DefterKaydi = {
 const SINIR = 30;
 
 declare global {
-  var __cafeplayGelistirmeDefteri: DefterKaydi[] | undefined;
+  var __looplyGelistirmeDefteri: DefterKaydi[] | undefined;
 }
 
 function defter(): DefterKaydi[] {
-  return (globalThis.__cafeplayGelistirmeDefteri ??= []);
+  return (globalThis.__looplyGelistirmeDefteri ??= []);
 }
 
 export function defteriYaz(kayit: Omit<DefterKaydi, "zaman">): void {

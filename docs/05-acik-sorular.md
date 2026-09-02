@@ -27,7 +27,7 @@ Aynı turda `12-yeni-kapsam.md`'deki altı çelişki de kapandı: Ç1→Ü19 · 
 | S4 | Sayacı kim denetliyor | Append-only defter + kafeye açık anonim doğrulama defteri | `06` §6 |
 | S7 | Şans Çarkı regülasyon riski | v1'den çıkarıldı | E8 |
 | S8 | Çapraz-kafe mahsuplaşması | Puan kafe bazında olduğu için sorun **doğmuyor** | Ü5 |
-| S9 | Ürün adı | Şimdilik **CafePlay**. Klasör adı `cafemasa` kalıyor | Ü11 |
+| S9 | Ürün adı | Şimdilik **Looply**. Klasör adı `cafemasa` kalıyor | Ü11 |
 | S10 | Koleksiyon mekaniği (F10/F11) | İkisi de v1'de yok — Faz 9 sonrası | — |
 | S12 | Anlık ödül nasıl seçilir | Hâlâ açık → aşağı taşındı | — |
 

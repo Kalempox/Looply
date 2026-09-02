@@ -17,7 +17,7 @@ import { RENK, oyunRengi, type OyuncuRengi } from "@/components/oyuncu-renk";
 import { TacIkonu, OyunIkonu } from "@/components/oyuncu-ikon";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Liderlik · CafePlay" };
+export const metadata = { title: "Liderlik · Looply" };
 
 /**
  * Tüm zamanlar liderlik tablosu.

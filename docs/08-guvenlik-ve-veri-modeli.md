@@ -818,7 +818,7 @@ Tek katman yeterli değil: birincisi geliştirici hatasına, ikincisi yapıland�
 
 Kayıt ekranında **ayrı, işaretsiz** kutu:
 
-> ☐ CafePlay'den kampanya ve fırsat bildirimleri almak istiyorum.
+> ☐ Looply'den kampanya ve fırsat bildirimleri almak istiyorum.
 > Bu izni istediğim zaman uygulamadan veya İYS üzerinden geri alabilirim.
 
 **Uygulama şartları:**

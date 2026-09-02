@@ -13,17 +13,17 @@ import { env } from "@/lib/env";
  */
 
 declare global {
-  var __cafeplayPools: { admin?: Pool; app?: Pool } | undefined;
+  var __looplyPools: { admin?: Pool; app?: Pool } | undefined;
 }
 
-const pools = (globalThis.__cafeplayPools ??= {});
+const pools = (globalThis.__looplyPools ??= {});
 
 /** Göç ve tohum verisi için. Uygulama isteklerinde KULLANILMAZ. */
 export function adminPool(): Pool {
   return (pools.admin ??= new Pool({
     connectionString: env().DATABASE_URL,
     max: 4,
-    application_name: "cafeplay-migrate",
+    application_name: "looply-migrate",
   }));
 }
 
@@ -32,7 +32,7 @@ export function appPool(): Pool {
   return (pools.app ??= new Pool({
     connectionString: env().APP_DATABASE_URL,
     max: 10,
-    application_name: "cafeplay-app",
+    application_name: "looply-app",
     statement_timeout: 10_000,
   }));
 }

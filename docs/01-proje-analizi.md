@@ -1,6 +1,6 @@
 # 01 — Proje Analizi
 
-**Kaynak:** `kaynak/cafeplay-urun-tanimi.txt` (31 bölüm) + `kaynak/buyume-ve-gelir-modeli.txt` (17 bölüm)
+**Kaynak:** `kaynak/looply-urun-tanimi.txt` (31 bölüm) + `kaynak/buyume-ve-gelir-modeli.txt` (17 bölüm)
 **Tarih:** 2026-08-22
 
 ---
@@ -9,7 +9,7 @@
 
 | Dosya | Katman | İçerik |
 |---|---|---|
-| `cafeplay-urun-tanimi.txt` | **ÜRÜN** | Ne yapıyoruz, kim kullanıyor, hangi ekranlar var |
+| `looply-urun-tanimi.txt` | **ÜRÜN** | Ne yapıyoruz, kim kullanıyor, hangi ekranlar var |
 | `buyume-ve-gelir-modeli.txt` | **TİCARİ** | Para nereden geliyor, nasıl büyüyoruz |
 
 İkinci doküman daha sonra yazılmış ve birincinin **§28 "Abonelik ve ödeme"** bölümünü fiilen geçersiz kılıyor: abonelik ana gelir modeli olmaktan çıkarılıp 6. sıraya itiliyor, yerine kullanım-bazlı erişim satışı konuyor.
@@ -20,12 +20,12 @@
 
 ## 2. Dört aktör
 
-| Aktör | Ne istiyor | CafePlay'e ne veriyor |
+| Aktör | Ne istiyor | Looply'e ne veriyor |
 |---|---|---|
 | **Oyuncu** | Eğlence, puan, seviye, ödül, kupon, sıralama | Dikkat + veri + kafeye ziyaret. **Para ödemiyor.** |
 | **Kafe** | Müşteri çekmek, tekrar getirmek, ölçülebilir sonuç | Promosyon havuzu (ürün) + erişim ödemesi |
 | **Platform** | Ağı büyütmek, trafiği ölçmek ve satmak | Altyapı, oyunlar, oyuncu havuzu |
-| **Reklamveren** | CafePlay oyuncularına ulaşmak | Reklam / sponsorluk bütçesi |
+| **Reklamveren** | Looply oyuncularına ulaşmak | Reklam / sponsorluk bütçesi |
 
 Kaynak dokümandaki kilit tanım:
 
@@ -94,7 +94,7 @@ Fraud koruması · Abonelik altyapısı (hazır, kapalı) · Çoklu işletme ağ
 ### Kurgu
 1. Kafe **bedava** girer — abonelik yok, satış görüşmesi yok
 2. Tek şart: günlük min. **1.500 TL değerinde promosyon havuzu** (nakit değil, kendi ürünlerinin perakende değeri)
-3. CafePlay ücretsiz "nitelikli oyuncu" erişimi verir (örn. 10/gün)
+3. Looply ücretsiz "nitelikli oyuncu" erişimi verir (örn. 10/gün)
 4. Kafe daha fazlasını isterse **Boost** satın alır: +20 / +50 / +100 / +250 / +500 oyuncu/gün
 
 ### İki kavram
@@ -124,9 +124,9 @@ Kafe soyut bir yazılım değil, somut bir sonuç satın alıyor. Kazanmadıysa 
 
 ## 7. Bulgular
 
-### ✅ ÇÖZÜLDÜ — "CafePlay kafeye oyuncu getiriyor" iddiası
+### ✅ ÇÖZÜLDÜ — "Looply kafeye oyuncu getiriyor" iddiası
 
-**İlk okumada tespit edilen sorun:** Ürün dokümanında oyuncu zaten kafede oturan müşteridir (masadaki QR'ı okutur). Buna göre müşteriyi kafeye CafePlay getirmemiş olur.
+**İlk okumada tespit edilen sorun:** Ürün dokümanında oyuncu zaten kafede oturan müşteridir (masadaki QR'ı okutur). Buna göre müşteriyi kafeye Looply getirmemiş olur.
 
 **CD açıklaması (2026-08-22):** Kasıt, **sırf o oyunu oynamak için kafeye gelen müşteri**. Oyunun kendisi çekim gücü.
 

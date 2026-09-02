@@ -5,7 +5,7 @@ import { OtpGirisFormu } from "@/components/otp-giris";
 import { platformKodGonder, platformKodDogrula } from "./actions";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Platform · CafePlay" };
+export const metadata = { title: "Platform · Looply" };
 
 export default async function PlatformGiris() {
   const o = await oturum.oku();
@@ -15,7 +15,7 @@ export default async function PlatformGiris() {
 
   return (
     <IsletmeSayfa>
-      <IsletmeBaslik ust="CafePlay" alt="Yalnızca platform ekibi.">
+      <IsletmeBaslik ust="Looply" alt="Yalnızca platform ekibi.">
         Platform girişi
       </IsletmeBaslik>
 

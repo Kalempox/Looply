@@ -4,7 +4,7 @@ import { kodEkrandaGosterilir } from "@/sms";
 import { Yenileyici, TemizleDugmesi } from "./kontroller";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Geliştirme defteri · CafePlay" };
+export const metadata = { title: "Geliştirme defteri · Looply" };
 
 /**
  * Geliştirme defteri.

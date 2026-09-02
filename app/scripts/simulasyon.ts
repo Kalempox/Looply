@@ -570,7 +570,7 @@ async function main() {
   const bugun = isGunu();
   const gunler = Array.from({ length: GUN_SAYISI }, (_, i) => gunEkle(bugun, i - (GUN_SAYISI - 1)));
 
-  yaz(`\n  CafePlay simülasyonu`);
+  yaz(`\n  Looply simülasyonu`);
   yaz(`  ${kafeler.length} kafe · ${OYUNCU_SAYISI} oyuncu · ${GUN_SAYISI} gün (${gunler[0]} → ${bugun})\n`);
 
   const donemler = await donemleriHazirla(kafeler, gunler);

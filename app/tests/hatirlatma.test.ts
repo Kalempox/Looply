@@ -170,7 +170,7 @@ describe("hatırlatma metni hizmet bildirimi kalıyor", () => {
           `${sablon} metninde "${kelime}" geçiyor — bu mesajı ticari iletiye çevirir`,
         );
       }
-      assert.ok(metin.startsWith("cafeplay"), `${sablon} gönderen kimliğiyle başlamalı`);
+      assert.ok(metin.startsWith("looply"), `${sablon} gönderen kimliğiyle başlamalı`);
       assert.ok(metin.length <= 160, `${sablon} tek SMS'e sığmalı (${metin.length})`);
     }
   });

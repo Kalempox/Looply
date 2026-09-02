@@ -12,7 +12,7 @@ import { SayiKarti, Halka, IKON } from "@/components/gosterge";
 import { PencereFormu, KapatDugmesi } from "./kontroller";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Happy Hour · CafePlay" };
+export const metadata = { title: "Happy Hour · Looply" };
 
 /**
  * Ö3 · Happy Hour havuzu.

@@ -16,7 +16,7 @@ import { RENK } from "@/components/oyuncu-renk";
 import { gorselSec, GORSEL_RENGI } from "@/components/oyuncu-gorsel";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Fırsatlar · CafePlay" };
+export const metadata = { title: "Fırsatlar · Looply" };
 
 /**
  * "Buradaki fırsatlar" — bulunulan kafenin aktif ödülleri ve kampanyaları.

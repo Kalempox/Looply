@@ -267,7 +267,7 @@ function SonucEkrani({
     satirlar.push({
       baslik: "Kazanım yok",
       aciklama:
-        "Puan ve XP yalnızca bir CafePlay kafesinde, konumun doğrulandığında kazanılır.",
+        "Puan ve XP yalnızca bir Looply kafesinde, konumun doğrulandığında kazanılır.",
     });
   } else {
     // Ü48: bölüm bitmese de puan yazılıyor. Eski ekran burada "Kazanım

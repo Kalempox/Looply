@@ -52,11 +52,15 @@
   karışıp parçayı yanlışlıkla düşürtüyordu); Kelime'de seçili harf doluyor.
   408 test · üç oyun da tarayıcıda mobil boyutta görüldü.
 
-- [ ] **4 · İsim değişikliği: CafePlay → Looply**
-  Kod 60 dosya/113 geçiş · doküman 8 dosya/27 geçiş · depo, paket, alan adı.
-  ⚠️ Veritabanı rol adlarına **dokunulmuyor** (10 göç dosyasında geçiyor).
-  ⚠️ **SMS gönderici başlığı başvurusu bu işle başlıyor** — operatör onayı
-  birkaç iş günü, geciken canlıya çıkışı bloke eder.
+- [x] **4 · İsim değişikliği: CafePlay → Looply** ✅ **BİTTİ** — Ü86, 2026-09-02
+  65 dosya: ekran metinleri, SMS şablonları, sayfa başlıkları, aydınlatma
+  metni, paket adı, doküman.
+  ⚠️ **Veritabanı kimliklerine dokunulmadı** — `cafeplay_app`,
+  `cafeplay_admin`, veritabanı adı, kap ve hacim adları. Göçler uygulanmış
+  tarihtir ve kullanıcı bu adları hiç görmüyor.
+  ⚠️ **SMS gönderici başlığı başvurusu artık yapılabilir** — şablonlar
+  "Looply" ile başlıyor ve test bunu çiviliyor. Operatör onayı birkaç iş
+  günü; geciken canlıya çıkışı bloke eder.
 
 ---
 

@@ -186,7 +186,7 @@ gösterilebilir ve gösterilmeli). Oyuncu tarafında ise TL yerine ödülün
 **adı** duruyor. Belgedeki "Reward Value (TL)" fikri doğru — yalnızca
 kimin göreceği farklı.
 
-### 5.2 · Kafe Bakiyesi / CafePlay Bakiye ⚠️ **Ü18**
+### 5.2 · Kafe Bakiyesi / Looply Bakiye ⚠️ **Ü18**
 
 Belge üçüncü bir ödül tipi istiyor: "50 TL kafede harcanabilir bakiye".
 Ü18 bunu v1'den **çıkardı**. Şemada `reward_type` yalnızca

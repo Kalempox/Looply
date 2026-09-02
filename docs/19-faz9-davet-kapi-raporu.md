@@ -138,7 +138,7 @@ beklenmiyor.
 Davet eden yalnızca bir davetin hangi aşamada olduğunu görüyor: *Bağlantı
 açıldı · Hesap açtı · Oyuna başladı · Tamamlandı*.
 
-Aksi hâlde davet bağlantısı, tanıdığın birinin CafePlay'de ne yaptığını izleme
+Aksi hâlde davet bağlantısı, tanıdığın birinin Looply'de ne yaptığını izleme
 aracına dönerdi. G1'in kafe tarafındaki karşılığı neyse, bu da oyuncular
 arasındaki karşılığı.
 

@@ -186,7 +186,7 @@ export function DisaAktarma({
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `cafeplay-rapor-${dosyaAdi}.csv`;
+        a.download = `looply-rapor-${dosyaAdi}.csv`;
         a.click();
         URL.revokeObjectURL(url);
       } catch {

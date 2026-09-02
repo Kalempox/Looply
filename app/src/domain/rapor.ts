@@ -404,7 +404,7 @@ export type SaatlikDagilim = {
  *
  * ── Neyin oranı olduğu ──────────────────────────────────────
  *
- * **Kafenin doluluğu değil**, CafePlay üzerinden dolan masa oranı. Oyun
+ * **Kafenin doluluğu değil**, Looply üzerinden dolan masa oranı. Oyun
  * oynamadan oturan müşteriyi biz görmüyoruz; ekranın da öyle yazması
  * gerekiyor, yoksa rapor kafenin kendi kasa verisiyle çelişir ve güveni
  * ilk çelişkide kaybederiz.
@@ -768,7 +768,7 @@ export async function disaAktar(
     });
 
   const satirlar: (string[] | never[])[] = [
-    ["CafePlay raporu", `${aralik.baslangic} — ${aralik.bitis}`],
+    ["Looply raporu", `${aralik.baslangic} — ${aralik.bitis}`],
     [],
     ["ÖZET"],
     ["Nitelikli oyuncu", String(o.nitelikliOyuncu)],

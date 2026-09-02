@@ -11,7 +11,7 @@ import { SayiKarti, CubukListe, IKON } from "@/components/gosterge";
 import { MasaEkleme, DurumDugmesi, YazdirDugmesi } from "./kontroller";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Masa karekodları · CafePlay" };
+export const metadata = { title: "Masa karekodları · Looply" };
 
 /**
  * D11 · Masa karekodları.

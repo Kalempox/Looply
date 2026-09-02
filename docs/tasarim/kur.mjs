@@ -91,7 +91,7 @@ ${satir("Kasiyer PIN", "1234")}
 const KAFA = (baslik, govdeSinifi) => `<!DOCTYPE html><html lang="tr"><head>
 <meta charset="utf-8">
 <meta content="width=device-width, initial-scale=1.0" name="viewport">
-<title>CafePlay - ${baslik}</title>
+<title>Looply - ${baslik}</title>
 <!-- Fonts -->
 <link href="https://fonts.googleapis.com" rel="preconnect">
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">

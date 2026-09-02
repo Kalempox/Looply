@@ -2,13 +2,13 @@ import Link from "next/link";
 import { IsletmeSayfa, IsletmeBaslik } from "@/components/isletme";
 import { BasvuruFormu } from "./form";
 
-export const metadata = { title: "İşletme başvurusu · CafePlay" };
+export const metadata = { title: "İşletme başvurusu · Looply" };
 
 export default function BasvuruSayfasi() {
   return (
     <IsletmeSayfa>
       <IsletmeBaslik
-        ust="CafePlay"
+        ust="Looply"
         alt="Masalarına karekod koy, müşterin oynasın, kazandığı indirimi kasanda kullansın. Katılım ücretsiz."
       >
         İşletme başvurusu

@@ -1,4 +1,4 @@
-# CafePlay
+# Looply
 
 > Kafedeki müşterinin masadaki karekodu okutup kısa bir oyun oynadığı; puan, ödül ve indirim kuponu kazanıp bunu kasada kullandığı; kafenin de bu sayede müşteri trafiği, ürün satışı ve tekrar ziyaret elde ettiği **oyunlaştırılmış müşteri kazanım ve sadakat ağı**.
 
@@ -57,7 +57,7 @@ Başvuru → belge → platform onayı → panel
 
 ## Stratejik çekirdek
 
-CafePlay'in merkezi **oyun değil**.
+Looply'in merkezi **oyun değil**.
 
 | Katman | Rolü |
 |---|---|
@@ -101,7 +101,7 @@ cafemasa/
 │   ├── 20-demo-plani.md             Demo kararları ve devir notu (CANLI) — önce bunu oku
 │   └── tasarim/                     40 ekranın HTML tasarımı — index.html ile gezilir
 ├── kaynak/
-│   ├── cafeplay-urun-tanimi.txt      Orijinal ürün tanımı (31 bölüm)
+│   ├── looply-urun-tanimi.txt      Orijinal ürün tanımı (31 bölüm)
 │   ├── buyume-ve-gelir-modeli.txt    Orijinal gelir modeli (17 bölüm)
 │   ├── 03-davet-ve-fraud.txt         Davet sistemi + fraud motoru
 │   ├── 04-kupon-kullanim-akisi.txt   Kuponun QR ile kasada kullanımı

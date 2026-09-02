@@ -25,7 +25,7 @@ function pgDump(): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const p = spawn(
       "docker",
-      ["compose", "exec", "-T", "db", "pg_dump", "-U", "cafeplay_admin", "-d", "cafeplay"],
+      ["compose", "exec", "-T", "db", "pg_dump", "-U", "cafeplay_admin", "-d", "looply"],
       { cwd: process.cwd() },
     );
 

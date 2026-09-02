@@ -72,7 +72,7 @@ export default async function OdullerSayfasi() {
             <Gorsel ad="bilet" boy={140} />
           </span>
           <p className="relative text-[15px] leading-relaxed text-yazi-sonuk">
-            Henüz ödülün yok. Bir CafePlay kafesinde masadaki karekodu okutup oynadığında
+            Henüz ödülün yok. Bir Looply kafesinde masadaki karekodu okutup oynadığında
             kazandıkların burada birikir.
           </p>
           <Link

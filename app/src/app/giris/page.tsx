@@ -63,7 +63,7 @@ export default async function GirisSayfasi({
       {masa && <MasaKunyesi kafe={masa.cafeAdi} masa={masa.masaAdi} />}
 
       <Baslik ust={masa ? "Oyuna başla" : "Giriş"}>
-        {masa ? "Önce seni tanıyalım" : "CafePlay'e gir"}
+        {masa ? "Önce seni tanıyalım" : "Looply'e gir"}
       </Baslik>
 
       <p className="mb-7 text-[15px] leading-relaxed text-yazi-sonuk">

@@ -12,7 +12,7 @@ import { OdulSekmeleri } from "../odul-sekmeleri";
 import { KampanyaOlusturma, DurumDugmeleri } from "./kontroller";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Kampanyalar · CafePlay" };
+export const metadata = { title: "Kampanyalar · Looply" };
 
 /**
  * Ürün bazlı yüzde kampanyaları — Ö4.

@@ -50,7 +50,7 @@
 | ~~Ü8~~ | ~~**Yüzde indirimleri bütçe dışı**~~ | ⛔ **Ü17 ile değişti.** TL tavanı gelince bütçe dışında tutma gerekçesi kalktı. Adet + süre limiti zorunluluğu **devam ediyor**. |
 | Ü9 | **Kuponu kasiyer kapatır** | Yetki asla oyuncunun telefonunda değil. → Onay yöntemi **Ü19 ile genişledi**: QR birincil, 6 haneli kod yedek. |
 | Ü10 | **10 oyun, kategori yok** | İlk sürümde kategori ayrımı yapılmayacak. Motor takılabilir, oyunlar partiler hâlinde. |
-| Ü11 | **Ürün adı: CafePlay** | Geçici. Klasör adı `cafemasa` kalıyor. → S9 şimdilik kapandı. |
+| Ü11 | **Ürün adı: CafePlay** | Geçici. Klasör adı `cafemasa` kalıyor. → S9 şimdilik kapandı. **→ Ü86 ile LOOPLY oldu.** |
 | Ü12 | **Platform: web** | Native uygulama **yok**. Safari, Chrome ve diğer tüm tarayıcılarda doğru çalışmalı. |
 | Ü13 | **Dış servisler arayüz arkasında sahtelenir** | Kod, mimari ve güvenlik **gerçek**; yalnızca dışarıya açılan uçlar takılıp çıkarılabilir. SMS önce ekrana basılır, sonra tek dosyayla gerçek sağlayıcıya bağlanır. Atılacak prototip değil — ürünün kendisi. |
 
@@ -218,7 +218,7 @@
 
 | Konu | Eski hâli | Yeni karar | Kaynak |
 |---|---|---|---|
-| Kafeden abonelik | `cafeplay-urun-tanimi.txt` §28 — ana gelir modeli | Ana gelir **değil**, 6. sıraya itildi | `buyume-ve-gelir-modeli.txt` §13, §16 |
+| Kafeden abonelik | `looply-urun-tanimi.txt` §28 — ana gelir modeli | Ana gelir **değil**, 6. sıraya itildi | `buyume-ve-gelir-modeli.txt` §13, §16 |
 | Boost'un garanti satışı | "50 oyuncu satıyoruz" | **"50 nitelikli oyuncuya kadar erişim"** — garanti yok | `buyume-ve-gelir-modeli.txt` §9 |
 
 ---
@@ -244,7 +244,7 @@ Aşağıdakiler üretildi ama henüz kabul/ret almadı. Detayları `04-fikir-hav
 | Kafe Ligi (Cafe vs Cafe) | Ö5 reddedildi ama bu kafe-düzeyinde, rahatsızlık üretmiyor |
 | Kasiyer Teşviki | A4/A6 benimsemesi için önemli |
 | Bekleme Sırası Modu | — |
-| Kafe İçi Anket ("CafePlay Insight") | Ö6'nın temiz alternatifi |
+| Kafe İçi Anket ("Looply Insight") | Ö6'nın temiz alternatifi |
 | Beyaz etiket / Veri ürünü | Uzun vade |
 
 ---

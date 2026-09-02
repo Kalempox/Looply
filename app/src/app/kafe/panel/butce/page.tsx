@@ -7,7 +7,7 @@ import { SayiKarti, Halka, IKON } from "@/components/gosterge";
 import { ButceFormu } from "./kontroller";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Günlük bütçe · CafePlay" };
+export const metadata = { title: "Günlük bütçe · Looply" };
 
 /**
  * Günlük bütçe ekranı (Ü45).

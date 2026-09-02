@@ -69,7 +69,7 @@ Tek yöntem yeterli değil. Ödülün değerine göre kademelendir:
 > **Aynı gün kullanılan kupon = İNDİRİM (maliyet).**
 > **Sonraki gün kullanılan kupon = TEKRAR ZİYARET (gelir).**
 
-Aynı oturumda kullanılan kupon yeni müşteri getirmez — zaten oradaki müşteriye indirim yapılmış olur. **Aradaki fark, CafePlay'in bir indirim aracı mı yoksa bir büyüme aracı mı olduğudur.**
+Aynı oturumda kullanılan kupon yeni müşteri getirmez — zaten oradaki müşteriye indirim yapılmış olur. **Aradaki fark, Looply'in bir indirim aracı mı yoksa bir büyüme aracı mı olduğudur.**
 
 ### Çift katmanlı ödül
 
@@ -225,7 +225,7 @@ Kupon doğrulaması için kasiyer zaten sisteme sokuluyor (K5) — aynı akış 
 > Ek satış: **47 adet — 3.290 TL**
 > Kampanya maliyeti: **380 TL**
 
-Bu tabloyu gören kafe sahibi bir daha "CafePlay ne işe yarıyor" diye sormaz.
+Bu tabloyu gören kafe sahibi bir daha "Looply ne işe yarıyor" diye sormaz.
 
 ---
 

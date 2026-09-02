@@ -48,7 +48,7 @@ export function BaglantiKopyala({ baglanti }: { baglanti: string }) {
             type="button"
             onClick={() =>
               navigator
-                .share({ title: "CafePlay", text: "CafePlay'de oyna, kafede indirim kazan.", url: baglanti })
+                .share({ title: "Looply", text: "Looply'de oyna, kafede indirim kazan.", url: baglanti })
                 .catch(() => {})
             }
             className="flex-1 rounded-lg bg-vurgu py-3 font-display text-[15px] font-bold text-white"

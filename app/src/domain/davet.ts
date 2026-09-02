@@ -589,7 +589,7 @@ export type DavetOzeti = {
  *
  * Davet edilenin adı, telefonu, kodu — hiçbiri dönmüyor. Davet eden yalnızca
  * *bir* davetin hangi aşamada olduğunu görüyor. Aksi hâlde davet, tanıdığın
- * birinin CafePlay'de ne yaptığını izleme aracına dönerdi.
+ * birinin Looply'de ne yaptığını izleme aracına dönerdi.
  */
 export async function ozet(playerId: string): Promise<DavetOzeti> {
   const kod = await kodAl(playerId);

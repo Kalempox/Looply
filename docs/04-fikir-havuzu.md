@@ -28,7 +28,7 @@ Oyun bittikten sonra: *"Fişindeki kodu gir, 3x puan kazan."*
 Kafeye satabildiğin cümleyi kökten değiştirir:
 
 > ❌ "Bu ay 684 kişi oyun oynadı." *(kafe: "e ne olmuş?")*
-> ✅ **"CafePlay bu ay 47.300 TL atfedilebilir ciro getirdi. Ortalama adisyon 68 TL, CafePlay oyuncularında 94 TL."**
+> ✅ **"Looply bu ay 47.300 TL atfedilebilir ciro getirdi. Ortalama adisyon 68 TL, Looply oyuncularında 94 TL."**
 
 İkincisi **fatura kesilebilir bir cümledir.** Ve yepyeni bir gelir modeli açar: paket satmak yerine **atfedilen ciro üzerinden komisyon (%2–4)**. Kafe hiç risk almaz; sen kafenin başarısıyla büyürsün — gelir modelinin hedeflediği felsefe tam olarak bu.
 
@@ -125,7 +125,7 @@ Her kafenin kendi koleksiyon kartı var, ziyarette düşer. Nadir kartlar (altı
 **Çapraz-kafe trafiğin gerçek motoru bu olabilir** — koleksiyoncu, sırf eksik kartı için hiç gitmediği kafeye gider. Yani gelir modelinin ihtiyaç duyduğu yönlendirme davranışını *oyuncunun kendi isteğiyle* üretir.
 
 ## F11 · Kahve Pasaportu
-*"5 farklı CafePlay kafesini ziyaret et → Altın Rozet + büyük ödül."*
+*"5 farklı Looply kafesini ziyaret et → Altın Rozet + büyük ödül."*
 
 F10'un basit hâli. Daha ucuz, daha az bağımlılık yapıcı.
 
@@ -134,7 +134,7 @@ F10'un basit hâli. Daha ucuz, daha az bağımlılık yapıcı.
 # MARKA / GELİR
 
 ## F12 · Marka Örnekleme (Fiziksel Sampling)
-Marka yeni ürününü CafePlay üzerinden dağıtır: *"oyunu oyna, kasadan ücretsiz X al."*
+Marka yeni ürününü Looply üzerinden dağıtır: *"oyunu oyna, kasadan ücretsiz X al."*
 Stoku marka karşılar, kafe ek trafik alır, marka **ölçülebilir** sampling yapar (kaç kişi, hangi yaş, hangi bölge).
 
 Fiziksel deneme, pazarlamada dijital reklamdan kat kat pahalı satılır. **Reklam gelirinden büyük olabilir.**
@@ -157,7 +157,7 @@ A4 (kasiyer onayı) ve A6 (kasiyer kodu) kararları operasyonel yükü kasiyere 
 ## F15 · Bekleme Sırası Modu
 Kalabalık kafede bekleyen müşteri oynar, bekleme süresi eğlenceye dönüşür. Kafenin klasik acı noktalarından biri.
 
-## F16 · Kafe İçi Anket — "CafePlay Insight"
+## F16 · Kafe İçi Anket — "Looply Insight"
 Oyun sonunda 1 soru: *"Yeni tatlımızı denedin mi?"* → +50 puan.
 
 Kafe gerçek müşteri verisi toplar; bu ayrıca **bir ürün olarak satılabilir**. Reddedilen Google-yorum fikrinin (Ö6) temiz ve yasal alternatifi.

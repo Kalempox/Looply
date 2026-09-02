@@ -18,7 +18,7 @@ import { env } from "@/lib/env";
  */
 
 const YEDEK_DIZINI = path.join(process.cwd(), "yedekler");
-const TATBIKAT_DB = "cafeplay_tatbikat";
+const TATBIKAT_DB = "looply_tatbikat";
 
 function psql(args: string[], stdin?: Buffer): Promise<string> {
   return new Promise((resolve, reject) => {
