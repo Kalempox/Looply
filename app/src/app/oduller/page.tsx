@@ -148,14 +148,9 @@ const DURUM_ETIKETI: Record<EnvanterKuponu["durum"], string> = {
  *
  * ── Neden bilet ─────────────────────────────────────────────
  *
- * Bu kart oyuncunun kasaya uzattığı şey. Diğer kartlarla aynı beyaz
- * dikdörtgen olduğunda "bunu göstereceğim" hissi vermiyordu. Zımba
- * çentikleri ve kesikli koparma çizgisi, ekrandaki tek fiziksel nesne
- * izlenimi veriyor.
- *
- * Çentikler `radial-gradient` ile **kartın kenarına oyulmuş** iki
- * boşluk: üstüne yerleştirilen daireler olsaydı arkadaki sayfa rengini
- * bilmek gerekirdi ve kart her zeminde ayrı davranırdı.
+ * Bu kart oyuncunun kasaya uzattığı şey. Görünümü `components/bilet.tsx`
+ * içinde (Ü72): koyu doygun zemin, kategori deseni, sağ kenardan taşan
+ * çizim. Buradaki iş yalnızca kuponu o biçime çevirmek.
  *
  * ── TL yok ──────────────────────────────────────────────────
  *
