@@ -12,10 +12,15 @@
 
 # DALGA 1 · Şimdi — ürün bugün söylediğini yapmıyor
 
-- [ ] **1 · Kampanya teslim yolu** ⬅️ *başlandı*
-  Kafe kampanya oluşturuyor, limitleri zorunlu, listede görünüyor — ve tek bir
-  oyuncuya ulaşmıyor. Kupon üretimi `campaign_id` kolonuna hiç yazmıyor.
-  Veritabanı: 403 ödül kuponu, **0 kampanya kuponu**.
+- [x] **1 · Kampanya teslim yolu** ✅ **BİTTİ** — Ü82, 2026-09-02
+  Nitelikli oyun sonunda, kampanya başına günde bir kupon. Başarı şartı yok
+  (ödül oynamanın karşılığı, kampanya kafenin pazarlaması). Seçim rastgele
+  değil: bugün en az kupon çıkan kampanya.
+  ⚠️ **Yol boyunca bulunan asıl hata:** şema Ü8'in *"yüzde kampanyası
+  bütçeden düşmez"* kısıtını taşıyordu; Ü17 bu kararı tersine çevirmiş ama
+  kısıt güncellenmemişti. Hiç kampanya kuponu üretilmediği için çelişki iki
+  yıl görünmedi. Göç `0023` düzeltti.
+  11 test · `npm run ci` 400/400.
 
 - [ ] **2 · Sonsuz oyun + `basarili()` kararı**
   `bittiMi` yalnızca `tikandi` / `doldu` olacak; hedefle bitme kalkıyor.
