@@ -6,7 +6,7 @@
 > Yan dosyalar: neyin **var** olduğu → `21-looply-kapsam-haritasi.md` ·
 > demoda neyin **yapılabildiği** → `22-demo-yapilabilirlik.md`
 
-**Son güncelleme:** 2026-09-02 · **Kararlar:** Ü76 – Ü87
+**Son güncelleme:** 2026-09-02 · **Kararlar:** Ü76 – Ü88
 
 ---
 
@@ -81,13 +81,14 @@ Ayrı ayrı yazılırsa üçüncüsü ilk ikisini bozar.
   yok. Öngörü paneli (madde 16) gerçek veriyle bunu iyileştirecek.
   411 test · panelde "şu an dağıtılabilir" ayrı gösteriliyor.
 
-- [ ] **6 · Ödül motoru** (Ü77)
-  Üç girdi: **şans** · **skor ağırlığı** (yüksek skor → pahalı ödül olasılığı
-  artar) · **oyun başına azalan getiri** (aynı oyundan kazanmaya devam eden
-  oyuncunun o oyundan gelen ödülü azalır).
-  ⚠️ Azalan getiri **oyunun dışında**, ödül kararının içinde — `tekrarOyna`
-  hiç değişmiyor, S5 problemi doğmuyor.
-  ⚠️ Ü27'nin döngüsel seçimini değiştiriyor.
+- [x] **6 · Ödül motoru** ✅ **BİTTİ** — Ü88, 2026-09-02
+  Üç girdi çalışıyor. Ölçüldü: eşikte %55 düşme / en pahalı ~%0; doyumda
+  %90 / ~%9; doyumda iki kazanımdan sonra %45 / ~%1.
+  En ucuz ödül her koşulda en olası kalıyor — sıralama ters çevrilmiyor.
+  ⚠️ Göç `0024`: `coupons.play_session_id`. Azalan getirinin ihtiyaç duyduğu
+  "hangi oyundan" bağı hiç yoktu; `kaynakId` alınıp hiçbir yere
+  yazılmıyordu. Yan kazanç: "hangi oyun daha çok ödül dağıtıyor" sorulabilir.
+  418 test.
 
 - [ ] **7 · Oyun içi ödül bloğu**
   Motorun görünen yüzü: tahtaya kahve/tatlı bloğu düşer, oyuncu yakalar.
