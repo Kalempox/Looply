@@ -39,13 +39,23 @@ import * as ayar from "./ayar";
 export const GUNLUK_TABAN_KURUS = 150_000;
 
 /**
- * Gün açılırken hazır duran pay (Ü87).
+ * Kafe açılırken hazır duran pay (Ü87).
  *
- * Tempo sıfırdan başlasaydı sabahın ilk müşterisi eli boş dönerdi ve E2'nin
+ * Tempo sıfırdan başlasaydı günün ilk müşterisi eli boş dönerdi ve E2'nin
  * gerekçesi ("ilk kez oynayanın eli boş çıkarsa bir daha gelmez") tam olarak
- * orada çiğnenirdi. Günün onda biri ilk andan itibaren açık.
+ * orada çiğnenirdi. Günün onda biri açılış anından itibaren erişilebilir.
  */
 export const ILK_PAY = 0.1;
+
+/**
+ * Kapanıştan sonra dağıtımın sürdüğü süre (dakika) — Ü90.
+ *
+ * Sert kesme haksızlık üretiyor: 22:58'de oyuna başlayan oyuncu 23:01'de
+ * bitiriyor ve **kafedeyken oynadığı** turdan eli boş çıkıyor. Yarım saat,
+ * son masanın oyununu bitirmesine yetiyor ve yeni müşteri çekecek kadar
+ * uzun değil.
+ */
+export const KAPANIS_PAYI_DK = 30;
 
 /**
  * İstanbul saatiyle şu an kaçıncı dakikadayız (0–1439).
@@ -68,15 +78,14 @@ function istanbulDakikasi(an: Date): number {
 }
 
 /**
- * Günlük bütçenin şu ana kadar açılmış oranı (Ü87).
+ * Günlük bütçenin şu ana kadar açılmış oranı (Ü87, Ü90).
  *
  * ── Neden tempo gerekiyor ───────────────────────────────────
  *
- * Bugünkü davranış **ilk gelen alır**: `rezerveEt` yalnızca günlük
- * taahhüde bakıyor, o yüzden sabahki kalabalık bütçenin tamamını
- * bitirebiliyor ve akşam gelen müşteriye hiçbir şey çıkmıyor. Kafenin en
- * yoğun saati genelde akşam olduğu için bu, parayı en az işe yarayacağı
- * saate harcamak demek.
+ * Tempo olmadan davranış **ilk gelen alır**: `rezerveEt` yalnızca günlük
+ * taahhüde bakar, sabahki kalabalık bütçenin tamamını bitirir ve akşam
+ * gelen müşteriye hiçbir şey çıkmaz. Kafenin en yoğun saati genelde akşam
+ * olduğu için bu, parayı en az işe yarayacağı saate harcamak demek.
  *
  * ── Tavan, taban değil ──────────────────────────────────────
  *
@@ -86,20 +95,32 @@ function istanbulDakikasi(an: Date): number {
  * diyor. Kimse gelmezse hiçbir şey dağıtılmıyor ve ertesi güne de
  * devretmiyor (`budget_carryover: false`).
  *
- * ── Pencere dışı ────────────────────────────────────────────
+ * ── ⚠️ Kafe kapalıyken sıfır (Ü90) ─────────────────────────
  *
- * Açılıştan önce `ILK_PAY`, kapanıştan sonra tamamı. Gece 02:00'de oynayan
- * biri günün bütçesinin tamamına erişebiliyor — o saatte gelen müşteri
- * zaten kafenin son müşterisi ve saklanacak bir şey kalmadı.
+ * İlk sürüm kapanıştan sonra **tamamını** açıyordu; gerekçesi "o saatte
+ * gelen zaten günün son müşterisi" idi. Ürün sahibi tersini istedi ve
+ * haklı: *"kafe 23'te kapanıyor, o saatten sonra müşteri gelmeyeceği için
+ * sistem ödül eklemesin."* Kapalı bir kafenin bütçesini açık bırakmak,
+ * günün en savunmasız saatinde en yüksek payı masaya koymak demekti.
+ *
+ * Açılıştan önce de sıfır: kafe kapalıyken kimse içeride değil.
+ *
+ * ⚠️ **Kapanışa yarım saatlik pay bırakılıyor** (`KAPANIS_PAYI_DK`): sert
+ * kesme, 22:58'de başlayıp 23:01'de biten turu cezalandırırdı.
+ *
+ * ⚠️ **Pencere gece yarısını aşamıyor.** Gece 02:00'ye kadar açık bir kafe
+ * kapanışını 23 yazmak zorunda ve yarım geceden sonrası kapalı sayılıyor.
+ * Bilinen sınır; `docs/23` maddesinde duruyor.
  */
-export function tempoOrani(an: Date, baslangicSaat: number, bitisSaat: number): number {
+export function tempoOrani(an: Date, acilisSaati: number, kapanisSaati: number): number {
   const simdi = istanbulDakikasi(an);
-  const bas = baslangicSaat * 60;
-  const bit = bitisSaat * 60;
+  const bas = acilisSaati * 60;
+  const bit = kapanisSaati * 60;
 
   if (bit <= bas) return 1; // bozuk ayar: tempoyu hiç uygulama
-  if (simdi <= bas) return ILK_PAY;
-  if (simdi >= bit) return 1;
+  if (simdi < bas) return 0; // henüz açılmadı
+  if (simdi >= bit + KAPANIS_PAYI_DK) return 0; // kapandı, payı da bitti
+  if (simdi >= bit) return 1; // kapanış payı: gün tamamen açık
 
   const gecen = (simdi - bas) / (bit - bas);
   return ILK_PAY + (1 - ILK_PAY) * gecen;
@@ -135,8 +156,10 @@ export type ButceDurumu = {
    * "1.200 TL kaldı ama kupon çıkmıyor" diye arar.
    */
   simdiKurus: number;
-  /** Dağıtımın açık olduğu saat aralığı — panelde gösteriliyor. */
+  /** Kafenin çalışma saatleri — panelde gösteriliyor (Ü90). */
   pencere: { baslangic: number; bitis: number };
+  /** Ü90: kafe şu an açık mı? Kapalıyken hiçbir ödül dağıtılmıyor. */
+  acikMi: boolean;
 };
 
 /**
@@ -265,6 +288,7 @@ export async function durum(
         dagitilabilirKurus: 0,
         simdiKurus: 0,
         pencere: { baslangic: 0, bitis: 0 },
+        acikMi: false,
       };
     }
 
@@ -272,10 +296,11 @@ export async function durum(
     const kullanilan = h.acikRezerve + h.harcanan;
 
     const [bas, bit] = await Promise.all([
-      ayar.sayiOku(cafeId, ayar.ANAHTARLAR.dagitimBaslangic),
-      ayar.sayiOku(cafeId, ayar.ANAHTARLAR.dagitimBitis),
+      ayar.sayiOku(cafeId, ayar.ANAHTARLAR.acilisSaati),
+      ayar.sayiOku(cafeId, ayar.ANAHTARLAR.kapanisSaati),
     ]);
-    const tempoTavani = Math.floor(donem.taahhutKurus * tempoOrani(an ?? new Date(), bas, bit));
+    const oran = tempoOrani(an ?? new Date(), bas, bit);
+    const tempoTavani = Math.floor(donem.taahhutKurus * oran);
 
     return {
       donem,
@@ -285,6 +310,7 @@ export async function durum(
       dagitilabilirKurus: Math.max(0, donem.taahhutKurus - kullanilan),
       simdiKurus: Math.max(0, Math.min(donem.taahhutKurus - kullanilan, tempoTavani - kullanilan)),
       pencere: { baslangic: bas, bitis: bit },
+      acikMi: oran > 0,
     };
   });
 }
@@ -407,7 +433,7 @@ export async function rezerveEt(
       // Hangi tavana takıldığı önemli: günlük tavan "kafe bugünkü sözünü
       // tuttu", tempo tavanı "henüz sırası gelmedi" demek. İkisi ayrı
       // sorun ve raporda ayrı görünmeli.
-      sebep: gunlukKalan <= tempoKalan ? "gunluk" : "tempo",
+      sebep: tempoTavani === 0 ? "kapali" : gunlukKalan <= tempoKalan ? "gunluk" : "tempo",
     });
     return false;
   }
@@ -429,8 +455,8 @@ async function tempoTavaniHesapla(
   an?: Date,
 ): Promise<number> {
   const [bas, bit] = await Promise.all([
-    ayar.sayiOku(cafeId, ayar.ANAHTARLAR.dagitimBaslangic),
-    ayar.sayiOku(cafeId, ayar.ANAHTARLAR.dagitimBitis),
+    ayar.sayiOku(cafeId, ayar.ANAHTARLAR.acilisSaati),
+    ayar.sayiOku(cafeId, ayar.ANAHTARLAR.kapanisSaati),
   ]);
   return Math.floor(taahhutKurus * tempoOrani(an ?? new Date(), bas, bit));
 }

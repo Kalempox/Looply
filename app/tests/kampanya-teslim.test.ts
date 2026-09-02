@@ -43,6 +43,9 @@ let ilkTaahhut = 0;
 
 const bugun = isGunu();
 
+/** Kafenin açık olduğu bir an — Ü90'dan beri kapalıyken kupon çıkmıyor. */
+const KAFE_ACIK = new Date("2026-09-02T20:00:00+03:00");
+
 /** Ürün 100 TL, indirim %20 → tavan 20 TL. */
 const URUN_KURUS = 100_00;
 const YUZDE = 20;
@@ -178,7 +181,7 @@ describe("kampanya teslimi (Ö4, Ü82)", () => {
     await kuponlariTemizle();
 
     const sonuc = await withBypass("test: kampanya kuponu", (db) =>
-      kampanyaKuponuVer(db, { playerId: oyuncu1, cafeId: kafeA, kanitSeviyesi: 2 }),
+      kampanyaKuponuVer(db, { playerId: oyuncu1, cafeId: kafeA, kanitSeviyesi: 2, an: KAFE_ACIK }),
     );
 
     assert.ok(sonuc, "kampanya kuponu hiç düşmedi");
@@ -199,7 +202,7 @@ describe("kampanya teslimi (Ö4, Ü82)", () => {
     await kuponlariTemizle();
 
     const sonuc = await withBypass("test: rezervasyon", (db) =>
-      kampanyaKuponuVer(db, { playerId: oyuncu1, cafeId: kafeA, kanitSeviyesi: 2 }),
+      kampanyaKuponuVer(db, { playerId: oyuncu1, cafeId: kafeA, kanitSeviyesi: 2, an: KAFE_ACIK }),
     );
     assert.ok(sonuc?.ok, "kupon üretilemedi");
 
@@ -221,12 +224,12 @@ describe("kampanya teslimi (Ö4, Ü82)", () => {
     await kuponlariTemizle();
 
     const ilk = await withBypass("test: ilk", (db) =>
-      kampanyaKuponuVer(db, { playerId: oyuncu1, cafeId: kafeA, kanitSeviyesi: 2 }),
+      kampanyaKuponuVer(db, { playerId: oyuncu1, cafeId: kafeA, kanitSeviyesi: 2, an: KAFE_ACIK }),
     );
     assert.ok(ilk?.ok, "ilk kupon düşmedi");
 
     const ikinci = await withBypass("test: ikinci", (db) =>
-      kampanyaKuponuVer(db, { playerId: oyuncu1, cafeId: kafeA, kanitSeviyesi: 2 }),
+      kampanyaKuponuVer(db, { playerId: oyuncu1, cafeId: kafeA, kanitSeviyesi: 2, an: KAFE_ACIK }),
     );
 
     assert.equal(ikinci, null, "aynı oyuncu aynı gün ikinci kuponu aldı — beş oyun = beş kupon");
@@ -236,10 +239,10 @@ describe("kampanya teslimi (Ö4, Ü82)", () => {
     await kuponlariTemizle();
 
     const a = await withBypass("test: oyuncu 1", (db) =>
-      kampanyaKuponuVer(db, { playerId: oyuncu1, cafeId: kafeA, kanitSeviyesi: 2 }),
+      kampanyaKuponuVer(db, { playerId: oyuncu1, cafeId: kafeA, kanitSeviyesi: 2, an: KAFE_ACIK }),
     );
     const b = await withBypass("test: oyuncu 2", (db) =>
-      kampanyaKuponuVer(db, { playerId: oyuncu2, cafeId: kafeA, kanitSeviyesi: 2 }),
+      kampanyaKuponuVer(db, { playerId: oyuncu2, cafeId: kafeA, kanitSeviyesi: 2, an: KAFE_ACIK }),
     );
 
     assert.ok(a?.ok && b?.ok, "iki farklı oyuncu aynı kampanyadan alamadı");
@@ -256,13 +259,13 @@ describe("kampanya limitleri (Ü8)", () => {
     await kampanyaAyarla({ daily_limit: 1 });
 
     const ilk = await withBypass("test: limit ilk", (db) =>
-      kampanyaKuponuVer(db, { playerId: oyuncu1, cafeId: kafeA, kanitSeviyesi: 2 }),
+      kampanyaKuponuVer(db, { playerId: oyuncu1, cafeId: kafeA, kanitSeviyesi: 2, an: KAFE_ACIK }),
     );
     assert.ok(ilk?.ok, "günlük limitin ilk kuponu düşmedi");
 
     // Limit doldu: farklı oyuncu bile alamamalı.
     const ikinci = await withBypass("test: limit ikinci", (db) =>
-      kampanyaKuponuVer(db, { playerId: oyuncu2, cafeId: kafeA, kanitSeviyesi: 2 }),
+      kampanyaKuponuVer(db, { playerId: oyuncu2, cafeId: kafeA, kanitSeviyesi: 2, an: KAFE_ACIK }),
     );
     assert.equal(ikinci, null, "günlük limit aşıldı");
 
@@ -274,12 +277,12 @@ describe("kampanya limitleri (Ü8)", () => {
     await kampanyaAyarla({ total_limit: 1 });
 
     const ilk = await withBypass("test: toplam ilk", (db) =>
-      kampanyaKuponuVer(db, { playerId: oyuncu1, cafeId: kafeA, kanitSeviyesi: 2 }),
+      kampanyaKuponuVer(db, { playerId: oyuncu1, cafeId: kafeA, kanitSeviyesi: 2, an: KAFE_ACIK }),
     );
     assert.ok(ilk?.ok, "toplam limitin ilk kuponu düşmedi");
 
     const ikinci = await withBypass("test: toplam ikinci", (db) =>
-      kampanyaKuponuVer(db, { playerId: oyuncu2, cafeId: kafeA, kanitSeviyesi: 2 }),
+      kampanyaKuponuVer(db, { playerId: oyuncu2, cafeId: kafeA, kanitSeviyesi: 2, an: KAFE_ACIK }),
     );
     assert.equal(ikinci, null, "toplam limit aşıldı");
 
@@ -293,7 +296,7 @@ describe("kampanya limitleri (Ü8)", () => {
     await kampanyaAyarla({ status: "draft" });
 
     const sonuc = await withBypass("test: taslak", (db) =>
-      kampanyaKuponuVer(db, { playerId: oyuncu1, cafeId: kafeA, kanitSeviyesi: 2 }),
+      kampanyaKuponuVer(db, { playerId: oyuncu1, cafeId: kafeA, kanitSeviyesi: 2, an: KAFE_ACIK }),
     );
     assert.equal(sonuc, null, "yayına alınmamış kampanya oyuncuya ulaştı");
 
@@ -305,7 +308,7 @@ describe("kampanya limitleri (Ü8)", () => {
     await kampanyaAyarla({ status: "paused" });
 
     const sonuc = await withBypass("test: durdurulmuş", (db) =>
-      kampanyaKuponuVer(db, { playerId: oyuncu1, cafeId: kafeA, kanitSeviyesi: 2 }),
+      kampanyaKuponuVer(db, { playerId: oyuncu1, cafeId: kafeA, kanitSeviyesi: 2, an: KAFE_ACIK }),
     );
     assert.equal(sonuc, null, "durdurulmuş kampanya hâlâ dağıtıyor");
 
@@ -320,7 +323,7 @@ describe("kampanya limitleri (Ü8)", () => {
     );
 
     const sonuc = await withBypass("test: süresi geçmiş", (db) =>
-      kampanyaKuponuVer(db, { playerId: oyuncu1, cafeId: kafeA, kanitSeviyesi: 2 }),
+      kampanyaKuponuVer(db, { playerId: oyuncu1, cafeId: kafeA, kanitSeviyesi: 2, an: KAFE_ACIK }),
     );
     assert.equal(sonuc, null, "süresi dolmuş kampanya hâlâ dağıtıyor");
 
@@ -340,7 +343,7 @@ describe("kampanya kuponu envanterde", () => {
     await kuponlariTemizle();
 
     const sonuc = await withBypass("test: envanter", (db) =>
-      kampanyaKuponuVer(db, { playerId: oyuncu1, cafeId: kafeA, kanitSeviyesi: 2 }),
+      kampanyaKuponuVer(db, { playerId: oyuncu1, cafeId: kafeA, kanitSeviyesi: 2, an: KAFE_ACIK }),
     );
     assert.ok(sonuc?.ok, "kupon üretilemedi");
 

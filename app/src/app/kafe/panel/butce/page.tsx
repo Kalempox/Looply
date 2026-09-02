@@ -4,7 +4,7 @@ import { bakim } from "@/domain/bakim";
 import { isGunu } from "@/lib/tarih";
 import { IsletmeSayfa, IsletmeBaslik, Bolum } from "@/components/isletme";
 import { SayiKarti, Halka, IKON } from "@/components/gosterge";
-import { ButceFormu } from "./kontroller";
+import { ButceFormu, SaatFormu } from "./kontroller";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Günlük bütçe · Looply" };
@@ -56,9 +56,11 @@ export default async function ButceSayfasi() {
               etiket="Şu an dağıtılabilir"
               deger={`${tlYaz(d.simdiKurus)} TL`}
               alt={
-                d.simdiKurus < d.dagitilabilirKurus
-                  ? `bugünün kalanı ${tlYaz(d.dagitilabilirKurus)} TL · ${d.pencere.bitis}:00'a kadar açılıyor`
-                  : "yeni kupon için kalan"
+                !d.acikMi
+                  ? `kafe kapalı · ${d.pencere.baslangic}:00'da açılıyor`
+                  : d.simdiKurus < d.dagitilabilirKurus
+                    ? `bugünün kalanı ${tlYaz(d.dagitilabilirKurus)} TL · ${d.pencere.bitis}:00'a kadar açılıyor`
+                    : "yeni kupon için kalan"
               }
               ikon={IKON.para}
               alan="para"
@@ -151,6 +153,16 @@ export default async function ButceSayfasi() {
           tabanTl={Math.round(taban / 100)}
           gunSayisi={gunSayisi}
         />
+      </Bolum>
+
+      {/* Ü90: saatler bütçenin hemen altında. Bütçenin gün içinde nasıl
+          açıldığını bu iki sayı belirliyor; ayrı bir sayfaya konsaydı kafe
+          "bütçem duruyor ama kupon çıkmıyor" dediğinde yanlış yere bakardı. */}
+      <Bolum
+        baslik="Çalışma saatlerin"
+        alt="Günlük bütçe açılıştan kapanışa kademeli açılıyor. Kapalıyken hiç ödül dağıtılmıyor — kapanıştan sonra son masanın oyununu bitirmesi için yarım saat bırakılıyor."
+      >
+        <SaatFormu acilis={d.pencere.baslangic} kapanis={d.pencere.bitis} />
       </Bolum>
 
       <Bolum baslik="Nasıl işliyor">

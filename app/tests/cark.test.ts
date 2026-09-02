@@ -10,6 +10,14 @@ import * as cark from "@/domain/cark";
 import * as ayar from "@/domain/ayar";
 import { carkOduluVer } from "@/domain/kupon";
 import { newId } from "@/lib/ids";
+
+/**
+ * Kafenin açık olduğu bir an (Ü90).
+ *
+ * Kapalıyken hiç ödül dağıtılmıyor; bu dosyanın konusu çarkın kendisi,
+ * saat değil. Duvar saatine bırakılsaydı gece koşan CI'da hepsi düşerdi.
+ */
+const KAFE_ACIK = new Date("2026-09-02T20:00:00+03:00");
 import { isGunu, gunEkle } from "@/lib/tarih";
 
 /**
@@ -95,6 +103,7 @@ describe("çark · günlük sınır", () => {
       cafeId,
       odulId: secim.dilim.odulId,
       kanitSeviyesi: 2,
+      an: KAFE_ACIK,
     });
     assert.equal(s.ok, true, s.ok ? "" : s.hata);
   });
@@ -110,6 +119,7 @@ describe("çark · günlük sınır", () => {
       cafeId,
       odulId: (await ilkOdul(cafeId)).id,
       kanitSeviyesi: 2,
+      an: KAFE_ACIK,
     });
     assert.equal(s.ok, false, "24 saat kilidi tutmadı — sınırsız ödül yolu açık");
   });
@@ -131,6 +141,7 @@ describe("çark · günlük sınır", () => {
       cafeId: cafeId2,
       odulId: (await ilkOdul(cafeId2)).id,
       kanitSeviyesi: 2,
+      an: KAFE_ACIK,
     });
     assert.equal(s.ok, false, "bütçesiz kafeden ödül çıktı — E10 delindi");
   });

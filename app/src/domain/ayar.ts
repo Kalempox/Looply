@@ -56,17 +56,21 @@ export const ANAHTARLAR = {
    */
   carkUstSinir: "cark_ust_sinir_kurus",
   /**
-   * Dağıtımın açıldığı saat (Ü87, 0–23, İstanbul).
+   * Kafenin açılış saati (Ü90, 0–23, İstanbul).
    *
-   * Günlük bütçe bu saatten kapanışa kadar **kademeli** açılıyor; bütün
-   * gün tek seferde masada durmuyor. Sebep Ü78: bugünkü davranış "ilk
-   * gelen alır" ve sabahki kalabalık günün bütçesini bitirince akşam
-   * gelen müşteriye hiçbir şey çıkmıyor — oysa kafenin en yoğun saati
-   * genelde akşam.
+   * İki iş birden yapıyor:
+   *
+   *   · **Tempo** (Ü87): günlük bütçe açılıştan kapanışa **kademeli**
+   *     açılıyor, bütün gün tek seferde masada durmuyor. Yoksa sabahki
+   *     kalabalık günün bütçesini bitiriyor ve akşam gelen müşteriye
+   *     hiçbir şey çıkmıyor.
+   *   · **Kapalıyken ödül yok** (Ü90): ürün sahibinin kararı — *"kafe 23'te
+   *     kapanıyor, o saatten sonra müşteri gelmeyeceği için sistem ödül
+   *     eklemesin."*
    */
-  dagitimBaslangic: "dagitim_baslangic_saat",
-  /** Dağıtımın tamamen açıldığı saat (Ü87, 0–23, İstanbul). */
-  dagitimBitis: "dagitim_bitis_saat",
+  acilisSaati: "acilis_saat",
+  /** Kafenin kapanış saati (Ü90, 1–23, İstanbul). */
+  kapanisSaati: "kapanis_saat",
 } as const;
 
 export type Anahtar = (typeof ANAHTARLAR)[keyof typeof ANAHTARLAR];
@@ -94,13 +98,12 @@ export const SINIRLAR: Record<Anahtar, { en_az: number; en_cok: number; varsayil
   // kendisine kalıyor. 25 yazan kafede çark yalnızca en küçük ödülü
   // dağıtır; 50 yazan kafede her ödül çarka girer.
   [ANAHTARLAR.carkUstSinir]: { en_az: 25_00, en_cok: 50_00, varsayilan: 35_00 },
-  // Varsayılan 09:00–23:00: kafelerin çoğunun açık olduğu aralık.
-  // ⚠️ Bunlar bir **tahmin**, ölçüm değil — kafenin gerçek saatleri
-  // sistemde yok (S-serisinde de yok). Kafe kendi saatini yazabilsin
-  // diye ayar olarak duruyorlar; öngörü paneli (Ü80) gerçek veriyle
-  // geldiğinde eğri bu iki sayıdan daha iyisini bulacak.
-  [ANAHTARLAR.dagitimBaslangic]: { en_az: 0, en_cok: 23, varsayilan: 9 },
-  [ANAHTARLAR.dagitimBitis]: { en_az: 1, en_cok: 23, varsayilan: 23 },
+  // Varsayılan 09:00–23:00 — kafelerin çoğunun açık olduğu aralık, ama
+  // artık yalnızca bir **varsayılan**: kafe kendi saatini panelden yazıyor
+  // (Ü90). Ü87'de bu iki sayı "bir tahmin" diye işaretlenmişti; tahmin
+  // olmaktan çıktılar.
+  [ANAHTARLAR.acilisSaati]: { en_az: 0, en_cok: 22, varsayilan: 9 },
+  [ANAHTARLAR.kapanisSaati]: { en_az: 1, en_cok: 23, varsayilan: 23 },
 };
 
 export async function sayiOku(cafeId: string, anahtar: Anahtar): Promise<number> {

@@ -256,6 +256,17 @@ after(async () => {
 });
 
 /**
+ * Kafenin **açık** olduğu bir an (Ü90).
+ *
+ * ⚠️ Ü90'dan beri kafe kapalıyken hiçbir ödül dağıtılmıyor ve tempo (Ü87)
+ * gün içinde kademeli açılıyor. İkisi de duvar saatine bakıyor, yani kupon
+ * üreten her test **saate mahkûm** olmuştu: gece koşan CI hiçbir kupon
+ * üretemiyor ve konusu bütçe ya da kanıt kademesi olan testler sebepsiz
+ * düşüyordu. Konusu saat olan testler kendi anlarını veriyor.
+ */
+const KAFE_ACIK = new Date("2026-09-02T20:00:00+03:00");
+
+/**
  * Bir kupon üretir ve kimliğini döner.
  *
  * Ü52'ye kadar `katalogdanAl` kullanılıyordu; puanla satın alma kalkınca
@@ -273,6 +284,7 @@ async function kuponAl(odulId: string) {
     odulId,
     kanitSeviyesi: 4,
     ilkCevirme: true,
+    an: KAFE_ACIK,
   });
   assert.ok(s.ok, s.ok === false ? s.hata : "");
   return s.ok ? s : null!;
@@ -413,7 +425,7 @@ describe("kupon üretimi", () => {
         gun: bugun,
         // Ü87: tempo penceresi kapalıyken bu rezervasyon reddedilir ve
         // test "bütçe doldu" durumunu hiç kuramaz.
-        an: new Date("2026-09-02T23:30:00+03:00"),
+        an: new Date("2026-09-02T23:00:00+03:00"),
       }),
     );
 
@@ -423,6 +435,7 @@ describe("kupon üretimi", () => {
       odulId: katalogOdulId,
       kanitSeviyesi: 4,
       ilkCevirme: true,
+      an: KAFE_ACIK,
     });
     assert.equal(s.ok, false, "bütçe dolu iken kupon üretildi");
     assert.match(s.ok === false ? s.hata : "", /bütçe/i);
@@ -455,6 +468,7 @@ async function odulDus(playerId: string, cafeId: string) {
         kanitSeviyesi: 4,
         skor: 9999,
         oyunId: "blok",
+        an: KAFE_ACIK,
       }),
     );
     if (s !== null) return s;
@@ -588,6 +602,7 @@ describe("ödül motoru (Ü77)", () => {
           skor: 9999,
           oyunId: "blok",
           kaynakId: oturumId,
+          an: KAFE_ACIK,
         }),
       );
     }
@@ -638,6 +653,7 @@ describe("ödül motoru (Ü77)", () => {
           kanitSeviyesi: 4,
           skor: 500,
           oyunId: "blok",
+          an: KAFE_ACIK,
         }),
       );
       if (s?.ok) dusen++;
@@ -679,6 +695,7 @@ describe("ödül motoru (Ü77)", () => {
         kanitSeviyesi: 4,
         skor: 9999,
         oyunId: "blok",
+        an: KAFE_ACIK,
       }),
     );
     assert.equal(ikinci, null, "aynı gün ikinci anlık ödül verildi");
@@ -1252,6 +1269,7 @@ describe("Happy Hour penceresi (Ö3)", () => {
         kanitSeviyesi: 4,
         skor: 9999,
         oyunId: "blok",
+        an: KAFE_ACIK,
       }),
     );
 
@@ -1277,6 +1295,7 @@ describe("Happy Hour penceresi (Ö3)", () => {
         kanitSeviyesi: 4,
         skor: 9999,
         oyunId: "blok",
+        an: KAFE_ACIK,
       }),
     );
     assert.equal(pencereden, null, "havuza sığmayan ödül verildi");

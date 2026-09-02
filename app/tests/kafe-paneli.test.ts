@@ -199,10 +199,11 @@ describe("bütçe alt sınırın altına inemez (Ü6, Ü25)", () => {
 /**
  * Tempo penceresinin **tamamen** açık olduğu bir an (Ü87).
  *
- * Kapanış saatinden sonrası: `tempoOrani` orada 1 döndürüyor, yani günlük
- * taahhüdün tamamı masada. 22:00 seçilseydi tavan %93'te kalır ve "bütçeyi
- * doldur" kuran testler bütçeyi hiç dolduramazdı — E10'u sınadığını sanan
- * test aslında tempoyu sınardı.
+ * **Kapanış anı**: `tempoOrani` orada 1 döndürüyor, yani günlük taahhüdün
+ * tamamı masada ve kafe hâlâ açık sayılıyor (Ü90'ın yarım saatlik kapanış
+ * payı). 22:00 seçilseydi tavan %93'te kalır ve "bütçeyi doldur" kuran
+ * testler bütçeyi hiç dolduramazdı — E10'u sınadığını sanan test aslında
+ * tempoyu sınardı. 23:30 seçilseydi kapanış payı da bitmiş olurdu.
  *
  * ⚠️ Bu sabit olmadan bütçe testleri **saate bağımlı** oluyor: Ü87 günlük
  * bütçeyi gün içinde kademeli açıyor ve gece yarısından sonra yalnızca
@@ -211,7 +212,7 @@ describe("bütçe alt sınırın altına inemez (Ü6, Ü25)", () => {
  *
  * Konusu tempo olan testler kendi saatlerini veriyor (bkz. "bütçe temposu").
  */
-const TEMPO_ACIK = new Date("2026-09-02T23:30:00+03:00");
+const TEMPO_ACIK = new Date("2026-09-02T23:00:00+03:00");
 
 describe("bütçe defteri (E3, E10, E11)", () => {
   /**
@@ -348,16 +349,28 @@ describe("bütçe temposu (Ü87)", () => {
   /** İstanbul saatiyle verilen saatte bir an. */
   const saat = (s: number) => new Date(`2026-09-02T${String(s).padStart(2, "0")}:00:00+03:00`);
 
-  test("oran gün boyunca artıyor ve kapanışta doluyor", () => {
-    // Pencere 09:00–23:00 (varsayılan).
-    assert.equal(butce.tempoOrani(saat(6), 9, 23), butce.ILK_PAY, "açılıştan önce ilk pay değil");
+  test("oran gün boyunca artıyor, açılışta ilk pay kadar", () => {
+    // Çalışma saatleri 09:00–23:00 (varsayılan).
     assert.equal(butce.tempoOrani(saat(9), 9, 23), butce.ILK_PAY, "açılışta ilk pay değil");
-    assert.equal(butce.tempoOrani(saat(23), 9, 23), 1, "kapanışta tamamı açılmadı");
-    assert.equal(butce.tempoOrani(saat(2), 9, 23), butce.ILK_PAY, "gece yarısı sonrası ilk pay");
 
     const ogle = butce.tempoOrani(saat(16), 9, 23);
     assert.ok(ogle > butce.tempoOrani(saat(12), 9, 23), "oran gün boyunca artmıyor");
     assert.ok(ogle < 1, "gün ortasında bütçenin tamamı açılmış");
+  });
+
+  test("kafe kapalıyken hiç dağıtım yok (Ü90)", () => {
+    // Ürün sahibinin kararı: "kafe 23'te kapanıyor, o saatten sonra müşteri
+    // gelmeyeceği için sistem ödül eklemesin." İlk sürüm tersini yapıyordu —
+    // kapanıştan sonra bütçenin TAMAMINI açıyordu.
+    assert.equal(butce.tempoOrani(saat(6), 9, 23), 0, "açılmadan önce dağıtım var");
+    assert.equal(butce.tempoOrani(saat(2), 9, 23), 0, "gece yarısından sonra dağıtım var");
+    assert.equal(butce.tempoOrani(saat(23), 9, 23), 1, "kapanış payı yok");
+
+    // Kapanış payı: son masanın oyununu bitirmesi için yarım saat.
+    const yarimSaatSonra = new Date("2026-09-02T23:29:00+03:00");
+    const kirkDakikaSonra = new Date("2026-09-02T23:40:00+03:00");
+    assert.equal(butce.tempoOrani(yarimSaatSonra, 9, 23), 1, "kapanış payı erken bitti");
+    assert.equal(butce.tempoOrani(kirkDakikaSonra, 9, 23), 0, "kapanış payı hiç bitmiyor");
   });
 
   test("bozuk pencere tempoyu devre dışı bırakıyor", () => {

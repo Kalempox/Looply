@@ -136,6 +136,17 @@ async function kuponUret(
     happyHourId?: string;
     /** Ü88: kuponu doğuran oyun oturumu. Çark ve kampanyada yok. */
     oturumId?: string;
+    /**
+     * Ü90: bütçe temposunun okuduğu an. **Yalnızca testler için.**
+     *
+     * Kafe kapalıyken hiç ödül dağıtılmıyor ve tempo gün içinde kademeli
+     * açılıyor; ikisi de duvar saatine bakıyor. Bu, kupon üreten her testi
+     * saate mahkûm ediyordu — gece yarısından sonra koşan CI hiçbir kupon
+     * üretemiyor ve "bütçe" ya da "kanıt kademesi" sınayan testler
+     * sebepsiz düşüyordu. Dikiş `butce.rezerveEt`te zaten vardı; bir
+     * seviye yukarı taşındı. Üretimde hiçbir çağıran doldurmuyor.
+     */
+    an?: Date;
   },
 ): Promise<KuponSonucu> {
   const tutar = opts.kaynakNesnesi.tutarKurus;
@@ -158,7 +169,11 @@ async function kuponUret(
     return { ok: false, hata: "Bu kafe henüz bütçesini belirlememiş." };
   }
 
-  const rezerveEdildi = await butce.rezerveEt(db, { cafeId: opts.cafeId, kurus: tutar });
+  const rezerveEdildi = await butce.rezerveEt(db, {
+    cafeId: opts.cafeId,
+    kurus: tutar,
+    an: opts.an,
+  });
   if (!rezerveEdildi) {
     // Kafenin bütçesi bittiği için ödül çıkmıyor. Oyuncuya söylenen cümle
     // kafeyi suçlamıyor — oyuncunun yapabileceği bir şey yok.
@@ -293,6 +308,8 @@ export async function anlikOdulVer(
     oyunId: string;
     /** Ü88: kuponu doğuran oyun oturumu — artık kolona yazılıyor. */
     kaynakId?: string;
+    /** Ü90: bütçe temposunun okuduğu an. Yalnızca testler için. */
+    an?: Date;
   },
 ): Promise<KuponSonucu | null> {
   // Bugün zaten anlık ödül aldıysa ikincisi yok (docs/06 §3).
@@ -380,6 +397,7 @@ export async function anlikOdulVer(
     kaynak: pencereden ? "happy_hour" : "anlik",
     happyHourId: pencereden && pencere ? pencere.id : undefined,
     oturumId: opts.kaynakId,
+    an: opts.an,
   });
 }
 
@@ -434,6 +452,8 @@ export async function carkOduluVer(opts: {
   kanitSeviyesi: number;
   /** Kayıt anında bozdurulan misafir talebinde 24 saat kilidi aranmıyor. */
   ilkCevirme?: boolean;
+  /** Ü90: bütçe temposunun okuduğu an. Yalnızca testler için. */
+  an?: Date;
 }): Promise<KuponSonucu> {
   if (await acil.durduruldu(acil.ANAHTARLAR.kupon)) {
     return { ok: false, hata: "Ödül dağıtımı geçici olarak durduruldu." };
@@ -485,6 +505,7 @@ export async function carkOduluVer(opts: {
       kaynakNesnesi: odulKaynagi(odul),
       kanitSeviyesi: opts.kanitSeviyesi,
       kaynak: "cark",
+      an: opts.an,
     });
   });
 }
@@ -520,7 +541,13 @@ export async function carkOduluVer(opts: {
  */
 export async function kampanyaKuponuVer(
   db: Db,
-  opts: { playerId: string; cafeId: string; kanitSeviyesi: number },
+  opts: {
+    playerId: string;
+    cafeId: string;
+    kanitSeviyesi: number;
+    /** Ü90: bütçe temposunun okuduğu an. Yalnızca testler için. */
+    an?: Date;
+  },
 ): Promise<KuponSonucu | null> {
   const uygun = await kampanya.uygunOlan(db, opts.cafeId, opts.playerId);
   if (!uygun) return null;
@@ -540,6 +567,7 @@ export async function kampanyaKuponuVer(
     },
     kanitSeviyesi: opts.kanitSeviyesi,
     kaynak: "kampanya",
+    an: opts.an,
   });
 }
 
