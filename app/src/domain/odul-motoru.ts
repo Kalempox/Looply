@@ -38,14 +38,26 @@ import { KUPON_ESIGI, SKOR_ESIKLERI } from "./puan";
  * Çekiliş/promosyon mevzuatı görüşü gelmeden canlıya çıkamaz.
  */
 
-/** Eşiği yeni geçen turun ödül düşürme şansı. */
-const EN_AZ_SANS = 0.55;
+/**
+ * Eşiği yeni geçen turun ödül düşürme şansı.
+ *
+ * ⚠️ İlk ayarda 0,55 ve 0,90'dı; ürün sahibi **düşürttü**: *"oranları daha
+ * da düşür, düşük maliyetli ürünler daha sık çıksın, yoksa kafenin günlük
+ * bütçesini çok zor yönetiriz."* Gerekçe doğru — bütçe tavanı (E10) ve
+ * tempo (Ü87) üst sınırı zaten koruyor ama **harcamanın düzgün akması**
+ * ayrı bir şey; sık düşen pahalı ödül günü dalgalı yapıyor.
+ *
+ * Taban 0,50'nin altına inmedi: eşiği geçen oyuncu hiç değilse yazı-tura
+ * atmalı. E2'nin gerekçesi burada da geçerli — ilk kez oynayanın eli boş
+ * çıkması, dönmemesi demek.
+ */
+const EN_AZ_SANS = 0.5;
 
 /** Skorun şansı doyurduğu nokta — Ü48'in üst eşiği. */
 const DOYUM_SKORU = SKOR_ESIKLERI[SKOR_ESIKLERI.length - 1].skor;
 
 /** Doyum skorundaki şans. Bir tamamı hiç olmuyor: şans şans kalmalı. */
-const EN_COK_SANS = 0.9;
+const EN_COK_SANS = 0.75;
 
 /**
  * Ağırlık dikliği — çarkın `2` katsayısının değişkeni.
@@ -55,7 +67,20 @@ const EN_COK_SANS = 0.9;
  * ödülün gerçek şansı var).
  */
 const DIK_TABAN = 2.0;
-const DUZ_TABAN = 1.2;
+
+/**
+ * En düz hâl — yani en yüksek skorun gördüğü dağılım.
+ *
+ * ⚠️ Önce 1,2 idi ve on ödüllü bir kafede en pahalısı %9'a çıkıyordu;
+ * ortalama ödül maliyeti 26 TL'den 32 TL'ye, yani **dörtte bir** artıyordu.
+ * Ürün sahibi bunu fazla buldu. 1,6'da aynı dağılımda en pahalı ~%1'de
+ * kalıyor ve ortalama 27 TL — artış yirmide bir.
+ *
+ * Düzleşme **kaldırılmadı, kısıldı**: iyi oynamanın pahalı ödülü
+ * yakınlaştırması hâlâ beş kat. Sıfırlansaydı skorun ödüle etkisi kalmaz
+ * ve Ü77'nin ikinci girdisi ölü olurdu.
+ */
+const DUZ_TABAN = 1.6;
 
 /**
  * Her kazanımın azalan getiriye katkısı.
@@ -95,7 +120,7 @@ export function bikkinlikKatsayisi(sonKazanim: number): number {
 /**
  * Ödülün hiç düşme şansı.
  *
- * Eşiği yeni geçen turda %55, doyum skorunda %90; aynı oyundan gelen
+ * Eşiği yeni geçen turda %50, doyum skorunda %75; aynı oyundan gelen
  * kazanımlar bunu kısıyor.
  */
 export function dusmeSansi(skor: number, sonKazanim: number): number {

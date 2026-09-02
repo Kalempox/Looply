@@ -196,6 +196,23 @@ describe("bütçe alt sınırın altına inemez (Ü6, Ü25)", () => {
    3 · Bütçe muhasebesi — E10, E11
    ═══════════════════════════════════════════════════════════ */
 
+/**
+ * Tempo penceresinin **tamamen** açık olduğu bir an (Ü87).
+ *
+ * Kapanış saatinden sonrası: `tempoOrani` orada 1 döndürüyor, yani günlük
+ * taahhüdün tamamı masada. 22:00 seçilseydi tavan %93'te kalır ve "bütçeyi
+ * doldur" kuran testler bütçeyi hiç dolduramazdı — E10'u sınadığını sanan
+ * test aslında tempoyu sınardı.
+ *
+ * ⚠️ Bu sabit olmadan bütçe testleri **saate bağımlı** oluyor: Ü87 günlük
+ * bütçeyi gün içinde kademeli açıyor ve gece yarısından sonra yalnızca
+ * onda biri açık. CI'yi 00:05'te koşturmak testleri düşürüyordu — hata
+ * testlerde değil, varsayımdaydı.
+ *
+ * Konusu tempo olan testler kendi saatlerini veriyor (bkz. "bütçe temposu").
+ */
+const TEMPO_ACIK = new Date("2026-09-02T23:30:00+03:00");
+
 describe("bütçe defteri (E3, E10, E11)", () => {
   /**
    * Testin ihtiyacı olan boşluğu kendisi açar.
@@ -222,7 +239,13 @@ describe("bütçe defteri (E3, E10, E11)", () => {
     const once = await butce.durum(kafeA, bugun);
 
     const ok = await withCafe(kafeA, (db) =>
-      butce.rezerveEt(db, { cafeId: kafeA, kurus: 50_000, not: "test", gun: bugun }),
+      butce.rezerveEt(db, {
+        cafeId: kafeA,
+        kurus: 50_000,
+        not: "test",
+        gun: bugun,
+        an: TEMPO_ACIK,
+      }),
     );
     assert.equal(ok, true);
 
@@ -240,6 +263,7 @@ describe("bütçe defteri (E3, E10, E11)", () => {
         kurus: d.dagitilabilirKurus + 1,
         not: "test-asim",
         gun: bugun,
+        an: TEMPO_ACIK,
       }),
     );
     assert.equal(ok, false, "bütçeyi aşan rezervasyon kabul edildi");

@@ -96,9 +96,15 @@ before(async () => {
   );
 
   // Bol bütçe: testler bütçe sınırını ayrıca sınıyor.
+  //
+  // ⚠️ Ü87'den sonra taahhüt on katına çıkarıldı. Sebep tempo: günlük
+  // bütçenin yalnızca onda biri gün açılmadan önce erişilebilir ve CI
+  // gece yarısından sonra koştuğunda beşinci-altıncı kupon "bütçe doldu"
+  // diye reddediliyordu. Konusu bütçe olmayan testlerin saate bağlı
+  // düşmesi, hatayı yanlış yerde aratır.
   const b = await butce.donemBelirle({
     cafeId: kafeA,
-    taahhutKurus: 500_000,
+    taahhutKurus: 5_000_000,
     aktorId: yoneticiA,
     gun: bugun,
   });
@@ -405,6 +411,9 @@ describe("kupon üretimi", () => {
         kurus: d.dagitilabilirKurus,
         not: "test-doldur",
         gun: bugun,
+        // Ü87: tempo penceresi kapalıyken bu rezervasyon reddedilir ve
+        // test "bütçe doldu" durumunu hiç kuramaz.
+        an: new Date("2026-09-02T23:30:00+03:00"),
       }),
     );
 
@@ -505,10 +514,19 @@ describe("ödül motoru (Ü77)", () => {
     const dusuk = sayEnPahali(500);
     const yuksek = sayEnPahali(2500);
 
-    assert.ok(dusuk < 0.08, `düşük skorda en pahalı ödül çok sık: %${(dusuk * 100).toFixed(1)}`);
+    assert.ok(dusuk < 0.06, `düşük skorda en pahalı ödül çok sık: %${(dusuk * 100).toFixed(1)}`);
     assert.ok(
-      yuksek > dusuk * 2,
+      yuksek > dusuk * 1.4,
       `yüksek skor pahalıyı yakınlaştırmıyor: %${(dusuk * 100).toFixed(1)} → %${(yuksek * 100).toFixed(1)}`,
+    );
+
+    // ⚠️ Ve **yakınlaştırma sınırlı kalmalı**: ürün sahibi düzleşmeyi
+    // kıstırdı çünkü sık düşen pahalı ödül kafenin günlük bütçesini
+    // yönetilemez yapıyor. Beş ödüllü listede en pahalısı onda birin
+    // altında kalıyor; on ödüllü gerçek katalogda ~%1.
+    assert.ok(
+      yuksek < 0.12,
+      `yüksek skorda en pahalı ödül çok sık: %${(yuksek * 100).toFixed(1)} — bütçe dalgalanır`,
     );
   });
 
