@@ -6,7 +6,7 @@
 > Yan dosyalar: neyin **var** olduğu → `21-looply-kapsam-haritasi.md` ·
 > demoda neyin **yapılabildiği** → `22-demo-yapilabilirlik.md`
 
-**Son güncelleme:** 2026-09-02 · **Kararlar:** Ü76 – Ü88
+**Son güncelleme:** 2026-09-02 · **Kararlar:** Ü76 – Ü89
 
 ---
 
@@ -88,7 +88,14 @@ Ayrı ayrı yazılırsa üçüncüsü ilk ikisini bozar.
   ⚠️ Göç `0024`: `coupons.play_session_id`. Azalan getirinin ihtiyaç duyduğu
   "hangi oyundan" bağı hiç yoktu; `kaynakId` alınıp hiçbir yere
   yazılmıyordu. Yan kazanç: "hangi oyun daha çok ödül dağıtıyor" sorulabilir.
+  **Ü89 ile oranlar kısıldı** (ürün sahibi): düşme %50–75, en pahalı ödül
+  %1,5, ortalama 26–27 TL. Ucuz ürünler her koşulda baskın.
   418 test.
+
+- [ ] **6b · Dağıtım penceresi gece yarısını aşamıyor** ⚠️ *bilinen sınır*
+  Gece 02:00'ye kadar açık bir kafede yarım geceden sonrası yeni iş gününün
+  başlangıç payına (%10) düşüyor. Varsayılan 09:00–23:00 için önemsiz;
+  kafenin gerçek çalışma saatleri sisteme girdiğinde yeniden bakılmalı.
 
 - [ ] **7 · Oyun içi ödül bloğu**
   Motorun görünen yüzü: tahtaya kahve/tatlı bloğu düşer, oyuncu yakalar.
