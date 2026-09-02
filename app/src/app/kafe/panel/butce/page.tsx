@@ -1,5 +1,6 @@
 import { kafeYoneticisiGerekli } from "@/domain/yetki";
 import { durum, donemAraligi, tabanKurus, sonYediGun } from "@/domain/butce";
+import { odulDokumu } from "@/domain/kupon";
 import { bakim } from "@/domain/bakim";
 import { isGunu } from "@/lib/tarih";
 import { IsletmeSayfa, IsletmeBaslik, Bolum } from "@/components/isletme";
@@ -27,7 +28,11 @@ export default async function ButceSayfasi() {
   // gösterdiği için iadeyi okumadan önce çalıştırıyoruz.
   await bakim();
 
-  const [d, yedi] = await Promise.all([durum(o.cafeId), sonYediGun(o.cafeId)]);
+  const [d, yedi, dagitim] = await Promise.all([
+    durum(o.cafeId),
+    sonYediGun(o.cafeId),
+    odulDokumu(o.cafeId),
+  ]);
   const aralik = donemAraligi(isGunu());
   const taban = d.donem?.tabanKurus ?? tabanKurus(aralik.gunSayisi);
   const gunSayisi = d.donem?.gunSayisi ?? aralik.gunSayisi;
@@ -116,6 +121,97 @@ export default async function ButceSayfasi() {
                   <span className="font-data tabular">%{yuzde(d.rezerveKurus)}</span>
                 </p>
               </div>
+            </div>
+
+            {/* ⚠️ Ü93 · "Kazanılan ödüllerin ne olduğu gözükmeli."
+                Yukarıdaki kartlar bütçenin ne kadarının bağlandığını
+                söylüyor ama karşılığında NE verildiğini söylemiyordu.
+                İşletmeci parayı ancak neyin gittiğini görürse yönetebilir;
+                "çok fazla ödül dağıtılıyor" şikâyeti de buradan çıkmıştı. */}
+            <div className="rounded-2xl border border-cizgi bg-yuzey px-5 py-5">
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="etiket-caps text-yazi-sonuk">Hangi ödüller çıktı</span>
+                <span className="font-data text-[11px] text-yazi-sonuk">
+                  {dagitim.reduce((t, x) => t + x.acik, 0)} kupon ·{" "}
+                  {tlYaz(dagitim.reduce((t, x) => t + x.acikKurus, 0))} TL dolaşımda
+                </span>
+              </div>
+
+              {dagitim.length === 0 ? (
+                <p className="mt-3 text-[13px] leading-relaxed text-yazi-sonuk">
+                  Dolaşımda kupon yok ve bugün henüz kupon çıkmadı.
+                </p>
+              ) : (
+                <>
+                  <table className="mt-3 w-full text-[13px]">
+                    <thead>
+                      <tr className="etiket-caps text-yazi-sonuk">
+                        <th className="pb-2 text-left font-normal">Ödül</th>
+                        <th className="pb-2 text-right font-normal">Açık</th>
+                        <th className="pb-2 text-right font-normal">Bugün</th>
+                        <th className="pb-2 text-right font-normal">Kasada</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {dagitim.map((x) => (
+                        <tr key={x.baslik} className="border-t border-cizgi align-top">
+                          <td className="py-2 pr-2 leading-tight">{x.baslik}</td>
+                          <td className="py-2 text-right font-data tabular text-odul-koyu">
+                            {x.acik ? (
+                              <>
+                                {x.acik}
+                                <span className="block text-[11px] opacity-70">
+                                  {tlYaz(x.acikKurus)} TL
+                                </span>
+                              </>
+                            ) : (
+                              "–"
+                            )}
+                          </td>
+                          <td className="py-2 text-right font-data tabular">
+                            {x.bugunVerilen || "–"}
+                          </td>
+                          <td className="py-2 text-right font-data tabular">
+                            {x.bugunOnaylanan ? (
+                              <>
+                                {x.bugunOnaylanan}
+                                <span className="block text-[11px] opacity-70">
+                                  {tlYaz(x.bugunKurus)} TL
+                                </span>
+                              </>
+                            ) : (
+                              "–"
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+
+                  {/* Ü7: açık kupon henüz harcanmadı. İşletmeci bu ayrımı
+                      görmezse "bugün 400 TL gitti" diye yanlış hesap yapar.
+                      Sütunların penceresi de farklı: açık kupon tarihten
+                      bağımsız (dünden kalanı da var), "bugün" bugünkü. */}
+                  {/* ⚠️ Bu paragraf olmadan ekran kendi kendisiyle çelişiyor
+                      görünüyordu: kart "açık kuponlarda 160 TL" derken tablo
+                      414 TL topluyordu. İkisi de doğru — kart BU DÖNEMİN
+                      bütçesinden bağlananı, tablo dolaşımdaki bütün kuponları
+                      sayıyor — ama açıklanmayan iki sayı, işletmecinin ikisine
+                      birden güvenmemesi demek. */}
+                  <p className="mt-3 border-t border-cizgi pt-3 text-[12px] leading-relaxed text-yazi-sonuk">
+                    <strong className="text-odul-koyu">Açık</strong> — verildi, kasada
+                    gösterilmedi: harcanmadı, süresi dolarsa geri döner.{" "}
+                    <strong className="text-yazi">Kasada</strong> — bugün fiilen ödediğin.
+                  </p>
+                  <p className="mt-2 text-[12px] leading-relaxed text-yazi-sonuk">
+                    Buradaki açık toplam, yukarıdaki{" "}
+                    <strong className="text-yazi">{tlYaz(d.rezerveKurus)} TL</strong>&apos;den
+                    büyük olabilir: kart yalnızca bu dönemin bütçesinden bağlananı
+                    sayar, tablo dolaşımdaki bütün kuponları — önceki günlerden
+                    kalanlar dahil. Onlar da kasaya gelirse ödenecek.
+                  </p>
+                </>
+              )}
             </div>
 
             <div className="rounded-2xl border border-cizgi bg-yuzey px-5 py-5">

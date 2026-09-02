@@ -4,7 +4,7 @@ import { TICK_MS, type Oyun } from "./sozlesme";
 /**
  * Yılan — yem topla, kendine ve duvara çarpma.
  *
- * ── Ü91: yemin bazısı ödül ──────────────────────────────────
+ * ── Ü91: ödül, yemin yanında beliren ayrı bir şey ───────────
  *
  * Ürün sahibinin tarifi: *"yılan bazen şans eseri ama oyun başında değil,
  * genelde biraz ilerlerde elma yiyor ya — normalde elma yerine kupon veya
@@ -12,8 +12,18 @@ import { TICK_MS, type Oyun } from "./sozlesme";
  *
  * Bu, ödül motorunun (Ü88) **görünen yüzü**. Motor bugüne kadar sessizce
  * arkada karar veriyordu ve oyuncu ödülü ancak sonuç ekranında görüyordu.
- * Burada ödül tahtanın üstünde duruyor, oyuncu ona doğru sürüyor ve
- * **yakalayamayabiliyor** — kaybetme ihtimali mekaniğin kendisi.
+ * Burada ödül tahtanın üstünde duruyor.
+ *
+ * ── ⚠️ İlk sürüm yemin YERİNE koyuyordu (Ü92) ───────────────
+ *
+ * O tasarımda ödül bir seçim değildi: oyuncu zaten yeme gidiyor, yem de
+ * ödül olunca kendiliğinden yiyordu. Ölçüldü — 200 turun 101'inde ödül
+ * yakalanıyor ve yılan turlarının **%40'ı** kupon veriyordu (Blok'ta %21).
+ * Ürün sahibi *"oyun çok fazla ödül dağıtıyor"* dedi ve haklıydı.
+ *
+ * Şimdi ödül **ayrı bir nesne**: normal yem yerinde duruyor, ödül başka
+ * bir hücrede beliriyor ve **sayılı adım sonra kayboluyor**. Yakalamak
+ * artık bir karar — güvenli yoldan sapmak, kuyruğu göze almak, yetişmek.
  *
  * ⚠️ **İlk yemlerde ödül çıkmıyor** (`ODUL_ILK_YEM`). Oyunun ilk yirmi
  * saniyesi öğrenme anı (docs/03); oraya ödül koymak hem çok kolay olur hem
@@ -51,11 +61,20 @@ export function adimTickiHesapla(yenen: number): number {
   return Math.max(EN_HIZLI_TICK, BASLANGIC_TICK - Math.floor(yenen / HIZLANMA_ARALIGI));
 }
 
-/** Kaçıncı yemden sonra ödül çıkabiliyor. */
+/** Kaçıncı yemden sonra ödül belirebiliyor. */
 const ODUL_ILK_YEM = 5;
 
-/** Uygun yemlerin yüzde kaçı ödül. */
-const ODUL_YUZDE = 22;
+/** Uygun yemlerin yüzde kaçından sonra ödül beliriyor. */
+const ODUL_YUZDE = 12;
+
+/**
+ * Ödül kaç adım tahtada kalıyor.
+ *
+ * Yirmi beş adım, tahtanın bir ucundan diğerine gitmeye **ancak** yetiyor
+ * (15 hücre + dönüşler). Süresiz kalsaydı ödül bir karar olmaktan çıkar,
+ * sıraya girip alınan bir şeye dönerdi.
+ */
+export const ODUL_OMRU_ADIM = 25;
 
 export type Yon = "yukari" | "asagi" | "sol" | "sag";
 
@@ -85,8 +104,15 @@ export type YilanDurumu = {
   /** Sıradaki adımda uygulanacak yön — dönüş hemen değil, adımda işliyor. */
   bekleyenYon: Yon;
   yem: number;
-  /** Bu yem ödül mü? Ekran buna göre elma yerine kupon çiziyor. */
-  yemOdulMu: boolean;
+  /**
+   * Ödül hücresi — yoksa `null`.
+   *
+   * Normal yemden **ayrı** duruyor (Ü92): yerine geçseydi yakalamak bir
+   * karar olmaz, yem yiyen otomatik alırdı.
+   */
+  odul: number | null;
+  /** Ödül kaç adım sonra kaybolacak. */
+  odulKalanAdim: number;
   yenen: number;
   /** Yakalanan ödül yemi sayısı — motorun okuduğu tek şey. */
   odulYakalanan: number;
@@ -120,28 +146,33 @@ export type YilanDurumu = {
  */
 export type YilanGirdisi = { tick: number; y: Yon | "bekle" };
 
-/** Yemin yeri ve türü — yalnızca (tohum, yenen)'den türüyor. */
-function yemUret(tohum: string, yenen: number, dolu: readonly number[]): { yer: number; odul: boolean } {
-  const r = tohumla(`${tohum}:yilan:${yenen}`);
-  const bos: number[] = [];
+/** Boş bir hücre seçer — yalnızca verilen tohum dizisinden türüyor. */
+function bosHucre(anahtar: string, dolu: readonly number[]): number {
+  const r = tohumla(anahtar);
   const doluKume = new Set(dolu);
+  const bos: number[] = [];
   for (let i = 0; i < HUCRE; i++) if (!doluKume.has(i)) bos.push(i);
 
   // Tahta tamamen dolduysa (teorik) başı geri veriyoruz; bir sonraki adım
   // zaten çarpma ile bitiyor.
-  const yer = bos.length === 0 ? dolu[0] : bos[r.tamsayi(bos.length)];
-
-  // Ödül kararı yerden AYRI bir çekiliş: aynı çekilişten türeseydi yemin
-  // konumu ödül olup olmadığını ele verirdi.
-  const odul = yenen >= ODUL_ILK_YEM && tohumla(`${tohum}:yilan:odul:${yenen}`).tamsayi(100) < ODUL_YUZDE;
-
-  return { yer, odul };
+  return bos.length === 0 ? dolu[0] : bos[r.tamsayi(bos.length)];
 }
 
-/** Yem puanı — uzadıkça artıyor, ödül yemi iki katı. */
-function yemPuani(yenen: number, odulMu: boolean): number {
-  const taban = 10 + Math.floor(yenen / 4) * 5;
-  return odulMu ? taban * 2 : taban;
+/** Bu yemden sonra ödül belirecek mi? */
+function odulBelirirMi(tohum: string, yenen: number): boolean {
+  return (
+    yenen >= ODUL_ILK_YEM && tohumla(`${tohum}:yilan:odul:${yenen}`).tamsayi(100) < ODUL_YUZDE
+  );
+}
+
+/** Yem puanı — uzadıkça artıyor. */
+function yemPuani(yenen: number): number {
+  return 10 + Math.floor(yenen / 4) * 5;
+}
+
+/** Ödülü yakalamanın puanı — yem puanının iki katı. */
+function odulPuani(yenen: number): number {
+  return yemPuani(yenen) * 2;
 }
 
 export const yilan: Oyun<YilanDurumu, YilanGirdisi> = {
@@ -154,15 +185,15 @@ export const yilan: Oyun<YilanDurumu, YilanGirdisi> = {
     // Ortadan başlıyor, sağa bakıyor, üç hücre uzunluğunda.
     const orta = Math.floor(YILAN_BOY / 2) * YILAN_EN + Math.floor(YILAN_EN / 2);
     const govde = [orta, orta - 1, orta - 2];
-    const { yer, odul } = yemUret(tohum, 0, govde);
 
     return {
       tohum,
       govde,
       yon: "sag",
       bekleyenYon: "sag",
-      yem: yer,
-      yemOdulMu: odul,
+      yem: bosHucre(`${tohum}:yilan:0`, govde),
+      odul: null,
+      odulKalanAdim: 0,
       yenen: 0,
       odulYakalanan: 0,
       skor: 0,
@@ -251,7 +282,7 @@ function zamaniIlerlet(durum: YilanDurumu, hedefTick: number): YilanDurumu {
   return d;
 }
 
-/** Tek adım: başı ilerlet, çarpışmayı ve yemi çöz. */
+/** Tek adım: başı ilerlet, çarpışmayı, yemi ve ödülü çöz. */
 function adimAt(durum: YilanDurumu): YilanDurumu {
   const bas = durum.govde[0];
   const satir = Math.floor(bas / YILAN_EN);
@@ -267,30 +298,61 @@ function adimAt(durum: YilanDurumu): YilanDurumu {
 
   const yeniBas = yeniSatir * YILAN_EN + yeniSutun;
   const yedi = yeniBas === durum.yem;
+  const odulAldi = durum.odul !== null && yeniBas === durum.odul;
 
-  // ⚠️ Kuyruk kontrolü: yemediyse kuyruk aynı adımda boşalıyor, yani
+  // ⚠️ Kuyruk kontrolü: büyümüyorsa kuyruk aynı adımda boşalıyor, yani
   // kuyruğun bulunduğu hücreye girmek çarpma DEĞİL. Kontrol edilecek gövde
-  // bu yüzden kuyruksuz hâli.
-  const carpilacak = yedi ? durum.govde : durum.govde.slice(0, -1);
+  // bu yüzden kuyruksuz hâli. Ödül de büyütüyor — yem gibi.
+  const buyuyor = yedi || odulAldi;
+  const carpilacak = buyuyor ? durum.govde : durum.govde.slice(0, -1);
   if (carpilacak.includes(yeniBas)) {
     return { ...durum, carpti: true };
   }
 
-  const govde = [yeniBas, ...(yedi ? durum.govde : durum.govde.slice(0, -1))];
+  const govde = [yeniBas, ...(buyuyor ? durum.govde : durum.govde.slice(0, -1))];
 
-  if (!yedi) return { ...durum, govde };
+  // Ödülün ömrü her adımda eriyor; yakalandıysa ya da süresi dolduysa
+  // tahtadan kalkıyor.
+  let odul = durum.odul;
+  let kalan = durum.odulKalanAdim;
+  let yakalanan = durum.odulYakalanan;
+  let skor = durum.skor;
+
+  if (odulAldi) {
+    yakalanan += 1;
+    skor += odulPuani(durum.yenen);
+    odul = null;
+    kalan = 0;
+  } else if (odul !== null) {
+    kalan -= 1;
+    if (kalan <= 0) {
+      odul = null;
+      kalan = 0;
+    }
+  }
+
+  if (!yedi) return { ...durum, govde, odul, odulKalanAdim: kalan, odulYakalanan: yakalanan, skor };
 
   const yenen = durum.yenen + 1;
-  const { yer, odul } = yemUret(durum.tohum, yenen, govde);
+  const yem = bosHucre(`${durum.tohum}:yilan:${yenen}`, [...govde, ...(odul === null ? [] : [odul])]);
+
+  // Ödül yalnızca tahtada başkası yokken beliriyor: iki ödül aynı anda
+  // durursa oyuncu birini kaçırdığına üzülmek yerine ikisini birden
+  // toplamaya çalışır ve mekanik "karar" olmaktan çıkar.
+  if (odul === null && odulBelirirMi(durum.tohum, yenen)) {
+    odul = bosHucre(`${durum.tohum}:yilan:odulyer:${yenen}`, [...govde, yem]);
+    kalan = ODUL_OMRU_ADIM;
+  }
 
   return {
     ...durum,
     govde,
-    yem: yer,
-    yemOdulMu: odul,
+    yem,
+    odul,
+    odulKalanAdim: kalan,
     yenen,
-    odulYakalanan: durum.odulYakalanan + (durum.yemOdulMu ? 1 : 0),
-    skor: durum.skor + yemPuani(durum.yenen, durum.yemOdulMu),
+    odulYakalanan: yakalanan,
+    skor: skor + yemPuani(durum.yenen),
     adimTicki: adimTickiHesapla(yenen),
   };
 }

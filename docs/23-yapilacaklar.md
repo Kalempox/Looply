@@ -6,7 +6,7 @@
 > Yan dosyalar: neyin **var** olduğu → `21-looply-kapsam-haritasi.md` ·
 > demoda neyin **yapılabildiği** → `22-demo-yapilabilirlik.md`
 
-**Son güncelleme:** 2026-09-02 · **Kararlar:** Ü76 – Ü91
+**Son güncelleme:** 2026-09-02 · **Kararlar:** Ü76 – Ü93
 
 ---
 
@@ -113,9 +113,17 @@ Ayrı ayrı yazılırsa üçüncüsü ilk ikisini bozar.
   bakmadan üç saniyede duvara giriyordu.
   424 test · tarayıcıda oynandı.
 
+- [x] **7c · Ödül yemden ayrıldı + oranlar düştü** ✅ **BİTTİ** — Ü92/Ü93
+  Ödül artık yemin yerine değil **yanına** beliriyor ve 25 adım sonra
+  kayboluyor: yakalamak bir karar. Kovalayan %21, görmezden gelen %3.
+  Motor tabanı 0,50–0,75 → **0,22–0,45** (Blok %26 → %10).
+  İşaret payı ters yönde arttı (0,20 → 0,35): yakalanan ödül %62 karşılık
+  veriyor, yoksa görünen ödülü kaçırmak oyunu yalan çıkarırdı.
+  Bütçe paneline **ödül dökümü** eklendi — hangi ödül, kaç açık, kaç kasada.
+
 - [ ] **7b · Blok ve Düşen'e de ödül bloğu** *(isteğe bağlı)*
-  Sözleşmedeki `odulIsareti` seamı hazır; Yılan'da yemin yerini alması
-  doğaldı, Blok/Düşen'de tahtaya ayrı bir nesne koymak gerekiyor.
+  Sözleşmedeki `odulIsareti` seamı hazır; Yılan'da ayrı nesne olarak
+  çözüldü (Ü92), Blok/Düşen'de de aynı yaklaşım kurulabilir.
 
 ---
 

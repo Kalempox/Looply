@@ -936,6 +936,85 @@ export async function bekleyenleriAc(): Promise<number> {
   });
 }
 
+/* ── Ödül dökümü (Ü93) ────────────────────────────────────── */
+
+export type OdulDokumSatiri = {
+  baslik: string;
+  /** Verildi, henüz kasada gösterilmedi. Bütçede rezerve duruyor (Ü7). */
+  acik: number;
+  /** Açık kuponların bütçeden bağladığı tutar. */
+  acikKurus: number;
+  bugunVerilen: number;
+  bugunOnaylanan: number;
+  /** Bugün kasada fiilen ödenen. */
+  bugunKurus: number;
+};
+
+/**
+ * Bu kafede hangi ödüller dolaşımda ve bugün ne oldu.
+ *
+ * ⚠️ Ürün sahibi: *"kazanılan ödüllerin ne olduğu gözükmeli."* Bütçe ekranı
+ * bugüne kadar yalnızca **para** gösteriyordu — "açık kuponlarda 160 TL".
+ * İşletmeci bütçesinin bağlandığını görüyor ama karşılığında ne verdiğini
+ * göremiyordu; "çok fazla ödül dağıtılıyor" şikâyeti de buradan çıktı.
+ * Parayı yönetmek için önce neyin gittiğini görmek gerekiyor.
+ *
+ * ⚠️ **Pencere neden "bugün" değil.** İlk sürüm yalnızca bugün verilenleri
+ * sayıyordu ve panelde şu çıktı: *"açık kuponlarda 160 TL"* ile *"bugün 0
+ * kupon"* yan yana. İkisi de doğruydu — kuponlar dünden kalmıştı — ama
+ * ekran kendi kendisiyle çelişiyor görünüyordu. Açık kupon **tarihten
+ * bağımsız** sayılıyor artık: para orada duruyorsa dökümü de durmalı.
+ *
+ * ⚠️ `bugunkuOzet` bunun yerini tutmuyor: o yalnızca onaylananları sayıyor
+ * ve kasiyerin gün sonu mutabakatı için. Bütçeyi bağlayan şey ise VERİLEN
+ * kupon (Ü7).
+ *
+ * E9 burada oyuncuya değil KAFEYE bakıyor; kafenin tutarı görmesi zaten
+ * ürün kararı ("kullanılan miktarı kafe görmek zorunda").
+ */
+export async function odulDokumu(cafeId: string): Promise<OdulDokumSatiri[]> {
+  return withCafe(cafeId, async (db) => {
+    const gunBasi = "($1::date::timestamp AT TIME ZONE 'Europe/Istanbul')";
+    const satirlar = await db.all<{
+      baslik: string;
+      acik: string;
+      acik_kurus: string;
+      bugun_verilen: string;
+      bugun_onaylanan: string;
+      bugun_kurus: string;
+    }>(
+      `SELECT COALESCE(r.title, '%' || kmp.percent || ' · ' || u.name, 'Diğer') AS baslik,
+              count(*) FILTER (WHERE c.status IN ('pending','active'))        AS acik,
+              COALESCE(sum(c.reserved_kurus)
+                       FILTER (WHERE c.status IN ('pending','active')), 0)    AS acik_kurus,
+              count(*) FILTER (WHERE c.issued_at >= ${gunBasi}
+                                 AND c.status <> 'undone')                    AS bugun_verilen,
+              count(*) FILTER (WHERE c.redeemed_at >= ${gunBasi})             AS bugun_onaylanan,
+              COALESCE(sum(c.committed_kurus)
+                       FILTER (WHERE c.redeemed_at >= ${gunBasi}), 0)         AS bugun_kurus
+         FROM coupons c
+         LEFT JOIN rewards r ON r.id = c.reward_id
+         LEFT JOIN percentage_campaigns kmp ON kmp.id = c.campaign_id
+         LEFT JOIN products u ON u.id = kmp.product_id
+        GROUP BY COALESCE(r.title, '%' || kmp.percent || ' · ' || u.name, 'Diğer')
+       HAVING count(*) FILTER (WHERE c.status IN ('pending','active')) > 0
+           OR count(*) FILTER (WHERE c.issued_at >= ${gunBasi}) > 0
+           OR count(*) FILTER (WHERE c.redeemed_at >= ${gunBasi}) > 0
+        ORDER BY count(*) FILTER (WHERE c.status IN ('pending','active')) DESC, baslik`,
+      [isGunu()],
+    );
+
+    return satirlar.map((x) => ({
+      baslik: x.baslik,
+      acik: Number(x.acik),
+      acikKurus: Number(x.acik_kurus),
+      bugunVerilen: Number(x.bugun_verilen),
+      bugunOnaylanan: Number(x.bugun_onaylanan),
+      bugunKurus: Number(x.bugun_kurus),
+    }));
+  });
+}
+
 /* ── Kasiyer kupon geçmişi ─────────────────────────────────── */
 
 export type GunlukOzet = {

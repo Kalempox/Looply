@@ -21,7 +21,7 @@ import {
 import { blok, kademe as blokKademe } from "@/oyunlar/blok";
 import { kelime, kurulabilir, kucult, turSuresi } from "@/oyunlar/kelime";
 import { dusen, dusmeTickiHesapla } from "@/oyunlar/dusen";
-import { yilan, YILAN_EN, adimTickiHesapla, type Yon } from "@/oyunlar/yilan";
+import { yilan, YILAN_EN, adimTickiHesapla, ODUL_OMRU_ADIM, type Yon } from "@/oyunlar/yilan";
 import {
   tekrarOyna,
   EN_FAZLA_GIRDI,
@@ -421,8 +421,48 @@ describe("oyun içi ödül işareti (Ü91)", () => {
     // kolay olur hem de oyuncu kuralı anlamadan en değerli şeyi kaçırır.
     for (const tohum of ["a", "b", "c", "d", "e"]) {
       const d = yilan.baslat(tohum);
-      assert.equal(d.yemOdulMu, false, `${tohum}: ilk yem ödül çıktı`);
+      assert.equal(d.odul, null, `${tohum}: açılışta ödül tahtada`);
     }
+  });
+
+  test("ödül yemden ayrı bir hücrede duruyor", () => {
+    // ⚠️ Ü92: ilk sürümde ödül yemin YERİNE geçiyordu ve yakalamak bir
+    // karar değildi — oyuncu zaten yeme gidiyor, yem ödül olunca
+    // kendiliğinden alıyordu. Ölçüldü: turların %40'ı kupon veriyordu.
+    for (let i = 0; i < 60; i++) {
+      const d = yilanOyna(`ayri-${i}`).durum;
+      if (d.odul !== null) assert.notEqual(d.odul, d.yem, `${i}: ödül yemin üstünde`);
+    }
+  });
+
+  test("yakalanmayan ödül tahtadan kalkıyor", () => {
+    // Süresiz kalsaydı ödül bir karar olmaktan çıkar, sıraya girip alınan
+    // bir şeye dönerdi (Ü92). Yılanı ödülden UZAK tutup bekliyoruz.
+    let d = yilan.baslat("omur");
+    let tick = 0;
+    let odulGorulduTick = -1;
+
+    for (let a = 0; a < 4000 && !yilan.bittiMi(d); a++) {
+      tick += 2;
+      // Yeme git; ödüle asla sapma.
+      const bas = d.govde[0];
+      const bs = Math.floor(bas / YILAN_EN), bk = bas % YILAN_EN;
+      const ys = Math.floor(d.yem / YILAN_EN), yk = d.yem % YILAN_EN;
+      const yon = bs !== ys ? (ys < bs ? "yukari" : "asagi") : yk < bk ? "sol" : "sag";
+      const n = yilan.uygula(d, { tick, y: bk === yk && bs === ys ? "bekle" : yon });
+      if (!n) break;
+
+      if (odulGorulduTick < 0 && n.odul !== null) odulGorulduTick = a;
+      if (odulGorulduTick >= 0 && n.odul === null) {
+        // Yakalayarak değil, süresi dolarak kalkmış olmalı.
+        assert.equal(n.odulYakalanan, 0, "ödül yakalandı, ömür sınanamadı");
+        assert.ok(a - odulGorulduTick <= ODUL_OMRU_ADIM * 3, "ödül çok uzun kaldı");
+        return;
+      }
+      d = n;
+    }
+
+    assert.ok(odulGorulduTick < 0, "ödül belirdi ama hiç kalkmadı");
   });
 
   test("ilerleyen turda ödül yemi çıkıyor", () => {

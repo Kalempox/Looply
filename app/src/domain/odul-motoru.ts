@@ -47,17 +47,25 @@ import { KUPON_ESIGI, SKOR_ESIKLERI } from "./puan";
  * tempo (Ü87) üst sınırı zaten koruyor ama **harcamanın düzgün akması**
  * ayrı bir şey; sık düşen pahalı ödül günü dalgalı yapıyor.
  *
- * Taban 0,50'nin altına inmedi: eşiği geçen oyuncu hiç değilse yazı-tura
- * atmalı. E2'nin gerekçesi burada da geçerli — ilk kez oynayanın eli boş
- * çıkması, dönmemesi demek.
+ * ⚠️ **Ü93'te bir kez daha indirildi.** Ürün sahibi demoyu oynadı ve
+ * *"oyun çok fazla ödül dağıtıyor"* dedi. Ölçüldü, haklıydı: Blok
+ * turlarının %26'sı, ödülü kovalayan Yılan turlarının %32'si kupon
+ * veriyordu — oyuncu birkaç turda günlük ödülünü alıyor ve kafenin bütçesi
+ * günün ilk saatinde bitiyordu. Tempo (Ü87) üst sınırı koruyor ama erken
+ * gelen herkes alıp geç geleni eli boş bırakması **daha kötü** bir dağılım.
+ *
+ * ⚠️ Yukarıdaki "0,50'nin altına inmez, eşiği geçen yazı-tura atmalı"
+ * gerekçesi burada terk edildi. E2 hâlâ geçerli ama ölçeği değişti:
+ * oyuncunun boş dönmemesi **tur başına** değil **ziyaret başına** bir söz.
+ * Dört-beş turluk bir oturumda kazanma şansı hâlâ yarı yarıya.
  */
-const EN_AZ_SANS = 0.5;
+const EN_AZ_SANS = 0.22;
 
 /** Skorun şansı doyurduğu nokta — Ü48'in üst eşiği. */
 const DOYUM_SKORU = SKOR_ESIKLERI[SKOR_ESIKLERI.length - 1].skor;
 
 /** Doyum skorundaki şans. Bir tamamı hiç olmuyor: şans şans kalmalı. */
-const EN_COK_SANS = 0.75;
+const EN_COK_SANS = 0.45;
 
 /**
  * Ağırlık dikliği — çarkın `2` katsayısının değişkeni.
@@ -101,11 +109,18 @@ const BIKKINLIK = 0.5;
  * üstünde çalışıyor, yoksa tek oyunu öğrenip ekonomiyi sömürmek serbest
  * kalırdı.
  *
+ * ⚠️ **Ü93'te taban inerken bu pay YÜKSELDİ (0,20 → 0,35).** İkisi aynı
+ * yönde gitseydi ödülü yakalamanın anlamı kalmazdı: oyuncu altın kuponu
+ * ekranda görüp peşinden gidiyor, sapıyor, kuyruğu göze alıyor ve sonra
+ * yarıdan fazla ihtimalle eli boş kalıyordu. Görünen ödülü yakalayıp
+ * hiçbir şey alamamak, onu hiç görmemekten **daha kötü**. Ödül artık daha
+ * seyrek beliriyor (Yılan'da %18 → %12) ama yakalandığında karşılığı var.
+ *
  * ⚠️ İşaret **hangi ödülün** çıkacağını değiştirmiyor, yalnızca çıkma
  * şansını yükseltiyor. Tier'i de açsaydı pahalı ödül yakalanabilir bir
  * hedefe dönerdi ve kafenin günlük bütçesi yönetilemez olurdu (Ü89).
  */
-const ODUL_ISARETI_PAYI = 0.2;
+const ODUL_ISARETI_PAYI = 0.35;
 
 /** Şans hiçbir koşulda bunun üstüne çıkmıyor. */
 const MUTLAK_TAVAN = 0.95;

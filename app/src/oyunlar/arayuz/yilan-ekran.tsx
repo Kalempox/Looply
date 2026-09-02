@@ -6,6 +6,7 @@ import {
   YILAN_EN,
   YILAN_BOY,
   adimTickiHesapla,
+  ODUL_OMRU_ADIM,
   type YilanDurumu,
   type YilanGirdisi,
   type Yon,
@@ -17,11 +18,13 @@ import type { OyunEkraniProps } from "./ortak";
 /**
  * Yılan ekranı.
  *
- * ── Ödül tahtanın üstünde (Ü91) ─────────────────────────────
+ * ── Ödül tahtanın üstünde (Ü91, Ü92) ────────────────────────
  *
- * Yemin bazısı elma değil **kupon**. Ekranın işi onu ayırt edilebilir
- * kılmak: altın zemin, nabız ve kupon çizimi. Oyuncu ona doğru sürüyor,
- * yakalayamayabiliyor — kaybetme ihtimali mekaniğin kendisi.
+ * Ödül **ayrı bir nesne**: normal yem yerinde duruyor, altın kupon başka
+ * bir hücrede beliriyor ve sayılı adım sonra kayboluyor. Ekranın iki işi
+ * var — onu ayırt edilebilir kılmak (altın zemin, nabız) ve **kaçtığını
+ * göstermek**: son adımlarda kupon soluyor, üstteki şerit erime çubuğuna
+ * dönüyor. Acele etmesi gerektiğini oyuncu bir bakışta anlamalı.
  *
  * ── Saat duvar saatinden ────────────────────────────────────
  *
@@ -126,11 +129,21 @@ export function YilanEkrani({ oyunId, tohum, bitti }: OyunEkraniProps) {
         </p>
       )}
 
-      {/* Ödül tahtada: oyuncu neye doğru sürdüğünü bilmeli. */}
-      {durum.basladi && durum.yemOdulMu && (
-        <p className="nabiz mt-1.5 inline-block rounded-full border border-odul bg-odul-zemin px-2.5 py-0.5 font-data text-[11px] font-bold tracking-wide text-odul-koyu uppercase">
-          Ödül tahtada · yakala
-        </p>
+      {/* Ödül tahtada. Kalan adım bir çubuk olarak da görünüyor: ödül
+          kaybolacak (Ü92) ve oyuncu bunu ödülü kaçırdıktan SONRA değil,
+          kovalarken bilmeli. */}
+      {durum.basladi && durum.odul !== null && (
+        <div className="mt-1.5 inline-flex flex-col gap-1">
+          <span className="nabiz rounded-full border border-odul bg-odul-zemin px-2.5 py-0.5 font-data text-[11px] font-bold tracking-wide text-odul-koyu uppercase">
+            Ödül tahtada · yetiş
+          </span>
+          <span className="h-[3px] overflow-hidden rounded-full bg-odul-zemin">
+            <span
+              className="block h-full rounded-full bg-odul-koyu transition-[width] duration-150 ease-linear"
+              style={{ width: `${(durum.odulKalanAdim / ODUL_OMRU_ADIM) * 100}%` }}
+            />
+          </span>
+        </div>
       )}
 
       <div
@@ -142,21 +155,29 @@ export function YilanEkrani({ oyunId, tohum, bitti }: OyunEkraniProps) {
         }}
       >
         {Array.from({ length: YILAN_EN * YILAN_BOY }, (_, i) => {
-          const yemMi = i === durum.yem;
-
-          if (yemMi) {
+          if (i === durum.odul) {
+            // Son adımlarda soluyor: ödülün kaçmakta olduğu tahtanın
+            // üstünde de görünsün, yalnızca çubukta değil (Ü92).
+            const kacisi = durum.odulKalanAdim <= 6;
             return (
               <span
                 key={i}
-                className={`aspect-square rounded-full ${durum.yemOdulMu ? "nabiz" : ""}`}
-                style={
-                  durum.yemOdulMu
-                    ? {
-                        background: "linear-gradient(180deg, #f5cf5e 0%, #d4af37 100%)",
-                        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.55), 0 0 8px rgba(212,175,55,0.7)",
-                      }
-                    : { background: "#e05252", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.4)" }
-                }
+                className="nabiz aspect-square rounded-full"
+                style={{
+                  background: "linear-gradient(180deg, #f5cf5e 0%, #d4af37 100%)",
+                  boxShadow: `inset 0 1px 0 rgba(255,255,255,0.55), 0 0 ${kacisi ? 4 : 10}px rgba(212,175,55,${kacisi ? 0.4 : 0.85})`,
+                  opacity: kacisi ? 0.45 + durum.odulKalanAdim * 0.09 : 1,
+                }}
+              />
+            );
+          }
+
+          if (i === durum.yem) {
+            return (
+              <span
+                key={i}
+                className="aspect-square rounded-full"
+                style={{ background: "#e05252", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.4)" }}
               />
             );
           }
