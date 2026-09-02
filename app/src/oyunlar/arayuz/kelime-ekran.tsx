@@ -9,6 +9,7 @@ import {
   type KelimeGirdisi,
 } from "../kelime";
 import { TICK_MS } from "../sozlesme";
+import { oyunTonu, tahtaStili } from "./tahta";
 import type { OyunEkraniProps } from "./ortak";
 
 /**
@@ -49,7 +50,8 @@ type Yerel = {
   tick: number;
 };
 
-export function KelimeEkrani({ tohum, bitti, demoKapisi }: OyunEkraniProps) {
+export function KelimeEkrani({ oyunId, tohum, bitti, demoKapisi }: OyunEkraniProps) {
+  const r = oyunTonu(oyunId);
   const [y, setY] = useState<Yerel>(() => ({
     durum: kelime.baslat(tohum),
     girdiler: [],
@@ -152,22 +154,33 @@ export function KelimeEkrani({ tohum, bitti, demoKapisi }: OyunEkraniProps) {
 
   return (
     <div className="oyun-alani">
-      <div className="flex items-baseline justify-between">
+      <div className="flex items-baseline justify-between gap-3">
         <span className="etiket-caps text-yazi-sonuk">
           {durum.tur + 1}. tur · {durum.bulunan.length}/{durum.hedef}
         </span>
-        <span className="font-data text-xl leading-none font-bold text-vurgu tabular">
+        {/* `key` skorla değişiyor ki her artışta animasyon yeniden koşsun. */}
+        <span
+          key={durum.skor}
+          className="patla font-data text-2xl leading-none font-bold tabular"
+          style={{ color: r.ana }}
+        >
           {durum.skor}
         </span>
       </div>
 
       {/* Süre şeridi — turun tek zorluk kolu bu, o yüzden en görünür yerde.
           Son beş saniyede renk değişiyor; sayı okumak yerine görmek yeterli. */}
-      <Sure kalanTick={kalanTick} toplamTick={turSuresi(durum.tur)} />
+      <Sure kalanTick={kalanTick} toplamTick={turSuresi(durum.tur)} renk={r.ana} />
 
       {/* ── Kurulan kelime ─────────────────────────── */}
-      <div className="mt-5 flex min-h-[52px] items-center justify-center rounded-lg border border-cizgi bg-cukur px-4">
-        <span className="font-display text-2xl font-extrabold tracking-[0.18em] uppercase">
+      <div
+        className="mt-5 flex min-h-[56px] items-center justify-center rounded-2xl px-4"
+        style={tahtaStili(oyunId)}
+      >
+        <span
+          className="font-display text-2xl font-extrabold tracking-[0.18em] uppercase"
+          style={{ color: kurulan ? r.koyu : undefined }}
+        >
           {kurulan || <span className="text-yazi-sonuk/40">· · ·</span>}
         </span>
       </div>
@@ -184,9 +197,18 @@ export function KelimeEkrani({ tohum, bitti, demoKapisi }: OyunEkraniProps) {
               type="button"
               onClick={() => harfeDokun(i)}
               aria-pressed={secili}
-              className={`h-14 w-14 rounded-lg border border-cizgi bg-yuzey font-display text-xl font-extrabold uppercase ${
-                secili ? "text-odul-koyu ring-2 ring-odul" : "text-yazi"
-              }`}
+              // Seçili harf yükseliyor ve oyunun rengine boyanıyor: hangi
+              // harfleri kullandığın kurulan kelimeye bakmadan görünsün.
+              className="h-14 w-14 rounded-xl font-display text-xl font-extrabold uppercase transition-transform duration-100 active:scale-95"
+              style={{
+                background: secili ? r.ana : "var(--color-yuzey)",
+                color: secili ? "#fff" : "var(--color-yazi)",
+                border: `1px solid ${secili ? r.ana : "var(--color-cizgi)"}`,
+                boxShadow: secili
+                  ? `0 4px 10px -3px ${r.koyu}66`
+                  : `inset 0 -2px 0 ${r.ana}1a, 0 1px 2px ${r.koyu}14`,
+                transform: secili ? "translateY(-2px)" : undefined,
+              }}
             >
               {h}
             </button>
@@ -201,7 +223,7 @@ export function KelimeEkrani({ tohum, bitti, demoKapisi }: OyunEkraniProps) {
             setSecim([]);
             setUyari(null);
           }}
-          className="rounded-lg border border-cizgi py-3.5 font-display text-[15px] text-yazi-sonuk"
+          className="rounded-xl border border-cizgi py-3.5 font-display text-[15px] text-yazi-sonuk transition-transform active:scale-[0.98]"
         >
           Temizle
         </button>
@@ -209,7 +231,8 @@ export function KelimeEkrani({ tohum, bitti, demoKapisi }: OyunEkraniProps) {
           type="button"
           onClick={gonder}
           disabled={kurulan.length === 0}
-          className="rounded-lg bg-vurgu py-3.5 font-display text-[15px] font-bold text-white disabled:opacity-40"
+          className="rounded-xl py-3.5 font-display text-[15px] font-bold text-white transition-transform active:scale-[0.98] disabled:opacity-40"
+          style={{ background: r.ana, boxShadow: `0 4px 12px -4px ${r.koyu}66` }}
         >
           Gönder
         </button>
@@ -221,7 +244,8 @@ export function KelimeEkrani({ tohum, bitti, demoKapisi }: OyunEkraniProps) {
           {durum.bulunan.map((k) => (
             <li
               key={k}
-              className="rounded border border-vurgu/45 bg-cukur px-3 py-1 font-data text-[12px] font-medium tracking-wide text-vurgu uppercase"
+              className="gir rounded-full px-3 py-1 font-data text-[12px] font-bold tracking-wide uppercase"
+              style={{ background: `${r.ana}1f`, color: r.koyu, border: `1px solid ${r.ana}40` }}
             >
               {k}
             </li>
@@ -243,7 +267,15 @@ export function KelimeEkrani({ tohum, bitti, demoKapisi }: OyunEkraniProps) {
 
 /* ── Süre şeridi ──────────────────────────────────────────── */
 
-function Sure({ kalanTick, toplamTick }: { kalanTick: number; toplamTick: number }) {
+function Sure({
+  kalanTick,
+  toplamTick,
+  renk,
+}: {
+  kalanTick: number;
+  toplamTick: number;
+  renk: string;
+}) {
   const yuzde = Math.max(0, Math.min(100, Math.round((kalanTick / toplamTick) * 100)));
   const saniye = Math.ceil(kalanTick / 20);
   const az = saniye <= 5;
@@ -252,16 +284,21 @@ function Sure({ kalanTick, toplamTick }: { kalanTick: number; toplamTick: number
     <div className="mt-3">
       <div className="flex items-baseline justify-between">
         <span className="etiket-caps text-yazi-sonuk">Süre</span>
+        {/* Son beş saniyede sayı da nabız atıyor: şerit periferide kalıyor,
+            oyuncunun gözü harflerde. */}
         <span
-          className={`font-data text-[13px] font-bold tabular ${az ? "text-tehlike" : "text-yazi-sonuk"}`}
+          className={`font-data text-[13px] font-bold tabular ${az ? "nabiz text-tehlike" : "text-yazi-sonuk"}`}
         >
           {saniye} sn
         </span>
       </div>
-      <div className="mt-1.5 h-1.5 w-full rounded-full bg-cukur">
+      <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-cukur">
         <div
-          className={`h-full rounded-full transition-[width] duration-100 ${az ? "bg-tehlike" : "bg-vurgu"}`}
-          style={{ width: `${yuzde}%` }}
+          className="h-full rounded-full transition-[width] duration-100"
+          style={{
+            width: `${yuzde}%`,
+            background: az ? "var(--color-tehlike)" : renk,
+          }}
         />
       </div>
     </div>

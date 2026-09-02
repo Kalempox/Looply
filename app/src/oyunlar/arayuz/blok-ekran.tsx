@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useRef, useState } from "react";
 import { blok, kademe, type BlokDurumu, type BlokGirdisi, PARCA_HUCRELERI } from "../blok";
+import { hucreStili, oyunTonu, tahtaStili } from "./tahta";
 import type { OyunEkraniProps } from "./ortak";
 
 /**
@@ -29,14 +30,21 @@ import type { OyunEkraniProps } from "./ortak";
  * Kaldırıldı: ızgaranın yarısı yanınca parçanın nereye **ineceği** değil
  * nereye **inebileceği** görünüyor ve oyuncunun sorduğu soru bu değil.
  *
- * ── Çapa: parçanın sol üst köşesi ───────────────────────────
+ * Çapa: parçanın sol üst köşesi ───────────────────────────
  *
  * Parmağın altındaki kare, parçanın sol üst köşesi oluyor. Parmağın
  * ortaya denk gelmesi daha "doğal" görünürdü ama parçalar farklı
  * boyutta: kural her parçada değişirdi. Sabit çapa + görünür önizleme,
  * tahmin etmeyi tamamen gereksiz kılıyor.
+ *
+ * ── Ü85: tahta oyunun rengine geçti ─────────────────────────
+ *
+ * Yüzey `tahta.tsx`ten geliyor; bu dosya artık renk seçmiyor. Hücreler
+ * gradyanlı ve üstten ışık alıyor (Ü68), boş hücreler oyunun renginin
+ * çok soluk hâli — boş tahta bile hangi oyunda olduğunu söylüyor.
  */
-export function BlokEkrani({ tohum, bitti }: OyunEkraniProps) {
+export function BlokEkrani({ oyunId, tohum, bitti }: OyunEkraniProps) {
+  const r = oyunTonu(oyunId);
   const [durum, setDurum] = useState<BlokDurumu>(() => blok.baslat(tohum));
   const [girdiler, setGirdiler] = useState<BlokGirdisi[]>([]);
   const [secili, setSecili] = useState<number | null>(null);
@@ -139,15 +147,26 @@ export function BlokEkrani({ tohum, bitti }: OyunEkraniProps) {
 
   return (
     <div className="oyun-alani">
-      <Sayaclar durum={durum} />
+      <Sayaclar durum={durum} oyunId={oyunId} />
 
       {/* ── Izgara ─────────────────────────────────── */}
-      <div className="mt-5 grid grid-cols-8 gap-[3px] rounded-lg border border-cizgi bg-yuzey p-[3px]">
+      <div
+        className="kart-golge mt-5 grid grid-cols-8 gap-[3px] rounded-2xl p-2"
+        style={tahtaStili(oyunId)}
+      >
         {Array.from({ length: 64 }, (_, i) => {
           const s = Math.floor(i / 8);
           const k = i % 8;
           const dolu = (durum.izgara[s] & (1 << k)) !== 0;
           const inecek = onizleme?.kareler.has(i) ?? false;
+
+          const hal = inecek
+            ? onizleme!.gecerli
+              ? "onizleme"
+              : "gecersiz"
+            : dolu
+              ? "dolu"
+              : "bos";
 
           return (
             <button
@@ -157,15 +176,8 @@ export function BlokEkrani({ tohum, bitti }: OyunEkraniProps) {
               onClick={() => koy(s, k)}
               disabled={secili === null}
               aria-label={`${s + 1}. satır ${k + 1}. sütun`}
-              className={`aspect-square transition-colors ${
-                inecek
-                  ? onizleme!.gecerli
-                    ? "bg-vurgu/70 ring-1 ring-vurgu"
-                    : "bg-tehlike/40 ring-1 ring-tehlike/70"
-                  : dolu
-                    ? "bg-vurgu"
-                    : "bg-cukur"
-              }`}
+              className="aspect-square rounded-[5px] transition-[background,box-shadow] duration-150"
+              style={hucreStili(oyunId, hal)}
             />
           );
         })}
@@ -179,10 +191,6 @@ export function BlokEkrani({ tohum, bitti }: OyunEkraniProps) {
             type="button"
             disabled={parca < 0}
             aria-pressed={secili === t}
-            // touch-action: parmak sürüklerken sayfa kaymasın — yoksa
-            // sürükleme hareketi kaydırma olarak yorumlanıyor ve oyun
-            // hiç tepki vermemiş gibi görünüyor.
-            style={{ touchAction: "none" }}
             onPointerDown={(e) => {
               if (parca < 0) return;
               e.currentTarget.setPointerCapture(e.pointerId);
@@ -214,11 +222,24 @@ export function BlokEkrani({ tohum, bitti }: OyunEkraniProps) {
               basili.current = null;
               setHedef(null);
             }}
-            className={`flex min-h-[84px] items-center justify-center rounded-2xl border border-cizgi bg-yuzey px-2 py-3 disabled:opacity-25 ${
-              secili === t ? "ring-2 ring-vurgu" : ""
-            }`}
+            // Seçili teklif yükseliyor: hangi parçanın elinde olduğu
+            // yalnızca çerçeveyle söylenirse küçük ekranda kaçıyor.
+            className="flex min-h-[88px] items-center justify-center rounded-2xl px-2 py-3 transition-transform duration-150 disabled:opacity-20"
+            style={{
+              // touch-action: parmak sürüklerken sayfa kaymasın — yoksa
+              // sürükleme hareketi kaydırma olarak yorumlanıyor ve oyun
+              // hiç tepki vermemiş gibi görünüyor.
+              touchAction: "none",
+              background: "var(--color-yuzey)",
+              border: `1px solid ${secili === t ? r.ana : "var(--color-cizgi)"}`,
+              boxShadow:
+                secili === t
+                  ? `0 0 0 3px ${r.ana}33, 0 6px 14px -6px ${r.koyu}59`
+                  : `0 1px 2px ${r.koyu}14`,
+              transform: secili === t ? "translateY(-3px)" : undefined,
+            }}
           >
-            {parca >= 0 ? <ParcaOnizleme parca={parca} /> : null}
+            {parca >= 0 ? <ParcaOnizleme parca={parca} renk={r.canli} /> : null}
           </button>
         ))}
       </div>
@@ -245,21 +266,38 @@ export function BlokEkrani({ tohum, bitti }: OyunEkraniProps) {
  * Yerine **zorluk kademesi** kondu — oyuncu parçaların neden büyüdüğünü
  * görmeli, yoksa oyun haksız hissettirir.
  */
-function Sayaclar({ durum }: { durum: BlokDurumu }) {
+function Sayaclar({ durum, oyunId }: { durum: BlokDurumu; oyunId: string }) {
   const zorluk = kademe(durum.tur);
+  const r = oyunTonu(oyunId);
+
   return (
     <div>
-      <div className="flex items-baseline justify-between">
+      <div className="flex items-baseline justify-between gap-3">
         <span className="etiket-caps text-yazi-sonuk">
-          {durum.temizlenen} temizlendi · zorluk {zorluk + 1}
+          {durum.temizlenen} temizlendi
         </span>
-        <span className="font-data text-xl leading-none font-bold text-vurgu tabular">
-          {durum.skor}
+        <span className="flex items-baseline gap-2.5">
+          {/* Zorluk kademesi noktalarla: "zorluk 3" okunması gereken bir
+              sayı, üç dolu nokta bir bakışta görülen bir şey. */}
+          <ZorlukNoktalari kademe={zorluk} renk={r.ana} />
+          {/* `key` skorla değişiyor ki her artışta animasyon yeniden
+              koşsun — sabit anahtarda CSS bir kez oynayıp susuyor. */}
+          <span
+            key={durum.skor}
+            className="patla font-data text-2xl leading-none font-bold tabular"
+            style={{ color: r.ana }}
+          >
+            {durum.skor}
+          </span>
         </span>
       </div>
+
       {/* Zincir yalnızca yanarken görünüyor: sürekli duran bir "0" gürültü. */}
       {durum.zincir > 1 && (
-        <p className="mt-1 font-data text-[11px] font-bold tracking-wide text-odul-koyu uppercase">
+        <p
+          key={durum.zincir}
+          className="patla mt-1.5 inline-block rounded-full border border-odul bg-odul-zemin px-2.5 py-0.5 font-data text-[11px] font-bold tracking-wide text-odul-koyu uppercase"
+        >
           {durum.zincir}× zincir
         </p>
       )}
@@ -267,23 +305,54 @@ function Sayaclar({ durum }: { durum: BlokDurumu }) {
   );
 }
 
-/** Parçanın küçük önizlemesi — hangi biçimi seçtiğin görünsün. */
-function ParcaOnizleme({ parca }: { parca: number }) {
+/** Zorluk kademesi — dört nokta, dolu olanlar kadar zor. */
+function ZorlukNoktalari({ kademe, renk }: { kademe: number; renk: string }) {
+  return (
+    <span className="flex items-center gap-1" aria-label={`Zorluk ${kademe + 1}`}>
+      {[0, 1, 2, 3].map((i) => (
+        <span
+          key={i}
+          className="size-1.5 rounded-full transition-colors"
+          style={{ background: i <= kademe ? renk : `${renk}2e` }}
+        />
+      ))}
+    </span>
+  );
+}
+
+/**
+ * Parçanın küçük önizlemesi — hangi biçimi seçtiğin görünsün.
+ *
+ * Ü85: parça artık ızgaradaki hâliyle aynı renkte. Altın duruyordu ve
+ * oyuncu yerleştirdiğinde renk değişiyordu — teklif ile sonuç aynı şey
+ * olmalı.
+ */
+function ParcaOnizleme({ parca, renk }: { parca: number; renk: string }) {
   const hucreler = PARCA_HUCRELERI[parca];
   const enS = Math.max(...hucreler.map((h) => h[0])) + 1;
   const enK = Math.max(...hucreler.map((h) => h[1])) + 1;
   const dolu = new Set(hucreler.map(([s, k]) => s * enK + k));
 
+  // 3×3 kare 12 pikselde kutuyu taşırıyordu; en geniş parçaya göre
+  // küçülüyor ki üç teklif de aynı yüksekliğte dursun.
+  const boy = enK >= 4 || enS >= 4 ? 10 : 12;
+
   return (
     <div
       className="grid gap-[2px]"
-      style={{ gridTemplateColumns: `repeat(${enK}, 12px)` }}
+      style={{ gridTemplateColumns: `repeat(${enK}, ${boy}px)` }}
       aria-hidden
     >
       {Array.from({ length: enS * enK }, (_, i) => (
         <span
           key={i}
-          className={`h-3 w-3 ${dolu.has(i) ? "bg-odul" : "bg-transparent"}`}
+          className="rounded-[2px]"
+          style={{
+            width: boy,
+            height: boy,
+            background: dolu.has(i) ? renk : "transparent",
+            boxShadow: dolu.has(i) ? "inset 0 1px 0 rgba(255,255,255,0.4)" : undefined,
+          }}
         />
       ))}
     </div>

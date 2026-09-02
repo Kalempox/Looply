@@ -12,6 +12,15 @@
  * oynatacak. Ekranın kaydetmediği bir hamle sunucuda hiç olmamış sayılır.
  */
 export type OyunEkraniProps = {
+  /**
+   * Hangi oyun — tahtanın rengi bundan türüyor (Ü85).
+   *
+   * Ekran zaten hangi oyun olduğunu biliyor (dosyanın kendisi o oyun) ama
+   * renk **kayıt defterinden** geliyor: `oyuncu-renk.ts` içindeki
+   * `OYUN_RENGI`. Ekranın kendi rengini seçmesi, oyun kartıyla tahtanın
+   * ayrışmasına açık kapı bırakırdı.
+   */
+  oyunId: string;
   tohum: string;
   /**
    * Oyun bitti — girdi kaydı ve istemcinin hesapladığı skor.

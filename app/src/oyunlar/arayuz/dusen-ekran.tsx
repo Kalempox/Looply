@@ -11,6 +11,7 @@ import {
   type DusenHareket,
 } from "../dusen";
 import { TICK_MS } from "../sozlesme";
+import { hucreStili, oyunTonu, tahtaStili } from "./tahta";
 import type { OyunEkraniProps } from "./ortak";
 
 /**
@@ -57,7 +58,7 @@ type Yerel = {
   tick: number;
 };
 
-export function DusenEkrani({ tohum, bitti }: OyunEkraniProps) {
+export function DusenEkrani({ oyunId, tohum, bitti }: OyunEkraniProps) {
   const [y, setY] = useState<Yerel>(() => ({
     durum: dusen.baslat(tohum),
     girdiler: [],
@@ -122,6 +123,7 @@ export function DusenEkrani({ tohum, bitti }: OyunEkraniProps) {
   }, [hareket]);
 
   const durum = y.durum;
+  const r = oyunTonu(oyunId);
   const aktifHucreler = new Set(
     PARCA_DONUSLERI[durum.parca][durum.donus].map(
       ([ds, dk]) => (durum.s + ds) * DUSEN_EN + (durum.k + dk),
@@ -130,21 +132,31 @@ export function DusenEkrani({ tohum, bitti }: OyunEkraniProps) {
 
   return (
     <div className="oyun-alani">
-      <div className="flex items-baseline justify-between">
-        {/* Ü83: hedef yok — gösterilen şey ilerleme, kalan değil. Hız
-            göstergesi zorluğun arttığını görünür kılıyor; oyuncu neden
-            zorlandığını bilmeli. */}
-        <span className="etiket-caps text-yazi-sonuk">
-          {durum.temizlenen} satır · hız {hizKademesi(durum.dusmeTicki)}
-        </span>
-        <span className="font-data text-xl leading-none font-bold text-vurgu tabular">
-          {durum.skor}
+      <div className="flex items-baseline justify-between gap-3">
+        {/* Ü83: hedef yok — gösterilen şey ilerleme, kalan değil. */}
+        <span className="etiket-caps text-yazi-sonuk">{durum.temizlenen} satır</span>
+        <span className="flex items-baseline gap-2.5">
+          {/* Hız göstergesi zorluğun arttığını görünür kılıyor: oyuncu
+              neden zorlandığını bilmeli, yoksa oyun haksız hissettirir. */}
+          <HizSeridi kademe={hizKademesi(durum.dusmeTicki)} renk={r.ana} />
+          {/* `key` skorla değişiyor ki her artışta animasyon yeniden koşsun. */}
+          <span
+            key={durum.skor}
+            className="patla font-data text-2xl leading-none font-bold tabular"
+            style={{ color: r.ana }}
+          >
+            {durum.skor}
+          </span>
         </span>
       </div>
 
       <div
-        className="mx-auto mt-4 grid gap-[2px] rounded-lg border border-cizgi bg-yuzey p-[2px]"
-        style={{ gridTemplateColumns: `repeat(${DUSEN_EN}, minmax(0, 1fr))`, maxWidth: 320 }}
+        className="kart-golge mx-auto mt-4 grid gap-[2px] rounded-2xl p-1.5"
+        style={{
+          ...tahtaStili(oyunId),
+          gridTemplateColumns: `repeat(${DUSEN_EN}, minmax(0, 1fr))`,
+          maxWidth: 320,
+        }}
       >
         {Array.from({ length: DUSEN_EN * DUSEN_BOY }, (_, i) => {
           const s = Math.floor(i / DUSEN_EN);
@@ -155,21 +167,57 @@ export function DusenEkrani({ tohum, bitti }: OyunEkraniProps) {
           return (
             <span
               key={i}
-              className={`aspect-square ${
-                aktif ? "bg-odul" : yerlesik ? "bg-vurgu" : "bg-cukur"
-              }`}
+              className="aspect-square rounded-[3px]"
+              style={hucreStili(oyunId, aktif ? "aktif" : yerlesik ? "dolu" : "bos")}
             />
           );
         })}
       </div>
 
-      <div className="mt-5 grid grid-cols-4 gap-2">
-        <Dugme etiket="◀" adi="Sola" onBas={() => hareket("sol")} />
-        <Dugme etiket="↻" adi="Döndür" onBas={() => hareket("don")} />
-        <Dugme etiket="▶" adi="Sağa" onBas={() => hareket("sag")} />
-        <Dugme etiket="▼" adi="Bırak" onBas={() => hareket("birak")} vurgu />
+      {/* Bırak düğmesi tam genişlikte ve altta: en sık basılan tuş o ve
+          başparmağın doğal olarak durduğu yer orası. Yön tuşları üstte
+          üçe bölünüyor — dört eşit kutuda "bırak" diğerleriyle
+          karışıyordu ve oyuncu yanlışlıkla parçayı düşürüyordu. */}
+      <div className="mt-5 grid grid-cols-3 gap-2">
+        <Dugme etiket="◀" adi="Sola" onBas={() => hareket("sol")} renk={r.ana} />
+        <Dugme etiket="↻" adi="Döndür" onBas={() => hareket("don")} renk={r.ana} />
+        <Dugme etiket="▶" adi="Sağa" onBas={() => hareket("sag")} renk={r.ana} />
       </div>
+      <button
+        type="button"
+        onClick={() => hareket("birak")}
+        aria-label="Bırak"
+        className="mt-2 w-full rounded-2xl py-4 font-display text-[15px] font-bold tracking-wide text-white uppercase transition-transform active:scale-[0.98]"
+        style={{ background: r.ana, boxShadow: `0 4px 12px -4px ${r.koyu}66` }}
+      >
+        Bırak ▼
+      </button>
     </div>
+  );
+}
+
+/**
+ * Hız kademesi — on iki çubuk, dolu olanlar kadar hızlı.
+ *
+ * Sayı yerine çubuk: "hız 7" okunması gereken bir şey, dolan bir şerit
+ * bir bakışta görülüyor. Ü83'te hız turun içinde arttığı için bu şerit
+ * oyun boyunca doluyor ve oyuncu zorluğun kendisini izliyor.
+ */
+function HizSeridi({ kademe, renk }: { kademe: number; renk: string }) {
+  const EN_COK = 12;
+  return (
+    <span className="flex items-center gap-[3px]" aria-label={`Hız ${kademe}`}>
+      {Array.from({ length: EN_COK }, (_, i) => (
+        <span
+          key={i}
+          className="w-[3px] rounded-full transition-[height,background] duration-200"
+          style={{
+            height: 6 + Math.min(i, EN_COK - 1) * 0.5,
+            background: i < kademe ? renk : `${renk}2e`,
+          }}
+        />
+      ))}
+    </span>
   );
 }
 
@@ -177,19 +225,20 @@ function Dugme({
   etiket,
   adi,
   onBas,
-  vurgu,
+  renk,
 }: {
   etiket: string;
   adi: string;
   onBas: () => void;
-  vurgu?: boolean;
+  renk: string;
 }) {
   return (
     <button
       type="button"
       onClick={onBas}
       aria-label={adi}
-      className={`rounded-lg border border-cizgi bg-yuzey py-4 font-data text-xl select-none ${vurgu ? "text-odul-koyu" : "text-yazi"}`}
+      className="rounded-2xl bg-yuzey py-4 font-data text-2xl leading-none select-none transition-transform active:scale-95"
+      style={{ border: `1px solid ${renk}40`, color: renk, boxShadow: `0 1px 2px ${renk}1a` }}
     >
       {etiket}
     </button>

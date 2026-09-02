@@ -22,14 +22,16 @@ import { DusenEkrani } from "./dusen-ekran";
  * `switch` bunu statik kılıyor. Maliyeti yine tek satır: yeni oyun bir
  * `case` ekliyor.
  */
-export function OyunEkrani({ oyunId, ...props }: OyunEkraniProps & { oyunId: string }) {
+export function OyunEkrani({ oyunId, ...props }: OyunEkraniProps) {
+  // `oyunId` hem seçici hem de ekrana geçen bir prop: tahtanın rengi ondan
+  // türüyor (Ü85). Bu yüzden yayılmadan önce ayrıştırılıp geri veriliyor.
   switch (oyunId) {
     case "blok":
-      return <BlokEkrani {...props} />;
+      return <BlokEkrani oyunId={oyunId} {...props} />;
     case "kelime":
-      return <KelimeEkrani {...props} />;
+      return <KelimeEkrani oyunId={oyunId} {...props} />;
     case "dusen":
-      return <DusenEkrani {...props} />;
+      return <DusenEkrani oyunId={oyunId} {...props} />;
     default:
       return <p className="text-tehlike">Bu oyunun ekranı bulunamadı.</p>;
   }
