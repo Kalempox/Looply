@@ -31,19 +31,17 @@
   gerçekten ödenebilir.
   403 test yeşil · tarayıcıda misafir akışıyla uçtan uca oynandı.
 
-- [ ] **2b · Skor dengesinin gerçek veriyle kalibrasyonu** 🔴 *veri bekliyor*
-  Ölçek makul ama **doğrulanmadı**: testteki botlar zayıf oyuncuyu bile
-  temsil etmiyor (Düşen botu 40 turda bir kez satır temizleyemedi; Kelime
-  botu sözlüğün tamamını bildiği için 10.000 skor yapıyor). Üç oyunun
-  eşiğe ulaşma oranı ancak pilot verisiyle ayarlanabilir.
-  **Açılır:** ilk kafede 2–4 hafta gerçek oyun.
+- [x] **2b · Skor dengesi** ✅ **KAPANDI** — ürün sahibi elle test etti,
+  oynanış iyi. Bot skorlarının düşük olması sorun değil: botlar demo
+  verisi üretmek için yazıldı, iyi oynamak için değil.
 
-- [ ] **2c · Zaman tabanlı oyunlarda tick–duvar saati tutarlılığı** ⚠️ *açık*
-  İstemci tick değerlerini kendisi bildiriyor. Az tick bildiren oyuncu
-  Kelime'de daha çok düşünme süresi kazanır. Sunucu `duration_ms` tutuyor
-  ama tickle karşılaştırmıyor.
-  Bu **Ü83 öncesinde de vardı** (Düşen aynı yapıda); Kelime'de süre tek
-  zorluk kolu olduğu için artık daha değerli bir hedef.
+- [x] **2c · Oyun saati sunucuda doğrulanıyor** ✅ **BİTTİ** — Ü84, 2026-09-02
+  Sözleşmeye `gecenMs()` eklendi, sunucu bildirilen saati `duration_ms` ile
+  karşılaştırıyor. On dakikayı üç saniye diye bildiren kayıt reddediliyor.
+  Aynı kontrol misafir akışında da var.
+  ⚠️ Düşen ekranı da duvar saatine geçti — kontrolün ön koşuluydu, yan
+  kazancı sekmeyi arkaya atıp parçayı havada tutamamak.
+  408 test yeşil · tarayıcıda gizli sekmede yerçekimi doğrulandı.
 
 - [ ] **3 · Blok ve Düşen'in oyun tahtası görünümü**
   Çevresindeki her şey yeni kart diline geçti, tahtanın kendisi eski kaldı.
