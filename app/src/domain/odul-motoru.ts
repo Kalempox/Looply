@@ -93,6 +93,23 @@ const DUZ_TABAN = 1.6;
  */
 const BIKKINLIK = 0.5;
 
+/**
+ * Ödül işareti yakalamanın şansa kattığı pay (Ü91).
+ *
+ * Oyuncu ödülü **ekranda gördü ve ona ulaştı**; eli boş dönmesi mekaniği
+ * yalan çıkarır. Yine de garanti değil: azalan getiri (Ü77) bu payın da
+ * üstünde çalışıyor, yoksa tek oyunu öğrenip ekonomiyi sömürmek serbest
+ * kalırdı.
+ *
+ * ⚠️ İşaret **hangi ödülün** çıkacağını değiştirmiyor, yalnızca çıkma
+ * şansını yükseltiyor. Tier'i de açsaydı pahalı ödül yakalanabilir bir
+ * hedefe dönerdi ve kafenin günlük bütçesi yönetilemez olurdu (Ü89).
+ */
+const ODUL_ISARETI_PAYI = 0.2;
+
+/** Şans hiçbir koşulda bunun üstüne çıkmıyor. */
+const MUTLAK_TAVAN = 0.95;
+
 /** Azalan getiri kaç güne bakıyor. */
 export const BAKILAN_GUN = 7;
 
@@ -123,9 +140,10 @@ export function bikkinlikKatsayisi(sonKazanim: number): number {
  * Eşiği yeni geçen turda %50, doyum skorunda %75; aynı oyundan gelen
  * kazanımlar bunu kısıyor.
  */
-export function dusmeSansi(skor: number, sonKazanim: number): number {
+export function dusmeSansi(skor: number, sonKazanim: number, odulIsareti = 0): number {
   const taban = EN_AZ_SANS + (EN_COK_SANS - EN_AZ_SANS) * skorPayi(skor);
-  return taban * bikkinlikKatsayisi(sonKazanim);
+  const isaretli = odulIsareti > 0 ? taban + ODUL_ISARETI_PAYI : taban;
+  return Math.min(MUTLAK_TAVAN, isaretli) * bikkinlikKatsayisi(sonKazanim);
 }
 
 /**
@@ -192,13 +210,15 @@ export function karar(opts: {
   skor: number;
   /** Bu oyuncunun **bu oyundan** son `BAKILAN_GUN` gündeki kazanımı. */
   sonKazanim: number;
+  /** Ü91: turda yakalanan ödül işareti sayısı. Oyunda yoksa 0. */
+  odulIsareti?: number;
   kurusDegerleri: readonly number[];
 }): MotorKarari {
   if (opts.kurusDegerleri.length === 0) return { dusuyor: false, sebep: "odul_yok" };
 
   // Şans on binde bir çözünürlükle atılıyor: yüzde tek başına
   // %55,5 gibi bir değeri yuvarlayıp dağılımı kaydırırdı.
-  const sans = dusmeSansi(opts.skor, opts.sonKazanim);
+  const sans = dusmeSansi(opts.skor, opts.sonKazanim, opts.odulIsareti ?? 0);
   if (randomInt(10_000) >= Math.round(sans * 10_000)) {
     return { dusuyor: false, sebep: "sans" };
   }

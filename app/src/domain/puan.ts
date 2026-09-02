@@ -131,7 +131,14 @@ export const KUPON_ESIGI = 500;
  * Eşiğin altında kalan tur boşa gitmiyor: katılım puanı ve XP yine yazılıyor
  * (Ü48), skor liderliğe giriyor, seri bozulmuyor.
  */
-export function basariliMi(skor: number): boolean {
+export function basariliMi(skor: number, odulIsareti = 0): boolean {
+  // ⚠️ Ü91: oyun içi ödül işareti eşiği **atlıyor**. Oyuncu altın kuponu
+  // ekranda gördü ve ona ulaştı; skoru 480'de kaldı diye eli boş dönmesi
+  // mekaniği yalan çıkarır — yakaladığı şey görünürde bir ödüldü.
+  //
+  // Bedava değil: ödül yine şansa (Ü88), günlük sınıra, bütçeye (E10) ve
+  // azalan getiriye (Ü77) tabi. İşaret yalnızca **kapıyı** açıyor.
+  if (odulIsareti > 0) return true;
   return skor >= KUPON_ESIGI;
 }
 

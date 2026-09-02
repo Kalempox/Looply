@@ -164,6 +164,8 @@ async function kazanimIsle(
     basarili: boolean;
     kazandirir: boolean;
     bonusMu: boolean;
+    /** Ü91: turda yakalanan ödül işareti sayısı — motorun şans girdisi. */
+    odulIsareti?: number;
   },
 ): Promise<Kazanim> {
   const bos: Kazanim = {
@@ -218,6 +220,8 @@ async function kazanimIsle(
         // Ü77: motor skoru ve hangi oyun olduğunu bilmek zorunda.
         skor: opts.skor,
         oyunId: opts.oyunId,
+        // Ü91: oyuncu ödülü ekranda yakaladıysa şans yükseliyor.
+        odulIsareti: opts.odulIsareti,
         kaynakId: opts.oturumId,
       });
       if (anlik?.ok) {
@@ -584,7 +588,8 @@ export async function bitir(opts: {
     const kazandirir = !!oturum.cafe_id && (oturum.proof_mask & K2) !== 0;
 
     // Ü83: "başarılı" artık oyunun değil ürünün kuralı — skor eşiği.
-    const basarili = basariliMi(sonuc.skor);
+    // Ü91: oyun içi ödül işareti eşiği atlıyor.
+    const basarili = basariliMi(sonuc.skor, sonuc.odulIsareti);
 
     const nitelikli = await nitelikliMi(db, {
       playerId: opts.playerId,
@@ -622,6 +627,7 @@ export async function bitir(opts: {
       basarili,
       kazandirir,
       bonusMu,
+      odulIsareti: sonuc.odulIsareti,
     });
 
     return {

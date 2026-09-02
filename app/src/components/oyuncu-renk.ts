@@ -125,6 +125,9 @@ export const OYUN_RENGI: Record<string, OyuncuRengi> = {
   blok: "gok",
   kelime: "menekse",
   dusen: "pembe",
+  // Ü91: yılan yeşil. Kalan iki ton (kahve, amber) kupon kategorilerinin
+  // — sıcak içecek ve yiyecek — ve oyun rengiyle karışmamalılar.
+  yilan: "yesil",
 };
 
 export function oyunRengi(oyunId: string): OyuncuRengi {

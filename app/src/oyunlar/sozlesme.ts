@@ -80,6 +80,22 @@ export type Oyun<Durum, Girdi> = {
   gecenMs?(durum: Durum): number;
 
   /**
+   * Tur boyunca yakalanan **ödül işareti** sayısı — Ü91.
+   *
+   * Ödül motorunun (Ü88) görünen yüzü: bazı oyunlarda ödül tahtanın
+   * üstünde bir nesne olarak duruyor ve oyuncu ona ulaşmaya çalışıyor.
+   * Yılan'da elmanın yerini alan kupon bu.
+   *
+   * ⚠️ Oyun **kupon üretmiyor**, yalnızca sayıyor. Sunucu turu yeniden
+   * oynatıp aynı sayıyı buluyor ve motora bir girdi olarak veriyor.
+   * Değişmez kural #4 böyle korunuyor: para değeri taşıyan karar
+   * istemcide verilmiyor.
+   *
+   * Tanımlamayan oyunlarda motor yalnızca skora bakıyor.
+   */
+  odulIsareti?(durum: Durum): number;
+
+  /**
    * Güvenilmeyen JSON'u girdiye çevirir. Biçim yanlışsa **null**.
    *
    * Zod yerine elle yazıldı: bu modüller istemciye de iniyor ve girdi
@@ -176,6 +192,8 @@ export type TekrarSonucu =
        * hesaplanıp taşınıyor.
        */
       oyunMs: number | null;
+      /** Ü91: yakalanan ödül işareti sayısı. Oyun tanımlamıyorsa 0. */
+      odulIsareti: number;
     }
   | { gecerli: false; sebep: string };
 
@@ -233,6 +251,7 @@ export function tekrarOyna<Durum, Girdi>(
     gecerli: true,
     skor: oyun.skor(durum),
     oyunMs: oyun.gecenMs ? oyun.gecenMs(durum) : null,
+    odulIsareti: oyun.odulIsareti ? oyun.odulIsareti(durum) : 0,
     kullanilmayan: hamGirdiler.length - i,
   };
 }

@@ -176,6 +176,8 @@ const OYUN_GORSELI: Record<string, GorselAdi> = {
   blok: "blok",
   kelime: "kelime",
   dusen: "dusen",
+  // Ü91: yılanın kendi çizimi yok; kumanda çizimi oyun kartında duruyor.
+  yilan: "kumanda",
 };
 
 export function oyunGorseli(oyunId: string): GorselAdi {

@@ -21,6 +21,7 @@ import {
 import { blok, kademe as blokKademe } from "@/oyunlar/blok";
 import { kelime, kurulabilir, kucult, turSuresi } from "@/oyunlar/kelime";
 import { dusen, dusmeTickiHesapla } from "@/oyunlar/dusen";
+import { yilan, YILAN_EN, adimTickiHesapla, type Yon } from "@/oyunlar/yilan";
 import {
   tekrarOyna,
   EN_FAZLA_GIRDI,
@@ -156,6 +157,42 @@ function dusenOyna(tohum: string) {
   return { durum: d, girdiler, skor: dusen.skor(d) };
 }
 
+/**
+ * Yılan'ı yeme doğru sürerek oynar — er geç kendine ya da duvara çarpıyor.
+ *
+ * Gövdeyi hesaba katmıyor; amaç iyi oynamak değil, **gerçek bir girdi
+ * kaydı** üretmek. Ödül yemi yolun üstüne düşerse yakalıyor.
+ */
+function yilanOyna(tohum: string) {
+  let d = yilan.baslat(tohum);
+  const girdiler: unknown[] = [];
+  let tick = 0;
+
+  for (let adim = 0; adim < 1500 && !yilan.bittiMi(d); adim++) {
+    tick += 2;
+    const bas = d.govde[0];
+    const bs = Math.floor(bas / YILAN_EN);
+    const bk = bas % YILAN_EN;
+    const ys = Math.floor(d.yem / YILAN_EN);
+    const yk = d.yem % YILAN_EN;
+
+    const yon: Yon | "bekle" =
+      bs !== ys ? (ys < bs ? "yukari" : "asagi") : bk !== yk ? (yk < bk ? "sol" : "sag") : "bekle";
+
+    const girdi = { tick, y: yon };
+    const y = yilan.uygula(d, girdi);
+    if (!y) break;
+    d = y;
+    girdiler.push(girdi);
+  }
+
+  girdiler.push({ tick, y: "bekle" });
+  const son = yilan.uygula(d, { tick, y: "bekle" });
+  if (son) d = son;
+
+  return { durum: d, girdiler, skor: yilan.skor(d) };
+}
+
 /** Doğrulanmış (K2) masa oturumu açar. */
 async function dogrulanmisOturum(playerId: string) {
   await masa.ac({ cafeId: kafeA, tableId: masaA, playerId });
@@ -280,6 +317,7 @@ describe("determinizm (S5)", () => {
       { oyun: blok, id: "blok", oyna: blokOyna },
       { oyun: kelime, id: "kelime", oyna: kelimeOyna },
       { oyun: dusen, id: "dusen", oyna: dusenOyna },
+      { oyun: yilan, id: "yilan", oyna: yilanOyna },
     ];
 
     for (const { oyun, id, oyna } of senaryolar) {
@@ -311,6 +349,9 @@ describe("sonsuz mod (Ü83)", () => {
 
     const k = kelimeOyna("son-kelime");
     assert.ok(k.durum.sureBitti, "kelime süre dolmadan bitti");
+
+    const yl = yilanOyna("son-yilan");
+    assert.ok(yl.durum.carpti, "yılan çarpmadan bitti");
   });
 
   test("zorluk tur içinde artıyor", () => {
@@ -329,6 +370,10 @@ describe("sonsuz mod (Ü83)", () => {
     // Kelime: tur süresi kısalıyor ve bir tabanda duruyor.
     assert.ok(turSuresi(5) < turSuresi(0), "kelime süresi kısalmıyor");
     assert.equal(turSuresi(100), turSuresi(50), "kelime süresi tabana oturmuyor");
+
+    // Yılan: yem yedikçe adım hızlanıyor.
+    assert.ok(adimTickiHesapla(12) < adimTickiHesapla(0), "yılan hızlanmıyor");
+    assert.equal(adimTickiHesapla(200), adimTickiHesapla(100), "yılan hızı tavana oturmuyor");
   });
 
   test("skor eşiklerden bağımsız bir ölçekte, tek temizlik eşiğin yirmide biri", () => {
@@ -349,6 +394,12 @@ describe("sonsuz mod (Ü83)", () => {
   test("başarı artık skordan hesaplanıyor, oyundan değil", () => {
     assert.equal(basariliMi(KUPON_ESIGI - 1), false);
     assert.equal(basariliMi(KUPON_ESIGI), true);
+
+    // Ü91: oyun içi ödül işareti eşiği atlıyor. Oyuncu altın kuponu
+    // ekranda yakaladıysa skoru 480'de kalsa bile kapı açılıyor —
+    // yakaladığı şey görünürde bir ödüldü.
+    assert.equal(basariliMi(KUPON_ESIGI - 1, 1), true, "yakalanan ödül kapıyı açmıyor");
+    assert.equal(basariliMi(0, 0), false);
     // Sözleşmede `basarili` diye bir alan kalmadı: başarı ürün kararı.
     for (const oyun of OYUNLAR) {
       assert.equal(
@@ -357,6 +408,63 @@ describe("sonsuz mod (Ü83)", () => {
         `${oyun.id}: sözleşmede hâlâ basarili() var`,
       );
     }
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════
+   1b2 · Oyun içi ödül işareti (Ü91)
+   ═══════════════════════════════════════════════════════════ */
+
+describe("oyun içi ödül işareti (Ü91)", () => {
+  test("ilk yemlerde ödül çıkmıyor", () => {
+    // Oyunun ilk yirmi saniyesi öğrenme anı; oraya ödül koymak hem çok
+    // kolay olur hem de oyuncu kuralı anlamadan en değerli şeyi kaçırır.
+    for (const tohum of ["a", "b", "c", "d", "e"]) {
+      const d = yilan.baslat(tohum);
+      assert.equal(d.yemOdulMu, false, `${tohum}: ilk yem ödül çıktı`);
+    }
+  });
+
+  test("ilerleyen turda ödül yemi çıkıyor", () => {
+    // Tek bir turda çıkması şansa bağlı; ödülün var olduğunu görmek için
+    // birkaç tohum yeterli. Sınanan şey oran değil **varlık**.
+    const cikan = ["y-1", "y-2", "y-3", "y-4", "y-5", "y-6"].filter(
+      (t) => yilanOyna(t).durum.odulYakalanan > 0 || yilanOyna(t).durum.yenen >= 5,
+    );
+    assert.ok(cikan.length > 0, "hiçbir turda ödül aşamasına gelinemedi");
+  });
+
+  test("oyun kupon üretmiyor, yalnızca sayıyor", () => {
+    // ⚠️ Değişmez kural #4'ün buradaki karşılığı: durumda para değeri
+    // taşıyan hiçbir alan yok — yalnızca bir sayaç.
+    const d = yilan.baslat("kural");
+    assert.equal(typeof yilan.odulIsareti?.(d), "number");
+    assert.equal(
+      JSON.stringify(d).toLowerCase().includes("kurus"),
+      false,
+      "oyun durumunda TL/kuruş alanı var — ödül kararı istemciye sızmış",
+    );
+  });
+
+  test("işaret sunucunun replay'inde de aynı çıkıyor", () => {
+    // İstemcinin "ödül yakaladım" demesi yetmiyor; sunucu aynı sayıyı
+    // kendi hesabıyla bulmalı.
+    for (const tohum of ["i-1", "i-2", "i-3"]) {
+      const canli = yilanOyna(tohum);
+      const sunucu = tekrarOyna(yilan, tohum, canli.girdiler);
+      assert.ok(sunucu.gecerli, `${tohum}: replay geçersiz`);
+      assert.equal(
+        sunucu.gecerli && sunucu.odulIsareti,
+        canli.durum.odulYakalanan,
+        `${tohum}: ödül işareti ayrıştı`,
+      );
+    }
+  });
+
+  test("işareti olmayan oyunlarda sayı sıfır", () => {
+    const b = blokOyna("isaretsiz");
+    const sunucu = tekrarOyna(blok, "isaretsiz", b.girdiler);
+    assert.equal(sunucu.gecerli && sunucu.odulIsareti, 0);
   });
 });
 

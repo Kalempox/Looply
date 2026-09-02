@@ -4,6 +4,7 @@ import type { OyunEkraniProps } from "./ortak";
 import { BlokEkrani } from "./blok-ekran";
 import { KelimeEkrani } from "./kelime-ekran";
 import { DusenEkrani } from "./dusen-ekran";
+import { YilanEkrani } from "./yilan-ekran";
 
 /**
  * Ekran kayıt defteri — motor tarafındaki `oyunlar/index.ts`'in aynadaki eşi.
@@ -32,6 +33,8 @@ export function OyunEkrani({ oyunId, ...props }: OyunEkraniProps) {
       return <KelimeEkrani oyunId={oyunId} {...props} />;
     case "dusen":
       return <DusenEkrani oyunId={oyunId} {...props} />;
+    case "yilan":
+      return <YilanEkrani oyunId={oyunId} {...props} />;
     default:
       return <p className="text-tehlike">Bu oyunun ekranı bulunamadı.</p>;
   }

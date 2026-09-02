@@ -2,6 +2,7 @@ import type { HerhangiOyun } from "./sozlesme";
 import { blok } from "./blok";
 import { dusen } from "./dusen";
 import { kelime } from "./kelime";
+import { yilan } from "./yilan";
 
 /**
  * Oyun kayıt defteri.
@@ -11,16 +12,19 @@ import { kelime } from "./kelime";
  * yazıp aşağıdaki diziye bir satır koymaktır. Motor, oturum akışı, sunucu
  * doğrulaması ve ekranlar değişmez.
  *
- * Üç oyun kasıtlı olarak **farklı girdi biçimleri** üretiyor (Ü21):
+ * Oyunlar kasıtlı olarak **farklı girdi biçimleri** üretiyor (Ü21):
  *   blok   → (teklif, satır, sütun)  · zaman yok
- *   kelime → gönderilen kelime       · zaman yok
+ *   kelime → (tick, kelime)          · zaman var
  *   düşen  → (tick, hareket)         · zaman var
+ *   yılan  → (tick, yön)             · zaman var, **ödül işareti var**
  *
  * İddia ancak böyle sınanır: tek bir girdi biçimine göre yazılmış bir motor
- * "takılabilir" değildir.
+ * "takılabilir" değildir. Ü91'de yılan eklendi ve iddia bir kez daha
+ * sınandı — sözleşmeye tek bir isteğe bağlı alan eklendi (`odulIsareti`),
+ * motor, oturum akışı ve doğrulama hiç değişmedi.
  */
 
-export const OYUNLAR: readonly HerhangiOyun[] = [blok, kelime, dusen];
+export const OYUNLAR: readonly HerhangiOyun[] = [blok, kelime, dusen, yilan];
 
 export function oyunBul(id: string): HerhangiOyun | undefined {
   return OYUNLAR.find((o) => o.id === id);

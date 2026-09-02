@@ -306,6 +306,8 @@ export async function anlikOdulVer(
     skor: number;
     /** Ü77: azalan getiri **oyun başına**; hangi oyun olduğu şart. */
     oyunId: string;
+    /** Ü91: turda yakalanan ödül işareti sayısı — şansı yükseltiyor. */
+    odulIsareti?: number;
     /** Ü88: kuponu doğuran oyun oturumu — artık kolona yazılıyor. */
     kaynakId?: string;
     /** Ü90: bütçe temposunun okuduğu an. Yalnızca testler için. */
@@ -379,6 +381,7 @@ export async function anlikOdulVer(
   const karar = motor.karar({
     skor: opts.skor,
     sonKazanim,
+    odulIsareti: opts.odulIsareti,
     kurusDegerleri: uygunlar.map((a) => Number(a.cost_kurus)),
   });
 

@@ -2,6 +2,13 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { blok, type BlokDurumu, type BlokGirdisi } from "@/oyunlar/blok";
 import { dusen, type DusenDurumu, type DusenGirdisi, type DusenHareket } from "@/oyunlar/dusen";
+import {
+  yilan,
+  YILAN_EN,
+  type YilanDurumu,
+  type YilanGirdisi,
+  type Yon,
+} from "@/oyunlar/yilan";
 import { kelime, kurulabilir, kucult, type KelimeDurumu, type KelimeGirdisi } from "@/oyunlar/kelime";
 
 /**
@@ -167,11 +174,48 @@ function dusenOyna(tohum: string, rnd: () => number): BotSonucu {
   return { girdiler, skor: dusen.skor(durum) };
 }
 
+/* ── Yılan ────────────────────────────────────────────────── */
+
+/**
+ * Yeme doğru dönen, duvara çarpınca kaybeden bot.
+ *
+ * Açgözlü: başın yemle arasındaki farkı kapatmaya çalışıyor, gövdeyi hiç
+ * hesaba katmıyor. Yani er geç kendine çarpıyor — turun bitiş yolu bu.
+ */
+function yilanOyna(tohum: string, rnd: () => number): BotSonucu {
+  let durum: YilanDurumu = yilan.baslat(tohum);
+  const girdiler: YilanGirdisi[] = [];
+  let tick = 0;
+
+  for (let adim = 0; adim < 1200 && !yilan.bittiMi(durum); adim++) {
+    tick += 1 + Math.floor(rnd() * 2);
+
+    const bas = durum.govde[0];
+    const bs = Math.floor(bas / YILAN_EN);
+    const bk = bas % YILAN_EN;
+    const ys = Math.floor(durum.yem / YILAN_EN);
+    const yk = durum.yem % YILAN_EN;
+
+    // Önce dikey, sonra yatay hizala — sıra basit ve deterministik.
+    const yon: Yon | "bekle" =
+      bs !== ys ? (ys < bs ? "yukari" : "asagi") : bk !== yk ? (yk < bk ? "sol" : "sag") : "bekle";
+
+    const girdi: YilanGirdisi = { tick, y: yon };
+    const sonraki = yilan.uygula(durum, girdi);
+    if (!sonraki) break;
+    durum = sonraki;
+    girdiler.push(girdi);
+  }
+
+  return { girdiler, skor: yilan.skor(durum) };
+}
+
 /* ── Seçici ───────────────────────────────────────────────── */
 
 export function botOyna(oyunId: string, tohum: string, rnd: () => number): BotSonucu {
   if (oyunId === "blok") return blokOyna(tohum, rnd);
   if (oyunId === "kelime") return kelimeOyna(tohum, rnd);
   if (oyunId === "dusen") return dusenOyna(tohum, rnd);
+  if (oyunId === "yilan") return yilanOyna(tohum, rnd);
   throw new Error(`Bot yok: ${oyunId}`);
 }
