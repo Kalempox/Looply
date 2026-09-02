@@ -21,19 +21,38 @@ import type { Oyun } from "./sozlesme";
  *
  * Kilit gecikmesi (lock delay) **yok**: parça inemediği anda kilitlenir.
  * Sahada bir esneklik kaybı, replay'de bir belirsizlik kaynağının yok olması.
+ *
+ * ── Ü83: tahta dolana kadar ─────────────────────────────────
+ *
+ * Tur yalnızca **tahta dolunca** bitiyor. Bölüm yok, hedef yok. Zorluk
+ * turun içinde artıyor ve kaldıraç düşme hızı: her dört satırda bir parça
+ * biraz daha hızlı iniyor.
+ *
+ * Eğri eskisinden hem daha **yumuşak başlıyor** (24 yerine 28 tick) hem
+ * daha **yukarı çıkıyor** (7 yerine 5): beş sabit bölüme yayılan aralığın
+ * tamamı artık tek turda yaşanıyor. İlk dakika öğrenme, sonrası sınav.
  */
 
 export const DUSEN_EN = 10;
 export const DUSEN_BOY = 16;
 
-/** Kaç tick'te bir parça bir satır iner — bölüm zorlaştıkça azalır. */
-const BOLUMLER = [
-  { dusmeTicki: 24, hedef: 4 },
-  { dusmeTicki: 18, hedef: 6 },
-  { dusmeTicki: 14, hedef: 8 },
-  { dusmeTicki: 10, hedef: 10 },
-  { dusmeTicki: 7, hedef: 12 },
-];
+/**
+ * Düşme hızı eğrisi (Ü83).
+ *
+ * Bir tick 50 ms. Başlangıçta parça 1,4 saniyede bir satır iniyor; en hızlı
+ * hâlinde 0,25 saniyede. Arada kırk satır var — yani eğri tek bir turda
+ * baştan sona yaşanıyor, oyuncu hızlanmayı hissediyor.
+ */
+const BASLANGIC_TICK = 28;
+const EN_HIZLI_TICK = 5;
+/** Kaç satırda bir hızlanma. */
+const HIZLANMA_ARALIGI = 4;
+
+/** Temizlenen satır sayısına göre düşme hızı. Ekran da okuyor. */
+export function dusmeTickiHesapla(temizlenen: number): number {
+  const adim = Math.floor(temizlenen / HIZLANMA_ARALIGI);
+  return Math.max(EN_HIZLI_TICK, BASLANGIC_TICK - adim * 2);
+}
 
 type Hucre = readonly [number, number];
 
@@ -79,7 +98,6 @@ export type DusenHareket = "sol" | "sag" | "don" | "in" | "birak" | "bekle";
 
 export type DusenDurumu = {
   tohum: string;
-  bolum: number;
   /** 16 satır, her biri 10 bitlik maske. */
   izgara: number[];
   parca: number;
@@ -91,11 +109,11 @@ export type DusenDurumu = {
   tick: number;
   /** Parçanın son indiği tick. */
   sonInis: number;
+  /** Şu anki düşme hızı — `temizlenen`den türüyor; ekranın okuması için durumda. */
   dusmeTicki: number;
   skor: number;
   temizlenen: number;
-  hedef: number;
-  /** Yeni parça sığmadığı için mi bitti? */
+  /** Yeni parça sığmadığı için bitti — turun tek bitiş yolu. */
   doldu: boolean;
 };
 
@@ -103,8 +121,8 @@ export type DusenGirdisi = { tick: number; a: DusenHareket };
 
 const HAREKETLER: readonly DusenHareket[] = ["sol", "sag", "don", "in", "birak", "bekle"];
 
-function parcaSec(tohum: string, bolum: number, parcaNo: number): number {
-  return tohumla(`${tohum}:dusen:${bolum}:${parcaNo}`).tamsayi(PARCA_DONUSLERI.length);
+function parcaSec(tohum: string, parcaNo: number): number {
+  return tohumla(`${tohum}:dusen:${parcaNo}`).tamsayi(PARCA_DONUSLERI.length);
 }
 
 /** Parça verilen konumda tahtaya sığıyor mu? */
@@ -142,7 +160,7 @@ function kilitle(izgara: number[], parca: number, donus: number, s: number, k: n
 /** Yeni parçayı tahtanın üstüne koyar. Sığmıyorsa tahta dolmuştur. */
 function yeniParca(durum: DusenDurumu): DusenDurumu {
   const parcaNo = durum.parcaNo + 1;
-  const parca = parcaSec(durum.tohum, durum.bolum, parcaNo);
+  const parca = parcaSec(durum.tohum, parcaNo);
   const genislik = Math.max(...PARCA_DONUSLERI[parca][0].map((h) => h[1])) + 1;
   const k = Math.floor((DUSEN_EN - genislik) / 2);
 
@@ -168,7 +186,7 @@ function yeniParca(durum: DusenDurumu): DusenDurumu {
 function zamaniIlerlet(durum: DusenDurumu, hedefTick: number): DusenDurumu {
   let d = durum;
 
-  while (d.tick < hedefTick && !d.doldu && d.temizlenen < d.hedef) {
+  while (d.tick < hedefTick && !d.doldu) {
     const sonrakiInis = d.sonInis + d.dusmeTicki;
     if (sonrakiInis > hedefTick) {
       d = { ...d, tick: hedefTick };
@@ -182,13 +200,15 @@ function zamaniIlerlet(durum: DusenDurumu, hedefTick: number): DusenDurumu {
     } else {
       const izgara = d.izgara.slice();
       const silinen = kilitle(izgara, d.parca, d.donus, d.s, d.k);
+      const temizlenen = d.temizlenen + silinen;
       d = {
         ...d,
         izgara,
-        skor: d.skor + 4 + silinen * silinen * 25,
-        temizlenen: d.temizlenen + silinen,
+        skor: d.skor + 4 + silinen * silinen * 35,
+        temizlenen,
+        dusmeTicki: dusmeTickiHesapla(temizlenen),
       };
-      if (d.temizlenen < d.hedef) d = yeniParca(d);
+      d = yeniParca(d);
     }
   }
 
@@ -200,16 +220,13 @@ export const dusen: Oyun<DusenDurumu, DusenGirdisi> = {
   ad: "Düşen",
   ozet: "İnen parçalarla satır doldur",
   emoji: "🧱",
-  bolumSayisi: BOLUMLER.length,
 
-  baslat(tohum, bolum) {
-    const ayar = BOLUMLER[bolum - 1];
-    const parca = parcaSec(tohum, bolum, 0);
+  baslat(tohum) {
+    const parca = parcaSec(tohum, 0);
     const genislik = Math.max(...PARCA_DONUSLERI[parca][0].map((h) => h[1])) + 1;
 
     return {
       tohum,
-      bolum,
       izgara: new Array(DUSEN_BOY).fill(0),
       parca,
       donus: 0,
@@ -218,10 +235,9 @@ export const dusen: Oyun<DusenDurumu, DusenGirdisi> = {
       parcaNo: 0,
       tick: 0,
       sonInis: 0,
-      dusmeTicki: ayar.dusmeTicki,
+      dusmeTicki: BASLANGIC_TICK,
       skor: 0,
       temizlenen: 0,
-      hedef: ayar.hedef,
       doldu: false,
     };
   },
@@ -262,35 +278,33 @@ export const dusen: Oyun<DusenDurumu, DusenGirdisi> = {
 
         const izgara = d.izgara.slice();
         const silinen = kilitle(izgara, d.parca, d.donus, s, d.k);
+        const temizlenen = d.temizlenen + silinen;
         d = {
           ...d,
           izgara,
           s,
-          skor: d.skor + 4 + silinen * silinen * 25 + (s - d.s),
-          temizlenen: d.temizlenen + silinen,
+          skor: d.skor + 4 + silinen * silinen * 35 + (s - d.s),
+          temizlenen,
+          dusmeTicki: dusmeTickiHesapla(temizlenen),
         };
-        return d.temizlenen >= d.hedef ? d : yeniParca(d);
+        return yeniParca(d);
       }
     }
   },
 
   bittiMi(durum) {
-    return durum.doldu || durum.temizlenen >= durum.hedef;
+    return durum.doldu;
   },
 
   skor(durum) {
     return durum.skor;
   },
 
-  basarili(durum) {
-    return durum.temizlenen >= durum.hedef;
-  },
-
   girdiOku(ham) {
     if (typeof ham !== "object" || ham === null) return null;
     const o = ham as Record<string, unknown>;
     if (typeof o.tick !== "number" || !Number.isInteger(o.tick) || o.tick < 0) return null;
-    // Tick üst sınırı: 100.000 tick, en yavaş bölümde bile bir saatten uzun.
+    // Tick üst sınırı: 100.000 tick = 83 dakika. Sonsuz turda bile ulaşılmaz.
     if (o.tick > 100_000) return null;
     if (typeof o.a !== "string" || !HAREKETLER.includes(o.a as DusenHareket)) return null;
     return { tick: o.tick, a: o.a as DusenHareket };

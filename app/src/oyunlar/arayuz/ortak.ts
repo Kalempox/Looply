@@ -1,9 +1,11 @@
 /**
  * Oyun ekranlarının ortak sözleşmesi.
  *
- * Kabuk (`oyun-kabuk.tsx`) hangi oyunu gösterdiğini bilmiyor: tohumu ve
- * bölümü veriyor, oyun bitince girdi kaydını geri alıyor. Motor tarafındaki
+ * Kabuk (`oyun-kabuk.tsx`) hangi oyunu gösterdiğini bilmiyor: tohumu
+ * veriyor, oyun bitince girdi kaydını geri alıyor. Motor tarafındaki
  * takılabilirliğin arayüz tarafındaki karşılığı bu.
+ *
+ * Ü83 ile `bolum` kalktı: oyunlar tek turluk ve kaybedene kadar sürüyor.
  *
  * **Girdi kaydı ekranın sorumluluğu.** Oyuncunun her hamlesi, motorun
  * `uygula`ya verdiği biçimde kaydediliyor; sunucu aynı kaydı yeniden
@@ -11,7 +13,6 @@
  */
 export type OyunEkraniProps = {
   tohum: string;
-  bolum: number;
   /**
    * Oyun bitti — girdi kaydı ve istemcinin hesapladığı skor.
    *

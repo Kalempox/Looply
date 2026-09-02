@@ -11,7 +11,7 @@
  * sunucu aynı fonksiyonlarla yeniden oynar. Doğrulama böylece ayrı bir
  * "kontrol kodu" değil, oyunun kendisidir — iki kod yolu ayrışamaz.
  *
- *   durum = girdiler.reduce(uygula, baslat(tohum, bolum))
+ *   durum = girdiler.reduce(uygula, baslat(tohum))
  *   skor  = skor(durum)
  *
  * İstemciden gelen skor bu hesaba **hiç girmez**; yalnızca denetim için
@@ -25,29 +25,43 @@
  * diğeri "bu hamle oyunun kurallarına uyuyor mu".
  */
 
-/** Bir oyunun bir bölümünün tanımı. */
+/**
+ * Bir oyunun tanımı.
+ *
+ * ── Ü83: bölüm yok, tek tur var ─────────────────────────────
+ *
+ * Sözleşme başlangıçta `bolumSayisi` ve `baslat(tohum, bolum)` taşıyordu:
+ * her oyunun beş sabit bölümü vardı ve bölüm hedefe ulaşınca **bitiyordu.**
+ * Ürün sahibinin kararıyla oyunlar **kaybedene kadar** oynanıyor; zorluk
+ * turun içinde artıyor. Bölüm kavramı tamamen kalktı.
+ *
+ * `basarili()` de bu sözleşmeden çıktı ve sebebi ayrı: "başarı" artık bir
+ * oyun kuralı değil, bir **ürün kararı** — hangi skorun kupon kazandırdığı
+ * `domain/puan.ts` içinde (`KUPON_ESIGI`). Oyun yalnızca skor üretiyor;
+ * o skorun ne kazandırdığını oyun bilmiyor.
+ */
 export type Oyun<Durum, Girdi> = {
   id: string;
   ad: string;
   ozet: string;
   emoji: string;
-  /** Kaç bölümü var (Ü21: her oyuna 5). */
-  bolumSayisi: number;
 
-  /** Bölümün başlangıç durumu. Aynı (tohum, bölüm) her zaman aynı durumu verir. */
-  baslat(tohum: string, bolum: number): Durum;
+  /** Turun başlangıç durumu. Aynı tohum her zaman aynı durumu verir. */
+  baslat(tohum: string): Durum;
 
   /** Tek bir girdiyi uygular. Kuraldışıysa **null** — sunucu bunu ret sebebi sayar. */
   uygula(durum: Durum, girdi: Girdi): Durum | null;
 
-  /** Bölüm bitti mi? Bitmiş duruma girdi uygulanamaz. */
+  /**
+   * Tur bitti mi? Bitmiş duruma girdi uygulanamaz.
+   *
+   * Ü83'ten beri bunun tek anlamı **kaybetmek**: tıkanmak, tahtanın
+   * dolması, sürenin bitmesi. Kazanarak biten bir tur yok.
+   */
   bittiMi(durum: Durum): boolean;
 
-  /** Bölümün skoru. */
+  /** Turun skoru. */
   skor(durum: Durum): number;
-
-  /** Bölüm hedefine ulaşıldı mı? Başarısız biten bölüm de skor üretir. */
-  basarili(durum: Durum): boolean;
 
   /**
    * Güvenilmeyen JSON'u girdiye çevirir. Biçim yanlışsa **null**.
@@ -68,7 +82,10 @@ export type HerhangiOyun = Oyun<any, any>;
  *
  * Sınırsız kayıt, sunucuyu yeniden oynatarak yormanın en ucuz yolu:
  * saldırgan 10 milyon hamlelik bir dosya gönderir, sunucu hepsini işler.
- * En uzun bölüm bile bunun çok altında kalıyor.
+ * ⚠️ Ü83 ile oyunlar sonsuz oldu ve bu sınır artık gerçekten bağlayıcı:
+ * çok uzun bir Düşen turu binlerce tick işareti üretebilir. Sınıra dayanan
+ * tur reddedilmiyor — istemci kaydı kırpıyor ve skor o ana kadarki hâliyle
+ * hesaplanıyor.
  */
 export const EN_FAZLA_GIRDI = 5_000;
 
@@ -76,9 +93,8 @@ export type TekrarSonucu =
   | {
       gecerli: true;
       skor: number;
-      basarili: boolean;
       /**
-       * Bölüm bittikten sonra gelen ve işlenmeyen girdi sayısı.
+       * Tur bittikten sonra gelen ve işlenmeyen girdi sayısı.
        *
        * Bir tanesi normal: zaman tabanlı oyunlarda istemci en sona bir zaman
        * işareti koyuyor ve o işaret bölümü bitirmiş olabiliyor. Çok sayıda
@@ -98,7 +114,6 @@ export type TekrarSonucu =
 export function tekrarOyna<Durum, Girdi>(
   oyun: Oyun<Durum, Girdi>,
   tohum: string,
-  bolum: number,
   hamGirdiler: unknown,
 ): TekrarSonucu {
   if (!Array.isArray(hamGirdiler)) {
@@ -107,25 +122,21 @@ export function tekrarOyna<Durum, Girdi>(
   if (hamGirdiler.length > EN_FAZLA_GIRDI) {
     return { gecerli: false, sebep: `girdi kaydı çok uzun (${hamGirdiler.length})` };
   }
-  if (bolum < 1 || bolum > oyun.bolumSayisi || !Number.isInteger(bolum)) {
-    return { gecerli: false, sebep: `geçersiz bölüm: ${bolum}` };
-  }
-
   let durum: Durum;
   try {
-    durum = oyun.baslat(tohum, bolum);
+    durum = oyun.baslat(tohum);
   } catch {
-    return { gecerli: false, sebep: "bölüm kurulamadı" };
+    return { gecerli: false, sebep: "tur kurulamadı" };
   }
 
   let i = 0;
   for (; i < hamGirdiler.length; i++) {
-    // Bölüm bittiyse kalan girdiler **yok sayılır**, reddedilmez.
+    // Tur bittiyse kalan girdiler **yok sayılır**, reddedilmez.
     //
     // İlk hâli reddediyordu ve bu, zaman tabanlı oyunları tamamen kırıyordu:
     // istemci kaydın sonuna bir zaman işareti koymak zorunda (yoksa sunucu
     // yerçekimini son hamlede durdurur ve skoru düşük hesaplar), ama o işaret
-    // çoğu zaman bölümü bitiren şeyin ta kendisi oluyor. Katı kural, dürüst
+    // çoğu zaman turu bitiren şeyin ta kendisi oluyor. Katı kural, dürüst
     // oyuncunun skorunu reddediyordu.
     //
     // Yok saymak güvenli: durum artık değişmiyor, dolayısıyla kaydı uzatarak
@@ -147,7 +158,6 @@ export function tekrarOyna<Durum, Girdi>(
   return {
     gecerli: true,
     skor: oyun.skor(durum),
-    basarili: oyun.basarili(durum),
     kullanilmayan: hamGirdiler.length - i,
   };
 }

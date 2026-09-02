@@ -178,7 +178,7 @@ async function talebiBozdur(playerId: string): Promise<void> {
       cafeId: talep.cafeId,
       tableId: talep.tableId,
       oyunId: talep.oyunId,
-      bolum: talep.bolum,
+
       tohum: talep.tohum,
       skor: talep.skor,
       basarili: talep.basarili,

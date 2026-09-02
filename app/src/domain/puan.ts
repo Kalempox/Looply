@@ -98,6 +98,43 @@ export const SKOR_ESIKLERI = [
   { skor: 2500, bonus: 300 },
 ] as const;
 
+/**
+ * Kupon eşiği (Ü83) — "başarılı tur" bundan sonra bu demek.
+ *
+ * ── Neden bir eşik gerekti ──────────────────────────────────
+ *
+ * Oyunlar bölümlüyken "başarı" oyunun kendi kuralıydı: hedef kadar satır
+ * temizlersen bölümü geçerdin ve kupon o zaman düşerdi. Ü83 ile oyunlar
+ * **kaybedene kadar** oynanıyor — herkes kaybederek bitiriyor. Eski kural
+ * kalsaydı `basarili` hiçbir zaman doğru olmaz ve **hiç kupon düşmezdi.**
+ *
+ * Artık başarı bir oyun kuralı değil, bir **ürün kararı**: yeterince iyi
+ * oynadın mı? Oyun yalnızca skor üretiyor, o skorun ne kazandırdığını
+ * bilmiyor. Sözleşmeden `basarili()` bu yüzden çıktı.
+ *
+ * ── Neden 500 ───────────────────────────────────────────────
+ *
+ * Ürün sahibinin kendi kapsam belgesindeki kademe: *"500 puanda düşük ödül
+ * olayı açılır, 1.000'de daha yüksek, 2.500'de premium."*
+ *
+ * Eşik **bilerek alçak**. E2'nin gerekçesi burada da geçerli: *"ilk kez
+ * oynayanın puanı sıfırdır; eli boş çıkarsa bir daha gelmez."* 500, yeni
+ * bir oyuncunun ilk turunda ulaşabileceği yer; 1500 ve 2500 iyi oynamanın
+ * üstüne binen bonuslar (Ü48). Üçü aynı ölçekte ve üç oyunda da aynı
+ * anlama geliyor — skorlar Ü83'te bunun için yeniden ölçeklendi.
+ */
+export const KUPON_ESIGI = 500;
+
+/**
+ * Tur "başarılı" mı — kupon, tam puan ve nitelikli ziyaret bunun ardında.
+ *
+ * Eşiğin altında kalan tur boşa gitmiyor: katılım puanı ve XP yine yazılıyor
+ * (Ü48), skor liderliğe giriyor, seri bozulmuyor.
+ */
+export function basariliMi(skor: number): boolean {
+  return skor >= KUPON_ESIGI;
+}
+
 export type SkorEsigi = (typeof SKOR_ESIKLERI)[number];
 
 /** Ulaşılan en yüksek kademe — hiçbirine ulaşılmadıysa null. */

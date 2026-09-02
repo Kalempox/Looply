@@ -4,6 +4,7 @@ import { log } from "@/lib/log";
 import * as acil from "./acil";
 import { GEOFENCE_METRE, mesafeMetre } from "./masa";
 import { withBypass } from "@/db/context";
+import { basariliMi } from "./puan";
 
 /**
  * Misafir oyun akışı — Ü35'in vitrin katmanı.
@@ -157,7 +158,6 @@ export function konumOku(cerez: string | undefined, cafeId: string): MisafirKonu
 
 type AcikOyun = {
   oyunId: string;
-  bolum: number;
   tohum: string;
   cafeId: string;
   tableId: string;
@@ -166,7 +166,7 @@ type AcikOyun = {
 };
 
 export type BaslaSonucu =
-  | { ok: true; tohum: string; bolum: number; cerez: string }
+  | { ok: true; tohum: string; cerez: string }
   | { ok: false; hata: string };
 
 /**
@@ -178,15 +178,11 @@ export type BaslaSonucu =
  */
 export async function basla(opts: {
   oyunId: string;
-  bolum: number;
   cafeId: string;
   tableId: string;
 }): Promise<BaslaSonucu> {
   const oyun = oyunBul(opts.oyunId);
   if (!oyun) return { ok: false, hata: "Böyle bir oyun yok." };
-  if (!Number.isInteger(opts.bolum) || opts.bolum < 1 || opts.bolum > oyun.bolumSayisi) {
-    return { ok: false, hata: "Böyle bir bölüm yok." };
-  }
 
   // Acil durdurma misafiri de kapsıyor: oyunlar durduysa herkes için durur.
   if (await acil.durduruldu(acil.ANAHTARLAR.oyun)) {
@@ -195,7 +191,6 @@ export async function basla(opts: {
 
   const veri: AcikOyun = {
     oyunId: oyun.id,
-    bolum: opts.bolum,
     tohum: randomToken(16),
     cafeId: opts.cafeId,
     tableId: opts.tableId,
@@ -203,14 +198,13 @@ export async function basla(opts: {
     son: Date.now() + TALEP_OMRU_SN * 1000,
   };
 
-  return { ok: true, tohum: veri.tohum, bolum: veri.bolum, cerez: paketle(AMAC_OYUN, veri) };
+  return { ok: true, tohum: veri.tohum, cerez: paketle(AMAC_OYUN, veri) };
 }
 
 /* ── Oyun bitişi → talep ──────────────────────────────────── */
 
 export type Talep = {
   oyunId: string;
-  bolum: number;
   tohum: string;
   cafeId: string;
   tableId: string;
@@ -251,7 +245,7 @@ export function bitir(opts: {
   const oyun = oyunBul(acik.oyunId);
   if (!oyun) return { ok: false, hata: "Oyun tanımı bulunamadı." };
 
-  const sonuc = tekrarOyna(oyun, acik.tohum, acik.bolum, opts.girdiler);
+  const sonuc = tekrarOyna(oyun, acik.tohum, opts.girdiler);
   if (!sonuc.gecerli) {
     log.warn("misafir oyunu reddedildi", { sebep: sonuc.sebep });
     return { ok: false, hata: "Oyun kaydı doğrulanamadı.", reddedildi: true };
@@ -261,12 +255,12 @@ export function bitir(opts: {
 
   const talep: Talep = {
     oyunId: acik.oyunId,
-    bolum: acik.bolum,
     tohum: acik.tohum,
     cafeId: acik.cafeId,
     tableId: acik.tableId,
     skor: sonuc.skor,
-    basarili: sonuc.basarili,
+    // Ü83: başarı artık oyunun değil ürünün kuralı (`puan.KUPON_ESIGI`).
+    basarili: basariliMi(sonuc.skor),
     iddia: Number.isFinite(opts.iddiaEdilenSkor) ? Math.trunc(opts.iddiaEdilenSkor) : 0,
     sureMs: Math.max(0, Date.now() - acik.baslangic),
     k2: !!konum?.k2,
@@ -299,7 +293,6 @@ export function talepCoz(cerez: string | undefined): Talep | null {
     typeof t.oyunId !== "string" ||
     typeof t.cafeId !== "string" ||
     typeof t.tableId !== "string" ||
-    !Number.isInteger(t.bolum) ||
     !Number.isFinite(t.skor)
   ) {
     return null;

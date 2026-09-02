@@ -24,7 +24,7 @@ import { kelime, kurulabilir, kucult, type KelimeDurumu, type KelimeGirdisi } fr
  * ekranları ve raporları gerçek veriyle doldurmak.
  */
 
-export type BotSonucu = { girdiler: unknown[]; skor: number; basarili: boolean };
+export type BotSonucu = { girdiler: unknown[]; skor: number };
 
 /** Deterministik rastgelelik — aynı tohum aynı simülasyonu versin. */
 export function zar(tohum: number) {
@@ -40,12 +40,13 @@ export function zar(tohum: number) {
 /**
  * Üç teklifi ve 64 köşeyi tarar, ilk sığan yere koyar.
  *
- * Açgözlü ve kısa görüşlü — tıkanana kadar oynuyor. Bölüm hedefini tutturmak
- * şansa kalıyor ve bu **isteniyor**: başarısız biten oyunlar da raporda
- * görünmeli, yoksa demo herkesin her bölümü geçtiği bir dünyayı anlatır.
+ * Açgözlü ve kısa görüşlü — tıkanana kadar oynuyor. Ü83'ten beri turun tek
+ * bitişi zaten bu; skorun ne kadar olacağı botun ne kadar dayandığına bağlı
+ * ve bu **isteniyor**: düşük skorlu turlar da raporda görünmeli, yoksa demo
+ * herkesin iyi oynadığı bir dünyayı anlatır.
  */
-function blokOyna(tohum: string, bolum: number, rnd: () => number): BotSonucu {
-  let durum: BlokDurumu = blok.baslat(tohum, bolum);
+function blokOyna(tohum: string, rnd: () => number): BotSonucu {
+  let durum: BlokDurumu = blok.baslat(tohum);
   const girdiler: BlokGirdisi[] = [];
 
   for (let adim = 0; adim < 400 && !blok.bittiMi(durum); adim++) {
@@ -70,7 +71,7 @@ function blokOyna(tohum: string, bolum: number, rnd: () => number): BotSonucu {
     if (!kondu) break; // hiçbir parça sığmıyor — motor da bitmiş sayacak
   }
 
-  return { girdiler, skor: blok.skor(durum), basarili: blok.basarili(durum) };
+  return { girdiler, skor: blok.skor(durum) };
 }
 
 /* ── Kelime ───────────────────────────────────────────────── */
@@ -86,25 +87,45 @@ const KELIMELER: string[] = JSON.parse(
  * bütün kelimeleri bulması, kelime oyununu raporda "herkes tam puan" gibi
  * gösterirdi.
  */
-function kelimeOyna(tohum: string, bolum: number, rnd: () => number): BotSonucu {
-  let durum: KelimeDurumu = kelime.baslat(tohum, bolum);
+function kelimeOyna(tohum: string, rnd: () => number): BotSonucu {
+  let durum: KelimeDurumu = kelime.baslat(tohum);
   const girdiler: KelimeGirdisi[] = [];
+  let tick = 0;
 
-  const adaylar = KELIMELER.filter((k) => kurulabilir(kucult(k), durum.harfler));
+  // Ü83: oyun turlara bölündü ve her turun süresi var. Bot her turda
+  // eldeki harflerden kelime arıyor; süresi dolunca oyun kendiliğinden
+  // bitiyor. Dış döngü tur sayısını değil **süre bitişini** bekliyor.
+  for (let tur = 0; tur < 40 && !kelime.bittiMi(durum); tur++) {
+    const oncekiTur = durum.tur;
+    const adaylar = KELIMELER.filter((k) => kurulabilir(kucult(k), durum.harfler));
 
-  for (const aday of adaylar) {
-    if (kelime.bittiMi(durum)) break;
-    if (rnd() < 0.35) continue; // bazılarını göremedi
+    for (const aday of adaylar) {
+      if (kelime.bittiMi(durum) || durum.tur !== oncekiTur) break;
+      if (rnd() < 0.35) continue; // bazılarını göremedi
 
-    const girdi: KelimeGirdisi = { k: aday };
-    const sonraki = kelime.uygula(durum, girdi);
-    if (sonraki) {
+      // Kelime bulmak zaman alıyor: 1–5 saniye. Bot ilerledikçe süre
+      // kısalıyor ve bir yerde yetişemiyor — oyunun bitiş yolu bu.
+      tick += 20 + Math.floor(rnd() * 80);
+      const girdi: KelimeGirdisi = { tick, k: aday };
+      const sonraki = kelime.uygula(durum, girdi);
+      if (sonraki) {
+        durum = sonraki;
+        girdiler.push(girdi);
+      }
+    }
+
+    // Tur değişmediyse bot bu turu çözemedi: saati sonuna kadar ilerletip
+    // oyunu bitiriyor.
+    if (durum.tur === oncekiTur && !kelime.bittiMi(durum)) {
+      const girdi: KelimeGirdisi = { tick: durum.bitisTicki, k: "" };
+      const sonraki = kelime.uygula(durum, girdi);
+      if (!sonraki) break;
       durum = sonraki;
       girdiler.push(girdi);
     }
   }
 
-  return { girdiler, skor: kelime.skor(durum), basarili: kelime.basarili(durum) };
+  return { girdiler, skor: kelime.skor(durum) };
 }
 
 /* ── Düşen ────────────────────────────────────────────────── */
@@ -117,8 +138,8 @@ const DUSEN_HAREKETLER: DusenHareket[] = ["sol", "sag", "don", "birak", "bekle"]
  * Bot birkaç yön hamlesi yapıp parçayı bırakıyor. Hangi hamlenin geçerli
  * olduğunu yine motor söylüyor — `uygula` null dönerse sıradaki denenir.
  */
-function dusenOyna(tohum: string, bolum: number, rnd: () => number): BotSonucu {
-  let durum: DusenDurumu = dusen.baslat(tohum, bolum);
+function dusenOyna(tohum: string, rnd: () => number): BotSonucu {
+  let durum: DusenDurumu = dusen.baslat(tohum);
   const girdiler: DusenGirdisi[] = [];
   let tick = durum.tick;
 
@@ -143,19 +164,14 @@ function dusenOyna(tohum: string, bolum: number, rnd: () => number): BotSonucu {
     if (!kondu) break;
   }
 
-  return { girdiler, skor: dusen.skor(durum), basarili: dusen.basarili(durum) };
+  return { girdiler, skor: dusen.skor(durum) };
 }
 
 /* ── Seçici ───────────────────────────────────────────────── */
 
-export function botOyna(
-  oyunId: string,
-  tohum: string,
-  bolum: number,
-  rnd: () => number,
-): BotSonucu {
-  if (oyunId === "blok") return blokOyna(tohum, bolum, rnd);
-  if (oyunId === "kelime") return kelimeOyna(tohum, bolum, rnd);
-  if (oyunId === "dusen") return dusenOyna(tohum, bolum, rnd);
+export function botOyna(oyunId: string, tohum: string, rnd: () => number): BotSonucu {
+  if (oyunId === "blok") return blokOyna(tohum, rnd);
+  if (oyunId === "kelime") return kelimeOyna(tohum, rnd);
+  if (oyunId === "dusen") return dusenOyna(tohum, rnd);
   throw new Error(`Bot yok: ${oyunId}`);
 }

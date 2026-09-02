@@ -11,10 +11,10 @@ import { Gorsel } from "@/components/oyuncu-gorsel";
 import { baslaEylemi, bitirEylemi, type BitirCevabi } from "./actions";
 
 /**
- * Oyun kabuğu — bölüm seç, oyna, sonucu gör.
+ * Oyun kabuğu — oyna, sonucu gör.
  *
  * Kabuk **hangi oyunu gösterdiğini bilmiyor**: `ekranBul` ile bileşeni
- * alıyor, tohumu ve bölümü veriyor, girdi kaydını geri alıyor. Üç oyun da
+ * alıyor, tohumu veriyor, girdi kaydını geri alıyor. Üç oyun da
  * bu kabuğun içinde çalışıyor ve kabuk hiçbirinin kurallarını tanımıyor.
  *
  * Tohum **sunucudan** geliyor. İstemci tohum seçebilseydi, kolay dizi veren
@@ -36,27 +36,36 @@ type Ayar = {
   ad: string;
   ozet: string;
   emoji: string;
-  bolumSayisi: number;
+
   /** Doğrulanmış masa oturumu var mı — kazanım buna bağlı (Ü3). */
   kazandirir: boolean;
   bonusMu: boolean;
   cafeAdi: string | null;
+  /**
+   * Kupon eşiği (Ü83) — sonuç ekranındaki cümle bunu söylüyor.
+   *
+   * ⚠️ Prop olarak geliyor, `@/domain/puan`dan import edilmiyor: o modül
+   * `withPlayer` üzerinden `pg` sürücüsünü çekiyor ve bir istemci
+   * bileşeninden import edilirse sayfa `Can't resolve 'dns'` ile 500
+   * dönüyor. Aynı hata Ü75'te yaşandı.
+   */
+  kuponEsigi: number;
   /** Demo ipuçları görünsün mü — canlıda hep false. */
   demoKapisi?: boolean;
   /**
-   * Sayfa açılır açılmaz 1. bölüm başlasın mı.
+   * Sayfa açılır açılmaz tur başlasın mı.
    *
-   * Ana ekrandaki "Oyna" düğmesi oyunu açtığını söylüyordu ama bölüm
-   * listesine düşürüyordu; tek dokunuşla oynanması gereken yerde iki adım
-   * vardı. Liste hâlâ duruyor — "Bölümlere dön" ile ulaşılıyor.
+   * Ana ekrandaki "Oyna" düğmesi oyunu açtığını söylüyordu ama araya bir
+   * tanıtım ekranı giriyordu; tek dokunuşla oynanması gereken yerde iki
+   * adım vardı.
    */
   hemenBasla?: boolean;
 };
 
 type Durum =
   | { tur: "secim" }
-  | { tur: "oynuyor"; oturumId: string; tohum: string; bolum: number }
-  | { tur: "sonuc"; bolum: number; cevap: BitirCevabi };
+  | { tur: "oynuyor"; oturumId: string; tohum: string }
+  | { tur: "sonuc"; cevap: BitirCevabi };
 
 export function OyunKabugu(ayar: Ayar) {
   const [durum, setDurum] = useState<Durum>({ tur: "secim" });
@@ -65,38 +74,35 @@ export function OyunKabugu(ayar: Ayar) {
   const otomatikBasladi = useRef(false);
   const r = RENK[oyunRengi(ayar.oyunId)];
 
-  const bolumBaslat = useCallback(
-    (bolum: number) => {
-      setHata(null);
-      basla(async () => {
-        const cevap = await baslaEylemi(ayar.oyunId, bolum);
-        if (!cevap.ok) {
-          setHata(cevap.hata);
-          return;
-        }
-        setDurum({ tur: "oynuyor", oturumId: cevap.oturumId, tohum: cevap.tohum, bolum });
-      });
-    },
-    [ayar.oyunId],
-  );
+  const turBaslat = useCallback(() => {
+    setHata(null);
+    basla(async () => {
+      const cevap = await baslaEylemi(ayar.oyunId);
+      if (!cevap.ok) {
+        setHata(cevap.hata);
+        return;
+      }
+      setDurum({ tur: "oynuyor", oturumId: cevap.oturumId, tohum: cevap.tohum });
+    });
+  }, [ayar.oyunId]);
 
   const oyunBitti = useCallback(
-    (oturumId: string, bolum: number) => (girdiler: unknown[], istemciSkoru: number) => {
+    (oturumId: string) => (girdiler: unknown[], istemciSkoru: number) => {
       basla(async () => {
         const cevap = await bitirEylemi(oturumId, girdiler, istemciSkoru);
-        setDurum({ tur: "sonuc", bolum, cevap });
+        setDurum({ tur: "sonuc", cevap });
       });
     },
     [],
   );
 
   // "Oyna" düğmesi tek dokunuşta oynatmalı. Bir kez çalışıyor: oyuncu
-  // bölümlere döndüğünde yeniden tetiklenip listeyi ele geçirmesin.
+  // tanıtım ekranına döndüğünde yeniden tetiklenip ekranı ele geçirmesin.
   useEffect(() => {
     if (!ayar.hemenBasla || otomatikBasladi.current) return;
     otomatikBasladi.current = true;
-    bolumBaslat(1);
-  }, [ayar.hemenBasla, bolumBaslat]);
+    turBaslat();
+  }, [ayar.hemenBasla, turBaslat]);
 
   if (durum.tur === "oynuyor") {
     return (
@@ -108,7 +114,7 @@ export function OyunKabugu(ayar: Ayar) {
           >
             <OyunIkonu oyunId={ayar.oyunId} boy={16} />
             <span className="etiket-caps" style={{ color: r.koyu }}>
-              {ayar.ad} · {durum.bolum}. bölüm
+              {ayar.ad}
             </span>
           </h1>
           {!ayar.kazandirir && (
@@ -120,9 +126,8 @@ export function OyunKabugu(ayar: Ayar) {
           key={durum.oturumId}
           oyunId={ayar.oyunId}
           tohum={durum.tohum}
-          bolum={durum.bolum}
           demoKapisi={ayar.demoKapisi}
-          bitti={oyunBitti(durum.oturumId, durum.bolum)}
+          bitti={oyunBitti(durum.oturumId)}
         />
 
         {bekliyor && (
@@ -138,12 +143,8 @@ export function OyunKabugu(ayar: Ayar) {
     return (
       <SonucEkrani
         ayar={ayar}
-        bolum={durum.bolum}
         cevap={durum.cevap}
-        tekrar={() => bolumBaslat(durum.bolum)}
-        sonraki={
-          durum.bolum < ayar.bolumSayisi ? () => bolumBaslat(durum.bolum + 1) : undefined
-        }
+        tekrar={turBaslat}
         geri={() => setDurum({ tur: "secim" })}
       />
     );
@@ -157,7 +158,7 @@ export function OyunKabugu(ayar: Ayar) {
         </div>
       )}
 
-      {/* Uyarı renkli kartın ÜSTÜNDE: altına konsaydı oyuncu bölüme
+      {/* Uyarı renkli kartın ÜSTÜNDE: altına konsaydı oyuncu oyuna
           dokunduktan sonra okurdu. */}
       {!ayar.kazandirir && (
         <div className="mb-5 border-l-2 border-odul pl-4 text-[13px] leading-relaxed text-yazi-sonuk">
@@ -193,66 +194,26 @@ export function OyunKabugu(ayar: Ayar) {
           </div>
         )}
 
-        <div className="relative mt-6">
-          <div className="etiket-caps" style={{ color: r.koyu }}>
-            Bölüm seç
-          </div>
-          <ul className="mt-2.5 grid grid-cols-3 gap-2.5">
-            {Array.from({ length: ayar.bolumSayisi }, (_, i) => i + 1).map((bolum) => (
-              <li key={bolum}>
-                <BolumKutusu
-                  bolum={bolum}
-                  bekliyor={bekliyor}
-                  oyunId={ayar.oyunId}
-                  onSec={() => bolumBaslat(bolum)}
-                />
-              </li>
-            ))}
-          </ul>
-        </div>
+        {/* Ü83: bölüm seçici kalktı. Seçilecek bir şey yok — tek tur var
+            ve kaybedene kadar sürüyor. Yerinde tek bir düğme duruyor. */}
+        <button
+          type="button"
+          disabled={bekliyor}
+          onClick={turBaslat}
+          className="relative mt-6 w-full rounded-2xl py-4 font-display text-[17px] font-bold text-white transition-transform active:scale-[0.99] disabled:opacity-40"
+          style={{ background: r.ana }}
+        >
+          {bekliyor ? "Basliyor" : "Oyna"}
+        </button>
+
+        <p
+          className="relative mt-3 text-center text-[12px] leading-relaxed"
+          style={{ color: r.koyu }}
+        >
+          Kaybedene kadar sürüyor. İlerledikçe zorlaşıyor.
+        </p>
       </div>
     </div>
-  );
-}
-
-/**
- * Tek bölüm kutusu.
- *
- * Eskiden her bölüm tam genişlikte bir satırdı ve altında oyunun özeti
- * tekrar ediyordu — beş bölümde aynı cümle beş kez. Özet artık tek
- * yerde, başlıkta; bölümler kare kutulara indi ve hepsi tek bakışta
- * görünüyor.
- *
- * Bölümler kilitli değil: oyuncu istediğinden başlayabiliyor. Kilit
- * koymak sırayla ilerlemeyi zorunlu kılardı ve kafede on beş dakikası
- * olan birine göre bir ürün değil bu.
- */
-function BolumKutusu({
-  bolum,
-  bekliyor,
-  oyunId,
-  onSec,
-}: {
-  bolum: number;
-  bekliyor: boolean;
-  oyunId: string;
-  onSec: () => void;
-}) {
-  const r = RENK[oyunRengi(oyunId)];
-
-  return (
-    <button
-      type="button"
-      disabled={bekliyor}
-      onClick={onSec}
-      className="flex aspect-square w-full flex-col items-center justify-center rounded-2xl bg-yuzey shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md active:scale-95 disabled:opacity-40"
-      style={{ border: `1px solid ${r.canli}` }}
-    >
-      <span className="font-data text-2xl leading-none font-bold tabular" style={{ color: r.ana }}>
-        {bolum}
-      </span>
-      <span className="mt-1 etiket-caps text-[9px] text-yazi-sonuk">bölüm</span>
-    </button>
   );
 }
 
@@ -260,17 +221,13 @@ function BolumKutusu({
 
 function SonucEkrani({
   ayar,
-  bolum,
   cevap,
   tekrar,
-  sonraki,
   geri,
 }: {
   ayar: Ayar;
-  bolum: number;
   cevap: BitirCevabi;
   tekrar: () => void;
-  sonraki?: () => void;
   geri: () => void;
 }) {
   if (!cevap.ok) {
@@ -322,7 +279,7 @@ function SonucEkrani({
           ? `Günlük 900 puan sınırına ulaştın; ${puan.kesilen.toLocaleString("tr-TR")} puan yazılmadı. Oynamaya devam edebilirsin, XP birikiyor.`
           : basarili
             ? "Bu kafede harcanabilir."
-            : "Bölümü bitirmedin ama denemenin de karşılığı var. Bitirirsen çok daha fazlası.",
+            : `${ayar.kuponEsigi.toLocaleString("tr-TR")} skoru geçemedin ama denemenin de karşılığı var. Geçersen çok daha fazlası.`,
       vurgu: true,
     });
 
@@ -373,11 +330,14 @@ function SonucEkrani({
         <div className="relative flex items-center gap-2">
           <OyunIkonu oyunId={ayar.oyunId} boy={16} />
           <span className="etiket-caps" style={{ color: r.koyu }}>
-            {ayar.ad} · {bolum}. bölüm
+            {ayar.ad}
           </span>
         </div>
+        {/* Ü83: her tur kaybederek bitiyor, o yüzden başlık "bitti mi" değil
+            **ne kadar iyi bitti** diyor. Eşiği geçen tur kupon düşürüyor
+            (puan.KUPON_ESIGI) ve ekranın dili bunu yansıtıyor. */}
         <h1 className="relative mt-1.5 font-display text-3xl leading-none font-extrabold tracking-tight">
-          {basarili ? "Bölüm tamam" : "Bölüm bitti"}
+          {basarili ? "İyi tur" : "Tur bitti"}
         </h1>
 
         {/* Skor tek başına ortada: ekranın tek büyük sayısı o. */}
@@ -478,7 +438,6 @@ function SonucEkrani({
 
       <Dugmeler
         tekrar={tekrar}
-        sonraki={basarili ? sonraki : undefined}
         geri={geri}
         oyunId={ayar.oyunId}
       />
@@ -517,12 +476,10 @@ function KazanimSatiri({
 
 function Dugmeler({
   tekrar,
-  sonraki,
   geri,
   oyunId,
 }: {
   tekrar: () => void;
-  sonraki?: () => void;
   geri: () => void;
   oyunId: string;
 }) {
@@ -530,25 +487,18 @@ function Dugmeler({
 
   return (
     <div className="mt-6 flex flex-col gap-2.5">
-      {sonraki && (
-        <button
-          type="button"
-          onClick={sonraki}
-          className="rounded-xl py-4 font-display text-[16px] font-bold text-white transition-transform active:scale-[0.99]"
-          style={{ background: r.ana }}
-        >
-          Sonraki bölüm
-        </button>
-      )}
+      {/* Ü83: "sonraki bölüm" kalktı, tekrar oynamak birincil eylem oldu —
+          sonsuz oyunda yapılacak tek şey daha iyisini denemek. */}
       <button
         type="button"
         onClick={tekrar}
-        className="rounded-xl border border-cizgi py-4 font-display text-[16px] text-yazi"
+        className="rounded-xl py-4 font-display text-[16px] font-bold text-white transition-transform active:scale-[0.99]"
+        style={{ background: r.ana }}
       >
         Tekrar oyna
       </button>
       <button type="button" onClick={geri} className="py-2 text-[14px] text-yazi-sonuk underline">
-        Bölümlere dön
+        Oyunlara dön
       </button>
     </div>
   );

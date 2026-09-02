@@ -57,7 +57,6 @@ async function misafirOyna(opts: {
 }) {
   const baslangic = await misafir.basla({
     oyunId: "blok",
-    bolum: 1,
     cafeId: opts.cafeId,
     tableId: opts.tableId,
   });
@@ -147,7 +146,6 @@ describe("misafir oyunu — kayıt öncesi hiçbir iz kalmıyor (G13)", () => {
   test("skoru sunucu hesaplıyor — istemcinin iddiası taşınmıyor", async () => {
     const baslangic = await misafir.basla({
       oyunId: "blok",
-      bolum: 1,
       cafeId: kafeA,
       tableId: masaA,
     });
@@ -313,7 +311,6 @@ describe("talebin bozdurulması", () => {
       cafeId: talep.cafeId,
       tableId: talep.tableId,
       oyunId: talep.oyunId,
-      bolum: talep.bolum,
       tohum: talep.tohum,
       skor: talep.skor,
       basarili: talep.basarili,
@@ -439,7 +436,6 @@ describe("talebin bozdurulması", () => {
 
     const baslangic = await misafir.basla({
       oyunId: "blok",
-      bolum: 1,
       cafeId: kafeA,
       tableId: masaA,
     });
@@ -450,7 +446,6 @@ describe("talebin bozdurulması", () => {
       cafeId: kafeA,
       tableId: masaA,
       oyunId: "blok",
-      bolum: 1,
       tohum: baslangic.tohum,
       skor: 120,
       basarili: true,

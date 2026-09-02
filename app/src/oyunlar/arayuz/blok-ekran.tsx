@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useRef, useState } from "react";
-import { blok, type BlokDurumu, type BlokGirdisi, PARCA_HUCRELERI } from "../blok";
+import { blok, kademe, type BlokDurumu, type BlokGirdisi, PARCA_HUCRELERI } from "../blok";
 import type { OyunEkraniProps } from "./ortak";
 
 /**
@@ -36,8 +36,8 @@ import type { OyunEkraniProps } from "./ortak";
  * boyutta: kural her parçada değişirdi. Sabit çapa + görünür önizleme,
  * tahmin etmeyi tamamen gereksiz kılıyor.
  */
-export function BlokEkrani({ tohum, bolum, bitti }: OyunEkraniProps) {
-  const [durum, setDurum] = useState<BlokDurumu>(() => blok.baslat(tohum, bolum));
+export function BlokEkrani({ tohum, bitti }: OyunEkraniProps) {
+  const [durum, setDurum] = useState<BlokDurumu>(() => blok.baslat(tohum));
   const [girdiler, setGirdiler] = useState<BlokGirdisi[]>([]);
   const [secili, setSecili] = useState<number | null>(null);
   /** Sürükleme sırasında parmağın altındaki kare. */
@@ -238,21 +238,31 @@ export function BlokEkrani({ tohum, bolum, bitti }: OyunEkraniProps) {
   );
 }
 
+/**
+ * Üst şerit — temizlenen, zorluk kademesi, zincir ve skor.
+ *
+ * Ü83'te ilerleme çubuğu kaldırıldı: hedef yok, doldurulacak bir şey yok.
+ * Yerine **zorluk kademesi** kondu — oyuncu parçaların neden büyüdüğünü
+ * görmeli, yoksa oyun haksız hissettirir.
+ */
 function Sayaclar({ durum }: { durum: BlokDurumu }) {
-  const yuzde = Math.min(100, Math.round((durum.temizlenen / durum.hedef) * 100));
+  const zorluk = kademe(durum.tur);
   return (
     <div>
       <div className="flex items-baseline justify-between">
         <span className="etiket-caps text-yazi-sonuk">
-          Temizlenen {durum.temizlenen}/{durum.hedef}
+          {durum.temizlenen} temizlendi · zorluk {zorluk + 1}
         </span>
         <span className="font-data text-xl leading-none font-bold text-vurgu tabular">
           {durum.skor}
         </span>
       </div>
-      <div className="mt-2 h-1 w-full rounded-full bg-cukur">
-        <div className="asil-serit h-full rounded-full bg-vurgu" style={{ width: `${yuzde}%` }} />
-      </div>
+      {/* Zincir yalnızca yanarken görünüyor: sürekli duran bir "0" gürültü. */}
+      {durum.zincir > 1 && (
+        <p className="mt-1 font-data text-[11px] font-bold tracking-wide text-odul-koyu uppercase">
+          {durum.zincir}× zincir
+        </p>
+      )}
     </div>
   );
 }

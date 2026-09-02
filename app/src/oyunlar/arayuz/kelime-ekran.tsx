@@ -1,7 +1,13 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
-import { kelime, olasiKelimeler, type KelimeDurumu, type KelimeGirdisi } from "../kelime";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  kelime,
+  olasiKelimeler,
+  turSuresi,
+  type KelimeDurumu,
+  type KelimeGirdisi,
+} from "../kelime";
 import type { OyunEkraniProps } from "./ortak";
 
 /**
@@ -14,15 +20,96 @@ import type { OyunEkraniProps } from "./ortak";
  *
  * Reddedilen kelime **sessizce yutulmuyor**: neden geçersiz olduğu
  * söyleniyor. "Denedim, olmadı, neden bilmiyorum" en sinir bozucu hâl.
+ *
+ * ── Ü83: sayaç ekranın işi ──────────────────────────────────
+ *
+ * Motorun saati tick sayıyor; ekran o sayacı ilerletiyor ve her tick'i
+ * **girdi kaydına yazmıyor** — yalnızca kelime gönderilirken ve oyun
+ * biterken bir zaman işareti düşüyor. Her tick kaydedilseydi bir turluk
+ * kayıt binlerce satır olurdu ve `EN_FAZLA_GIRDI` sınırına çarpardı.
+ * Sunucu için önemli olan hamlenin **hangi tick'te** yapıldığı; aradaki
+ * boşluğu `uygula` zaten kendisi geçiyor.
  */
-export function KelimeEkrani({ tohum, bolum, bitti, demoKapisi }: OyunEkraniProps) {
-  const [durum, setDurum] = useState<KelimeDurumu>(() => kelime.baslat(tohum, bolum));
-  const [girdiler, setGirdiler] = useState<KelimeGirdisi[]>([]);
+const TICK_MS = 50;
+
+/**
+ * Oyun durumu tek bir nesnede.
+ *
+ * ⚠️ Saat ile durum ayrı `useState`lerde tutulduğunda sayaç **bir saniye
+ * sonra donuyordu**: zamanlayıcı efekti `durum` ve `girdiler`e bağlıydı,
+ * her tick bir render açıyor ve efekt kendini kurup yıkıyordu. Düşen
+ * ekranı bu tuzağa düşmesin diye zaten tek nesne kullanıyor; burası da
+ * aynı örüntüye taşındı. Efektin bağımlılığı artık boş: zamanlayıcı bir
+ * kez kuruluyor ve güncelleyici saf kalıyor.
+ */
+type Yerel = {
+  durum: KelimeDurumu;
+  girdiler: KelimeGirdisi[];
+  /** Ekranın saati. Motorun `durum.tick`i yalnızca hamlelerde ilerliyor. */
+  tick: number;
+};
+
+export function KelimeEkrani({ tohum, bitti, demoKapisi }: OyunEkraniProps) {
+  const [y, setY] = useState<Yerel>(() => ({
+    durum: kelime.baslat(tohum),
+    girdiler: [],
+    tick: 0,
+  }));
   /** Seçilen harflerin **indeksleri** — aynı harften iki tane varsa ayrışsın. */
   const [secim, setSecim] = useState<number[]>([]);
   const [uyari, setUyari] = useState<string | null>(null);
+  const bildirildi = useRef(false);
 
+  const durum = y.durum;
   const kurulan = secim.map((i) => durum.harfler[i]).join("");
+  const kalanTick = Math.max(0, durum.bitisTicki - y.tick);
+
+  // ── Sayaç ────────────────────────────────────────────
+  //
+  // Zamanlayıcı **bir kez** kuruluyor ve durumu yalnızca güncelleyiciden
+  // okuyor; bağımlılık listesi bu yüzden boş.
+  //
+  // ⚠️ Tick **duvar saatinden** hesaplanıyor, `p.tick + 1` ile sayılmıyor.
+  // Sayarak ilerletmek iki yerde bozuluyordu:
+  //
+  //   · Tarayıcı gizli sekmede `setInterval`i kısıyor (ölçüldü: saniyede
+  //     20 yerine ~1,5 tick). Süre fiilen duruyordu.
+  //   · Oyuncu sekmeyi arkaya atıp istediği kadar düşünebiliyordu — turun
+  //     tek zorluk kolu süre olduğu için bu, oyunu tamamen açıyordu.
+  //
+  // Duvar saati ikisini birden kapatıyor: geri dönen oyuncu geçen zamanı
+  // olduğu gibi buluyor.
+  useEffect(() => {
+    const baslangic = Date.now();
+    const zamanlayici = setInterval(() => {
+      setY((p) => {
+        if (kelime.bittiMi(p.durum)) return p;
+
+        const tick = Math.floor((Date.now() - baslangic) / TICK_MS);
+        if (tick <= p.tick) return p;
+        if (tick < p.durum.bitisTicki) return { ...p, tick };
+
+        // Süre doldu: motora bir zaman işareti düşüyoruz (`k: ""`) ki
+        // sunucu da aynı sonuca varsın. Ekranda "bitti" deyip kayda hiçbir
+        // şey koymamak skoru sunucuda açık bırakırdı.
+        const girdi: KelimeGirdisi = { tick, k: "" };
+        const sonraki = kelime.uygula(p.durum, girdi);
+        if (!sonraki) return { ...p, tick };
+        return { durum: sonraki, girdiler: [...p.girdiler, girdi], tick };
+      });
+    }, TICK_MS);
+
+    return () => clearInterval(zamanlayici);
+  }, []);
+
+  // ── Bitiş bildirimi ──────────────────────────────────
+  // Güncelleyicinin içinde değil, ayrı efektte: `bitti` üst bileşende
+  // durum değiştiriyor ve `setY`nin güncelleyicisi saf kalmalı.
+  useEffect(() => {
+    if (bildirildi.current || !kelime.bittiMi(y.durum)) return;
+    bildirildi.current = true;
+    bitti(y.girdiler, kelime.skor(y.durum));
+  }, [y, bitti]);
 
   const harfeDokun = useCallback((i: number) => {
     setUyari(null);
@@ -32,10 +119,14 @@ export function KelimeEkrani({ tohum, bolum, bitti, demoKapisi }: OyunEkraniProp
   const gonder = useCallback(() => {
     if (kurulan.length === 0) return;
 
-    const girdi: KelimeGirdisi = { k: kurulan };
-    const sonraki = kelime.uygula(durum, girdi);
+    setSecim([]);
 
-    if (!sonraki) {
+    // Kabul edilip edilmediğine bu render'ın durumundan karar veriliyor;
+    // uyarı metni buna bağlı. ⚠️ Kararı `setY`nin güncelleyicisinden
+    // okumaya çalışmak işe yaramaz: güncelleyici sonraki render'da
+    // çalışıyor, buradaki kod ise hemen — bayrak her zaman eski değerde
+    // kalırdı.
+    if (!kelime.uygula(y.durum, { tick: y.tick, k: kurulan })) {
       // Motor tek bir `null` döndürüyor; sebebi burada ayrıştırıyoruz ki
       // oyuncuya ne olduğunu söyleyebilelim.
       setUyari(
@@ -45,31 +136,34 @@ export function KelimeEkrani({ tohum, bolum, bitti, demoKapisi }: OyunEkraniProp
             ? "Bu kelimeyi zaten buldun"
             : "Bu kelime listede yok",
       );
-      setSecim([]);
       return;
     }
 
-    const yeniGirdiler = [...girdiler, girdi];
-    setDurum(sonraki);
-    setGirdiler(yeniGirdiler);
-    setSecim([]);
     setUyari(null);
-
-    if (kelime.bittiMi(sonraki)) {
-      bitti(yeniGirdiler, kelime.skor(sonraki));
-    }
-  }, [durum, girdiler, kurulan, bitti]);
+    // Yazma yine güncelleyicinin içinde ve orada **yeniden** hesaplanıyor:
+    // sayaç bu arada turu bitirmiş olabilir.
+    setY((p) => {
+      const girdi: KelimeGirdisi = { tick: p.tick, k: kurulan };
+      const sonraki = kelime.uygula(p.durum, girdi);
+      if (!sonraki) return p;
+      return { ...p, durum: sonraki, girdiler: [...p.girdiler, girdi] };
+    });
+  }, [y, durum, kurulan]);
 
   return (
     <div className="oyun-alani">
       <div className="flex items-baseline justify-between">
         <span className="etiket-caps text-yazi-sonuk">
-          Kelime {durum.bulunan.length}/{durum.hedef}
+          {durum.tur + 1}. tur · {durum.bulunan.length}/{durum.hedef}
         </span>
         <span className="font-data text-xl leading-none font-bold text-vurgu tabular">
           {durum.skor}
         </span>
       </div>
+
+      {/* Süre şeridi — turun tek zorluk kolu bu, o yüzden en görünür yerde.
+          Son beş saniyede renk değişiyor; sayı okumak yerine görmek yeterli. */}
+      <Sure kalanTick={kalanTick} toplamTick={turSuresi(durum.tur)} />
 
       {/* ── Kurulan kelime ─────────────────────────── */}
       <div className="mt-5 flex min-h-[52px] items-center justify-center rounded-lg border border-cizgi bg-cukur px-4">
@@ -136,13 +230,40 @@ export function KelimeEkrani({ tohum, bolum, bitti, demoKapisi }: OyunEkraniProp
       )}
 
       <p className="mt-6 text-center text-[12px] leading-relaxed text-yazi-sonuk">
-        Bu harflerden {durum.olasi} kelime çıkıyor
+        Bu harflerden {durum.olasi} kelime çıkıyor · toplam {durum.toplamKelime} buldun
       </p>
 
       {/* Demo ipucu — yalnızca geliştirmede. Oyunu tanıtan kişinin hangi
           kelimelerin kabul edildiğini bilmesi gerekiyor; yoksa rastgele
           deneyip "kabul etmiyor" izlenimi bırakıyor. */}
       {demoKapisi && <CevapIpucu harfler={durum.harfler} bulunan={durum.bulunan} />}
+    </div>
+  );
+}
+
+/* ── Süre şeridi ──────────────────────────────────────────── */
+
+function Sure({ kalanTick, toplamTick }: { kalanTick: number; toplamTick: number }) {
+  const yuzde = Math.max(0, Math.min(100, Math.round((kalanTick / toplamTick) * 100)));
+  const saniye = Math.ceil(kalanTick / 20);
+  const az = saniye <= 5;
+
+  return (
+    <div className="mt-3">
+      <div className="flex items-baseline justify-between">
+        <span className="etiket-caps text-yazi-sonuk">Süre</span>
+        <span
+          className={`font-data text-[13px] font-bold tabular ${az ? "text-tehlike" : "text-yazi-sonuk"}`}
+        >
+          {saniye} sn
+        </span>
+      </div>
+      <div className="mt-1.5 h-1.5 w-full rounded-full bg-cukur">
+        <div
+          className={`h-full rounded-full transition-[width] duration-100 ${az ? "bg-tehlike" : "bg-vurgu"}`}
+          style={{ width: `${yuzde}%` }}
+        />
+      </div>
     </div>
   );
 }

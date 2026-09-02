@@ -16,6 +16,7 @@ import {
   BONUS_CARPANI,
   KATILIM_PUANI,
   esikBul,
+  basariliMi,
   type PuanSonucu,
 } from "./puan";
 import { yazIle as xpYaz } from "./xp";
@@ -344,7 +345,6 @@ export type BaslatSonucu =
       ok: true;
       oturumId: string;
       tohum: string;
-      bolum: number;
       /** Bu oturum puan/XP kazandırır mı? Kafe dışındaysa hayır (Ü3). */
       kazandirir: boolean;
       bonusMu: boolean;
@@ -360,13 +360,9 @@ export type BaslatSonucu =
 export async function basla(opts: {
   playerId: string;
   oyunId: string;
-  bolum: number;
 }): Promise<BaslatSonucu> {
   const oyun = oyunBul(opts.oyunId);
   if (!oyun) return { ok: false, hata: "Böyle bir oyun yok." };
-  if (!Number.isInteger(opts.bolum) || opts.bolum < 1 || opts.bolum > oyun.bolumSayisi) {
-    return { ok: false, hata: "Böyle bir bölüm yok." };
-  }
 
   if (await acil.durduruldu(acil.ANAHTARLAR.oyun)) {
     return { ok: false, hata: "Oyunlar geçici olarak durduruldu. Birazdan tekrar dene." };
@@ -382,9 +378,9 @@ export async function basla(opts: {
   await withBypass("oyun oturumu açma", (db) =>
     db.query(
       `INSERT INTO play_sessions
-         (id, cafe_id, table_id, player_id, device_id_hash, game_id, level, seed,
+         (id, cafe_id, table_id, player_id, device_id_hash, game_id, seed,
           table_session_id, proof_mask, proof_level, business_date, status)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'open')`,
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'open')`,
       [
         oturumId,
         masa?.cafeId ?? null,
@@ -392,7 +388,6 @@ export async function basla(opts: {
         opts.playerId,
         cihazVekili(opts.playerId),
         oyun.id,
-        opts.bolum,
         tohum,
         masa?.id ?? null,
         masa?.kanitMaskesi ?? 0,
@@ -410,7 +405,7 @@ export async function basla(opts: {
     log.warn("davet ilerletme basarisiz", { hata: String(err) });
   }
 
-  return { ok: true, oturumId, tohum, bolum: opts.bolum, kazandirir, bonusMu };
+  return { ok: true, oturumId, tohum, kazandirir, bonusMu };
 }
 
 export type BitirSonucu =
@@ -524,7 +519,7 @@ export async function bitir(opts: {
     if (!oyun) return { ok: false as const, hata: "Oyun tanımı bulunamadı." };
 
     // ── Sunucu skoru yeniden hesaplar (S5) ──────────────────
-    const sonuc = tekrarOyna(oyun, oturum.seed, oturum.level ?? 1, opts.girdiler);
+    const sonuc = tekrarOyna(oyun, oturum.seed, opts.girdiler);
 
     const girdiSayisi = Array.isArray(opts.girdiler) ? opts.girdiler.length : 0;
     const iddia = Number.isFinite(opts.iddiaEdilenSkor) ? Math.trunc(opts.iddiaEdilenSkor) : 0;
@@ -561,11 +556,14 @@ export async function bitir(opts: {
 
     const kazandirir = !!oturum.cafe_id && (oturum.proof_mask & K2) !== 0;
 
+    // Ü83: "başarılı" artık oyunun değil ürünün kuralı — skor eşiği.
+    const basarili = basariliMi(sonuc.skor);
+
     const nitelikli = await nitelikliMi(db, {
       playerId: opts.playerId,
       cafeId: oturum.cafe_id,
       kazandirir,
-      basarili: sonuc.basarili,
+      basarili,
     });
 
     await db.query(
@@ -594,7 +592,7 @@ export async function bitir(opts: {
       oturumId: oturum.id,
       proofLevel: oturum.proof_level,
       skor: sonuc.skor,
-      basarili: sonuc.basarili,
+      basarili,
       kazandirir,
       bonusMu,
     });
@@ -602,7 +600,7 @@ export async function bitir(opts: {
     return {
       ok: true as const,
       skor: sonuc.skor,
-      basarili: sonuc.basarili,
+      basarili,
       puan: kazanim.puan,
       esik: kazanim.esik,
       seri: kazanim.seri,
@@ -696,7 +694,6 @@ export async function misafirOyunuYaz(opts: {
   cafeId: string;
   tableId: string;
   oyunId: string;
-  bolum: number;
   tohum: string;
   skor: number;
   basarili: boolean;
@@ -754,11 +751,11 @@ export async function misafirOyunuYaz(opts: {
     const oturumId = newId("oyn");
     await db.query(
       `INSERT INTO play_sessions
-         (id, cafe_id, table_id, player_id, device_id_hash, game_id, level, seed,
+         (id, cafe_id, table_id, player_id, device_id_hash, game_id, seed,
           table_session_id, proof_mask, proof_level, business_date, status,
           ended_at, duration_ms, server_score, claimed_score, is_qualified)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'completed',
-               now(),$13,$14,$15,$16)`,
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'completed',
+               now(),$12,$13,$14,$15)`,
       [
         oturumId,
         opts.cafeId,
@@ -766,7 +763,6 @@ export async function misafirOyunuYaz(opts: {
         opts.playerId,
         cihazVekili(opts.playerId),
         oyun.id,
-        opts.bolum,
         opts.tohum,
         masa.id,
         masa.kanitMaskesi,

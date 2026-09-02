@@ -34,24 +34,21 @@ async function masaBileti() {
   return bilet ? biletCoz(bilet) : null;
 }
 
-export type BaslaCevabi =
-  | { ok: true; tohum: string; bolum: number }
-  | { ok: false; hata: string };
+export type BaslaCevabi = { ok: true; tohum: string } | { ok: false; hata: string };
 
-export async function misafirBasla(oyunId: string, bolum: number): Promise<BaslaCevabi> {
+export async function misafirBasla(oyunId: string): Promise<BaslaCevabi> {
   const masa = await masaBileti();
   if (!masa) return { ok: false, hata: "Masa bağlantın düşmüş. Karekodu tekrar okut." };
 
   const sonuc = await misafir.basla({
     oyunId,
-    bolum,
     cafeId: masa.cafeId,
     tableId: masa.tableId,
   });
   if (!sonuc.ok) return sonuc;
 
   (await cookies()).set(misafir.OYUN_COOKIE, sonuc.cerez, CEREZ_AYARI);
-  return { ok: true, tohum: sonuc.tohum, bolum: sonuc.bolum };
+  return { ok: true, tohum: sonuc.tohum };
 }
 
 export type BitirCevabi =

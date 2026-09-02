@@ -12,14 +12,14 @@ import * as oyunDomain from "@/domain/oyun";
  */
 
 export type BaslatCevabi =
-  | { ok: true; oturumId: string; tohum: string; bolum: number; kazandirir: boolean; bonusMu: boolean }
+  | { ok: true; oturumId: string; tohum: string; kazandirir: boolean; bonusMu: boolean }
   | { ok: false; hata: string };
 
-export async function baslaEylemi(oyunId: string, bolum: number): Promise<BaslatCevabi> {
+export async function baslaEylemi(oyunId: string): Promise<BaslatCevabi> {
   const o = await oturum.oku();
   if (!o || o.rol !== "oyuncu") return { ok: false, hata: "Önce giriş yapmalısın." };
 
-  return oyunDomain.basla({ playerId: o.ozneId, oyunId, bolum });
+  return oyunDomain.basla({ playerId: o.ozneId, oyunId });
 }
 
 export type BitirCevabi = Awaited<ReturnType<typeof oyunDomain.bitir>>;

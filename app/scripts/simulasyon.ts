@@ -381,16 +381,14 @@ async function birGun(
     const oyunSayisi = 1 + Math.floor(rnd() * 3);
     for (let n = 0; n < oyunSayisi; n++) {
       const secilen = OYUNLAR[Math.floor(rnd() * OYUNLAR.length)];
-      const bolum = 1 + Math.floor(rnd() * Math.min(3, secilen.bolumSayisi));
 
       const acilis = await oyun.basla({
         playerId: oyuncu.id,
         oyunId: secilen.id,
-        bolum,
       });
       if (!acilis.ok) continue;
 
-      const sonuc = botOyna(secilen.id, acilis.tohum, bolum, rnd);
+      const sonuc = botOyna(secilen.id, acilis.tohum, rnd);
       const bitis = await oyun.bitir({
         playerId: oyuncu.id,
         oturumId: acilis.oturumId,

@@ -132,12 +132,26 @@ before(async () => {
   );
   kampanyaId = "cmp_test_teslim";
 
+  // Tohumda da yayında bir kampanya var (Ü82). Bu dosya "hangi kampanya
+  // seçiliyor" sorusunu değil "teslim çalışıyor mu" sorusunu sınıyor;
+  // diğerleri sahneden çekiliyor, sonda geri açılıyor.
+  await yoneticiSorgu(
+    `UPDATE percentage_campaigns SET status = 'paused'
+      WHERE cafe_id = $1 AND id <> $2 AND status = 'active'`,
+    [kafeA, kampanyaId],
+  );
+
   oyuncu1 = await yeniOyuncu("Kampanyalı");
   oyuncu2 = await yeniOyuncu("İkinci");
 });
 
 after(async () => {
   await kuponlariTemizle();
+  await yoneticiSorgu(
+    `UPDATE percentage_campaigns SET status = 'active'
+      WHERE cafe_id = $1 AND id <> $2 AND status = 'paused'`,
+    [kafeA, kampanyaId],
+  );
   await yoneticiSorgu(`DELETE FROM percentage_campaigns WHERE id = $1`, [kampanyaId]);
   await yoneticiSorgu(`DELETE FROM products WHERE id = 'prd_test_kmp'`);
   // Sıra önemli: oyuncuya bağlı satırlar önce. Kayıt akışı rıza kaydı

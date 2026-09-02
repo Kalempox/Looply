@@ -21,12 +21,12 @@ import {
  * geçince işlenecek."
  */
 
-export type Oyun = { id: string; ad: string; ozet: string; emoji: string; bolumSayisi: number };
+export type Oyun = { id: string; ad: string; ozet: string; emoji: string };
 
 type Durum =
   | { tur: "secim" }
-  | { tur: "oynuyor"; oyun: Oyun; tohum: string; bolum: number }
-  | { tur: "sonuc"; oyun: Oyun; bolum: number; cevap: BitirCevabi };
+  | { tur: "oynuyor"; oyun: Oyun; tohum: string }
+  | { tur: "sonuc"; oyun: Oyun; cevap: BitirCevabi };
 
 export function MisafirKabugu({
   oyunlar,
@@ -47,26 +47,23 @@ export function MisafirKabugu({
   const [konum, setKonum] = useState(konumBaslangic);
   const [konumNotu, setKonumNotu] = useState<string | null>(null);
 
-  const bolumBaslat = useCallback(
-    (oyun: Oyun, bolum: number) => {
-      setHata(null);
-      basla(async () => {
-        const cevap = await misafirBasla(oyun.id, bolum);
-        if (!cevap.ok) {
-          setHata(cevap.hata);
-          return;
-        }
-        setDurum({ tur: "oynuyor", oyun, tohum: cevap.tohum, bolum });
-      });
-    },
-    [],
-  );
+  const turBaslat = useCallback((oyun: Oyun) => {
+    setHata(null);
+    basla(async () => {
+      const cevap = await misafirBasla(oyun.id);
+      if (!cevap.ok) {
+        setHata(cevap.hata);
+        return;
+      }
+      setDurum({ tur: "oynuyor", oyun, tohum: cevap.tohum });
+    });
+  }, []);
 
   const oyunBitti = useCallback(
-    (oyun: Oyun, bolum: number) => (girdiler: unknown[], istemciSkoru: number) => {
+    (oyun: Oyun) => (girdiler: unknown[], istemciSkoru: number) => {
       basla(async () => {
         const cevap = await misafirBitir(girdiler, istemciSkoru);
-        setDurum({ tur: "sonuc", oyun, bolum, cevap });
+        setDurum({ tur: "sonuc", oyun, cevap });
       });
     },
     [],
@@ -103,9 +100,7 @@ export function MisafirKabugu({
     return (
       <div>
         <div className="mb-4 flex items-baseline justify-between">
-          <span className="etiket-caps text-yazi-sonuk">
-            {durum.oyun.ad} · {durum.bolum}. bölüm
-          </span>
+          <span className="etiket-caps text-yazi-sonuk">{durum.oyun.ad}</span>
           <span className="etiket-caps text-odul-koyu">Misafir</span>
         </div>
 
@@ -113,9 +108,8 @@ export function MisafirKabugu({
           key={durum.tohum}
           oyunId={durum.oyun.id}
           tohum={durum.tohum}
-          bolum={durum.bolum}
           demoKapisi={demoKapisi}
-          bitti={oyunBitti(durum.oyun, durum.bolum)}
+          bitti={oyunBitti(durum.oyun)}
         />
 
         {bekliyor && (
@@ -131,9 +125,8 @@ export function MisafirKabugu({
     return (
       <SonucEkrani
         oyun={durum.oyun}
-        bolum={durum.bolum}
         cevap={durum.cevap}
-        tekrar={() => bolumBaslat(durum.oyun, durum.bolum)}
+        tekrar={() => turBaslat(durum.oyun)}
         geri={() => setDurum({ tur: "secim" })}
       />
     );
@@ -177,7 +170,7 @@ export function MisafirKabugu({
             <button
               type="button"
               disabled={bekliyor}
-              onClick={() => bolumBaslat(oyun, 1)}
+              onClick={() => turBaslat(oyun)}
               className="flex w-full items-center gap-4 rounded-2xl border border-cizgi bg-yuzey px-5 py-4 text-left disabled:opacity-50"
             >
               <span aria-hidden className="text-2xl">
@@ -286,13 +279,11 @@ function KonumSeridi({
 
 function SonucEkrani({
   oyun,
-  bolum,
   cevap,
   tekrar,
   geri,
 }: {
   oyun: Oyun;
-  bolum: number;
   cevap: BitirCevabi;
   tekrar: () => void;
   geri: () => void;
@@ -319,11 +310,9 @@ function SonucEkrani({
           cevap.basarili ? "border-vurgu" : "border-cizgi"
         }`}
       >
-        <div className="etiket-caps text-yazi-sonuk">
-          {oyun.ad} · {bolum}. bölüm
-        </div>
+        <div className="etiket-caps text-yazi-sonuk">{oyun.ad}</div>
         <h2 className="mt-2 font-display text-3xl leading-none font-extrabold">
-          {cevap.basarili ? "Bölüm tamam" : "Bölüm bitti"}
+          {cevap.basarili ? "İyi tur" : "Tur bitti"}
         </h2>
 
         <div className="mt-6">
@@ -348,7 +337,7 @@ function SonucEkrani({
             ? "Hesabına girdiğin anda bu oyun hesabına işlenecek: puan, XP ve varsa ödül birlikte gelecek."
             : cevap.basarili
               ? "Hesabına girdiğin anda bu oyun hesabına işlenecek. Konumun doğrulanmadığı için puan ve ödül açılmayacak — istersen geri dönüp konumunu doğrula ve tekrar oyna."
-              : "Hesabına girdiğin anda bu oyun hesabına işlenecek. Puan bölümü tamamlayınca yazılıyor; tekrar denemek istersen sonucun yenisiyle değişir."}
+              : "Hesabına girdiğin anda bu oyun hesabına işlenecek. Daha yüksek skor daha çok puan ve ödül demek; tekrar denersen sonucun yenisiyle değişir."}
         </p>
         <Link
           href="/giris"

@@ -80,7 +80,7 @@ export default async function HemenSayfasi() {
           ad: o.ad,
           ozet: o.ozet,
           emoji: o.emoji,
-          bolumSayisi: o.bolumSayisi,
+
         }))}
         kafeAdi={masa.cafe_adi}
         konumBaslangic={konum ? { dogrulandi: konum.k2, mesafeM: konum.mesafeM } : null}

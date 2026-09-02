@@ -36,7 +36,7 @@ import type { OyunEkraniProps } from "./ortak";
  * aynı çıktı. Kaç kez çağrıldığı önemsiz.
  */
 
-/** Bir tick kaç milisaniye. Bölüm zorluğu `dusmeTicki` ile ayarlanıyor. */
+/** Bir tick kaç milisaniye. Zorluk `dusmeTicki` ile artıyor (Ü83). */
 const TICK_MS = 50;
 
 type Yerel = {
@@ -45,9 +45,9 @@ type Yerel = {
   tick: number;
 };
 
-export function DusenEkrani({ tohum, bolum, bitti }: OyunEkraniProps) {
+export function DusenEkrani({ tohum, bitti }: OyunEkraniProps) {
   const [y, setY] = useState<Yerel>(() => ({
-    durum: dusen.baslat(tohum, bolum),
+    durum: dusen.baslat(tohum),
     girdiler: [],
     tick: 0,
   }));
@@ -117,8 +117,11 @@ export function DusenEkrani({ tohum, bolum, bitti }: OyunEkraniProps) {
   return (
     <div className="oyun-alani">
       <div className="flex items-baseline justify-between">
+        {/* Ü83: hedef yok — gösterilen şey ilerleme, kalan değil. Hız
+            göstergesi zorluğun arttığını görünür kılıyor; oyuncu neden
+            zorlandığını bilmeli. */}
         <span className="etiket-caps text-yazi-sonuk">
-          Satır {durum.temizlenen}/{durum.hedef}
+          {durum.temizlenen} satır · hız {hizKademesi(durum.dusmeTicki)}
         </span>
         <span className="font-data text-xl leading-none font-bold text-vurgu tabular">
           {durum.skor}
@@ -177,4 +180,14 @@ function Dugme({
       {etiket}
     </button>
   );
+}
+
+/**
+ * Düşme hızını okunur bir kademeye çevirir.
+ *
+ * Tick sayısı oyuncuya bir şey söylemiyor (üstelik ters yönde artıyor);
+ * "hız 4" söylüyor. 28 tick → 1, 5 tick → 12.
+ */
+function hizKademesi(dusmeTicki: number): number {
+  return Math.max(1, Math.round((28 - dusmeTicki) / 2) + 1);
 }

@@ -14,11 +14,13 @@ import {
   KATILIM_PUANI,
   OYUN_PUANI,
   SKOR_ESIKLERI,
+  KUPON_ESIGI,
+  basariliMi,
   esikBul,
 } from "@/domain/puan";
-import { blok } from "@/oyunlar/blok";
-import { kelime, kurulabilir, kucult } from "@/oyunlar/kelime";
-import { dusen } from "@/oyunlar/dusen";
+import { blok, kademe as blokKademe } from "@/oyunlar/blok";
+import { kelime, kurulabilir, kucult, turSuresi } from "@/oyunlar/kelime";
+import { dusen, dusmeTickiHesapla } from "@/oyunlar/dusen";
 import { tekrarOyna, EN_FAZLA_GIRDI } from "@/oyunlar/sozlesme";
 import { OYUNLAR, type HerhangiOyun } from "@/oyunlar";
 import kelimeVerisi from "@/oyunlar/veri/kelimeler.json";
@@ -51,9 +53,9 @@ const yeniTelefon = () => normalizePhone(`0558${String(TABAN + sayac++).slice(-7
 
 /* ── Oyun oynayan yardımcılar ──────────────────────────── */
 
-/** Blok'u kaba kuvvetle sonuna kadar oynar. */
-function blokOyna(tohum: string, bolum: number) {
-  let d = blok.baslat(tohum, bolum);
+/** Blok'u kaba kuvvetle tıkanana kadar oynar. */
+function blokOyna(tohum: string) {
+  let d = blok.baslat(tohum);
   const girdiler: unknown[] = [];
 
   for (let adim = 0; adim < 500 && !blok.bittiMi(d); adim++) {
@@ -72,30 +74,52 @@ function blokOyna(tohum: string, bolum: number) {
     }
     if (!kondu) break;
   }
-  return { durum: d, girdiler, skor: blok.skor(d), basarili: blok.basarili(d) };
+  return { durum: d, girdiler, skor: blok.skor(d) };
 }
 
-/** Kelime'yi listeden geçerli kelimeler göndererek oynar. */
-function kelimeOyna(tohum: string, bolum: number) {
-  let d = kelime.baslat(tohum, bolum);
+/**
+ * Kelime'yi süresi dolana kadar oynar.
+ *
+ * Ü83: oyun turlara bölündü. Her turda eldeki harflerden kelime aranıyor;
+ * her kelime biraz zaman alıyor ve süre turdan tura kısalıyor, yani bir
+ * yerde yetişilemiyor — turun bitiş yolu bu.
+ */
+function kelimeOyna(tohum: string) {
+  let d = kelime.baslat(tohum);
   const girdiler: unknown[] = [];
+  let tick = 0;
 
-  for (const w of kelimeVerisi.kelimeler) {
-    if (kelime.bittiMi(d)) break;
-    if (w.length < 3 || w.length > d.harfler.length) continue;
-    if (!kurulabilir(kucult(w), d.harfler)) continue;
-    const y = kelime.uygula(d, { k: w });
-    if (y) {
+  for (let tur = 0; tur < 40 && !kelime.bittiMi(d); tur++) {
+    const oncekiTur = d.tur;
+
+    for (const w of kelimeVerisi.kelimeler) {
+      if (kelime.bittiMi(d) || d.tur !== oncekiTur) break;
+      if (w.length < 3 || w.length > d.harfler.length) continue;
+      if (!kurulabilir(kucult(w), d.harfler)) continue;
+      tick += 40;
+      const y = kelime.uygula(d, { tick, k: w });
+      if (y) {
+        d = y;
+        girdiler.push({ tick, k: w });
+      }
+    }
+
+    // Tur değişmediyse çözülemedi: saati sonuna kadar ilerlet.
+    if (d.tur === oncekiTur && !kelime.bittiMi(d)) {
+      const girdi = { tick: d.bitisTicki, k: "" };
+      const y = kelime.uygula(d, girdi);
+      if (!y) break;
       d = y;
-      girdiler.push({ k: w });
+      girdiler.push(girdi);
     }
   }
-  return { durum: d, girdiler, skor: kelime.skor(d), basarili: kelime.basarili(d) };
+
+  return { durum: d, girdiler, skor: kelime.skor(d) };
 }
 
-/** Düşen'i sürekli bırakarak oynar — tahta dolana veya hedefe varana kadar. */
-function dusenOyna(tohum: string, bolum: number) {
-  let d = dusen.baslat(tohum, bolum);
+/** Düşen'i sürekli bırakarak oynar — tahta dolana kadar. */
+function dusenOyna(tohum: string) {
+  let d = dusen.baslat(tohum);
   const girdiler: unknown[] = [];
   let tick = 1;
 
@@ -123,7 +147,7 @@ function dusenOyna(tohum: string, bolum: number) {
   const son = dusen.uygula(d, { tick, a: "bekle" });
   if (son) d = son;
 
-  return { durum: d, girdiler, skor: dusen.skor(d), basarili: dusen.basarili(d) };
+  return { durum: d, girdiler, skor: dusen.skor(d) };
 }
 
 /** Doğrulanmış (K2) masa oturumu açar. */
@@ -133,13 +157,13 @@ async function dogrulanmisOturum(playerId: string) {
   assert.equal(s.durum, "dogrulandi", "test kurulumu: konum doğrulanamadı");
 }
 
-/** Bir bölümü baştan sona oynar ve sunucuya gönderir. */
-async function tamOyun(playerId: string, oyunId: string, bolum = 1, iddiaEdilenSkor?: number) {
-  const baslangic = await oyunDomain.basla({ playerId, oyunId, bolum });
+/** Bir turu baştan sona oynar ve sunucuya gönderir. */
+async function tamOyun(playerId: string, oyunId: string, iddiaEdilenSkor?: number) {
+  const baslangic = await oyunDomain.basla({ playerId, oyunId });
   assert.ok(baslangic.ok, "oturum açılamadı");
 
   const oyna = oyunId === "blok" ? blokOyna : oyunId === "kelime" ? kelimeOyna : dusenOyna;
-  const sonuc = oyna(baslangic.tohum, bolum);
+  const sonuc = oyna(baslangic.tohum);
 
   const cevap = await oyunDomain.bitir({
     playerId,
@@ -227,16 +251,16 @@ after(async () => {
 describe("determinizm (S5)", () => {
   test("aynı tohum aynı başlangıcı verir — üç oyunda da", () => {
     for (const oyun of OYUNLAR) {
-      const a = JSON.stringify(oyun.baslat("ayni-tohum", 1));
-      const b = JSON.stringify(oyun.baslat("ayni-tohum", 1));
+      const a = JSON.stringify(oyun.baslat("ayni-tohum"));
+      const b = JSON.stringify(oyun.baslat("ayni-tohum"));
       assert.equal(a, b, `${oyun.id}: aynı tohum farklı başlangıç verdi`);
     }
   });
 
   test("farklı tohum farklı başlangıç verir", () => {
     for (const oyun of OYUNLAR) {
-      const a = JSON.stringify(oyun.baslat("tohum-bir", 1));
-      const b = JSON.stringify(oyun.baslat("tohum-iki", 1));
+      const a = JSON.stringify(oyun.baslat("tohum-bir"));
+      const b = JSON.stringify(oyun.baslat("tohum-iki"));
       assert.notEqual(a, b, `${oyun.id}: farklı tohum aynı başlangıcı verdi`);
     }
   });
@@ -245,7 +269,7 @@ describe("determinizm (S5)", () => {
     const senaryolar: {
       oyun: HerhangiOyun;
       id: string;
-      oyna: (tohum: string, bolum: number) => { girdiler: unknown[]; skor: number; basarili: boolean };
+      oyna: (tohum: string) => { girdiler: unknown[]; skor: number };
     }[] = [
       { oyun: blok, id: "blok", oyna: blokOyna },
       { oyun: kelime, id: "kelime", oyna: kelimeOyna },
@@ -254,22 +278,78 @@ describe("determinizm (S5)", () => {
 
     for (const { oyun, id, oyna } of senaryolar) {
       for (const tohum of ["t-a", "t-b", "t-c"]) {
-        const canli = oyna(tohum, 1);
-        const sunucu = tekrarOyna(oyun, tohum, 1, canli.girdiler);
+        const canli = oyna(tohum);
+        const sunucu = tekrarOyna(oyun, tohum, canli.girdiler);
 
         assert.ok(sunucu.gecerli, `${id}/${tohum}: replay geçersiz — ${JSON.stringify(sunucu)}`);
         assert.equal(sunucu.skor, canli.skor, `${id}/${tohum}: skorlar ayrıştı`);
-        assert.equal(sunucu.basarili, canli.basarili, `${id}/${tohum}: başarı durumu ayrıştı`);
       }
     }
   });
+});
 
-  test("her oyunun beş bölümü var ve hepsi oynanabiliyor (Ü21)", () => {
+/* ═══════════════════════════════════════════════════════════
+   1b · Sonsuz mod (Ü83)
+   ═══════════════════════════════════════════════════════════ */
+
+describe("sonsuz mod (Ü83)", () => {
+  test("hiçbir oyun kazanarak bitmiyor — tek bitiş kaybetmek", () => {
+    // Blok yalnızca tıkanınca, Düşen yalnızca tahta dolunca, Kelime
+    // yalnızca süre dolunca bitiyor. Hedefe ulaşıp biten tur yok.
+    const b = blokOyna("son-blok");
+    assert.ok(blok.bittiMi(b.durum), "blok bitmedi");
+    assert.ok(b.durum.tikandi, "blok tıkanmadan bitti — hedefle bitiş geri gelmiş");
+
+    const d = dusenOyna("son-dusen");
+    assert.ok(d.durum.doldu, "düşen tahta dolmadan bitti");
+
+    const k = kelimeOyna("son-kelime");
+    assert.ok(k.durum.sureBitti, "kelime süre dolmadan bitti");
+  });
+
+  test("zorluk tur içinde artıyor", () => {
+    // Blok: kademe tur ilerledikçe yükseliyor ve üçte duruyor.
+    assert.equal(blokKademe(0), 0);
+    assert.ok(blokKademe(8) > blokKademe(0), "blok zorluğu artmıyor");
+    assert.equal(blokKademe(200), blokKademe(24), "blok zorluğu tavana oturmuyor");
+
+    // Düşen: temizlenen satır arttıkça parça hızlanıyor (tick azalıyor).
+    assert.ok(
+      dusmeTickiHesapla(20) < dusmeTickiHesapla(0),
+      "düşen hızlanmıyor",
+    );
+    assert.equal(dusmeTickiHesapla(1000), dusmeTickiHesapla(500), "düşen hızı tavana oturmuyor");
+
+    // Kelime: tur süresi kısalıyor ve bir tabanda duruyor.
+    assert.ok(turSuresi(5) < turSuresi(0), "kelime süresi kısalmıyor");
+    assert.equal(turSuresi(100), turSuresi(50), "kelime süresi tabana oturmuyor");
+  });
+
+  test("skor eşiklerden bağımsız bir ölçekte, tek temizlik eşiğin yirmide biri", () => {
+    // ⚠️ Burada sınanan şey **denge değil, ölçek**. Denge ancak gerçek
+    // oyuncu verisiyle doğrulanabilir: testteki botlar ilk sığan yere
+    // koyuyor ve satır tamamlamayı hiç denemiyor, yani zayıf oyuncuyu bile
+    // temsil etmiyorlar (ölçüm: Düşen botu 40 turda bir kez satır
+    // temizleyemedi). Kalibrasyon pilot verisiyle yapılacak.
+    //
+    // Sınanan tek şey ölçeğin makul olması: bir satır temizlemek eşiğin
+    // yirmide biri kadar etsin ki eşik "yirmi satır civarı" demeye gelsin.
+    const d = blok.baslat("olcek");
+    assert.ok(blok.skor(d) === 0, "tur sıfır skorla başlamıyor");
+    assert.ok(KUPON_ESIGI / 35 < 20, "bir satırın payı çok küçük — eşik ulaşılamaz olur");
+    assert.ok(KUPON_ESIGI / 35 > 5, "bir satırın payı çok büyük — eşik anlamsızlaşır");
+  });
+
+  test("başarı artık skordan hesaplanıyor, oyundan değil", () => {
+    assert.equal(basariliMi(KUPON_ESIGI - 1), false);
+    assert.equal(basariliMi(KUPON_ESIGI), true);
+    // Sözleşmede `basarili` diye bir alan kalmadı: başarı ürün kararı.
     for (const oyun of OYUNLAR) {
-      assert.equal(oyun.bolumSayisi, 5, `${oyun.id}: bölüm sayısı beş değil`);
-      for (let b = 1; b <= 5; b++) {
-        assert.doesNotThrow(() => oyun.baslat("bolum-testi", b), `${oyun.id} bölüm ${b}`);
-      }
+      assert.equal(
+        "basarili" in oyun,
+        false,
+        `${oyun.id}: sözleşmede hâlâ basarili() var`,
+      );
     }
   });
 });
@@ -281,14 +361,14 @@ describe("determinizm (S5)", () => {
 describe("girdi kaydı denetimi", () => {
   test("kuraldışı hamle reddedilir", () => {
     // Aynı teklifi iki kez kullanmak: ikincisi kuraldışı.
-    const d = blok.baslat("kural", 1);
+    const d = blok.baslat("kural");
     let ilk: unknown = null;
     for (let s = 0; s < 8 && !ilk; s++) {
       for (let k = 0; k < 8 && !ilk; k++) {
         if (blok.uygula(d, { t: 0, s, k })) ilk = { t: 0, s, k };
       }
     }
-    const sonuc = tekrarOyna(blok, "kural", 1, [ilk, ilk]);
+    const sonuc = tekrarOyna(blok, "kural", [ilk, ilk]);
     assert.equal(sonuc.gecerli, false);
   });
 
@@ -301,38 +381,40 @@ describe("girdi kaydı denetimi", () => {
       ["hamle"],
       [{}],
     ]) {
-      const sonuc = tekrarOyna(blok, "bozuk", 1, bozuk);
+      const sonuc = tekrarOyna(blok, "bozuk", bozuk);
       assert.equal(sonuc.gecerli, false, `kabul edildi: ${JSON.stringify(bozuk)}`);
     }
   });
 
   test("girdi kaydı dizi değilse reddedilir", () => {
     for (const bozuk of [null, "abc", 42, { hamleler: [] }]) {
-      assert.equal(tekrarOyna(blok, "t", 1, bozuk).gecerli, false);
+      assert.equal(tekrarOyna(blok, "t", bozuk).gecerli, false);
     }
   });
 
   test("girdi kaydı sınırsız uzayamaz", () => {
     const cokUzun = new Array(EN_FAZLA_GIRDI + 1).fill({ t: 0, s: 0, k: 0 });
-    const sonuc = tekrarOyna(blok, "t", 1, cokUzun);
+    const sonuc = tekrarOyna(blok, "t", cokUzun);
     assert.equal(sonuc.gecerli, false);
     assert.match(sonuc.gecerli === false ? sonuc.sebep : "", /çok uzun/);
   });
 
-  test("geçersiz bölüm reddedilir", () => {
-    for (const bolum of [0, 6, -1, 1.5]) {
-      assert.equal(tekrarOyna(blok, "t", bolum, []).gecerli, false, `bölüm ${bolum} kabul edildi`);
-    }
+  test("boş girdi kaydı geçerli ama sıfır skorlu", () => {
+    // Ü83: bölüm doğrulaması kalktı (bölüm kavramı yok). Boş kayıt artık
+    // bir hata değil — hiç hamle yapmadan çıkan oyuncunun turu bu.
+    const sonuc = tekrarOyna(blok, "t", []);
+    assert.equal(sonuc.gecerli, true);
+    assert.equal(sonuc.gecerli && sonuc.skor, 0);
   });
 
   test("bitmiş bölümden sonraki girdiler yok sayılır, skoru değiştirmez", () => {
-    const canli = blokOyna("bitmis", 1);
+    const canli = blokOyna("bitmis");
 
     // Zaman tabanlı oyunlarda istemci sona bir zaman işareti koymak zorunda
     // ve o işaret çoğu zaman bölümü bitiren şey oluyor. Bu yüzden artık
     // girdiler reddedilmiyor — ama skora da dokunmuyorlar.
     const fazla = [...canli.girdiler, { t: 0, s: 0, k: 0 }, { t: 1, s: 1, k: 1 }];
-    const sonuc = tekrarOyna(blok, "bitmis", 1, fazla);
+    const sonuc = tekrarOyna(blok, "bitmis", fazla);
 
     assert.ok(sonuc.gecerli, "artık girdi yüzünden kayıt reddedildi");
     assert.equal(sonuc.skor, canli.skor, "artık girdi skoru değiştirdi");
@@ -340,31 +422,31 @@ describe("girdi kaydı denetimi", () => {
   });
 
   test("kayıt erken kesilirse skor düşer — uzatmak kazandırmıyor", () => {
-    const canli = blokOyna("kesik", 1);
+    const canli = blokOyna("kesik");
     const kesik = canli.girdiler.slice(0, Math.max(1, canli.girdiler.length - 3));
-    const sonuc = tekrarOyna(blok, "kesik", 1, kesik);
+    const sonuc = tekrarOyna(blok, "kesik", kesik);
 
     assert.ok(sonuc.gecerli);
     assert.ok(sonuc.skor <= canli.skor, "eksik kayıt daha yüksek skor verdi");
   });
 
   test("kelime: elde olmayan harflerle kelime kabul edilmez", () => {
-    const d = kelime.baslat("harf", 1);
+    const d = kelime.baslat("harf");
     // Listede olan ama bu harflerle kurulamayan bir kelime bul.
     const disarida = kelimeVerisi.kelimeler.find(
       (w) => w.length <= d.harfler.length && !kurulabilir(w, d.harfler),
     );
     assert.ok(disarida, "test kurulumu: uygun karşı örnek bulunamadı");
-    assert.equal(kelime.uygula(d, { k: disarida }), null);
+    assert.equal(kelime.uygula(d, { tick: 1, k: disarida }), null);
   });
 
   test("kelime: listede olmayan dizi kabul edilmez", () => {
-    const d = kelime.baslat("harf", 1);
-    assert.equal(kelime.uygula(d, { k: "zzzz" }), null);
+    const d = kelime.baslat("harf");
+    assert.equal(kelime.uygula(d, { tick: 1, k: "zzzz" }), null);
   });
 
   test("düşen: zamanı geriye alan girdi reddedilir", () => {
-    const d = dusen.baslat("zaman", 1);
+    const d = dusen.baslat("zaman");
     const ileri = dusen.uygula(d, { tick: 50, a: "sol" });
     assert.ok(ileri);
     assert.equal(dusen.uygula(ileri, { tick: 10, a: "sag" }), null);
@@ -377,7 +459,7 @@ describe("girdi kaydı denetimi", () => {
 
 describe("sunucu skoru yeniden hesaplar (S5)", () => {
   test("şişirilmiş skor iddiası ödülü değiştirmez", async () => {
-    const { sonuc, cevap } = await tamOyun(oyuncuId, "blok", 1, 999_999);
+    const { sonuc, cevap } = await tamOyun(oyuncuId, "blok", 999_999);
 
     assert.ok(cevap.ok);
     assert.equal(cevap.skor, sonuc.skor, "sunucu istemcinin skorunu kabul etti");
@@ -399,7 +481,7 @@ describe("sunucu skoru yeniden hesaplar (S5)", () => {
   test("uydurma girdi kaydı reddedilir ve puan yazılmaz", async () => {
     const oncekiPuan = await gunlukPuan(oyuncuId);
 
-    const baslangic = await oyunDomain.basla({ playerId: oyuncuId, oyunId: "blok", bolum: 1 });
+    const baslangic = await oyunDomain.basla({ playerId: oyuncuId, oyunId: "blok" });
     assert.ok(baslangic.ok);
 
     const cevap = await oyunDomain.bitir({
@@ -424,9 +506,9 @@ describe("sunucu skoru yeniden hesaplar (S5)", () => {
   });
 
   test("aynı oturum iki kez bitirilemez", async () => {
-    const baslangic = await oyunDomain.basla({ playerId: oyuncuId, oyunId: "kelime", bolum: 1 });
+    const baslangic = await oyunDomain.basla({ playerId: oyuncuId, oyunId: "kelime" });
     assert.ok(baslangic.ok);
-    const oynanan = kelimeOyna(baslangic.tohum, 1);
+    const oynanan = kelimeOyna(baslangic.tohum);
 
     const ilk = await oyunDomain.bitir({
       playerId: oyuncuId,
@@ -449,7 +531,7 @@ describe("sunucu skoru yeniden hesaplar (S5)", () => {
   });
 
   test("başkasının oturumu bitirilemez", async () => {
-    const baslangic = await oyunDomain.basla({ playerId: oyuncuId, oyunId: "blok", bolum: 1 });
+    const baslangic = await oyunDomain.basla({ playerId: oyuncuId, oyunId: "blok" });
     assert.ok(baslangic.ok);
 
     const cevap = await oyunDomain.bitir({
@@ -471,12 +553,11 @@ describe("kafe dışında kazanım yok (Ü3, Ü14)", () => {
     const baslangic = await oyunDomain.basla({
       playerId: disaridakiId,
       oyunId: "blok",
-      bolum: 1,
     });
     assert.ok(baslangic.ok);
     assert.equal(baslangic.kazandirir, false, "kafe dışında kazandırır işaretlendi");
 
-    const oynanan = blokOyna(baslangic.tohum, 1);
+    const oynanan = blokOyna(baslangic.tohum);
     const cevap = await oyunDomain.bitir({
       playerId: disaridakiId,
       oturumId: baslangic.oturumId,
@@ -502,7 +583,7 @@ describe("kafe dışında kazanım yok (Ü3, Ü14)", () => {
 
   test("kafede oynayan puan ve XP kazanır", async () => {
     const oncekiPuan = await gunlukPuan(oyuncuId);
-    const { cevap } = await tamOyun(oyuncuId, "kelime", 1);
+    const { cevap } = await tamOyun(oyuncuId, "kelime");
 
     assert.ok(cevap.ok);
     assert.equal(cevap.kazandirir, true);
@@ -522,7 +603,7 @@ describe("günlük puan tavanı (E4)", () => {
     let sonCevap: Awaited<ReturnType<typeof oyunDomain.bitir>> | null = null;
 
     for (let i = 0; i < 8; i++) {
-      const { cevap } = await tamOyun(oyuncuId, "kelime", 1);
+      const { cevap } = await tamOyun(oyuncuId, "kelime");
       if (cevap.ok) sonCevap = cevap;
       if ((await gunlukPuan(oyuncuId)) >= GUNLUK_TAVAN) break;
     }
@@ -532,7 +613,7 @@ describe("günlük puan tavanı (E4)", () => {
     assert.equal(toplam, GUNLUK_TAVAN, `tavana ulaşılamadı: ${toplam}`);
 
     // Tavan dolduktan sonraki oyun puan yazmamalı ama XP yazmalı.
-    const { cevap } = await tamOyun(oyuncuId, "kelime", 1);
+    const { cevap } = await tamOyun(oyuncuId, "kelime");
     assert.ok(cevap.ok);
     assert.equal(cevap.puan?.yazilan, 0, "tavan dolu iken puan yazıldı");
     assert.ok((cevap.puan?.kesilen ?? 0) > 0, "kesilen miktar bildirilmedi");

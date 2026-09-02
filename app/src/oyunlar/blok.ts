@@ -6,8 +6,18 @@ import type { Oyun } from "./sozlesme";
  *
  * Üç parça teklif edilir, oyuncu birini seçip ızgaraya koyar. Dolan satır
  * ve sütunlar temizlenir. Üç parça da kullanılınca yeni üçlü gelir.
- * Bölüm, hedef kadar satır temizlenince biter; hiçbir parça sığmıyorsa
- * başarısız biter.
+ *
+ * ── Ü83: hiçbir parça sığmayana kadar ───────────────────────
+ *
+ * Tur **yalnızca tıkanınca** biter. Hedef yok, bölüm yok, kazanarak biten
+ * bir tur yok — oyuncu ne kadar dayanırsa o kadar skor.
+ *
+ * Zorluk turun içinde artıyor ve kaldıraç **küçük parçalar**: oyunun kilit
+ * açıcısı onlar, çünkü dolmuş bir tahtada hep bir yere sığıyorlar. Tur
+ * ilerledikçe seyreliyorlar ve tahta kaçınılmaz olarak doluyor. Izgara
+ * büyümüyor, hız yok, kural değişmiyor — değişen tek şey elinize gelen
+ * parçalar. Böylece oyun **öğrenilebilir** kalıyor: kaybettiğinde neden
+ * kaybettiğini görüyorsun.
  *
  * ── Neden bu oyun motorun referansı ─────────────────────────
  *
@@ -49,27 +59,51 @@ export const PARCA_HUCRELERI: readonly (readonly (readonly [number, number])[])[
   [[0, 1], [0, 2], [1, 0], [1, 1]],
 ];
 
-/** Bölüm hedefleri — kaç satır/sütun temizlenecek. */
-const HEDEFLER = [4, 6, 8, 10, 12];
+/**
+ * Kaç teklif turunda bir zorluk kademesi artıyor.
+ *
+ * Bir tur üç parça demek, yani her kademe ~24 yerleştirme sürüyor. Daha
+ * sık artırmak ilk dakikayı cezalandırırdı: yeni oyuncunun ilk turu
+ * öğrenme turu (docs/03 · *"ilk oyun kesinlikle kolay olmalı"*).
+ */
+const KADEME_TUR = 8;
+
+/** Zorluk en fazla bu kademeye çıkıyor. */
+const EN_YUKSEK_KADEME = 3;
+
+/**
+ * Kolay parçalar — iki hücre ve altı.
+ *
+ * Bunlar tahtayı doldurmuyor, tıkanmayı açıyor. Zorluk kademesi tam
+ * olarak bunların ne sıklıkta geleceğini kısıyor.
+ */
+const KOLAY = PARCA_HUCRELERI.map((h) => h.length <= 2);
 
 export type BlokDurumu = {
   /**
-   * Bölümün kimliği. Durumda duruyor çünkü yeni teklif turu tohumdan
-   * türemek zorunda ve `uygula` başka türlü tohuma erişemez. Durum yine
-   * `(tohum, girdiler)` fonksiyonu — tohumu içinde taşıması bunu bozmuyor.
+   * Tohum durumda duruyor çünkü yeni teklif turu ondan türemek zorunda ve
+   * `uygula` başka türlü tohuma erişemez. Durum yine `(tohum, girdiler)`
+   * fonksiyonu — tohumu içinde taşıması bunu bozmuyor.
    */
   tohum: string;
-  bolum: number;
   /** 8 satır, her biri 8 bitlik dolu-boş maskesi. */
   izgara: number[];
   /** Teklif edilen parça indeksleri; kullanılan `-1` olur. */
   teklifler: number[];
-  /** Kaçıncı teklif turu — yeni üçlü bundan türüyor. */
+  /** Kaçıncı teklif turu — yeni üçlü ve zorluk kademesi bundan türüyor. */
   tur: number;
   skor: number;
   temizlenen: number;
-  hedef: number;
-  /** Hiçbir parça sığmadığı için mi bitti? */
+  /**
+   * Aralıksız temizlik zinciri — temizlik yapan her yerleştirmede büyüyor,
+   * yapmayanda sıfırlanıyor.
+   *
+   * Ü83'ün skor ölçeği buna dayanıyor: sonsuz bir turda tek tek satır
+   * temizlemek kaçınılmaz, ama **arka arkaya** temizlemek ustalık.
+   * 500/1500/2500 eşiklerini ayıran şey bu.
+   */
+  zincir: number;
+  /** Hiçbir parça sığmadığı için bitti — turun tek bitiş yolu. */
   tikandi: boolean;
 };
 
@@ -82,10 +116,35 @@ export type BlokGirdisi = {
   k: number;
 };
 
-/** Turun üç parçası — yalnızca (tohum, bölüm, tur)'dan türer. */
-function turunParcalari(tohum: string, bolum: number, tur: number): number[] {
-  const r = tohumla(`${tohum}:blok:${bolum}:${tur}`);
-  return [r.tamsayi(PARCA_HUCRELERI.length), r.tamsayi(PARCA_HUCRELERI.length), r.tamsayi(PARCA_HUCRELERI.length)];
+/** Bu turda kaçıncı zorluk kademesindeyiz — 0 en kolay. Ekran da okuyor. */
+export function kademe(tur: number): number {
+  return Math.min(Math.floor(tur / KADEME_TUR), EN_YUKSEK_KADEME);
+}
+
+/**
+ * Turun üç parçası — yalnızca (tohum, tur)'dan türer.
+ *
+ * Zorluk kademesi küçük parçayı **eleyerek değil, yeniden çekerek**
+ * seyreltiyor: kademe kadar kez daha çekiliyor ve küçük parça ancak
+ * hepsinde küçük çıkarsa hayatta kalıyor.
+ *
+ * ⚠️ Tamamen elenseydi dolmuş tahta kurtarılamaz olurdu ve oyun beceriyi
+ * değil sabrı ölçerdi. Kademe 3'te tek hücrelik parça dört bağımsız
+ * çekilişin dördünde de küçük çıkmayı gerektiriyor — nadir ama mümkün.
+ */
+function turunParcalari(tohum: string, tur: number): number[] {
+  const r = tohumla(`${tohum}:blok:${tur}`);
+  const zorluk = kademe(tur);
+  const out: number[] = [];
+
+  for (let i = 0; i < TEKLIF; i++) {
+    let p = r.tamsayi(PARCA_HUCRELERI.length);
+    for (let d = 0; d < zorluk && KOLAY[p]; d++) {
+      p = r.tamsayi(PARCA_HUCRELERI.length);
+    }
+    out.push(p);
+  }
+  return out;
 }
 
 /** Parça verilen köşeye sığıyor mu? */
@@ -144,20 +203,18 @@ function temizle(izgara: number[]): number {
 export const blok: Oyun<BlokDurumu, BlokGirdisi> = {
   id: "blok",
   ad: "Blok",
-  ozet: "Parçaları yerleştir, satırları temizle",
+  ozet: "Parçaları yerleştir, tıkanana kadar dayan",
   emoji: "🟦",
-  bolumSayisi: HEDEFLER.length,
 
-  baslat(tohum, bolum) {
+  baslat(tohum) {
     return {
       tohum,
-      bolum,
       izgara: new Array(EN).fill(0),
-      teklifler: turunParcalari(tohum, bolum, 0),
+      teklifler: turunParcalari(tohum, 0),
       tur: 0,
       skor: 0,
       temizlenen: 0,
-      hedef: HEDEFLER[bolum - 1],
+      zincir: 0,
       tikandi: false,
     };
   },
@@ -177,11 +234,21 @@ export const blok: Oyun<BlokDurumu, BlokGirdisi> = {
       izgara[s + ds] |= 1 << (k + dk);
     }
 
-    // Yerleştirme parça büyüklüğü kadar; temizlik kare artan bonusla
-    // (iki çizgiyi aynı anda temizlemek ikisini ayrı ayrı temizlemekten
-    // değerli olsun — oyuncuyu kurmaya iter).
     const cizgi = temizle(izgara);
-    const kazanc = PARCA_HUCRELERI[parca].length + cizgi * cizgi * 10;
+    const zincir = cizgi > 0 ? durum.zincir + 1 : 0;
+
+    // Skor üç parçadan (Ü83 ölçeği):
+    //   · yerleştirme — parça hücre sayısı; sürekli ama küçük
+    //   · temizlik    — çizgi sayısının karesi × 25; ikisini aynı anda
+    //                   temizlemek ayrı ayrı temizlemekten değerli
+    //   · zincir      — arka arkaya temizlemenin ödülü, üçte doyuyor
+    //
+    // Ölçek eskisinin yaklaşık iki buçuk katı ve bu kasıtlı: bölümlü
+    // oyunda tur 12 satırda kesiliyordu ve Ü48'in 1500/2500 eşiklerine
+    // hiç ulaşılamıyordu — 611 gerçek turda en yüksek skor 1200'dü.
+    const zincirCarpani = Math.min(zincir, 3);
+    const kazanc =
+      PARCA_HUCRELERI[parca].length + cizgi * cizgi * 35 + (cizgi > 0 ? zincirCarpani * 20 : 0);
 
     const teklifler = durum.teklifler.slice();
     teklifler[t] = -1;
@@ -191,34 +258,27 @@ export const blok: Oyun<BlokDurumu, BlokGirdisi> = {
 
     const sonraki: BlokDurumu = {
       tohum: durum.tohum,
-      bolum: durum.bolum,
       izgara,
-      teklifler: bittiTeklif ? turunParcalari(durum.tohum, durum.bolum, tur) : teklifler,
+      teklifler: bittiTeklif ? turunParcalari(durum.tohum, tur) : teklifler,
       tur,
       skor: durum.skor + kazanc,
       temizlenen: durum.temizlenen + cizgi,
-      hedef: durum.hedef,
+      zincir,
       tikandi: false,
     };
 
-    // Hedefe ulaşılmadıysa ve elde sığacak parça kalmadıysa bölüm tıkandı.
-    if (sonraki.temizlenen < sonraki.hedef && !hamleVarMi(sonraki)) {
-      sonraki.tikandi = true;
-    }
+    // Turun tek bitiş yolu: elde sığacak parça kalmaması.
+    if (!hamleVarMi(sonraki)) sonraki.tikandi = true;
 
     return sonraki;
   },
 
   bittiMi(durum) {
-    return durum.tikandi || durum.temizlenen >= durum.hedef;
+    return durum.tikandi;
   },
 
   skor(durum) {
     return durum.skor;
-  },
-
-  basarili(durum) {
-    return durum.temizlenen >= durum.hedef;
   },
 
   girdiOku(ham) {

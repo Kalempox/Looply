@@ -5,6 +5,7 @@ import { K2 } from "@/domain/masa";
 import { oyunBul, gununOyunu } from "@/oyunlar";
 import { kodEkrandaGosterilir } from "@/sms";
 import { isGunu } from "@/lib/tarih";
+import { KUPON_ESIGI } from "@/domain/puan";
 import { OyuncuSayfa } from "@/components/oyuncu";
 import { OyunKabugu } from "./oyun-kabuk";
 
@@ -18,7 +19,7 @@ export const dynamic = "force-dynamic";
  * oturum akışı kabuğun içinde.
  *
  * `kazandirir` burada hesaplanıyor ve ekranda **oyun başlamadan önce**
- * söyleniyor. Oyuncunun bir bölümü bitirip "puan nerede?" diye sorması,
+ * söyleniyor. Oyuncunun bir tur oynayıp "puan nerede?" diye sorması,
  * baştan söylenmesinden çok daha kötü.
  */
 export default async function OyunSayfasi({
@@ -57,14 +58,14 @@ export default async function OyunSayfasi({
     <OyuncuSayfa aktif="/oyna" geri={{ href: "/oyunlar", etiket: "Oyunlar" }}>
       {/* Başlık kabuğun içinde: üç durumun üçü de oyunun adını farklı
           yerde söylüyor (kartın tepesinde, oynarken şeritte, sonuçta
-          bölüm satırında). Sayfanın da ayrıca söylemesi, oyun adını
+          sonuç kartında). Sayfanın da ayrıca söylemesi, oyun adını
           ekranda iki kez yazıyordu. */}
       <OyunKabugu
         oyunId={oyun.id}
         ad={oyun.ad}
         ozet={oyun.ozet}
         emoji={oyun.emoji}
-        bolumSayisi={oyun.bolumSayisi}
+        kuponEsigi={KUPON_ESIGI}
         kazandirir={kazandirir}
         bonusMu={bonusMu}
         cafeAdi={masa?.cafeAdi ?? null}
