@@ -36,56 +36,89 @@ import type { KuponGorseli } from "./oyuncu-gorsel";
 /* ── Desen ─────────────────────────────────────────────────── */
 
 /**
- * Döşenen desen — 72×72'lik tek karo.
+ * Döşenen desen — 96×96'lık tek karo.
  *
- * Beyaz ve düşük opaklıkta: kartın kendi rengi neyse desen onun
- * üstünde açık bir doku olarak duruyor, ayrı bir renk getirmiyor.
+ * ── Neden dolgu, kontur değil (Ü73) ─────────────────────────
+ *
+ * İlk sürüm ince çizgili konturlardı ve ürün sahibi *"küçük emojileri
+ * beğenmedim"* dedi. Sebep ölçek: 20 pikselde 2,4 birimlik bir kontur,
+ * silik ve tanınmaz bir tel örgüye dönüşüyor. Dolgu siluetler o boyutta
+ * hâlâ okunuyor — kiraz kiraz, makaron makaron.
+ *
+ * Biçimler ürün sahibinin indirdiği ikonlardan alındı (`Downloads/icons`:
+ * cherry, macaron, donut, cupcake, cheesecake, money, coffee-cup,
+ * cold-coffee). **Dosyalar kullanılmadı, siluetleri örnek alındı** —
+ * ürün sahibinin bir önceki turdaki kuralı: *"örnek al diye gönderdim,
+ * direkt kullan diye değil."* Ayrıca hazır ikon setleri atıf ya da
+ * ücretli lisans istiyor; ticari bir üründe bu ayrı bir yük.
+ *
+ * ── Neden beyaz ─────────────────────────────────────────────
+ *
+ * Desen kartın kendi rengini bozmuyor, üstünde açık bir doku olarak
+ * duruyor. Renkli olsaydı her kart için ayrı desen gerekirdi.
  */
 function karo(icerik: string): string {
-  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='72' height='72' viewBox='0 0 72 72'>${icerik}</svg>`;
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='96' height='96' viewBox='0 0 96 96'>${icerik}</svg>`;
   return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
 }
 
-const AK = "rgba(255,255,255,0.10)";
-const AK_KOYU = "rgba(255,255,255,0.07)";
+/** Ana siluet ve üstündeki vurgu — iki opaklık, tek renk. */
+const AK = "rgba(255,255,255,0.11)";
+const AK_VURGU = "rgba(255,255,255,0.17)";
 
 export const DESEN: Record<KuponGorseli, string> = {
-  /* Kahve çekirdeği ve fincan. */
+  /* Fincan, çekirdek, buzlu bardak. */
   icecek: karo(
-    `<g fill='none' stroke='${AK}' stroke-width='2.4'>
-       <ellipse cx='18' cy='16' rx='7' ry='10' transform='rotate(-25 18 16)'/>
-       <path d='M18 7c-4 5-4 13 0 18' />
-       <ellipse cx='54' cy='52' rx='7' ry='10' transform='rotate(20 54 52)'/>
-       <path d='M54 43c-4 5-4 13 0 18' />
-       <path d='M42 12h14v8a7 7 0 0 1-7 7 7 7 0 0 1-7-7z'/>
-       <path d='M56 15h4a3.5 3.5 0 0 1 0 7h-4'/>
-       <path d='M8 56h16v6a6 6 0 0 1-6 6h-4a6 6 0 0 1-6-6z'/>
+    `<g fill='${AK}'>
+       <path d='M8 14h26v13a13 13 0 0 1-26 0z'/>
+       <path d='M34 17h6a6 6 0 0 1 0 12h-6z'/>
+       <rect x='4' y='42' width='34' height='4' rx='2'/>
+       <ellipse cx='72' cy='22' rx='9' ry='13' transform='rotate(-28 72 22)'/>
+       <path d='M56 60h20l-3 30a5 5 0 0 1-5 4h-4a5 5 0 0 1-5-4z'/>
+       <rect x='53' y='55' width='26' height='6' rx='3'/>
+       <ellipse cx='26' cy='74' rx='9' ry='13' transform='rotate(24 26 74)'/>
+     </g>
+     <g fill='${AK_VURGU}'>
+       <path d='M72 11c-5 7-5 15 0 22' opacity='0.9'/>
+       <rect x='60' y='68' width='7' height='7' rx='2'/>
+       <rect x='67' y='79' width='7' height='7' rx='2'/>
+       <path d='M26 63c-5 7-5 15 0 22'/>
      </g>`,
   ),
 
-  /* Makaron ve kiraz. */
+  /* Kiraz, makaron, donut, cupcake. */
   tatli: karo(
-    `<g fill='none' stroke='${AK}' stroke-width='2.4'>
-       <ellipse cx='18' cy='14' rx='11' ry='6'/>
-       <path d='M7 14v4a11 6 0 0 0 22 0v-4'/>
-       <path d='M7 18a11 6 0 0 0 22 0'/>
-       <circle cx='50' cy='52' r='7'/>
-       <circle cx='62' cy='58' r='7'/>
-       <path d='M50 45c2-8 8-11 13-10'/>
-       <path d='M40 20c6 0 6 6 12 6s6-6 12-6'/>
+    `<g fill='${AK}'>
+       <circle cx='16' cy='24' r='8'/>
+       <circle cx='30' cy='28' r='8'/>
+       <path d='M16 16c1-9 8-13 16-12l-2 5c-6-1-10 3-10 8z'/>
+       <ellipse cx='72' cy='18' rx='14' ry='6'/>
+       <ellipse cx='72' cy='28' rx='14' ry='6'/>
+       <rect x='58' y='20' width='28' height='7'/>
+       <path d='M50 62h24l-3 26a5 5 0 0 1-5 4h-8a5 5 0 0 1-5-4z'/>
+       <path d='M48 62c0-12 6-20 14-20s14 8 14 20z'/>
+       <circle cx='20' cy='72' r='16'/>
+     </g>
+     <g fill='${AK_VURGU}'>
+       <circle cx='20' cy='72' r='6'/>
+       <path d='M6 68c2-8 8-13 14-13s12 5 14 13z'/>
+       <rect x='58' y='22' width='28' height='3'/>
      </g>`,
   ),
 
-  /* Madeni para ve banknot. */
+  /* Banknot ve madeni para. */
   para: karo(
-    `<g fill='none' stroke='${AK}' stroke-width='2.4'>
-       <ellipse cx='17' cy='16' rx='11' ry='5'/>
-       <path d='M6 16v6a11 5 0 0 0 22 0v-6'/>
-       <rect x='40' y='44' width='26' height='16' rx='2'/>
-       <circle cx='53' cy='52' r='4'/>
-       <ellipse cx='55' cy='16' rx='9' ry='9'/>
-       <path d='M55 11v10M52 14h6M52 18h6' stroke='${AK_KOYU}'/>
-       <rect x='6' y='46' width='22' height='14' rx='2' stroke='${AK_KOYU}'/>
+    `<g fill='${AK}'>
+       <rect x='6' y='14' width='40' height='24' rx='4'/>
+       <ellipse cx='72' cy='24' rx='15' ry='7'/>
+       <path d='M57 24v9a15 7 0 0 0 30 0v-9z'/>
+       <rect x='52' y='62' width='38' height='24' rx='4'/>
+       <ellipse cx='22' cy='70' rx='15' ry='7'/>
+       <path d='M7 70v9a15 7 0 0 0 30 0v-9z'/>
+     </g>
+     <g fill='${AK_VURGU}'>
+       <circle cx='26' cy='26' r='7'/>
+       <circle cx='71' cy='74' r='7'/>
      </g>`,
   ),
 };

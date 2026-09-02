@@ -27,6 +27,13 @@ import { type KuponGorseli } from "./oyuncu-gorsel";
  * `gorselSec()` onu sıcak içecek / tatlı / para üçlüsünden birine
  * düşürüyor ve yeni çizim gerekmiyor.
  *
+ * ── Parlama da gitti (Ü73) ──────────────────────────────────
+ *
+ * Soldan sağa geçen ışık süpürmesi (`parilti`) kaldırıldı: *"parlama
+ * efektini geçiyor ya soldan sağa, kaldır onu."* Desen zaten yüzeyi
+ * dolduruyor ve hareketli bir parlama onun üstünde ikinci bir katman
+ * oluyordu. Sınıf duruyor — başka bir yerde gerekirse hazır.
+ *
  * ── Işın gitti ──────────────────────────────────────────────
  *
  * Ü70'te ışın dokusu "kartların ana ekrandaki durum kartıyla
@@ -57,7 +64,7 @@ export function Bilet({ veri }: { veri: BiletVerisi }) {
   return (
     <Link
       href={veri.href}
-      className="kart-golge kart-gel parilti relative block h-[124px] overflow-hidden rounded-2xl transition-transform active:scale-[0.99]"
+      className="kart-golge kart-gel relative block h-[124px] overflow-hidden rounded-2xl transition-transform active:scale-[0.99]"
       style={{
         // Koyu ve doygun: `koyu` tondan `ana` tona. Beyaz metin bu iki
         // durağın hepsinde AA geçiyor; pastel zeminde geçmiyordu ve
