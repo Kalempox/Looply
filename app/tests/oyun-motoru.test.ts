@@ -21,7 +21,13 @@ import {
 import { blok, kademe as blokKademe } from "@/oyunlar/blok";
 import { kelime, kurulabilir, kucult, turSuresi } from "@/oyunlar/kelime";
 import { dusen, dusmeTickiHesapla } from "@/oyunlar/dusen";
-import { tekrarOyna, EN_FAZLA_GIRDI } from "@/oyunlar/sozlesme";
+import {
+  tekrarOyna,
+  EN_FAZLA_GIRDI,
+  TICK_MS,
+  SAAT_ALT_SINIR_MS,
+  saatTutarliMi,
+} from "@/oyunlar/sozlesme";
 import { OYUNLAR, type HerhangiOyun } from "@/oyunlar";
 import kelimeVerisi from "@/oyunlar/veri/kelimeler.json";
 import { isGunu } from "@/lib/tarih";
@@ -351,6 +357,45 @@ describe("sonsuz mod (Ü83)", () => {
         `${oyun.id}: sözleşmede hâlâ basarili() var`,
       );
     }
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════
+   1c · Oyun saati gerçek süreyle tutarlı mı (Ü84)
+   ═══════════════════════════════════════════════════════════ */
+
+describe("saat tutarlılığı (Ü84)", () => {
+  test("zamansız oyun her zaman geçerli", () => {
+    // Blok'ta tick yok; `gecenMs` tanımlı değil ve kontrol devre dışı.
+    assert.equal(blok.gecenMs, undefined, "blok'a zaman eklenmiş");
+    assert.equal(saatTutarliMi(null, 60 * 60_000), true);
+  });
+
+  test("dürüst kayıt geçiyor — oyun saati gerçek süreye yakın", () => {
+    const gercek = 45_000;
+    assert.equal(saatTutarliMi(45_000, gercek), true, "birebir eşit kayıt reddedildi");
+    assert.equal(saatTutarliMi(40_000, gercek), true, "makul gecikme reddedildi");
+  });
+
+  test("on dakikayı üç saniye diye bildiren kayıt reddediliyor", () => {
+    // Kurcalanan istemcinin yaptığı tam olarak bu: tick'leri küçük
+    // tutarak Kelime'de süreyi hiç doldurmuyor.
+    assert.equal(saatTutarliMi(3_000, 10 * 60_000), false);
+  });
+
+  test("kısa turlar sınanmıyor — kurulum gecikmesi haksızlık yapmasın", () => {
+    assert.equal(saatTutarliMi(1_000, SAAT_ALT_SINIR_MS - 1), true);
+  });
+
+  test("zaman tabanlı oyunlar kendi sürelerini bildiriyor", () => {
+    for (const oyun of [kelime, dusen]) {
+      assert.equal(typeof oyun.gecenMs, "function", `${oyun.id}: gecenMs yok`);
+    }
+    // Kelime turu 900 tick (45 sn) sürüyor; süre dolunca saat orada duruyor.
+    const k = kelimeOyna("saat");
+    const bildirilen = kelime.gecenMs!(k.durum);
+    assert.ok(bildirilen > 0, "kelime sıfır süre bildirdi");
+    assert.equal(bildirilen, k.durum.tick * TICK_MS, "süre tick ile tutarsız");
   });
 });
 

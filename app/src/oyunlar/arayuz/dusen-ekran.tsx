@@ -10,6 +10,7 @@ import {
   type DusenGirdisi,
   type DusenHareket,
 } from "../dusen";
+import { TICK_MS } from "../sozlesme";
 import type { OyunEkraniProps } from "./ortak";
 
 /**
@@ -36,8 +37,19 @@ import type { OyunEkraniProps } from "./ortak";
  * aynı çıktı. Kaç kez çağrıldığı önemsiz.
  */
 
-/** Bir tick kaç milisaniye. Zorluk `dusmeTicki` ile artıyor (Ü83). */
-const TICK_MS = 50;
+/**
+ * ⚠️ Ü84: tick **duvar saatinden** hesaplanıyor, sayarak değil.
+ *
+ * Sayarak ilerletmek iki yerde bozuluyordu — Kelime'de de aynısı yaşandı:
+ *
+ *   · Tarayıcı gizli sekmede `setInterval`i kısıyor (ölçüldü: saniyede 20
+ *     yerine ~1,5 tick), yani yerçekimi fiilen duruyordu.
+ *   · Oyuncu sekmeyi arkaya atıp parçayı istediği kadar havada tutabiliyordu.
+ *
+ * Ayrıca sunucunun saat kontrolü (Ü84) ancak dürüst istemci gerçek zamanı
+ * bildirirse çalışır; sayan istemci meşru olarak geri kalır ve kontrolü
+ * yanlış yere tetiklerdi.
+ */
 
 type Yerel = {
   durum: DusenDurumu;
@@ -55,10 +67,12 @@ export function DusenEkrani({ tohum, bitti }: OyunEkraniProps) {
 
   // ── Yerçekimi ────────────────────────────────────────
   useEffect(() => {
+    const baslangic = Date.now();
     const zamanlayici = setInterval(() => {
       setY((p) => {
         if (dusen.bittiMi(p.durum)) return p;
-        const tick = p.tick + 1;
+        const tick = Math.floor((Date.now() - baslangic) / TICK_MS);
+        if (tick <= p.tick) return p;
         const sonraki = dusen.uygula(p.durum, { tick, a: "bekle" });
         return { ...p, tick, durum: sonraki ?? p.durum };
       });

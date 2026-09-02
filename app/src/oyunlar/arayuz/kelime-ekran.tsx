@@ -8,6 +8,7 @@ import {
   type KelimeDurumu,
   type KelimeGirdisi,
 } from "../kelime";
+import { TICK_MS } from "../sozlesme";
 import type { OyunEkraniProps } from "./ortak";
 
 /**
@@ -30,7 +31,6 @@ import type { OyunEkraniProps } from "./ortak";
  * Sunucu için önemli olan hamlenin **hangi tick'te** yapıldığı; aradaki
  * boşluğu `uygula` zaten kendisi geçiyor.
  */
-const TICK_MS = 50;
 
 /**
  * Oyun durumu tek bir nesnede.

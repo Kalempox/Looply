@@ -3,7 +3,7 @@ import { newId } from "@/lib/ids";
 import { randomToken, identifierHash } from "@/lib/crypto";
 import { isGunu } from "@/lib/tarih";
 import { log } from "@/lib/log";
-import { oyunBul, gununOyunu, tekrarOyna, EN_FAZLA_GIRDI } from "@/oyunlar";
+import { oyunBul, gununOyunu, tekrarOyna, EN_FAZLA_GIRDI, saatTutarliMi } from "@/oyunlar";
 import * as masaOturumu from "./masa";
 import { K2 } from "./masa";
 import * as acil from "./acil";
@@ -552,6 +552,30 @@ export async function bitir(opts: {
         fark: iddia - sonuc.skor,
         oyun: oturum.game_id,
       });
+    }
+
+    // Ü84: bildirilen oyun saati gerçek süreyle tutarlı mı?
+    //
+    // Zaman tabanlı oyunlarda saat istemcide işliyor. On dakika oturup
+    // "üç saniye geçti" diyen bir kayıt, Kelime'de süreyi hiç doldurmaz
+    // ve tur sonsuza kadar sürer. Reddetme yolu geçersiz replay'inkiyle
+    // aynı: oturum `rejected` yazılıyor, hiçbir kazanım işlenmiyor.
+    if (!saatTutarliMi(sonuc.oyunMs, yas)) {
+      await db.query(
+        `UPDATE play_sessions
+            SET status = 'rejected', ended_at = now(), duration_ms = $2,
+                claimed_score = $3, input_log = $4, reject_reason = $5
+          WHERE id = $1 AND status = 'open'`,
+        [
+          oturum.id,
+          yas,
+          iddia,
+          JSON.stringify(sanitize(opts.girdiler)),
+          `saat tutarsız: oyun ${sonuc.oyunMs}ms, gerçek ${yas}ms`,
+        ],
+      );
+      log.warn("oyun saati tutarsiz", { oyunMs: sonuc.oyunMs, gercekMs: yas });
+      return { ok: false as const, hata: "Oyun kaydı doğrulanamadı.", reddedildi: true };
     }
 
     const kazandirir = !!oturum.cafe_id && (oturum.proof_mask & K2) !== 0;

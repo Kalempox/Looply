@@ -1,5 +1,5 @@
 import { randomToken, imzala, imzaGecerliMi } from "@/lib/crypto";
-import { oyunBul, tekrarOyna } from "@/oyunlar";
+import { oyunBul, tekrarOyna, saatTutarliMi } from "@/oyunlar";
 import { log } from "@/lib/log";
 import * as acil from "./acil";
 import { GEOFENCE_METRE, mesafeMetre } from "./masa";
@@ -251,6 +251,15 @@ export function bitir(opts: {
     return { ok: false, hata: "Oyun kaydı doğrulanamadı.", reddedildi: true };
   }
 
+  // Ü84: bildirilen oyun saati gerçek süreyle tutarlı mı? Misafir akışı
+  // ürün kurallarını gevşetmiyor (Ü35) — kayıtlı oyuncuda ne oluyorsa
+  // burada da o oluyor.
+  const gercekMs = Math.max(0, Date.now() - acik.baslangic);
+  if (!saatTutarliMi(sonuc.oyunMs, gercekMs)) {
+    log.warn("misafir oyunu saat tutarsiz", { oyunMs: sonuc.oyunMs, gercekMs });
+    return { ok: false, hata: "Oyun kaydı doğrulanamadı.", reddedildi: true };
+  }
+
   const konum = konumOku(opts.konumCerezi, acik.cafeId);
 
   const talep: Talep = {
@@ -262,7 +271,7 @@ export function bitir(opts: {
     // Ü83: başarı artık oyunun değil ürünün kuralı (`puan.KUPON_ESIGI`).
     basarili: basariliMi(sonuc.skor),
     iddia: Number.isFinite(opts.iddiaEdilenSkor) ? Math.trunc(opts.iddiaEdilenSkor) : 0,
-    sureMs: Math.max(0, Date.now() - acik.baslangic),
+    sureMs: gercekMs,
     k2: !!konum?.k2,
     mesafeM: konum?.mesafeM ?? null,
     son: Date.now() + TALEP_OMRU_SN * 1000,

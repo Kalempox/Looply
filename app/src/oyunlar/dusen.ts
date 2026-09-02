@@ -1,5 +1,5 @@
 import { tohumla } from "./rastgele";
-import type { Oyun } from "./sozlesme";
+import { TICK_MS, type Oyun } from "./sozlesme";
 
 /**
  * Düşen — yukarıdan inen parçalarla satır doldurma.
@@ -298,6 +298,10 @@ export const dusen: Oyun<DusenDurumu, DusenGirdisi> = {
 
   skor(durum) {
     return durum.skor;
+  },
+
+  gecenMs(durum) {
+    return durum.tick * TICK_MS;
   },
 
   girdiOku(ham) {

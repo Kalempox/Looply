@@ -39,4 +39,4 @@ export function gununOyunu(gunIso: string): HerhangiOyun {
 }
 
 export type { HerhangiOyun } from "./sozlesme";
-export { tekrarOyna, EN_FAZLA_GIRDI } from "./sozlesme";
+export { tekrarOyna, EN_FAZLA_GIRDI, TICK_MS, saatTutarliMi } from "./sozlesme";
