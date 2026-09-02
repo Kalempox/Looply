@@ -6,7 +6,7 @@
 > Yan dosyalar: neyin **var** olduğu → `21-looply-kapsam-haritasi.md` ·
 > demoda neyin **yapılabildiği** → `22-demo-yapilabilirlik.md`
 
-**Son güncelleme:** 2026-09-02 · **Kararlar:** Ü76 – Ü90
+**Son güncelleme:** 2026-09-02 · **Kararlar:** Ü76 – Ü91
 
 ---
 
@@ -64,7 +64,7 @@
 
 ---
 
-# DALGA 2 · ŞİMDİ — ekonomik motor ⬅️
+# DALGA 2 · ✅ TAMAMLANDI — 2026-09-03
 
 Üçü tek bir soruyu cevaplıyor: *bu turda ödül çıkacak mı, hangisi, ne kadar?*
 Ayrı ayrı yazılırsa üçüncüsü ilk ikisini bozar.
@@ -103,12 +103,23 @@ Ayrı ayrı yazılırsa üçüncüsü ilk ikisini bozar.
   ("gece yarısını aşan saatler henüz desteklenmiyor").
   Gerçek gece kafeleri geldiğinde iş günü tanımıyla birlikte ele alınmalı.
 
-- [ ] **7 · Oyun içi ödül bloğu**
-  Motorun görünen yüzü: tahtaya kahve/tatlı bloğu düşer, oyuncu yakalar.
+- [x] **7 · Oyun içi ödül işareti + Yılan oyunu** ✅ **BİTTİ** — Ü91, 2026-09-03
+  Yılan eklendi; elmanın bazısı **altın kupon**. İlk beş yemde çıkmıyor
+  (öğrenme anı), sonra uygun yemlerin beşte biri.
+  Oyun kupon üretmiyor, yalnızca sayıyor — sunucu replay'de aynı sayıyı
+  buluyor. İşaret şansı yükseltiyor (%50→%70, %75→%95) ve **kupon eşiğini
+  atlıyor**; tier'i açmıyor (bütçe, Ü89).
+  ⚠️ Yılan ilk yön tuşuna kadar bekliyor — ilk sürümde oyuncu ekrana
+  bakmadan üç saniyede duvara giriyordu.
+  424 test · tarayıcıda oynandı.
+
+- [ ] **7b · Blok ve Düşen'e de ödül bloğu** *(isteğe bağlı)*
+  Sözleşmedeki `odulIsareti` seamı hazır; Yılan'da yemin yerini alması
+  doğaldı, Blok/Düşen'de tahtaya ayrı bir nesne koymak gerekiyor.
 
 ---
 
-# DALGA 3 · Sonra — döngüyü güçlendiren ucuz işler
+# DALGA 3 · ŞİMDİ — döngüyü güçlendiren ucuz işler ⬅️
 
 - [ ] **8 · Ödül ve ürün adını düzeltme**
   En küçük iş, en acil ihtiyaç. Bugün tek çare kaldırıp yeniden eklemek;
