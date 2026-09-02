@@ -22,15 +22,33 @@
   yıl görünmedi. Göç `0023` düzeltti.
   11 test · `npm run ci` 400/400.
 
-- [ ] **2 · Sonsuz oyun + `basarili()` kararı**
-  `bittiMi` yalnızca `tikandi` / `doldu` olacak; hedefle bitme kalkıyor.
-  Zorluk tur **içinde** artacak. ⚠️ Kupon düşüşü `if (basarili)` içinde —
-  sonsuz oyunda herkes kaybederek bittiği için `basarili` bir **skor eşiğine**
-  bağlanmazsa hiç kupon düşmez.
-  Bu iş 1500/2500 eşiğini ölü koddan çıkarıyor (bugüne kadar sıfır kez ödendi).
+- [x] **2 · Sonsuz oyun + `basarili()` kararı** ✅ **BİTTİ** — Ü83, 2026-09-02
+  Bölüm kavramı sözleşmeden tamamen kalktı. Turun tek bitişi kaybetmek.
+  Zorluk kolları: Blok'ta küçük parçalar seyreliyor, Düşen'de her dört
+  satırda hızlanma, Kelime'de tur başına süre (45 sn → 15 sn).
+  `basarili` artık **skor eşiği**: `puan.KUPON_ESIGI = 500`, kapsam
+  belgesindeki 500/1000/2500 kademesinden. Ü48'in 1500/2500'ü artık
+  gerçekten ödenebilir.
+  403 test yeşil · tarayıcıda misafir akışıyla uçtan uca oynandı.
+
+- [ ] **2b · Skor dengesinin gerçek veriyle kalibrasyonu** 🔴 *veri bekliyor*
+  Ölçek makul ama **doğrulanmadı**: testteki botlar zayıf oyuncuyu bile
+  temsil etmiyor (Düşen botu 40 turda bir kez satır temizleyemedi; Kelime
+  botu sözlüğün tamamını bildiği için 10.000 skor yapıyor). Üç oyunun
+  eşiğe ulaşma oranı ancak pilot verisiyle ayarlanabilir.
+  **Açılır:** ilk kafede 2–4 hafta gerçek oyun.
+
+- [ ] **2c · Zaman tabanlı oyunlarda tick–duvar saati tutarlılığı** ⚠️ *açık*
+  İstemci tick değerlerini kendisi bildiriyor. Az tick bildiren oyuncu
+  Kelime'de daha çok düşünme süresi kazanır. Sunucu `duration_ms` tutuyor
+  ama tickle karşılaştırmıyor.
+  Bu **Ü83 öncesinde de vardı** (Düşen aynı yapıda); Kelime'de süre tek
+  zorluk kolu olduğu için artık daha değerli bir hedef.
 
 - [ ] **3 · Blok ve Düşen'in oyun tahtası görünümü**
   Çevresindeki her şey yeni kart diline geçti, tahtanın kendisi eski kaldı.
+  ⚠️ Üst şeritler Ü83'te güncellendi (hedef sayacı yerine zorluk kademesi
+  ve zincir); değişmeyen kısım tahtanın kendisi.
 
 - [ ] **4 · İsim değişikliği: CafePlay → Looply**
   Kod 60 dosya/113 geçiş · doküman 8 dosya/27 geçiş · depo, paket, alan adı.
