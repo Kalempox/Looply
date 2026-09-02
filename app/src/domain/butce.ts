@@ -3,6 +3,7 @@ import { audit } from "@/lib/audit";
 import { newId } from "@/lib/ids";
 import { isGunu, gunEkle, gunFarki } from "@/lib/tarih";
 import { log } from "@/lib/log";
+import * as ayar from "./ayar";
 
 /**
  * Kafe bütçesi — Ü6, Ü7, Ü25, E3, E10.
@@ -37,6 +38,73 @@ import { log } from "@/lib/log";
 /** Ü45: günlük taban — 1.500 TL, kuruş cinsinden. */
 export const GUNLUK_TABAN_KURUS = 150_000;
 
+/**
+ * Gün açılırken hazır duran pay (Ü87).
+ *
+ * Tempo sıfırdan başlasaydı sabahın ilk müşterisi eli boş dönerdi ve E2'nin
+ * gerekçesi ("ilk kez oynayanın eli boş çıkarsa bir daha gelmez") tam olarak
+ * orada çiğnenirdi. Günün onda biri ilk andan itibaren açık.
+ */
+export const ILK_PAY = 0.1;
+
+/**
+ * İstanbul saatiyle şu an kaçıncı dakikadayız (0–1439).
+ *
+ * `getHours()` DEĞİL: sunucu UTC'de koşuyor ve gece yarısı çevresinde üç
+ * saat kayıyor. Aynı hata `isGunu()`de bir kez yapıldı, ikinci kez
+ * yapılmıyor.
+ */
+function istanbulDakikasi(an: Date): number {
+  const [saat, dakika] = new Intl.DateTimeFormat("tr-TR", {
+    timeZone: "Europe/Istanbul",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  })
+    .format(an)
+    .split(":")
+    .map(Number);
+  return saat * 60 + dakika;
+}
+
+/**
+ * Günlük bütçenin şu ana kadar açılmış oranı (Ü87).
+ *
+ * ── Neden tempo gerekiyor ───────────────────────────────────
+ *
+ * Bugünkü davranış **ilk gelen alır**: `rezerveEt` yalnızca günlük
+ * taahhüde bakıyor, o yüzden sabahki kalabalık bütçenin tamamını
+ * bitirebiliyor ve akşam gelen müşteriye hiçbir şey çıkmıyor. Kafenin en
+ * yoğun saati genelde akşam olduğu için bu, parayı en az işe yarayacağı
+ * saate harcamak demek.
+ *
+ * ── Tavan, taban değil ──────────────────────────────────────
+ *
+ * Oran **birikimli**: sabah kimse gelmediyse o pay kaybolmuyor, gün
+ * ilerledikçe açılan payın içinde duruyor. Yani tempo "şu saatte şu kadar
+ * dağıt" demiyor, "şu saate kadar en fazla şu kadar dağıtılmış olabilir"
+ * diyor. Kimse gelmezse hiçbir şey dağıtılmıyor ve ertesi güne de
+ * devretmiyor (`budget_carryover: false`).
+ *
+ * ── Pencere dışı ────────────────────────────────────────────
+ *
+ * Açılıştan önce `ILK_PAY`, kapanıştan sonra tamamı. Gece 02:00'de oynayan
+ * biri günün bütçesinin tamamına erişebiliyor — o saatte gelen müşteri
+ * zaten kafenin son müşterisi ve saklanacak bir şey kalmadı.
+ */
+export function tempoOrani(an: Date, baslangicSaat: number, bitisSaat: number): number {
+  const simdi = istanbulDakikasi(an);
+  const bas = baslangicSaat * 60;
+  const bit = bitisSaat * 60;
+
+  if (bit <= bas) return 1; // bozuk ayar: tempoyu hiç uygulama
+  if (simdi <= bas) return ILK_PAY;
+  if (simdi >= bit) return 1;
+
+  const gecen = (simdi - bas) / (bit - bas);
+  return ILK_PAY + (1 - ILK_PAY) * gecen;
+}
+
 export type Donem = {
   id: string;
   baslangic: string;
@@ -59,6 +127,16 @@ export type ButceDurumu = {
   iadeKurus: number;
   /** Yeni kupon dağıtmak için kalan tutar. E10: hiçbir zaman negatif olamaz. */
   dagitilabilirKurus: number;
+  /**
+   * Ü87: **şu anda** dağıtılabilecek tutar — tempo tavanının bıraktığı.
+   *
+   * `dagitilabilirKurus`tan farkı: o günün tamamı için kalanı, bu ise
+   * saatin açtığı payı söylüyor. Kafe ikisini birden görmeli, yoksa
+   * "1.200 TL kaldı ama kupon çıkmıyor" diye arar.
+   */
+  simdiKurus: number;
+  /** Dağıtımın açık olduğu saat aralığı — panelde gösteriliyor. */
+  pencere: { baslangic: number; bitis: number };
 };
 
 /**
@@ -170,7 +248,11 @@ async function donemOku(db: Db, cafeId: string, gun: string): Promise<Donem | nu
  * Hepsi `budget_ledger`'ın toplamı. `dagitilabilir` negatife düşemez (E10):
  * sistem, kalan bütçenin karşılayamayacağı kadar kupon dağıtmaz.
  */
-export async function durum(cafeId: string, gun = isGunu()): Promise<ButceDurumu> {
+export async function durum(
+  cafeId: string,
+  gun = isGunu(),
+  an?: Date,
+): Promise<ButceDurumu> {
   return withCafe(cafeId, async (db) => {
     const donem = await donemOku(db, cafeId, gun);
 
@@ -181,17 +263,28 @@ export async function durum(cafeId: string, gun = isGunu()): Promise<ButceDurumu
         harcananKurus: 0,
         iadeKurus: 0,
         dagitilabilirKurus: 0,
+        simdiKurus: 0,
+        pencere: { baslangic: 0, bitis: 0 },
       };
     }
 
     const h = await hareketler(db, cafeId, donem.id);
+    const kullanilan = h.acikRezerve + h.harcanan;
+
+    const [bas, bit] = await Promise.all([
+      ayar.sayiOku(cafeId, ayar.ANAHTARLAR.dagitimBaslangic),
+      ayar.sayiOku(cafeId, ayar.ANAHTARLAR.dagitimBitis),
+    ]);
+    const tempoTavani = Math.floor(donem.taahhutKurus * tempoOrani(an ?? new Date(), bas, bit));
 
     return {
       donem,
       rezerveKurus: h.acikRezerve,
       harcananKurus: h.harcanan,
       iadeKurus: h.iade,
-      dagitilabilirKurus: Math.max(0, donem.taahhutKurus - h.acikRezerve - h.harcanan),
+      dagitilabilirKurus: Math.max(0, donem.taahhutKurus - kullanilan),
+      simdiKurus: Math.max(0, Math.min(donem.taahhutKurus - kullanilan, tempoTavani - kullanilan)),
+      pencere: { baslangic: bas, bitis: bit },
     };
   });
 }
@@ -283,22 +376,63 @@ export async function donemBelirle(opts: {
  */
 export async function rezerveEt(
   db: Db,
-  opts: { cafeId: string; kurus: number; kuponId?: string; not?: string; gun?: string },
+  opts: {
+    cafeId: string;
+    kurus: number;
+    kuponId?: string;
+    not?: string;
+    gun?: string;
+    /** Ü87: tempo hesabının okuduğu an. Testler için; normalde şimdi. */
+    an?: Date;
+  },
 ): Promise<boolean> {
   const gun = opts.gun ?? isGunu();
   const donem = await donemOku(db, opts.cafeId, gun);
   if (!donem || opts.kurus <= 0) return false;
 
   const h = await hareketler(db, opts.cafeId, donem.id);
-  const dagitilabilir = donem.taahhutKurus - h.acikRezerve - h.harcanan;
+  const kullanilan = h.acikRezerve + h.harcanan;
+
+  // Ü87: iki tavan birden. Günlük taahhüt (E10) hiçbir zaman aşılmıyor;
+  // tempo tavanı ise günün o saatine kadar açılmış payı sınırlıyor.
+  const gunlukKalan = donem.taahhutKurus - kullanilan;
+  const tempoTavani = await tempoTavaniHesapla(opts.cafeId, donem.taahhutKurus, opts.an);
+  const tempoKalan = tempoTavani - kullanilan;
+  const dagitilabilir = Math.min(gunlukKalan, tempoKalan);
 
   if (opts.kurus > dagitilabilir) {
-    log.info("rezervasyon reddedildi: butce yetmiyor", { istenen: opts.kurus, dagitilabilir });
+    log.info("rezervasyon reddedildi: butce yetmiyor", {
+      istenen: opts.kurus,
+      dagitilabilir,
+      // Hangi tavana takıldığı önemli: günlük tavan "kafe bugünkü sözünü
+      // tuttu", tempo tavanı "henüz sırası gelmedi" demek. İkisi ayrı
+      // sorun ve raporda ayrı görünmeli.
+      sebep: gunlukKalan <= tempoKalan ? "gunluk" : "tempo",
+    });
     return false;
   }
 
   await defterYaz(db, donem.id, opts.cafeId, "reserve", opts.kurus, opts.kuponId, opts.not);
   return true;
+}
+
+/**
+ * Kafenin dağıtım penceresine göre bu ana kadar açılmış tutar (Ü87).
+ *
+ * Ayarlar `withCafe` istiyor ve `rezerveEt` çoğu zaman `withBypass`
+ * içinde koşuyor; bu yüzden ayrı bir bağlamdan okunuyor. Okuma maliyeti
+ * iki küçük sorgu ve yalnızca kupon üretiminde çalışıyor.
+ */
+async function tempoTavaniHesapla(
+  cafeId: string,
+  taahhutKurus: number,
+  an?: Date,
+): Promise<number> {
+  const [bas, bit] = await Promise.all([
+    ayar.sayiOku(cafeId, ayar.ANAHTARLAR.dagitimBaslangic),
+    ayar.sayiOku(cafeId, ayar.ANAHTARLAR.dagitimBitis),
+  ]);
+  return Math.floor(taahhutKurus * tempoOrani(an ?? new Date(), bas, bit));
 }
 
 /** Kasada onaylandı — rezerve edilen tutarın gerçekleşen kısmı kalıcı düşer (Faz 7). */

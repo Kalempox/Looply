@@ -316,6 +316,59 @@ describe("bütçe defteri (E3, E10, E11)", () => {
    4 · Ürün ve katalog
    ═══════════════════════════════════════════════════════════ */
 
+/* ═══════════════════════════════════════════════════════════
+   3b · Bütçe temposu (Ü87)
+   ═══════════════════════════════════════════════════════════ */
+
+describe("bütçe temposu (Ü87)", () => {
+  /** İstanbul saatiyle verilen saatte bir an. */
+  const saat = (s: number) => new Date(`2026-09-02T${String(s).padStart(2, "0")}:00:00+03:00`);
+
+  test("oran gün boyunca artıyor ve kapanışta doluyor", () => {
+    // Pencere 09:00–23:00 (varsayılan).
+    assert.equal(butce.tempoOrani(saat(6), 9, 23), butce.ILK_PAY, "açılıştan önce ilk pay değil");
+    assert.equal(butce.tempoOrani(saat(9), 9, 23), butce.ILK_PAY, "açılışta ilk pay değil");
+    assert.equal(butce.tempoOrani(saat(23), 9, 23), 1, "kapanışta tamamı açılmadı");
+    assert.equal(butce.tempoOrani(saat(2), 9, 23), butce.ILK_PAY, "gece yarısı sonrası ilk pay");
+
+    const ogle = butce.tempoOrani(saat(16), 9, 23);
+    assert.ok(ogle > butce.tempoOrani(saat(12), 9, 23), "oran gün boyunca artmıyor");
+    assert.ok(ogle < 1, "gün ortasında bütçenin tamamı açılmış");
+  });
+
+  test("bozuk pencere tempoyu devre dışı bırakıyor", () => {
+    // Bitiş başlangıçtan küçükse kural uygulanamaz; kafeyi kilitlemektense
+    // tempoyu kapatmak doğru — bütçe tavanı (E10) zaten yerinde duruyor.
+    assert.equal(butce.tempoOrani(saat(12), 20, 8), 1);
+  });
+
+  test("aynı tutar sabah reddediliyor, akşam kabul ediliyor", async () => {
+    // Tutar sabit yazılmıyor: tohum ve önceki testler bu dönemde zaten
+    // rezervasyon bırakmış olabilir. Sınanan şey mutlak bir sayı değil,
+    // **aynı tutara iki saatte iki farklı cevap** verilmesi.
+    const d = await butce.durum(kafeA, bugun);
+    assert.ok(d.donem, "test kurulumu: dönem yok");
+
+    const kullanilan = d.donem.taahhutKurus - d.dagitilabilirKurus;
+    const sabahTavani = Math.floor(d.donem.taahhutKurus * butce.tempoOrani(saat(10), 9, 23));
+    const aksamTavani = Math.floor(d.donem.taahhutKurus * butce.tempoOrani(saat(22), 9, 23));
+
+    // Sabahın açtığı payı aşan, akşamınkine sığan bir tutar.
+    const tutar = Math.floor((sabahTavani + aksamTavani) / 2) - kullanilan;
+    assert.ok(tutar > 0, `test kurulumu: aralık kalmadı (kullanılan ${kullanilan})`);
+
+    const sabah = await withBypass("test: tempo sabah", (db) =>
+      butce.rezerveEt(db, { cafeId: kafeA, kurus: tutar, not: "test tempo", gun: bugun, an: saat(10) }),
+    );
+    assert.equal(sabah, false, "sabah 10'da akşamın payı rezerve edilebildi");
+
+    const aksam = await withBypass("test: tempo aksam", (db) =>
+      butce.rezerveEt(db, { cafeId: kafeA, kurus: tutar, not: "test tempo", gun: bugun, an: saat(22) }),
+    );
+    assert.equal(aksam, true, "akşam 22'de reddedildi — tempo, tavan değil engel olmuş");
+  });
+});
+
 describe("ürün ve ödül kataloğu", () => {
   test("ürün eklenir ve denetim izine düşer", async () => {
     const sonuc = await urun.ekle({

@@ -47,10 +47,19 @@ export default async function ButceSayfasi() {
               renkli, harcananın altında son yedi günün kıvılcımı.
               Referans yönetim panellerinin dili. */}
           <section className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+            {/* Ü87: gösterilen sayı **şu anda** dağıtılabilecek olan.
+                Günün kalanı altta duruyor: ikisi ayrışabiliyor ve kafe
+                sebebini görmeden "1.200 TL kaldı ama kupon çıkmıyor" diye
+                arıyor. Tempo bir tavan; gün ilerledikçe kendiliğinden
+                açılıyor. */}
             <SayiKarti
-              etiket="Dağıtılabilir"
-              deger={`${tlYaz(d.dagitilabilirKurus)} TL`}
-              alt="yeni kupon için kalan"
+              etiket="Şu an dağıtılabilir"
+              deger={`${tlYaz(d.simdiKurus)} TL`}
+              alt={
+                d.simdiKurus < d.dagitilabilirKurus
+                  ? `bugünün kalanı ${tlYaz(d.dagitilabilirKurus)} TL · ${d.pencere.bitis}:00'a kadar açılıyor`
+                  : "yeni kupon için kalan"
+              }
               ikon={IKON.para}
               alan="para"
               vurgulu

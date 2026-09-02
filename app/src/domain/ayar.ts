@@ -55,6 +55,18 @@ export const ANAHTARLAR = {
    * olarak çıkabiliyorlar — yalnızca çarkın listesinde yoklar.
    */
   carkUstSinir: "cark_ust_sinir_kurus",
+  /**
+   * Dağıtımın açıldığı saat (Ü87, 0–23, İstanbul).
+   *
+   * Günlük bütçe bu saatten kapanışa kadar **kademeli** açılıyor; bütün
+   * gün tek seferde masada durmuyor. Sebep Ü78: bugünkü davranış "ilk
+   * gelen alır" ve sabahki kalabalık günün bütçesini bitirince akşam
+   * gelen müşteriye hiçbir şey çıkmıyor — oysa kafenin en yoğun saati
+   * genelde akşam.
+   */
+  dagitimBaslangic: "dagitim_baslangic_saat",
+  /** Dağıtımın tamamen açıldığı saat (Ü87, 0–23, İstanbul). */
+  dagitimBitis: "dagitim_bitis_saat",
 } as const;
 
 export type Anahtar = (typeof ANAHTARLAR)[keyof typeof ANAHTARLAR];
@@ -82,6 +94,13 @@ export const SINIRLAR: Record<Anahtar, { en_az: number; en_cok: number; varsayil
   // kendisine kalıyor. 25 yazan kafede çark yalnızca en küçük ödülü
   // dağıtır; 50 yazan kafede her ödül çarka girer.
   [ANAHTARLAR.carkUstSinir]: { en_az: 25_00, en_cok: 50_00, varsayilan: 35_00 },
+  // Varsayılan 09:00–23:00: kafelerin çoğunun açık olduğu aralık.
+  // ⚠️ Bunlar bir **tahmin**, ölçüm değil — kafenin gerçek saatleri
+  // sistemde yok (S-serisinde de yok). Kafe kendi saatini yazabilsin
+  // diye ayar olarak duruyorlar; öngörü paneli (Ü80) gerçek veriyle
+  // geldiğinde eğri bu iki sayıdan daha iyisini bulacak.
+  [ANAHTARLAR.dagitimBaslangic]: { en_az: 0, en_cok: 23, varsayilan: 9 },
+  [ANAHTARLAR.dagitimBitis]: { en_az: 1, en_cok: 23, varsayilan: 23 },
 };
 
 export async function sayiOku(cafeId: string, anahtar: Anahtar): Promise<number> {
