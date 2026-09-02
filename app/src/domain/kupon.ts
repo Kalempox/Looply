@@ -9,6 +9,7 @@ import * as happy from "./happy";
 import * as ayar from "./ayar";
 import * as cark from "./cark";
 import * as kampanya from "./kampanya";
+import * as motor from "./odul-motoru";
 import { kanitSeviyesi } from "./katalog";
 import { idIleBul, odulKilidiBitis, takmaAdIle } from "./player";
 
@@ -133,6 +134,8 @@ async function kuponUret(
     kaynak: string;
     /** Ö3: kupon bir Happy Hour penceresinde üretildiyse o pencerenin kimliği. */
     happyHourId?: string;
+    /** Ü88: kuponu doğuran oyun oturumu. Çark ve kampanyada yok. */
+    oturumId?: string;
   },
 ): Promise<KuponSonucu> {
   const tutar = opts.kaynakNesnesi.tutarKurus;
@@ -185,8 +188,8 @@ async function kuponUret(
     `INSERT INTO coupons
        (id, cafe_id, player_id, reward_id, campaign_id, code, qr_token, status,
         activates_at, expires_at, budget_period_id, reserved_kurus, proof_level,
-        happy_hour_id)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`,
+        happy_hour_id, play_session_id)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)`,
     [
       kuponId,
       opts.cafeId,
@@ -202,6 +205,7 @@ async function kuponUret(
       tutar,
       opts.kanitSeviyesi,
       opts.happyHourId ?? null,
+      opts.oturumId ?? null,
     ],
   );
 
@@ -279,7 +283,17 @@ async function olayYaz(
  */
 export async function anlikOdulVer(
   db: Db,
-  opts: { playerId: string; cafeId: string; kanitSeviyesi: number; kaynakId?: string },
+  opts: {
+    playerId: string;
+    cafeId: string;
+    kanitSeviyesi: number;
+    /** Ü77: motorun şans ve ağırlık hesabı bu skordan türüyor. */
+    skor: number;
+    /** Ü77: azalan getiri **oyun başına**; hangi oyun olduğu şart. */
+    oyunId: string;
+    /** Ü88: kuponu doğuran oyun oturumu — artık kolona yazılıyor. */
+    kaynakId?: string;
+  },
 ): Promise<KuponSonucu | null> {
   // Bugün zaten anlık ödül aldıysa ikincisi yok (docs/06 §3).
   const bugunku = await db.one(
@@ -328,19 +342,35 @@ export async function anlikOdulVer(
   );
   if (adaylar.length === 0) return null;
 
-  // Ü27: döngüsel sıra.
-  const sayim = await db.one<{ n: string }>(
-    `SELECT count(*) AS n FROM coupons c
-       JOIN rewards r ON r.id = c.reward_id
-      WHERE c.cafe_id = $1 AND r.kind = 'instant'`,
-    [opts.cafeId],
-  );
-  const odul = adaylar[Number(sayim?.n ?? 0) % adaylar.length];
-
-  // Pencereden çıkan ödül havuza sığmalı: kalanı aşan ödül verilmiyor,
-  // yoksa "260 TL kaldı" yazan ekran yalan söylerdi.
+  // ── Ödül motoru (Ü77) ──────────────────────────────────
+  //
+  // Ü27'nin döngüsel sırası kalktı: sıradaki ödül veriliyordu, skorun ve
+  // oyuncunun geçmişinin hiçbir etkisi yoktu. Artık üç girdi var — şans,
+  // skor ağırlığı ve aynı oyundan gelen kazanımların kıstığı pay.
+  //
+  // Pencereden çıkan ödül havuza sığmalı, o yüzden süzgeç seçimden ÖNCE:
+  // motor havuza sığmayan bir ödül seçerse tur boşa giderdi ve oyuncu
+  // "şansım tuttu ama ödül gelmedi" derdi.
   const pencereden = !!bugunku;
-  if (pencereden && pencere && Number(odul.cost_kurus) > pencere.kalanKurus) return null;
+  const uygunlar =
+    pencereden && pencere
+      ? adaylar.filter((a) => Number(a.cost_kurus) <= pencere.kalanKurus)
+      : adaylar;
+  if (uygunlar.length === 0) return null;
+
+  const sonKazanim = await ayniOyundanKazanim(db, opts.playerId, opts.cafeId, opts.oyunId);
+  const karar = motor.karar({
+    skor: opts.skor,
+    sonKazanim,
+    kurusDegerleri: uygunlar.map((a) => Number(a.cost_kurus)),
+  });
+
+  if (!karar.dusuyor) {
+    log.info("anlik odul dusmedi", { sebep: karar.sebep, sonKazanim });
+    return null;
+  }
+
+  const odul = uygunlar[karar.indeks];
 
   return kuponUret(db, {
     playerId: opts.playerId,
@@ -349,7 +379,33 @@ export async function anlikOdulVer(
     kanitSeviyesi: opts.kanitSeviyesi,
     kaynak: pencereden ? "happy_hour" : "anlik",
     happyHourId: pencereden && pencere ? pencere.id : undefined,
+    oturumId: opts.kaynakId,
   });
+}
+
+/**
+ * Bu oyuncunun **bu oyundan** son günlerde kaç kupon aldığı (Ü77).
+ *
+ * Azalan getirinin tek girdisi bu. Oyun bağı Ü88'de eklendi; ondan önce
+ * üretilmiş kuponlarda `play_session_id` boş ve sayıma girmiyorlar —
+ * geçmişe dönük düzeltme yok (E3), motor da yalnızca son yedi güne
+ * bakıyor zaten.
+ */
+async function ayniOyundanKazanim(
+  db: Db,
+  playerId: string,
+  cafeId: string,
+  oyunId: string,
+): Promise<number> {
+  const r = await db.one<{ n: string }>(
+    `SELECT count(*) AS n
+       FROM coupons c
+       JOIN play_sessions ps ON ps.id = c.play_session_id
+      WHERE c.player_id = $1 AND c.cafe_id = $2 AND ps.game_id = $3
+        AND c.issued_at >= now() - ($4 || ' days')::interval`,
+    [playerId, cafeId, oyunId, String(motor.BAKILAN_GUN)],
+  );
+  return Number(r?.n ?? 0);
 }
 
 /* ── Çark ödülü (Ü49) ──────────────────────────────────────── */

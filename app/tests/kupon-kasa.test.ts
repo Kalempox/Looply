@@ -10,6 +10,7 @@ import * as masa from "@/domain/masa";
 import * as butce from "@/domain/butce";
 import * as katalog from "@/domain/katalog";
 import * as kupon from "@/domain/kupon";
+import * as motor from "@/domain/odul-motoru";
 import * as ayar from "@/domain/ayar";
 import { kuponDetayi } from "@/domain/odul";
 import { yazIle as puanYaz } from "@/domain/puan";
@@ -425,38 +426,186 @@ describe("kupon üretimi", () => {
   });
 });
 
+/**
+ * Anlık ödül düşene kadar dener.
+ *
+ * ⚠️ Ü77'den beri ödül **şansa** bağlı ve tek çağrının düşeceği garanti
+ * değil. Konusu şans olmayan testler (pencere etiketi, günlük sınır, bütçe
+ * rezervi…) düşene kadar denemeli; aksi hâlde onda bir koşuda kırılırlar ve
+ * kırılgan bir test olmayandan kötüdür. Şansın kendisi ayrı sınanıyor.
+ *
+ * Yalnızca `null` dönüşünde tekrar deniyor: `{ ok: false }` gerçek bir ret
+ * (bütçe, kanıt kademesi) ve tekrar denemek onu değiştirmez.
+ */
+async function odulDus(playerId: string, cafeId: string) {
+  for (let i = 0; i < 40; i++) {
+    const s = await withBypass("test: anlık ödül", (db) =>
+      kupon.anlikOdulVer(db, {
+        playerId,
+        cafeId,
+        kanitSeviyesi: 4,
+        skor: 9999,
+        oyunId: "blok",
+      }),
+    );
+    if (s !== null) return s;
+  }
+  throw new Error("anlık ödül kırk denemede düşmedi — motor bozuk olabilir");
+}
+
 /* ═══════════════════════════════════════════════════════════
-   1.5 · Ü27 — anlık ödül döngüsel
+   1.5 · Ödül motoru (Ü77) — şans, skor ağırlığı, azalan getiri
    ═══════════════════════════════════════════════════════════ */
 
-describe("anlık ödül döngüsel seçilir (Ü27)", () => {
-  test("art arda gelen oyuncular sıradaki ödülü alır, liste başa döner", async () => {
-    // Kaç anlık ödül var? Sabit sayı varsaymak kırılgan: tohum verisinde
-    // zaten bir anlık ödül vardı ve test iki varsaydığı için düşmüştü.
-    const anlikSayisi = await withBypass("test: anlık ödül sayısı", (db) =>
-      db
-        .one<{ n: string }>(
-          `SELECT count(*) AS n FROM rewards WHERE cafe_id = $1 AND kind = 'instant' AND active`,
-          [kafeA],
-        )
-        .then((r) => Number(r?.n ?? 0)),
+describe("ödül motoru (Ü77)", () => {
+  /**
+   * ⚠️ Ü27'nin "döngüsel sıra" testi buradaydı ve **kaldırıldı**: sıradaki
+   * ödülü vermek Ü77 ile bitti. Onun yerine motorun üç girdisi ayrı ayrı
+   * sınanıyor.
+   *
+   * Motor rastgele; bu yüzden testler tek bir çağrının sonucuna değil
+   * **dağılıma** bakıyor. Örneklem büyük tutuldu ki eşikler dar olmasın —
+   * kırılgan bir test, olmayan bir testten kötüdür.
+   */
+
+  test("yüksek skor ödül düşme şansını artırıyor", () => {
+    const dusuk = motor.dusmeSansi(500, 0);
+    const yuksek = motor.dusmeSansi(2500, 0);
+
+    assert.ok(dusuk > 0 && dusuk < 1, `eşikteki şans aralık dışı: ${dusuk}`);
+    assert.ok(yuksek > dusuk, "yüksek skor şansı artırmıyor");
+    assert.ok(yuksek < 1, "şans garantiye dönüşmüş — şans şans kalmalı");
+  });
+
+  test("aynı oyundan gelen kazanımlar şansı kısıyor", () => {
+    const temiz = motor.dusmeSansi(2500, 0);
+    const bir = motor.dusmeSansi(2500, 1);
+    const uc = motor.dusmeSansi(2500, 3);
+
+    assert.ok(bir < temiz, "ilk kazanımdan sonra şans azalmıyor");
+    assert.ok(uc < bir, "kazanım arttıkça şans azalmıyor");
+    assert.ok(uc > 0, "şans sıfıra inmiş — oyuncu sevdiği oyunu oynayabilmeli");
+  });
+
+  test("yüksek skor pahalı ödülü gerçekten yakınlaştırıyor", () => {
+    // Beş ödül, en pahalısı sonuncu. Düşük skorda listenin ucu neredeyse
+    // hiç çıkmamalı; yüksek skorda belirgin biçimde artmalı.
+    const degerler = [25_00, 30_00, 35_00, 40_00, 50_00];
+    const TUR = 4000;
+
+    const sayEnPahali = (skor: number) => {
+      const taban = motor.agirlikTabani(skor, 0);
+      let n = 0;
+      for (let i = 0; i < TUR; i++) {
+        if (motor.agirlikliSec(degerler, taban) === degerler.length - 1) n++;
+      }
+      return n / TUR;
+    };
+
+    const dusuk = sayEnPahali(500);
+    const yuksek = sayEnPahali(2500);
+
+    assert.ok(dusuk < 0.08, `düşük skorda en pahalı ödül çok sık: %${(dusuk * 100).toFixed(1)}`);
+    assert.ok(
+      yuksek > dusuk * 2,
+      `yüksek skor pahalıyı yakınlaştırmıyor: %${(dusuk * 100).toFixed(1)} → %${(yuksek * 100).toFixed(1)}`,
     );
-    assert.ok(anlikSayisi >= 2, "döngüyü sınamak için en az iki anlık ödül gerekli");
+  });
 
-    const alinanlar: string[] = [];
+  test("ucuz ödül her koşulda en olası kalıyor", () => {
+    // Motor pahalıyı yakınlaştırıyor ama sıralamayı ters çevirmiyor:
+    // en yüksek skorda bile en ucuz ödül en olası olan. Aksi hâlde kafenin
+    // bütçesi tek turda erirdi.
+    const degerler = [25_00, 30_00, 35_00, 40_00, 50_00];
+    const taban = motor.agirlikTabani(9999, 0);
+    const sayac = new Array(degerler.length).fill(0);
+    for (let i = 0; i < 4000; i++) sayac[motor.agirlikliSec(degerler, taban)]++;
+
+    assert.ok(
+      sayac[0] > sayac[degerler.length - 1],
+      `en ucuz en olası değil: ${sayac.join(", ")}`,
+    );
+  });
+
+  test("tek ödülü olan kafede seçim hep onu buluyor", () => {
+    assert.equal(motor.agirlikliSec([30_00], motor.agirlikTabani(1000, 0)), 0);
+  });
+
+  test("ödülü olmayan kafede motor sessizce geri dönüyor", () => {
+    const k = motor.karar({ skor: 2500, sonKazanim: 0, kurusDegerleri: [] });
+    assert.equal(k.dusuyor, false);
+    assert.equal(k.dusuyor === false && k.sebep, "odul_yok");
+  });
+
+  test("kupon hangi oyundan çıktığını taşıyor (Ü88)", async () => {
+    // Ü88 öncesinde `kaynakId` alınıyor ama hiçbir yere yazılmıyordu.
+    // Azalan getiri hesabı (Ü77) tam olarak bu bağdan geçiyor: bağ
+    // yazılmazsa "bu oyuncu bu oyundan ne kazandı" sorusu cevapsız kalır
+    // ve motorun üçüncü girdisi sessizce sıfır olur.
+    const p = (
+      await kaydet({
+        telefon: yeniTelefon(),
+        ad: "Bag",
+        soyad: "Testi",
+        dogumYili: 1990,
+        pazarlamaIzni: false,
+      })
+    ).oyuncu.id;
+
+    const oturumId = `ps_test_${randomInt(1_000_000)}`;
+    await yoneticiSorgu(
+      `INSERT INTO play_sessions
+         (id, cafe_id, player_id, device_id_hash, game_id, seed, business_date, status)
+       VALUES ($1,$2,$3,$4,'blok','tohum',$5,'completed')`,
+      [oturumId, kafeA, p, Buffer.from("test-cihaz-motor"), bugun],
+    );
+
+    let sonuc = null;
+    for (let i = 0; i < 40 && sonuc === null; i++) {
+      sonuc = await withBypass("test: oyun bağı", (db) =>
+        kupon.anlikOdulVer(db, {
+          playerId: p,
+          cafeId: kafeA,
+          kanitSeviyesi: 4,
+          skor: 9999,
+          oyunId: "blok",
+          kaynakId: oturumId,
+        }),
+      );
+    }
+    assert.ok(sonuc?.ok, "ödül düşmedi");
+
+    const satir = await withBypass("test: bağ okuma", (db) =>
+      db.one<{ play_session_id: string | null }>(
+        `SELECT play_session_id FROM coupons WHERE id = $1`,
+        [sonuc.kuponId],
+      ),
+    );
+    assert.equal(satir?.play_session_id, oturumId, "kupon oyun oturumuna bağlanmadı");
+
+    await yoneticiSorgu(
+      `DELETE FROM coupon_events WHERE coupon_id IN (SELECT id FROM coupons WHERE player_id = $1)`,
+      [p],
+    );
+    await yoneticiSorgu(`DELETE FROM coupons WHERE player_id = $1`, [p]);
+    await yoneticiSorgu(`DELETE FROM play_sessions WHERE id = $1`, [oturumId]);
+    await yoneticiSorgu(`DELETE FROM player_aliases WHERE player_id = $1`, [p]);
+    await yoneticiSorgu(`DELETE FROM player_consents WHERE player_id = $1`, [p]);
+    await yoneticiSorgu(`DELETE FROM players WHERE id = $1`, [p]);
+  });
+
+  test("ödül her zaman düşmüyor — şans gerçekten çalışıyor", async () => {
+    // Uçtan uca: eşiği yeni geçmiş skorla art arda oyuncular. Şans ~%55
+    // olduğu için yirmi oyuncunun hepsinin ödül alması ya da hiçbirinin
+    // alamaması pratikte imkânsız.
     const oyuncular: string[] = [];
+    let dusen = 0;
 
-    // Liste uzunluğu + 1 oyuncu: sonuncusu başa dönmeli.
-    // Aynı oyuncu günde bir kez anlık ödül alabildiği için her tur yeni oyuncu.
-    //
-    // Kuponlar tur ARASINDA silinmiyor: Ü27'de sıra, dağıtılmış anlık kupon
-    // sayısından türüyor. Silinseydi sayaç yerinde sayar ve herkes aynı ödülü
-    // alırdı — bu testin ilk hâli tam olarak bu yüzden düşmüştü.
-    for (let i = 0; i <= anlikSayisi; i++) {
+    for (let i = 0; i < 20; i++) {
       const p = (
         await kaydet({
           telefon: yeniTelefon(),
-          ad: `Anlik${i}`,
+          ad: "Motor",
           soyad: "Testi",
           dogumYili: 1990,
           pazarlamaIzni: false,
@@ -464,18 +613,20 @@ describe("anlık ödül döngüsel seçilir (Ü27)", () => {
       ).oyuncu.id;
       oyuncular.push(p);
 
-      const s = await withBypass("test: anlık ödül", (db) =>
-        kupon.anlikOdulVer(db, { playerId: p, cafeId: kafeA, kanitSeviyesi: 4 }),
+      const s = await withBypass("test: motor", (db) =>
+        kupon.anlikOdulVer(db, {
+          playerId: p,
+          cafeId: kafeA,
+          kanitSeviyesi: 4,
+          skor: 500,
+          oyunId: "blok",
+        }),
       );
-      assert.ok(s?.ok, "anlık ödül verilmedi");
-      alinanlar.push(s.baslik);
+      if (s?.ok) dusen++;
     }
 
-    // Bir tur boyunca hiçbir ödül tekrar etmemeli, tur bitince başa dönmeli.
-    // Rastgele seçim olsaydı bu düzen tutmazdı (E8).
-    const tur = alinanlar.slice(0, anlikSayisi);
-    assert.equal(new Set(tur).size, anlikSayisi, `tur içinde tekrar var: ${tur.join(", ")}`);
-    assert.equal(alinanlar[anlikSayisi], alinanlar[0], "liste başa dönmedi");
+    assert.ok(dusen > 0, "yirmi oyuncunun hiçbirine ödül düşmedi");
+    assert.ok(dusen < 20, "yirmi oyuncunun hepsine düştü — şans hiç işlemiyor");
 
     for (const p of oyuncular) {
       await yoneticiSorgu(
@@ -500,13 +651,17 @@ describe("anlık ödül döngüsel seçilir (Ü27)", () => {
       })
     ).oyuncu.id;
 
-    const ilk = await withBypass("test: anlık ödül", (db) =>
-      kupon.anlikOdulVer(db, { playerId: p, cafeId: kafeA, kanitSeviyesi: 4 }),
-    );
+    const ilk = await odulDus(p, kafeA);
     assert.ok(ilk?.ok);
 
     const ikinci = await withBypass("test: ikinci anlık ödül", (db) =>
-      kupon.anlikOdulVer(db, { playerId: p, cafeId: kafeA, kanitSeviyesi: 4 }),
+      kupon.anlikOdulVer(db, {
+        playerId: p,
+        cafeId: kafeA,
+        kanitSeviyesi: 4,
+        skor: 9999,
+        oyunId: "blok",
+      }),
     );
     assert.equal(ikinci, null, "aynı gün ikinci anlık ödül verildi");
 
@@ -1037,16 +1192,12 @@ describe("Happy Hour penceresi (Ö3)", () => {
     const p = await yeniOyuncuId();
 
     // Pencere YOKKEN birinci ödül.
-    const ilk = await withBypass("test: ilk ödül", (db) =>
-      kupon.anlikOdulVer(db, { playerId: p, cafeId: kafeA, kanitSeviyesi: 4 }),
-    );
+    const ilk = await odulDus(p, kafeA);
     assert.ok(ilk?.ok, "ilk ödül düşmedi");
 
     const hhId = await acikPencereYaz(100_000);
 
-    const ikinci = await withBypass("test: pencere ödülü", (db) =>
-      kupon.anlikOdulVer(db, { playerId: p, cafeId: kafeA, kanitSeviyesi: 4 }),
-    );
+    const ikinci = await odulDus(p, kafeA);
     assert.ok(ikinci?.ok, "pencere açıkken ikinci ödül düşmedi");
 
     const etiket = await withBypass("test: etiket", (db) =>
@@ -1074,14 +1225,16 @@ describe("Happy Hour penceresi (Ö3)", () => {
     const p = await yeniOyuncuId();
     await acikPencereYaz(100_000);
 
-    const a = await withBypass("test: 1", (db) =>
-      kupon.anlikOdulVer(db, { playerId: p, cafeId: kafeA, kanitSeviyesi: 4 }),
-    );
-    const b = await withBypass("test: 2", (db) =>
-      kupon.anlikOdulVer(db, { playerId: p, cafeId: kafeA, kanitSeviyesi: 4 }),
-    );
+    const a = await odulDus(p, kafeA);
+    const b = await odulDus(p, kafeA);
     const c = await withBypass("test: 3", (db) =>
-      kupon.anlikOdulVer(db, { playerId: p, cafeId: kafeA, kanitSeviyesi: 4 }),
+      kupon.anlikOdulVer(db, {
+        playerId: p,
+        cafeId: kafeA,
+        kanitSeviyesi: 4,
+        skor: 9999,
+        oyunId: "blok",
+      }),
     );
 
     assert.ok(a?.ok && b?.ok, "iki ödül düşmeliydi");
@@ -1094,15 +1247,19 @@ describe("Happy Hour penceresi (Ö3)", () => {
     await pencereleriSil();
     const p = await yeniOyuncuId();
 
-    await withBypass("test: günlük ödül", (db) =>
-      kupon.anlikOdulVer(db, { playerId: p, cafeId: kafeA, kanitSeviyesi: 4 }),
-    );
+    await odulDus(p, kafeA);
 
     // Havuz, en ucuz ödülden de küçük.
     await acikPencereYaz(1);
 
     const pencereden = await withBypass("test: pencere ödülü", (db) =>
-      kupon.anlikOdulVer(db, { playerId: p, cafeId: kafeA, kanitSeviyesi: 4 }),
+      kupon.anlikOdulVer(db, {
+        playerId: p,
+        cafeId: kafeA,
+        kanitSeviyesi: 4,
+        skor: 9999,
+        oyunId: "blok",
+      }),
     );
     assert.equal(pencereden, null, "havuza sığmayan ödül verildi");
 
@@ -1113,15 +1270,11 @@ describe("Happy Hour penceresi (Ö3)", () => {
     // Havuz bir tavan, ayrı bir kese değil: kupon yine bütçeden düşüyor.
     await pencereleriSil();
     const p = await yeniOyuncuId();
-    await withBypass("test: günlük ödül", (db) =>
-      kupon.anlikOdulVer(db, { playerId: p, cafeId: kafeA, kanitSeviyesi: 4 }),
-    );
+    await odulDus(p, kafeA);
     await acikPencereYaz(100_000);
 
     const once = await butce.durum(kafeA, bugun);
-    const s = await withBypass("test: pencere ödülü", (db) =>
-      kupon.anlikOdulVer(db, { playerId: p, cafeId: kafeA, kanitSeviyesi: 4 }),
-    );
+    const s = await odulDus(p, kafeA);
     assert.ok(s?.ok);
     const sonra = await butce.durum(kafeA, bugun);
 

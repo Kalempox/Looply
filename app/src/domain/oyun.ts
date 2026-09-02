@@ -215,6 +215,9 @@ async function kazanimIsle(
         playerId: opts.playerId,
         cafeId: opts.cafeId,
         kanitSeviyesi: opts.proofLevel,
+        // Ü77: motor skoru ve hangi oyun olduğunu bilmek zorunda.
+        skor: opts.skor,
+        oyunId: opts.oyunId,
         kaynakId: opts.oturumId,
       });
       if (anlik?.ok) {
