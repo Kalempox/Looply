@@ -6,7 +6,7 @@
 > Yan dosyalar: neyin **var** olduğu → `21-looply-kapsam-haritasi.md` ·
 > demoda neyin **yapılabildiği** → `22-demo-yapilabilirlik.md`
 
-**Son güncelleme:** 2026-09-02 · **Kararlar:** Ü76 – Ü86
+**Son güncelleme:** 2026-09-02 · **Kararlar:** Ü76 – Ü87
 
 ---
 
@@ -69,10 +69,17 @@
 Üçü tek bir soruyu cevaplıyor: *bu turda ödül çıkacak mı, hangisi, ne kadar?*
 Ayrı ayrı yazılırsa üçüncüsü ilk ikisini bozar.
 
-- [ ] **5 · Bütçe temposu** (Ü78)
-  Bugün ilk gelen alır: haftanın bütçesi Pazartesi öğlen bitebilir.
-  Bütçe artık tavan değil **tempo** — gün ve saat bazında dağıtılabilir pay.
-  ⚠️ Tempo tavan olarak işler, taban olarak değil; kimse gelmezse devretmez.
+- [x] **5 · Bütçe temposu** ✅ **BİTTİ** — Ü87, 2026-09-02
+  Günlük bütçe gün içinde kademeli açılıyor (varsayılan pencere 09:00–23:00,
+  kafenin ayarı). Oran birikimli ve bir **tavan**: sabah kimse gelmediyse pay
+  kaybolmuyor; kimse gelmezse hiçbir şey dağıtılmıyor.
+  Günün onda biri ilk andan açık — sıfırdan başlasaydı sabahın ilk müşterisi
+  eli boş dönerdi (E2).
+  ⚠️ Dönem **günlük** (Ü45), haftalık değil — Ü78 yazılırken yanlış
+  hatırlanmıştı; tempo bu yüzden gün *içinde* işliyor.
+  ⚠️ Pencere saatleri bir tahmin: kafenin gerçek çalışma saatleri sistemde
+  yok. Öngörü paneli (madde 16) gerçek veriyle bunu iyileştirecek.
+  411 test · panelde "şu an dağıtılabilir" ayrı gösteriliyor.
 
 - [ ] **6 · Ödül motoru** (Ü77)
   Üç girdi: **şans** · **skor ağırlığı** (yüksek skor → pahalı ödül olasılığı
