@@ -126,6 +126,13 @@ async function kafeKur(t: KafeTohum, playerId: string) {
      VALUES ($1,$2,'instant','+1 shot espresso',0,1500,2)`,
     [newId("rwd"), cafeId],
   );
+  // Soğuk içecek örneği (Ü74): kupon kartının dört kategorisinden
+  // biri soğuk ve tohumda karşılığı olmadan ekranda hiç görünmüyordu.
+  await db.query(
+    `INSERT INTO rewards (id, cafe_id, kind, title, points_price, cost_kurus, min_proof_level)
+     VALUES ($1,$2,'instant','Ice Americano',0,3000,2)`,
+    [newId("rwd"), cafeId],
+  );
 
   // Oyuncunun bu kafedeki anonim kodu — her kafede FARKLI (G1)
   await db.query(

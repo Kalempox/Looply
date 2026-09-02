@@ -33,7 +33,7 @@
  * - `canli` — koyu zeminde ya da dolgu olarak kullanılan doygun ton.
  */
 
-export type OyuncuRengi = "kahve" | "yesil" | "pembe" | "menekse" | "amber" | "gok";
+export type OyuncuRengi = "kahve" | "buz" | "yesil" | "pembe" | "menekse" | "amber" | "gok";
 
 /**
  * Oyuncu tarafındaki kartın yüzeyi — Ü67, Ü70, Ü71.
@@ -96,6 +96,8 @@ export type RenkTonu = {
 export const RENK: Record<OyuncuRengi, RenkTonu> = {
   /* Sıcak içecek — Ü69. Kahvenin kendi rengi. */
   kahve: { zemin: "#f4eae1", ana: "#8a5a33", koyu: "#5c3a1e", canli: "#c08b5c" },
+  /* Soğuk içecek — Ü74. Buzlu camın rengi. */
+  buz: { zemin: "#e2f5fb", ana: "#3f9ec0", koyu: "#1a6a86", canli: "#8fd8ee" },
   /* Doğrudan tutar kuponu — para yeşili. */
   yesil: { zemin: "#e3f4e8", ana: "#15803d", koyu: "#14532d", canli: "#4ade80" },
   /* Tatlı — koyu pembe. */

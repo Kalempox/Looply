@@ -86,6 +86,33 @@ export const DESEN: Record<KuponGorseli, string> = {
      </g>`,
   ),
 
+  /*
+    Kar tanesi, buz küpü, kabarcık.
+
+    Ürün sahibi soğuk kartta *"buz efekti"* istedi. Efektin çoğunu
+    desen taşıyor: kar tanesi soğuğu, kabarcık ise bardağın terlemesini
+    anlatıyor.
+  */
+  soguk: karo(
+    `<g fill='${AK}'>
+       <rect x='10' y='12' width='24' height='24' rx='5' transform='rotate(-14 22 24)'/>
+       <rect x='56' y='58' width='22' height='22' rx='5' transform='rotate(18 67 69)'/>
+       <circle cx='78' cy='20' r='5'/>
+       <circle cx='40' cy='52' r='4'/>
+       <circle cx='18' cy='78' r='6'/>
+       <circle cx='62' cy='36' r='3'/>
+     </g>
+     <g stroke='${AK_VURGU}' stroke-width='3' stroke-linecap='round'>
+       <path d='M78 20v0'/>
+       <g transform='translate(70 68)'>
+         <path d='M0-11V11M-10-6 10 6M-10 6 10-6'/>
+       </g>
+       <g transform='translate(24 24) scale(0.8)'>
+         <path d='M0-11V11M-10-6 10 6M-10 6 10-6'/>
+       </g>
+     </g>`,
+  ),
+
   /* Kiraz, makaron, donut, cupcake. */
   tatli: karo(
     `<g fill='${AK}'>
@@ -196,6 +223,48 @@ const SAHNE: Record<KuponGorseli, React.ReactElement> = {
           strokeLinecap="round"
         />
       </g>
+    </g>
+  ),
+
+  /**
+   * Soğuk içecek — `cold-coffee.png`.
+   *
+   * Uzun bardak, kahverengi içecek, üç buz küpü, kıvrık pipet.
+   * Bardağın camı beyaza yakın ve yarı saydam duruyor: koyu buz mavisi
+   * kartın üstünde en çok ayrılan yüzey o.
+   */
+  soguk: (
+    <g>
+      {/* Pipet — kartın sağ kenarına dayanmadan bitiyor. */}
+      <path
+        d="M122 40h20a10 10 0 0 1 0 20h-12l-14 48"
+        stroke="#cbb6d6"
+        strokeWidth="15"
+        strokeLinecap="round"
+        fill="none"
+      />
+
+      {/* Bardak — dıştan içe */}
+      <path d="M52 56h96l-11 116a14 14 0 0 1-14 13H77a14 14 0 0 1-14-13L52 56Z" fill="#eef4f6" />
+      <path d="M64 70h72l-9 88a8 8 0 0 1-8 7H81a8 8 0 0 1-8-7L64 70Z" fill="#79553f" />
+
+      {/* Buz küpleri */}
+      <g fill="#e6dbd0">
+        <rect x="72" y="86" width="34" height="34" rx="6" transform="rotate(-16 89 103)" />
+        <rect x="102" y="112" width="32" height="32" rx="6" transform="rotate(14 118 128)" />
+        <rect x="74" y="130" width="30" height="30" rx="6" transform="rotate(8 89 145)" />
+      </g>
+
+      {/* Camın parlaması */}
+      <path d="M60 62h10l9 118h-8L60 62Z" fill="#ffffff" opacity="0.55" />
+
+      {/*
+        Kar tanesi yok.
+
+        Sahnede de bir kar tanesi vardı ama sağ kenarda kırpılıyordu ve
+        soğuğu zaten desen ile kırağı katmanı anlatıyor. Üçü birden
+        aynı şeyi söyleyince biri fazlaydı.
+      */}
     </g>
   ),
 

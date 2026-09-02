@@ -38,6 +38,7 @@
 export type GorselAdi =
   /* Kupon ve fırsat kartları */
   | "icecek"
+  | "soguk"
   | "tatli"
   | "para"
   /* Oyunlar */
@@ -54,8 +55,19 @@ export type GorselAdi =
   | "alev"
   | "cark";
 
-/** Kupon kartında kullanılabilecek üç çeşit. */
-export type KuponGorseli = "icecek" | "tatli" | "para";
+/**
+ * Kupon kartında kullanılabilecek dört çeşit.
+ *
+ * Ü67'de üç çeşitti; Ü74'te **soğuk içecek** ayrıldı. Sıcakla soğuk
+ * aynı çizimi paylaşamıyor çünkü kartın verdiği his farklı: birinde
+ * buhar, diğerinde buz. Ürün sahibinin isteği de buydu — soğuk kartta
+ * "buz efekti" olsun.
+ *
+ * Dördün ötesine geçilmiyor: kategori sayısı arttıkça `gorselSec()`
+ * daha çok kelime tanımak zorunda kalır ve tanımadığında sessizce
+ * yanlış çizim koyar.
+ */
+export type KuponGorseli = "icecek" | "soguk" | "tatli" | "para";
 
 /**
  * Kupon başlığından çizim seçer.
@@ -75,9 +87,20 @@ const ESLESME: [KuponGorseli, string[]][] = [
     "tatli",
     ["tatlı", "kek", "cheesecake", "brownie", "kurabiye", "pasta", "waffle", "dondurma", "sufle", "muffin", "tiramisu", "profiterol", "magnolia", "kruvasan", "poğaça", "börek", "simit"],
   ],
+  /*
+    Soğuk, sıcaktan **önce** bakılıyor.
+
+    "Ice americano" hem soğuk listesindeki "ice"i hem sıcak
+    listesindeki "americano"yu içeriyor; sıra ters olsaydı buzlu kahve
+    buharlı fincanla çıkardı.
+  */
+  [
+    "soguk",
+    ["ice", "buz", "soğuk", "cold", "frappe", "frappuccino", "milkshake", "limonata", "smoothie", "meyve suyu", "kola", "ayran", "meşrubat", "granita", "soda"],
+  ],
   [
     "icecek",
-    ["kahve", "espresso", "latte", "americano", "filtre", "cappuccino", "mocha", "macchiato", "cortado", "çay", "demleme", "bitki", "limonata", "smoothie", "soğuk", "buzlu", "milkshake", "frappe", "kola", "ayran", "meşrubat", "meyve suyu", "içecek", "ice"],
+    ["kahve", "espresso", "latte", "americano", "filtre", "cappuccino", "mocha", "macchiato", "cortado", "çay", "demleme", "bitki", "salep", "sahlep", "içecek"],
   ],
 ];
 
@@ -107,6 +130,7 @@ export function gorselSec(metin: string, tur?: "urun" | "yuzde" | "tutar"): Kupo
  */
 export const GORSEL_RENGI = {
   icecek: "kahve",
+  soguk: "buz",
   tatli: "pembe",
   para: "yesil",
 } as const;
@@ -179,6 +203,18 @@ const CIZIM: Record<GorselAdi, React.ReactElement> = {
       <path d="M410 224h84v58c0 50-40 90-90 90h-30" />
       {/* Tabak */}
       <path d="M10 462h436c0 34-28 62-62 62H72c-34 0-62-28-62-62Z" />
+    </g>
+  ),
+
+  /** Soğuk içecek — uzun bardak, pipet, buz küpleri. */
+  soguk: (
+    <g>
+      <path d="M104 26h72" />
+      <path d="M104 26c-26 0-38 18-42 46" />
+      <path d="M62 72h116l-14 372c-1 24-20 44-44 44h-2c-24 0-43-20-44-44L62 72Z" />
+      <path d="M74 150c30-14 62 14 92 0" />
+      <rect x="104" y="212" width="72" height="72" rx="10" transform="rotate(18 140 248)" />
+      <rect x="64" y="300" width="66" height="66" rx="10" transform="rotate(-14 97 333)" />
     </g>
   ),
 

@@ -87,9 +87,9 @@ export function Bilet({ veri }: { veri: BiletVerisi }) {
       */}
       <span
         aria-hidden
-        className="pointer-events-none absolute top-1/2 -right-4 -translate-y-1/2"
+        className="pointer-events-none absolute top-1/2 right-1 -translate-y-1/2"
       >
-        <Sahne ad={veri.gorsel} boy={126} />
+        <Sahne ad={veri.gorsel} boy={122} />
       </span>
 
       {/*
@@ -106,6 +106,25 @@ export function Bilet({ veri }: { veri: BiletVerisi }) {
           background: `linear-gradient(100deg, ${r.koyu} 26%, ${r.koyu}cc 44%, transparent 64%)`,
         }}
       />
+
+      {/*
+        Buz kırağısı — yalnızca soğuk içecekte (Ü74).
+
+        Kenarlardan içeri doğru beyazlayan bir halka. Ürün sahibinin
+        istediği "soğuk efekti" bu: kart camdan bakılıyormuş gibi
+        duruyor. Perdeden **sonra** çiziliyor, yoksa perde kırağıyı
+        sol yarıda tamamen yutuyor.
+      */}
+      {veri.gorsel === "soguk" && (
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-0"
+          style={{
+            background:
+              "radial-gradient(115% 130% at 50% 50%, transparent 46%, rgba(255,255,255,0.30) 100%)",
+          }}
+        />
+      )}
 
       {/* Toka: biletin takıldığı yer. Kartı çantaya asılan bir etikete
           çeviriyor — koçandan farklı olarak bir yön de veriyor. */}
