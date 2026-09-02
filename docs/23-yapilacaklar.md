@@ -6,7 +6,7 @@
 > Yan dosyalar: neyin **var** olduğu → `21-looply-kapsam-haritasi.md` ·
 > demoda neyin **yapılabildiği** → `22-demo-yapilabilirlik.md`
 
-**Son güncelleme:** 2026-09-02 · **Kararlar:** Ü76 – Ü81
+**Son güncelleme:** 2026-09-02 · **Kararlar:** Ü76 – Ü85
 
 ---
 
@@ -43,10 +43,14 @@
   kazancı sekmeyi arkaya atıp parçayı havada tutamamak.
   408 test yeşil · tarayıcıda gizli sekmede yerçekimi doğrulandı.
 
-- [ ] **3 · Blok ve Düşen'in oyun tahtası görünümü**
-  Çevresindeki her şey yeni kart diline geçti, tahtanın kendisi eski kaldı.
-  ⚠️ Üst şeritler Ü83'te güncellendi (hedef sayacı yerine zorluk kademesi
-  ve zincir); değişmeyen kısım tahtanın kendisi.
+- [x] **3 · Oyun tahtalarının görünümü** ✅ **BİTTİ** — Ü85, 2026-09-02
+  Üç tahta da oyunun kendi rengine geçti; yüzey `arayuz/tahta.tsx`ten tek
+  yerden geliyor. Hücreler gradyanlı ve üstten ışık alıyor — dolu hücre
+  nesne gibi duruyor, boş hücre çukur.
+  Blok'ta seçili teklif yükseliyor ve parça önizlemesi ızgaradaki rengiyle
+  aynı; Düşen'de bırak düğmesi tam genişlikte alta indi (yön tuşlarıyla
+  karışıp parçayı yanlışlıkla düşürtüyordu); Kelime'de seçili harf doluyor.
+  408 test · üç oyun da tarayıcıda mobil boyutta görüldü.
 
 - [ ] **4 · İsim değişikliği: CafePlay → Looply**
   Kod 60 dosya/113 geçiş · doküman 8 dosya/27 geçiş · depo, paket, alan adı.
