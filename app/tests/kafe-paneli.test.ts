@@ -406,6 +406,166 @@ describe("bütçe temposu (Ü87)", () => {
   });
 });
 
+/* ═══════════════════════════════════════════════════════════
+   Ad düzeltme (Ü94)
+   ═══════════════════════════════════════════════════════════ */
+
+describe("ad düzeltme (Ü94)", () => {
+  let odulId = "";
+  let yaziHataliUrun = "";
+  let komsuUrun = "";
+  let komsuAd = "";
+
+  before(async () => {
+    // Sahada yaşanan hatanın birebir kendisi (Ü75).
+    const u = await urun.ekle({
+      cafeId: kafeA,
+      ad: `TEST ize amreicano ${randomInt(100000)}`,
+      fiyatKurus: 3_000,
+      aktorId: yoneticiA,
+    });
+    assert.ok(u.ok, u.ok === false ? u.hata : "");
+    yaziHataliUrun = u.urun.id;
+
+    const o = await katalog.ekle({
+      cafeId: kafeA,
+      tip: "product",
+      baslik: "TEST ize amreicano",
+      maliyetKurus: 30_00,
+      puanFiyati: 0,
+      anlik: true,
+      urunId: yaziHataliUrun,
+      aktorId: yoneticiA,
+    });
+    assert.ok(o.ok, o.ok === false ? o.hata : "");
+    odulId = o.id;
+
+    // Tekillik sınaması için ikinci bir ürün. Kendi bloğunda kuruluyor:
+    // başka describe'ın yarattığı satıra dayanmak, testleri çalışma
+    // sırasına bağlar ve sıra değişince sessizce kırılır.
+    komsuAd = `TEST Komsu Urun ${randomInt(100000)}`;
+    const k = await urun.ekle({
+      cafeId: kafeA,
+      ad: komsuAd,
+      fiyatKurus: 2_500,
+      aktorId: yoneticiA,
+    });
+    assert.ok(k.ok, k.ok === false ? k.hata : "");
+    komsuUrun = k.urun.id;
+  });
+
+  after(async () => {
+    await yoneticiSorgu(`DELETE FROM rewards WHERE id = $1`, [odulId]);
+    await yoneticiSorgu(`DELETE FROM products WHERE id = ANY($1)`, [[yaziHataliUrun, komsuUrun]]);
+  });
+
+  test("ödülün adı düzeltiliyor — kaldırıp yeniden eklemeye gerek yok", async () => {
+    const s = await katalog.adDegistir({
+      cafeId: kafeA,
+      odulId,
+      baslik: "TEST Ice Americano",
+      aktorId: yoneticiA,
+    });
+    assert.ok(s.ok, s.ok === false ? s.hata : "");
+
+    const liste = await katalog.listele(kafeA);
+    const bulunan = liste.find((o) => o.id === odulId);
+    assert.equal(bulunan?.baslik, "TEST Ice Americano");
+  });
+
+  test("ödülün değeri ve tipi ad düzeltmesiyle DEĞİŞMİYOR", async () => {
+    // ⚠️ Değer değişebilseydi kafe 30 TL'lik ödülün adını "çay" yapar,
+    // elinde kupon olan oyuncu kasada 8 TL'lik bir şey alırdı. Bütçe
+    // ekranındaki söz burada da geçerli: verilen söz geri alınmaz.
+    const once = (await katalog.listele(kafeA)).find((o) => o.id === odulId);
+    await katalog.adDegistir({
+      cafeId: kafeA,
+      odulId,
+      baslik: "TEST Ice Americano Büyük",
+      aktorId: yoneticiA,
+    });
+    const sonra = (await katalog.listele(kafeA)).find((o) => o.id === odulId);
+
+    assert.equal(sonra?.maliyetKurus, once?.maliyetKurus, "ödül değeri değişti");
+    assert.equal(sonra?.tip, once?.tip, "ödül tipi değişti");
+    assert.equal(sonra?.kanitSeviyesi, once?.kanitSeviyesi, "kanıt kademesi değişti");
+    assert.equal(sonra?.urunId, once?.urunId, "bağlı ürün değişti");
+  });
+
+  test("eski ad denetim izinde kalıyor", async () => {
+    // ⚠️ Ü75'te ad denetim ayrıntısından çıkarılmıştı ("ad zaten satırda
+    // duruyor"). Ad DEĞİŞİKLİĞİNDE o gerekçe geçmiyor: eski ad başka
+    // hiçbir yerde kalmıyor. Kötüye kullanım ancak burada izlenebilir.
+    const iz = await withCafe(kafeA, (db) =>
+      db.all<{ detail: { oncekiBaslik?: string; yeniBaslik?: string } }>(
+        `SELECT detail FROM audit_log
+          WHERE action = 'reward.rename' AND target_id = $1
+          ORDER BY created_at`,
+        [odulId],
+      ),
+    );
+    assert.ok(iz.length >= 1, "ad değişikliği kayda geçmedi");
+    assert.equal(iz[0].detail.oncekiBaslik, "TEST ize amreicano");
+    assert.equal(iz[0].detail.yeniBaslik, "TEST Ice Americano");
+  });
+
+  test("aynı adı ikinci kez göndermek reddediliyor", async () => {
+    const s = await katalog.adDegistir({
+      cafeId: kafeA,
+      odulId,
+      baslik: "TEST Ice Americano Büyük",
+      aktorId: yoneticiA,
+    });
+    assert.equal(s.ok, false);
+  });
+
+  test("çok kısa ad reddediliyor", async () => {
+    const s = await katalog.adDegistir({ cafeId: kafeA, odulId, baslik: "a", aktorId: yoneticiA });
+    assert.equal(s.ok, false);
+  });
+
+  test("ürün adı düzeltiliyor", async () => {
+    const s = await urun.adDegistir({
+      cafeId: kafeA,
+      urunId: yaziHataliUrun,
+      ad: "TEST Ice Americano ürün",
+      aktorId: yoneticiA,
+    });
+    assert.ok(s.ok, s.ok === false ? s.hata : "");
+
+    const liste = await urun.listele(kafeA);
+    assert.equal(liste.find((u) => u.id === yaziHataliUrun)?.ad, "TEST Ice Americano ürün");
+  });
+
+  test("var olan başka bir ürünün adına çevrilemiyor", async () => {
+    // `ekle`'deki tekillik kuralı düzeltmede de geçerli olmalı; yoksa
+    // menüde aynı isimde iki ürün oluşur ve kampanya hangisini seçtiğini
+    // kimse ayırt edemez.
+    const s = await urun.adDegistir({
+      cafeId: kafeA,
+      urunId: yaziHataliUrun,
+      ad: komsuAd,
+      aktorId: yoneticiA,
+    });
+    assert.equal(s.ok, false);
+  });
+
+  test("başka kafenin ödülü düzeltilemiyor", async () => {
+    // Değişmez kural #3: cafe_id oturumdan geliyor. RLS bağlamı yabancı
+    // satırı zaten görmüyor.
+    const s = await katalog.adDegistir({
+      cafeId: kafeB,
+      odulId,
+      baslik: "TEST Sızma",
+      aktorId: yoneticiA,
+    });
+    assert.equal(s.ok, false);
+
+    const hala = (await katalog.listele(kafeA)).find((o) => o.id === odulId);
+    assert.equal(hala?.baslik, "TEST Ice Americano Büyük", "yabancı kafe adı değiştirdi");
+  });
+});
+
 describe("ürün ve ödül kataloğu", () => {
   test("ürün eklenir ve denetim izine düşer", async () => {
     const sonuc = await urun.ekle({

@@ -5,7 +5,14 @@ import { kafeYoneticisiGerekli } from "@/domain/yetki";
 import * as katalog from "@/domain/katalog";
 import * as ayar from "@/domain/ayar";
 
-export type OdulDurumu = { hata?: string; bilgi?: string };
+/**
+ * `sira`: her BAŞARILI kaydetmede artan sayaç (Ü94).
+ *
+ * Ad düzeltme kutusunun kapanma anını buradan okuyor. Mesaj metnine
+ * bakmak yetmezdi — arka arkaya iki düzeltmede metin aynı çıkıyor ve
+ * kutu ikincisinde kapanmıyordu.
+ */
+export type OdulDurumu = { hata?: string; bilgi?: string; sira?: number };
 
 function sayi(form: FormData, alan: string): number {
   return Number(String(form.get(alan) ?? "").replace(/[^\d]/g, ""));
@@ -41,6 +48,36 @@ export async function ekleEylemi(_onceki: OdulDurumu, form: FormData): Promise<O
 
   revalidatePath("/kafe/panel/oduller");
   return sonuc.ok ? { bilgi: "Ödül eklendi. Oyun sonunda ve çarkta çıkabilir." } : { hata: sonuc.hata };
+}
+
+/**
+ * Ödülün adını düzeltir (Ü94).
+ *
+ * Yazım hatasının bedeli ödülün geçmişini kaybetmek olmamalı — bugüne kadar
+ * tek çare ödülü yayından kaldırıp yenisini eklemekti ve hata sahada zaten
+ * yaşandı ("ize amreicano", Ü75). Değer ve tip burada değişmiyor; yalnızca
+ * ad ve açıklama.
+ */
+export async function adEylemi(onceki: OdulDurumu, form: FormData): Promise<OdulDurumu> {
+  const o = await kafeYoneticisiGerekli();
+
+  const sonuc = await katalog.adDegistir({
+    cafeId: o.cafeId,
+    odulId: String(form.get("odulId") ?? ""),
+    baslik: String(form.get("baslik") ?? ""),
+    aciklama: String(form.get("aciklama") ?? ""),
+    aktorId: o.ozneId,
+  });
+
+  if (!sonuc.ok) return { hata: sonuc.hata, sira: onceki.sira };
+
+  revalidatePath("/kafe/panel/oduller");
+  return {
+    sira: (onceki.sira ?? 0) + 1,
+    bilgi: sonuc.etkilenenKupon
+      ? `Ad düzeltildi. Dolaşımdaki ${sonuc.etkilenenKupon} kupon da yeni adı gösteriyor.`
+      : "Ad düzeltildi.",
+  };
 }
 
 export async function durumEylemi(odulId: string, aktif: boolean): Promise<void> {

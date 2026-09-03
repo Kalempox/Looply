@@ -27,8 +27,13 @@ export type Islem =
   | "category.update"
   | "product.create"
   | "product.update"
+  // Ü94: ad düzeltmesi ayrı bir işlem. `update` içine karışsaydı "kim ne
+  // zaman adı değiştirdi" sorusu kayıtta aranamazdı — oysa ad değişikliği
+  // dolaşımdaki kuponların gösterdiği metni de değiştiriyor.
+  | "product.rename"
   | "reward.create"
   | "reward.update"
+  | "reward.rename"
   // Kafenin ödül ekonomisini değiştiren ayarlar (erteleme eşiği gibi).
   // Para başlığı altında: "kupon neden bugün açılmadı" sorusunun cevabı burada.
   | "cafe.config_update"

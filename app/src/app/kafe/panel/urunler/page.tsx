@@ -16,6 +16,8 @@ import {
   KategoriEkleme,
   KategoriDurumDugmesi,
 } from "./kontroller";
+import { AdDuzeltme } from "../ad-duzeltme";
+import { adEylemi } from "./actions";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Ürünler · Looply" };
@@ -151,7 +153,7 @@ export default async function UrunlerSayfasi() {
                 {urunler.map((u) => (
                   <li
                     key={u.id}
-                    className={`flex items-center gap-3.5 rounded-2xl border border-cizgi bg-yuzey p-4 transition-all hover:-translate-y-0.5 hover:border-urun hover:shadow-md ${
+                    className={`flex flex-wrap items-center gap-3.5 rounded-2xl border border-cizgi bg-yuzey p-4 transition-all hover:-translate-y-0.5 hover:border-urun hover:shadow-md ${
                       u.aktif ? "" : "opacity-55"
                     }`}
                   >
@@ -185,7 +187,19 @@ export default async function UrunlerSayfasi() {
                         )}
                       </span>
                     </span>
-                    <DurumDugmesi urunId={u.id} aktif={u.aktif} />
+                    <span className="flex shrink-0 flex-col items-end gap-1.5">
+                      <DurumDugmesi urunId={u.id} aktif={u.aktif} />
+                      {/* Ü94 — sahada yaşanan hata buydu: "ize amreicano". */}
+                      <AdDuzeltme
+                        eylem={adEylemi}
+                        kimlikAlani="urunId"
+                        kimlik={u.id}
+                        adAlani="ad"
+                        mevcutAd={u.ad}
+                        acikKupon={u.acikKupon}
+                        etiket="Ürün adı"
+                      />
+                    </span>
                   </li>
                 ))}
               </ul>

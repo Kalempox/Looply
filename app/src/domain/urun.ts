@@ -24,6 +24,8 @@ export type Urun = {
   kategoriId: string | null;
   /** Kategorinin türü — kupon kartındaki çizimi bu seçiyor. */
   kategoriTuru: KategoriTuru | null;
+  /** Ü94: adı değiştirmenin kaç dolaşımdaki kuponu etkileyeceği. */
+  acikKupon: number;
 };
 
 /** Ürün adı ve fiyatı için sınırlar — panel formu da bunları kullanıyor. */
@@ -41,8 +43,15 @@ export async function listele(cafeId: string, hepsi = true): Promise<Urun[]> {
       active: boolean;
       category_id: string | null;
       kind: string | null;
+      acik_kupon: string;
     }>(
-      `SELECT u.id, u.name, u.price_kurus, u.active, u.category_id, k.kind
+      `SELECT u.id, u.name, u.price_kurus, u.active, u.category_id, k.kind,
+              (SELECT count(*)
+                 FROM coupons c
+                 LEFT JOIN percentage_campaigns kmp ON kmp.id = c.campaign_id
+                 LEFT JOIN rewards r ON r.id = c.reward_id
+                WHERE c.status IN ('pending','active')
+                  AND (kmp.product_id = u.id OR r.product_id = u.id)) AS acik_kupon
          FROM products u
          LEFT JOIN product_categories k ON k.id = u.category_id
         ${hepsi ? "" : "WHERE u.active"}
@@ -57,6 +66,7 @@ export async function listele(cafeId: string, hepsi = true): Promise<Urun[]> {
     aktif: r.active,
     kategoriId: r.category_id,
     kategoriTuru: (r.kind as KategoriTuru | null) ?? null,
+    acikKupon: Number(r.acik_kupon),
   }));
 }
 
@@ -122,8 +132,88 @@ export async function ekle(opts: {
         aktif: true,
         kategoriId: opts.kategoriId ?? null,
         kategoriTuru,
+        // Yeni ürün: henüz hiçbir kupon ona bağlı olamaz.
+        acikKupon: 0,
       },
     };
+  });
+}
+
+export type AdSonucu =
+  | { ok: true; etkilenenKupon: number }
+  | { ok: false; hata: string };
+
+/**
+ * Ürünün adını düzeltir (Ü94).
+ *
+ * ⚠️ Sahada yaşanan hata buydu: kafe "Ice Americano" yerine **"ize
+ * amreicano"** yazdı (Ü75) ve tek çare ürünü kaldırıp yeniden eklemekti —
+ * yani ona bağlı ödüllerin ve kampanyaların geçmişini kaybetmek.
+ *
+ * ⚠️ **Fiyat ve kategori burada değişmiyor.** Fiyat, yüzde kampanyasının
+ * tavan hesabına giriyor (Ü17); kategori kupon kartının çizimini seçiyor
+ * (Ü75). İkisini de ad düzeltmesiyle aynı düğmeye bağlamak, yazım hatası
+ * düzeltmek isteyen kafenin yanlışlıkla ekonomiyi değiştirmesi demek olurdu.
+ *
+ * Adı değiştirmek dolaşımdaki kampanya kuponlarının başlığını da
+ * değiştiriyor (kupon adı `products` satırından okunuyor) — yazım hatası
+ * için istenen davranış bu. Kaç kuponun etkileneceği geri dönülüyor ve
+ * panelde önceden gösteriliyor; eski ad denetim izine yazılıyor.
+ */
+export async function adDegistir(opts: {
+  cafeId: string;
+  urunId: string;
+  ad: string;
+  aktorId: string;
+}): Promise<AdSonucu> {
+  const ad = opts.ad.trim();
+
+  if (ad.length < 2) return { ok: false, hata: "Ürün adı en az iki harf olmalı." };
+  if (ad.length > EN_UZUN_AD) return { ok: false, hata: `Ürün adı en fazla ${EN_UZUN_AD} karakter.` };
+
+  return withCafe(opts.cafeId, async (db) => {
+    const onceki = await db.one<{ name: string }>(`SELECT name FROM products WHERE id = $1`, [
+      opts.urunId,
+    ]);
+    if (!onceki) return { ok: false as const, hata: "Ürün bulunamadı." };
+    if (onceki.name === ad) return { ok: false as const, hata: "Ürün adı zaten böyle." };
+
+    // `ekle` ile aynı kural: aynı isimde ikinci ürün olamaz. Kendisi hariç.
+    const cakisma = await db.one(
+      `SELECT 1 FROM products WHERE lower(name) = lower($1) AND id <> $2`,
+      [ad, opts.urunId],
+    );
+    if (cakisma) return { ok: false as const, hata: "Bu isimde bir ürün zaten var." };
+
+    // Ürün adı hem kampanya kuponlarında hem de o üründen türeyen ödül
+    // kuponlarında görünüyor; ikisi de sayılıyor.
+    const etkilenen = await db.one<{ n: string }>(
+      `SELECT count(*) AS n
+         FROM coupons c
+         LEFT JOIN percentage_campaigns kmp ON kmp.id = c.campaign_id
+         LEFT JOIN rewards r ON r.id = c.reward_id
+        WHERE c.status IN ('pending','active')
+          AND (kmp.product_id = $1 OR r.product_id = $1)`,
+      [opts.urunId],
+    );
+
+    await db.query(`UPDATE products SET name = $2 WHERE id = $1`, [opts.urunId, ad]);
+
+    await audit(db, {
+      actorType: "staff",
+      actorId: opts.aktorId,
+      cafeId: opts.cafeId,
+      action: "product.rename",
+      targetType: "product",
+      targetId: opts.urunId,
+      detail: {
+        oncekiBaslik: onceki.name,
+        yeniBaslik: ad,
+        etkilenenAcikKupon: Number(etkilenen?.n ?? 0),
+      },
+    });
+
+    return { ok: true as const, etkilenenKupon: Number(etkilenen?.n ?? 0) };
   });
 }
 

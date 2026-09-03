@@ -11,6 +11,8 @@ import {
   IsletmeUyari,
 } from "@/components/isletme";
 import { OdulEkleme, DurumDugmesi, EsikAyari, CarkSiniri } from "./kontroller";
+import { AdDuzeltme } from "../ad-duzeltme";
+import { adEylemi } from "./actions";
 import { OdulSekmeleri } from "../odul-sekmeleri";
 import { SayiKarti, IKON } from "@/components/gosterge";
 
@@ -195,7 +197,7 @@ function OdulKarti({ odul }: { odul: katalog.Odul }) {
 
   return (
     <div
-      className={`flex items-start gap-3.5 rounded-2xl border bg-yuzey p-4 transition-all hover:-translate-y-0.5 hover:shadow-md ${
+      className={`flex flex-wrap items-start gap-3.5 rounded-2xl border bg-yuzey p-4 transition-all hover:-translate-y-0.5 hover:shadow-md ${
         odul.aktif ? `${t.kenar} border-cizgi` : "border-cizgi opacity-55"
       }`}
     >
@@ -233,7 +235,23 @@ function OdulKarti({ odul }: { odul: katalog.Odul }) {
         </span>
       </span>
 
-      <DurumDugmesi odulId={odul.id} aktif={odul.aktif} />
+      {/* Ü94: ad düzeltmesi durum düğmesinin yanında. Bugüne kadar yazım
+          hatasının tek çaresi ödülü kaldırıp yenisini eklemekti — yani
+          geçmişini kaybetmek ("ize amreicano", Ü75). */}
+      <span className="flex shrink-0 flex-col items-end gap-1.5">
+        <DurumDugmesi odulId={odul.id} aktif={odul.aktif} />
+        <AdDuzeltme
+          eylem={adEylemi}
+          kimlikAlani="odulId"
+          kimlik={odul.id}
+          adAlani="baslik"
+          mevcutAd={odul.baslik}
+          aciklamaAlani="aciklama"
+          mevcutAciklama={odul.aciklama}
+          acikKupon={odul.acikKupon}
+          etiket="Ödül adı"
+        />
+      </span>
     </div>
   );
 }

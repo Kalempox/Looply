@@ -6,7 +6,7 @@
 > Yan dosyalar: neyin **var** olduğu → `21-looply-kapsam-haritasi.md` ·
 > demoda neyin **yapılabildiği** → `22-demo-yapilabilirlik.md`
 
-**Son güncelleme:** 2026-09-02 · **Kararlar:** Ü76 – Ü93
+**Son güncelleme:** 2026-09-02 · **Kararlar:** Ü76 – Ü94
 
 ---
 
@@ -129,9 +129,13 @@ Ayrı ayrı yazılırsa üçüncüsü ilk ikisini bozar.
 
 # DALGA 3 · ŞİMDİ — döngüyü güçlendiren ucuz işler ⬅️
 
-- [ ] **8 · Ödül ve ürün adını düzeltme**
-  En küçük iş, en acil ihtiyaç. Bugün tek çare kaldırıp yeniden eklemek;
-  hata sahada zaten yaşandı ("ize amreicano", Ü75).
+- [x] **8 · Ödül ve ürün adını düzeltme** ✅ **BİTTİ** — Ü94, 2026-09-03
+  Ödül ve ürün satırında "adı düzelt" kutusu. **Yalnızca ad ve açıklama**;
+  değer, tip, fiyat ve kategori değişmiyor — verilen söz geri alınmaz.
+  Kaç açık kuponun etkileneceği kutu açılır açılmaz yazıyor.
+  Eski ad denetim izinde (`oncekiBaslik`) — Ü75'te ad izden çıkarılmıştı
+  ama ad DEĞİŞİKLİĞİNDE eski ad başka hiçbir yerde kalmıyor.
+  Demo verisindeki "ize amreicano" ve "çoklata" düzeltildi.
 - [ ] **9 · Haftalık leaderboard sezonu + haftalık puan**
 - [ ] **10 · Günün Challenge'ı rotasyonu**
   Bugün yalnızca 2× çarpan var; gün rotasyonu yok.

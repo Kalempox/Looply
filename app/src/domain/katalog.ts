@@ -47,6 +47,8 @@ export type Odul = {
   urunId: string | null;
   urunAdi: string | null;
   aktif: boolean;
+  /** Ü94: adı değiştirmenin kaç dolaşımdaki kuponu etkileyeceği. */
+  acikKupon: number;
 };
 
 export type OdulSonucu = { ok: true; id: string } | { ok: false; hata: string };
@@ -116,10 +118,13 @@ export async function listele(cafeId: string): Promise<Odul[]> {
       product_id: string | null;
       urun_adi: string | null;
       active: boolean;
+      acik_kupon: string;
     }>(
       `SELECT r.id, r.reward_type, r.title, r.description, r.cost_kurus, r.percent,
               r.points_price, r.kind, r.min_proof_level, r.product_id,
-              p.name AS urun_adi, r.active
+              p.name AS urun_adi, r.active,
+              (SELECT count(*) FROM coupons c
+                WHERE c.reward_id = r.id AND c.status IN ('pending','active')) AS acik_kupon
          FROM rewards r
          LEFT JOIN products p ON p.id = r.product_id
         ORDER BY r.active DESC, r.kind DESC, r.sort_order, r.points_price`,
@@ -139,6 +144,7 @@ export async function listele(cafeId: string): Promise<Odul[]> {
     urunId: r.product_id,
     urunAdi: r.urun_adi,
     aktif: r.active,
+    acikKupon: Number(r.acik_kupon),
   }));
 }
 
@@ -238,6 +244,94 @@ export async function ekle(opts: {
     });
 
     return { ok: true as const, id };
+  });
+}
+
+export type AdSonucu =
+  | { ok: true; etkilenenKupon: number }
+  | { ok: false; hata: string };
+
+/**
+ * Ödülün adını ve açıklamasını düzeltir (Ü94).
+ *
+ * ⚠️ Bugüne kadar tek çare ödülü yayından kaldırıp yenisini eklemekti ve
+ * hata sahada zaten yaşandı: kafe "Ice Americano" yerine **"ize amreicano"**
+ * yazdı (Ü75). Yazım hatasının bedeli, ödülün geçmişini kaybetmek olmamalı.
+ *
+ * ── Neden yalnızca ad ve açıklama ────────────────────────────
+ *
+ * Değer, tip ve oran **değişmiyor**. Bunlar değişebilseydi kafe 30 TL'lik
+ * bir ödülün adını "Ücretsiz çay" yapar, dolaşımdaki kuponu elinde tutan
+ * oyuncu kasada 8 TL'lik bir şey alırdı. Bütçe ekranındaki söz burada da
+ * geçerli: *"verilen söz geri alınmaz."* Değerin değişmesi ayrıca E10'un
+ * rezerve hesabını da bozardı — kupon 30 TL bağlamışken ödül 8 TL olamaz.
+ *
+ * ⚠️ **Ad değişikliği dolaşımdaki kuponlara da yansıyor.** Kupon kartı adı
+ * `rewards` satırından okuyor, kopyasını tutmuyor. Yazım hatası düzeltmesi
+ * için doğru davranış bu — "ize amreicano" yazan kuponlar da düzeliyor.
+ * Ama kötüye kullanılabilir bir kapı, o yüzden:
+ *   1. kaç açık kuponun etkileneceği geri dönülüyor ve panelde **önceden**
+ *      gösteriliyor — kafe sonucu görmeden değiştirmiyor,
+ *   2. eski ve yeni ad denetim izine yazılıyor.
+ *
+ * ⚠️ Ü75'te ad denetim ayrıntısından **çıkarılmıştı**; gerekçe "ad zaten
+ * targetId'nin işaret ettiği satırda duruyor" idi. Burada o gerekçe
+ * geçmiyor: değişiklikten sonra eski ad hiçbir yerde kalmıyor. Yasak
+ * anahtar listesi kişi adı içindir (`ad`, `name`, `first_name`); menü
+ * metnini `oncekiBaslik` diye ayrı ve açık bir anahtarla yazıyoruz.
+ */
+export async function adDegistir(opts: {
+  cafeId: string;
+  odulId: string;
+  baslik: string;
+  aciklama?: string | null;
+  aktorId: string;
+}): Promise<AdSonucu> {
+  const baslik = opts.baslik.trim();
+  const aciklama = opts.aciklama?.trim() || null;
+
+  if (baslik.length < 2) return { ok: false, hata: "Ödül adı en az iki harf olmalı." };
+  if (baslik.length > 60) return { ok: false, hata: "Ödül adı en fazla 60 karakter." };
+
+  return withCafe(opts.cafeId, async (db) => {
+    const onceki = await db.one<{ title: string; description: string | null }>(
+      `SELECT title, description FROM rewards WHERE id = $1`,
+      [opts.odulId],
+    );
+    if (!onceki) return { ok: false as const, hata: "Ödül bulunamadı." };
+
+    if (onceki.title === baslik && (onceki.description ?? null) === aciklama) {
+      return { ok: false as const, hata: "Ad ve açıklama zaten böyle." };
+    }
+
+    const etkilenen = await db.one<{ n: string }>(
+      `SELECT count(*) AS n FROM coupons
+        WHERE reward_id = $1 AND status IN ('pending','active')`,
+      [opts.odulId],
+    );
+
+    await db.query(`UPDATE rewards SET title = $2, description = $3 WHERE id = $1`, [
+      opts.odulId,
+      baslik,
+      aciklama,
+    ]);
+
+    await audit(db, {
+      actorType: "staff",
+      actorId: opts.aktorId,
+      cafeId: opts.cafeId,
+      action: "reward.rename",
+      targetType: "reward",
+      targetId: opts.odulId,
+      detail: {
+        oncekiBaslik: onceki.title,
+        yeniBaslik: baslik,
+        aciklamaDegisti: (onceki.description ?? null) !== aciklama,
+        etkilenenAcikKupon: Number(etkilenen?.n ?? 0),
+      },
+    });
+
+    return { ok: true as const, etkilenenKupon: Number(etkilenen?.n ?? 0) };
   });
 }
 
