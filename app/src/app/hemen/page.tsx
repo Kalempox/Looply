@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { masayaOturt } from "@/domain/masaya-oturt";
 import { cookies } from "next/headers";
 import { biletCoz, MASA_COOKIE } from "@/domain/qr";
 import * as oturum from "@/domain/session";
@@ -26,7 +27,15 @@ export const dynamic = "force-dynamic";
  */
 export default async function HemenSayfasi() {
   const acikOturum = await oturum.oku();
-  if (acikOturum?.rol === "oyuncu") redirect("/oyna");
+  if (acikOturum?.rol === "oyuncu") {
+    // ⚠️ Ü95: yollamadan ÖNCE masaya oturt. Eskiden burada yalnızca
+    // yönlendirme vardı ve zaten girişli oyuncu karekodu okuttuğunda masa
+    // oturumu HİÇ açılmıyordu; ana ekranda "Kafe dışındasın" görüyor,
+    // karekodu tekrar okutuyor, yine aynı ekrana düşüyordu. İlk ziyarette
+    // çalışması hatayı gizliyordu — kayıt akışı oturumu kendisi açıyor.
+    await masayaOturt(acikOturum.ozneId);
+    redirect("/oyna");
+  }
 
   const c = await cookies();
   const bilet = c.get(MASA_COOKIE)?.value;
@@ -37,8 +46,11 @@ export default async function HemenSayfasi() {
   if (!masaBilet) redirect("/giris");
 
   const masa = await withBypass("misafir — masa bilgisi", (db) =>
-    db.one<{ cafe_adi: string; masa_adi: string }>(
-      `SELECT c.name AS cafe_adi, t.label AS masa_adi
+    db.one<{ cafe_adi: string; masa_adi: string; kafe_konumu_var: boolean }>(
+      // Ü95: kafenin konumu yoksa doğrulama hiçbir zaman başarılı olamaz;
+      // ekran bunu bilmezse çalışmayan bir "Doğrula" düğmesi gösteriyor.
+      `SELECT c.name AS cafe_adi, t.label AS masa_adi,
+              (c.lat IS NOT NULL AND c.lng IS NOT NULL) AS kafe_konumu_var
          FROM cafe_tables t JOIN cafes c ON c.id = t.cafe_id
         WHERE t.id = $1 AND c.id = $2 AND c.status = 'approved'`,
       [masaBilet.tableId, masaBilet.cafeId],
@@ -83,6 +95,7 @@ export default async function HemenSayfasi() {
 
         }))}
         kafeAdi={masa.cafe_adi}
+        kafeKonumuVar={masa.kafe_konumu_var}
         konumBaslangic={konum ? { dogrulandi: konum.k2, mesafeM: konum.mesafeM } : null}
         demoKapisi={kodEkrandaGosterilir()}
       />

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useTransition } from "react";
 import { konumBildir, konumReddedildi, demoKafedeSay } from "./actions";
 
@@ -20,7 +21,27 @@ export type SeritDurumu =
   | { tur: "konum_bekliyor"; kafe: string; masa: string }
   | { tur: "dogrulandi"; kafe: string; masa: string; mesafeM: number | null }
   | { tur: "uzak"; kafe: string; masa: string; mesafeM: number }
-  | { tur: "konum_kapali"; kafe: string; masa: string };
+  | { tur: "konum_kapali"; kafe: string; masa: string }
+  /**
+   * Kafe konumunu hiç işaretlememiş (Ü95).
+   *
+   * ⚠️ Bu, oyuncunun düzeltebileceği bir şey DEĞİL. Eskiden bu durum
+   * `konum_bekliyor` içine düşüyordu: ekran "kazanabilmek için konumunu
+   * doğrula" diyor, oyuncu doğruluyor, sunucu `kafe_konumu_yok` dönüyor ve
+   * şerit hiç değişmiyordu. Oyuncu kendini kafe dışında sanılıyor
+   * zannediyor, oysa eksik olan kafenin kurulumu.
+   */
+  | { tur: "kafe_konumsuz"; kafe: string; masa: string }
+  /**
+   * Masa oturumu doldu (Ü95).
+   *
+   * ⚠️ Oturum 3 saat sürüyor ve dolduğunda oyuncu `disarida`ya düşüyordu:
+   * ekran *"Kafe dışındasın"* diyor, ne olduğunu söylemiyor, ne yapılacağını
+   * söylemiyor ve hiçbir düğme göstermiyordu. Oyuncu hâlâ masada oturuyor
+   * olabilir. Veritabanında 245 dolmuş oturuma karşılık 1 aktif oturum
+   * vardı — bu, kenar durum değil olağan durum.
+   */
+  | { tur: "oturum_doldu"; kafe: string; masa: string };
 
 export function DurumSeridi({
   durum,
@@ -67,6 +88,8 @@ export function DurumSeridi({
     dogrulandi: "border-vurgu/50 text-vurgu",
     uzak: "border-tehlike/60 text-tehlike",
     konum_kapali: "border-odul/50 text-odul-koyu",
+    kafe_konumsuz: "border-cizgi text-yazi-sonuk",
+    oturum_doldu: "border-odul/50 text-odul-koyu",
   }[durum.tur];
 
   return (
@@ -78,8 +101,19 @@ export function DurumSeridi({
           {durum.tur === "disarida" ? (
             <>
               <div className="etiket-caps">Kafe dışındasın</div>
+              {/* ⚠️ Ü95: eskiden burada yalnızca "kazanamazsın" yazıyordu ve
+                  ne yapılacağı söylenmiyordu. Kazanmanın tek yolu masadaki
+                  karekodu okutmak; oyuncu bunu bilmezse uygulamayı bozuk
+                  sanıyor. */}
               <div className="text-[12px] text-yazi-sonuk">
-                Oynayabilirsin ama puan ve kupon kazanamazsın
+                Kazanmak için masadaki karekodu okut
+              </div>
+            </>
+          ) : durum.tur === "oturum_doldu" ? (
+            <>
+              <div className="etiket-caps truncate">Masa oturumun doldu</div>
+              <div className="text-[12px] text-yazi-sonuk">
+                {durum.kafe} · {durum.masa} — karekodu tekrar okut, kaldığın yerden devam et
               </div>
             </>
           ) : (
@@ -97,11 +131,30 @@ export function DurumSeridi({
                         : "Doğrulandı",
                     uzak: durum.tur === "uzak" ? `Kafeden ${durum.mesafeM} m uzaktasın` : "",
                     konum_kapali: "Konum kapalı — büyük ödüller kilitli",
+                    // Sorumluluğu doğru yere koy: oyuncunun yapabileceği
+                    // bir şey yok, doğrulama düğmesi de gösterilmiyor.
+                    kafe_konumsuz: "Bu kafe konumunu işaretlememiş — burada ödül dağıtılamıyor",
+                    // Bu dala hiç girmiyor (yukarıda ayrı çiziliyor); tip
+                    // tamlığı için duruyor.
+                    oturum_doldu: "",
                   }[durum.tur]}
               </div>
             </>
           )}
         </div>
+
+        {/* Masası olmayan oyuncunun tek yolu karekodu okutmak. Canlıda
+            bunun ekranda bir düğmesi yok — kamera oyuncunun elinde. Demoda
+            masa listesi başlangıç sayfasında duruyor, kısayolu oraya. */}
+        {demoKapisi && (durum.tur === "disarida" || durum.tur === "oturum_doldu") && (
+          <Link
+            href="/"
+            className="etiket-caps shrink-0 rounded border border-odul px-2.5 py-1.5 text-odul-koyu"
+            title="Yalnızca geliştirmede görünür"
+          >
+            Masa seç
+          </Link>
+        )}
 
         {(durum.tur === "konum_bekliyor" || durum.tur === "konum_kapali" || durum.tur === "uzak") && (
           <div className="flex shrink-0 items-center gap-1.5">

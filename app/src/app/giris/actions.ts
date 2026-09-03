@@ -4,10 +4,10 @@ import { redirect } from "next/navigation";
 import { headers, cookies } from "next/headers";
 import { z } from "zod";
 import { kodIste, kodDogrula } from "@/domain/otp";
-import { kaydet, telefonlaBul, takmaAd } from "@/domain/player";
-import { biletCoz, MASA_COOKIE } from "@/domain/qr";
+import { kaydet, telefonlaBul } from "@/domain/player";
 import * as oturum from "@/domain/session";
 import * as masaOturumu from "@/domain/masa";
+import { masayaOturt } from "@/domain/masaya-oturt";
 import * as misafir from "@/domain/misafir";
 import { misafirOyunuYaz } from "@/domain/oyun";
 import * as cark from "@/domain/cark";
@@ -114,26 +114,6 @@ function formDegerleri(form: FormData) {
   };
 }
 
-/**
- * Girişten sonraki ortak iş: masa bağlantısı ve takma ad.
- *
- * İki giriş yolu var ve ikisi de aynı şeyi yapmak zorunda. Ayrı ayrı
- * yazılsaydı biri unutulurdu: karekodu okutup **parolayla** giren oyuncu
- * masasına oturmamış olur, ekran da sebebini söyleyemezdi.
- *
- * Masa bileti ÇEREZDEN okunuyor — formdan değil. Formdaki gizli alan
- * kullanıcı tarafından değiştirilebilirdi; çerez HttpOnly ve imzalı.
- */
-async function masayaOturt(playerId: string, cihazId?: string): Promise<void> {
-  const bilet = (await cookies()).get(MASA_COOKIE)?.value;
-  if (!bilet) return;
-
-  const masa = biletCoz(bilet);
-  if (!masa) return;
-
-  await takmaAd(masa.cafeId, playerId);
-  await masaOturumu.ac({ cafeId: masa.cafeId, tableId: masa.tableId, playerId, cihazId });
-}
 
 /**
  * Kayıt öncesi oynanan oyunun talebini bozdurur (Ü35).

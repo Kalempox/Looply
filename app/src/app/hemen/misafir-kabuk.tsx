@@ -31,11 +31,14 @@ type Durum =
 export function MisafirKabugu({
   oyunlar,
   kafeAdi,
+  kafeKonumuVar,
   konumBaslangic,
   demoKapisi,
 }: {
   oyunlar: Oyun[];
   kafeAdi: string;
+  /** Ü95: kafe konumunu işaretlemiş mi — yoksa doğrulama imkânsız. */
+  kafeKonumuVar: boolean;
   /** Demo kısayolu görünsün mü — canlıda hep false. */
   demoKapisi?: boolean;
   /** Sunucunun çerezden okuduğu konum durumu — sayfa yenilense de kaybolmasın. */
@@ -142,6 +145,7 @@ export function MisafirKabugu({
 
       <KonumSeridi
         kafeAdi={kafeAdi}
+        kafeKonumuVar={kafeKonumuVar}
         konum={konum}
         not={konumNotu}
         bekliyor={bekliyor}
@@ -207,6 +211,7 @@ export function MisafirKabugu({
  */
 function KonumSeridi({
   kafeAdi,
+  kafeKonumuVar,
   konum,
   not,
   bekliyor,
@@ -214,6 +219,7 @@ function KonumSeridi({
   demo,
 }: {
   kafeAdi: string;
+  kafeKonumuVar: boolean;
   konum: { dogrulandi: boolean; mesafeM: number | null } | null;
   not: string | null;
   bekliyor: boolean;
@@ -223,31 +229,52 @@ function KonumSeridi({
 }) {
   const dogrulandi = !!konum?.dogrulandi;
 
+  /**
+   * ⚠️ Ü95: kafe konumunu hiç işaretlememişse doğrulama **hiçbir zaman**
+   * başarılı olamaz — `konumDogrula` `kafe_konumu_yok` ile dönüyor.
+   * Eskiden ekran yine de "Doğrula" düğmesi gösteriyordu; oyuncu basıyor,
+   * geçici bir not çıkıyor, şerit değişmiyordu. Oyuncu kendini kafe
+   * dışında sanılıyor zannediyordu, oysa eksik olan kafenin kurulumu.
+   */
+  const cikmaz = !dogrulandi && !kafeKonumuVar;
+
   return (
     <div
       className={`rounded-2xl border px-4 py-3.5 ${
-        dogrulandi ? "border-vurgu bg-cukur" : "border-odul/60 bg-yuzey"
+        dogrulandi ? "border-vurgu bg-cukur" : cikmaz ? "border-cizgi bg-yuzey" : "border-odul/60 bg-yuzey"
       }`}
     >
       <div className="flex items-center gap-3">
         <span
           aria-hidden
           className={`size-2.5 shrink-0 rounded-full border ${
-            dogrulandi ? "border-vurgu bg-vurgu" : "border-odul nabiz"
+            dogrulandi ? "border-vurgu bg-vurgu" : cikmaz ? "border-cizgi" : "border-odul nabiz"
           }`}
         />
         <div className="min-w-0 flex-1">
-          <div className={`etiket-caps ${dogrulandi ? "text-vurgu" : "text-odul-koyu"}`}>
-            {dogrulandi ? "Konum doğrulandı" : "Ödül için konum gerekiyor"}
+          <div
+            className={`etiket-caps ${
+              dogrulandi ? "text-vurgu" : cikmaz ? "text-yazi-sonuk" : "text-odul-koyu"
+            }`}
+          >
+            {dogrulandi
+              ? "Konum doğrulandı"
+              : cikmaz
+                ? "Bu kafede ödül dağıtılmıyor"
+                : "Ödül için konum gerekiyor"}
           </div>
           <div className="mt-0.5 text-[12px] leading-relaxed text-yazi-sonuk">
-            {not ??
+            {(cikmaz ? null : not) ??
               (dogrulandi
                 ? `${kafeAdi}${konum?.mesafeM != null ? ` · ${konum.mesafeM} m` : ""} — kazandığın ödül hesabına işlenecek`
-                : "Doğrulamazsan oynayabilirsin ama ödül açılmaz")}
+                : cikmaz
+                  ? `${kafeAdi} konumunu henüz işaretlememiş. Oynayabilirsin ama ödül açılmıyor — senin yapabileceğin bir şey yok.`
+                  : "Doğrulamazsan oynayabilirsin ama ödül açılmaz")}
           </div>
         </div>
-        {!dogrulandi && (
+        {/* Çıkmazda düğme yok: basılınca hiçbir şey olmayacak bir düğme,
+            oyuncuyu kendi hatasını aramaya iter. */}
+        {!dogrulandi && !cikmaz && (
           <div className="flex shrink-0 items-center gap-1.5">
             <button
               type="button"

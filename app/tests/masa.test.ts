@@ -195,6 +195,74 @@ describe("konum doğrulaması (K2)", () => {
   });
 });
 
+/* ═══════════════════════════════════════════════════════════
+   Oyuncuya ne olduğunu söylemek (Ü95)
+   ═══════════════════════════════════════════════════════════ */
+
+describe("oyuncu neden kazanamadığını görebiliyor (Ü95)", () => {
+  test("kafe konumunu işaretlememişse oturum bunu taşıyor", async () => {
+    // ⚠️ Konumsuz kafede K2 hiçbir zaman sağlanamıyor. Ekran bunu
+    // bilmezse hiç başarılı olamayacak bir "Doğrula" düğmesi gösteriyor
+    // ve oyuncu kendi hatasını arıyor.
+    const o1 = await masa.aktif(oyuncuId);
+    assert.equal(o1?.kafeKonumuVar, true, "kafenin konumu vardı, yok göründü");
+
+    await yoneticiSorgu(`UPDATE cafes SET lat = NULL, lng = NULL WHERE id = $1`, [kafeA]);
+    try {
+      const o2 = await masa.aktif(oyuncuId);
+      assert.equal(o2?.kafeKonumuVar, false, "konumsuz kafe var göründü");
+
+      const s = await masa.konumDogrula(oyuncuId, KAFE_LAT, KAFE_LNG);
+      assert.equal(s.durum, "kafe_konumu_yok", "konumsuz kafede doğrulama başarılı sayıldı");
+    } finally {
+      await yoneticiSorgu(`UPDATE cafes SET lat = $2, lng = $3 WHERE id = $1`, [
+        kafeA,
+        KAFE_LAT,
+        KAFE_LNG,
+      ]);
+    }
+  });
+
+  test("süresi dolan oturum 'hiç oturmadı' ile karışmıyor", async () => {
+    // ⚠️ `aktif()` ikisine de null dönüyor ve ana ekran ikisine de "Kafe
+    // dışındasın" diyordu. Veritabanında 245 dolmuş oturuma karşılık 1
+    // aktif oturum vardı — bu kenar durum değil, olağan durum.
+    const yeniOyuncu = await kaydet({
+      telefon: yeniTelefon(),
+      ad: "Ceren",
+      soyad: "Aydın",
+      dogumYili: 1996,
+      pazarlamaIzni: false,
+    });
+    const pid = yeniOyuncu.oyuncu.id;
+
+    try {
+      // Henüz hiç masaya oturmadı.
+      assert.equal(await masa.sonDolanOturum(pid), null, "oturmamış oyuncuya geçmiş çıktı");
+
+      await masa.ac({ cafeId: kafeA, tableId: masaA, playerId: pid });
+      assert.ok(await masa.aktif(pid), "oturum açılmadı");
+      // Açık oturum varken "dolan" sayılmamalı.
+      assert.equal(await masa.sonDolanOturum(pid), null, "açık oturum dolmuş sayıldı");
+
+      await yoneticiSorgu(
+        `UPDATE table_sessions SET expires_at = now() - interval '1 minute' WHERE player_id = $1`,
+        [pid],
+      );
+
+      assert.equal(await masa.aktif(pid), null, "dolmuş oturum hâlâ aktif");
+      const dolan = await masa.sonDolanOturum(pid);
+      assert.ok(dolan, "dolmuş oturum bulunamadı — oyuncu yine 'kafe dışında' görünür");
+      assert.ok(dolan.cafeAdi.length > 0);
+      assert.ok(dolan.masaAdi.length > 0);
+    } finally {
+      await yoneticiSorgu(`DELETE FROM table_sessions WHERE player_id = $1`, [pid]);
+      await yoneticiSorgu(`DELETE FROM player_consents WHERE player_id = $1`, [pid]);
+      await yoneticiSorgu(`DELETE FROM players WHERE id = $1`, [pid]);
+    }
+  });
+});
+
 describe("kanıt seviyesi", () => {
   test("seviye art arda sağlanan kanıta göre", () => {
     assert.equal(masa.seviyeHesapla(0), 0, "hiç kanıt yok");

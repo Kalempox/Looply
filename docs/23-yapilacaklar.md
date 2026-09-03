@@ -6,7 +6,7 @@
 > Yan dosyalar: neyin **var** olduğu → `21-looply-kapsam-haritasi.md` ·
 > demoda neyin **yapılabildiği** → `22-demo-yapilabilirlik.md`
 
-**Son güncelleme:** 2026-09-02 · **Kararlar:** Ü76 – Ü94
+**Son güncelleme:** 2026-09-02 · **Kararlar:** Ü76 – Ü95
 
 ---
 
@@ -136,6 +136,15 @@ Ayrı ayrı yazılırsa üçüncüsü ilk ikisini bozar.
   Eski ad denetim izinde (`oncekiBaslik`) — Ü75'te ad izden çıkarılmıştı
   ama ad DEĞİŞİKLİĞİNDE eski ad başka hiçbir yerde kalmıyor.
   Demo verisindeki "ize amreicano" ve "çoklata" düzeltildi.
+- [x] **8b · Girişli oyuncu karekodu okutunca masaya oturuyor** ✅ **BİTTİ** — Ü95
+  🔴 Sahada bulunan hata: girişli oyuncu karekodu okutunca masa oturumu
+  **hiç açılmıyordu** — "Kafe dışındasın" görüp ödül kazanamıyordu.
+  İlk ziyarette çalışması (kayıt akışı oturumu kendisi açıyor) hatayı
+  gizlemişti. `masayaOturt` ortak modüle taşındı, üç yol da çağırıyor.
+  Ayrıca: "oturumun doldu" artık "kafe dışındasın"dan ayrı ve ne
+  yapılacağını söylüyor; konumsuz kafede çalışmayan "Doğrula" düğmesi
+  kaldırıldı.
+
 - [ ] **9 · Haftalık leaderboard sezonu + haftalık puan**
 - [ ] **10 · Günün Challenge'ı rotasyonu**
   Bugün yalnızca 2× çarpan var; gün rotasyonu yok.

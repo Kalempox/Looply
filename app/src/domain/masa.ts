@@ -36,6 +36,15 @@ export type MasaOturumu = {
   kanitSeviyesi: number;
   mesafeM: number | null;
   konumReddedildi: boolean;
+  /**
+   * Kafe konumunu işaretlemiş mi? (Ü95)
+   *
+   * ⚠️ Konumsuz kafede K2 **hiçbir zaman** sağlanamıyor: `konumDogrula`
+   * `kafe_konumu_yok` ile dönüyor, mesafe yazılmıyor ve oyuncu sonsuza
+   * kadar "konum bekliyor"da kalıyor. Oyuncu ekranı bunu bilmezse hiç
+   * başarılı olamayacak bir "Doğrula" düğmesi göstermeye devam ediyor.
+   */
+  kafeKonumuVar: boolean;
 };
 
 /** Bit maskesinden seviye: art arda sağlanan en yüksek kanıt. */
@@ -127,10 +136,12 @@ export async function aktif(playerId: string): Promise<MasaOturumu | null> {
       proof_level: number;
       geo_distance_m: number | null;
       geo_reddedildi: boolean;
+      kafe_konumu_var: boolean;
     }>(
       `SELECT ts.id, ts.cafe_id, ts.table_id, c.name AS cafe_adi, t.label AS masa_adi,
               ts.started_at, ts.expires_at, ts.proof_mask, ts.proof_level,
-              ts.geo_distance_m, ts.geo_reddedildi
+              ts.geo_distance_m, ts.geo_reddedildi,
+              (c.lat IS NOT NULL AND c.lng IS NOT NULL) AS kafe_konumu_var
          FROM table_sessions ts
          JOIN cafes c ON c.id = ts.cafe_id
          JOIN cafe_tables t ON t.id = ts.table_id
@@ -159,6 +170,7 @@ export async function aktif(playerId: string): Promise<MasaOturumu | null> {
     kanitSeviyesi: seviyeHesapla(maske),
     mesafeM: r.geo_distance_m,
     konumReddedildi: r.geo_reddedildi,
+    kafeKonumuVar: r.kafe_konumu_var,
   };
 }
 
@@ -191,6 +203,36 @@ export async function konumuUygula(opts: {
       [opts.playerId, opts.cafeId, opts.tableId, opts.mesafeM, opts.k2 ? K2 : 0, K1 | K2],
     ),
   );
+}
+
+/**
+ * Oyuncunun en son masa oturumu ne zaman doldu? (Ü95)
+ *
+ * ⚠️ `aktif()` iki farklı durumu aynı `null` ile anlatıyor: oyuncu hiç
+ * karekod okutmadı, ya da okuttu ama **oturumu doldu** (3 saat). Ana ekran
+ * ikisine de *"Kafe dışındasın"* diyordu ve ne olduğunu söylemiyordu —
+ * masadan kalkmamış, telefonu cebine koyup dönmüş oyuncu kendini kafe
+ * dışında sanılıyor buluyordu. Veritabanında 245 dolmuş oturuma karşılık
+ * 1 aktif oturum vardı; yani bu, kenar durum değil **olağan** durum.
+ *
+ * Yalnızca "ne zaman doldu" dönüyor; nerede olduğu değil (G10).
+ */
+export async function sonDolanOturum(
+  playerId: string,
+): Promise<{ cafeAdi: string; masaAdi: string; bitis: Date } | null> {
+  const r = await withBypass("son dolan masa oturumu", (db) =>
+    db.one<{ cafe_adi: string; masa_adi: string; expires_at: Date }>(
+      `SELECT c.name AS cafe_adi, t.label AS masa_adi, ts.expires_at
+         FROM table_sessions ts
+         JOIN cafes c ON c.id = ts.cafe_id
+         JOIN cafe_tables t ON t.id = ts.table_id
+        WHERE ts.player_id = $1 AND ts.expires_at <= now()
+        ORDER BY ts.expires_at DESC LIMIT 1`,
+      [playerId],
+    ),
+  );
+
+  return r ? { cafeAdi: r.cafe_adi, masaAdi: r.masa_adi, bitis: r.expires_at } : null;
 }
 
 export type KonumSonucu =

@@ -50,6 +50,11 @@ export default async function OynaSayfasi() {
 
   const g = gorunum(oyuncu);
   const masa = await masaOturumu.aktif(o.ozneId);
+
+  // Ü95: masa yoksa sebebi öğren — hiç okutmadı mı, yoksa oturumu mu doldu?
+  // İkisine de "Kafe dışındasın" demek, masadan kalkmamış oyuncuyu kendini
+  // kafe dışında sanılıyor sanmaya itiyordu.
+  const dolan = masa ? null : await masaOturumu.sonDolanOturum(o.ozneId);
   const sayilar = await ozet(o.ozneId, masa?.cafeId);
   // Ü15: seviye kafe bazında — kafe dışında gösterilecek bir seviye yok.
   const seviyeBilgisi = masa ? await kafeSeviyesi(o.ozneId, masa.cafeId) : null;
@@ -78,7 +83,7 @@ export default async function OynaSayfasi() {
       )
     : null;
 
-  const seridDurumu = seridBelirle(masa);
+  const seridDurumu = seridBelirle(masa, dolan);
   const kazanabilir = seridDurumu.tur === "dogrulandi";
 
   return (
@@ -223,13 +228,33 @@ export default async function OynaSayfasi() {
 
 /* ── Parçalar ──────────────────────────────────────────── */
 
-function seridBelirle(masa: Awaited<ReturnType<typeof masaOturumu.aktif>>): SeritDurumu {
-  if (!masa) return { tur: "disarida" };
+function seridBelirle(
+  masa: Awaited<ReturnType<typeof masaOturumu.aktif>>,
+  dolan: Awaited<ReturnType<typeof masaOturumu.sonDolanOturum>>,
+): SeritDurumu {
+  // ⚠️ Ü95: "masa yok" iki ayrı şey. Oturumu dolan oyuncuya ne olduğunu ve
+  // ne yapacağını söylüyoruz; hiç okutmayana yalnızca ne yapacağını.
+  if (!masa) {
+    return dolan
+      ? { tur: "oturum_doldu", kafe: dolan.cafeAdi, masa: dolan.masaAdi }
+      : { tur: "disarida" };
+  }
 
   const ortak = { kafe: masa.cafeAdi, masa: masa.masaAdi };
 
+  // Kazanılmış kanıt her şeyin önünde: kafe konumunu sonradan silse bile
+  // bu oyuncu doğrulanmış kalıyor, kanıt biti geri alınmıyor (AL-2).
   if (masa.kanitMaskesi & masaOturumu.K2) {
     return { tur: "dogrulandi", ...ortak, mesafeM: masa.mesafeM };
+  }
+
+  // ⚠️ Ü95: doğrulanmamış oyuncuda kafenin konumu YOKSA, doğrulama
+  // hiçbir zaman başarılı olamaz. Eskiden bu durum "konum bekliyor"a
+  // düşüyordu ve oyuncu kendi hatasını arıyordu; oysa eksik olan kafenin
+  // kurulumu. Reddedilmiş konumdan da önce geliyor: izin verilse bile
+  // sonuç değişmezdi.
+  if (!masa.kafeKonumuVar) {
+    return { tur: "kafe_konumsuz", ...ortak };
   }
   if (masa.mesafeM != null) {
     return { tur: "uzak", ...ortak, mesafeM: masa.mesafeM };
