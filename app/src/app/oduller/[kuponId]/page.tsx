@@ -1,3 +1,4 @@
+import { beklemeMetni } from "@/domain/bekleme-metni";
 import { notFound, redirect } from "next/navigation";
 import * as oturum from "@/domain/session";
 import { kuponDetayi } from "@/domain/odul";
@@ -107,12 +108,16 @@ function durumBasligi(durum: string): string {
   return "Süresi doldu";
 }
 
-function durumAciklamasi(kupon: { durum: string; aktiflesme: Date }): string {
+function durumAciklamasi(kupon: { id: string; durum: string; aktiflesme: Date }): string {
   if (kupon.durum === "beklemede") {
-    return `Büyük ödüller kazanıldığı anda değil, 24 saat sonra açılır. ${kupon.aktiflesme.toLocaleString(
-      "tr-TR",
-      { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" },
-    )} sonrasında kasada kullanabilirsin.`;
+    /**
+     * ⚠️ Ü97: saat **söylenmiyor**. Ürün sahibi: *"ödülü tabii ki bilecek,
+     * zamanı bilmeyecek."* Eskiden burada "7 Eylül 14:20 sonrasında
+     * kullanabilirsin" yazıyordu; kesin saat, beklemeyi bir geri sayıma
+     * çeviriyor ve oyuncu o saatte gelmezse söz tutulmamış gibi oluyordu.
+     * Kasiyer ekranı gerçek saati görmeye devam ediyor.
+     */
+    return beklemeMetni(kupon.id, kupon.aktiflesme);
   }
   if (kupon.durum === "kullanildi") return "Bu kupon kasada kullanıldı.";
   if (kupon.durum === "geri_alindi") return "Kasiyer bu onayı geri aldı. Bir yanlışlık olduysa işletmeyle görüş.";

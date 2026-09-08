@@ -310,7 +310,7 @@ export function DurumDugmesi({
  * Erteleme eşiği ayarı.
  *
  * Kafenin ödül ekonomisine ait tek sayı: bunun üstündeki ödül kazanıldığı
- * anda değil, 24 saat sonra açılıyor (Ü28). Ertesi ziyareti üreten mekanik
+ * anda değil, 12 saat sonra açılıyor (Ü28, Ü97). Ertesi ziyareti üreten mekanik
  * bu — ama "büyük ödül" tanımı her kafede aynı değil, o yüzden ayarlanabilir.
  *
  * Sıfır yazmak her ödülü erteler; üst sınır 500 TL. İkisi de kafenin hakkı,
@@ -329,7 +329,7 @@ export function EsikAyari({ mevcutTl }: { mevcutTl: number }) {
 
       <IsletmeAlan
         etiket="Gecikmeli açılma eşiği (TL)"
-        ipucu="Bu tutarın üstündeki ödül 24 saat sonra açılır; altındakiler kasada hemen kullanılabilir. Sıfır yazarsan her ödül gecikir."
+        ipucu="Bu tutarın üstündeki ödül 12 saat sonra açılır; altındakiler kasada hemen kullanılabilir. Sıfır yazarsan her ödül gecikir."
       >
         <input
           name="esik"

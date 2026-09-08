@@ -89,7 +89,7 @@ export async function durumEylemi(odulId: string, aktif: boolean): Promise<void>
 export type EsikDurumu = { hata?: string; bilgi?: string };
 
 /**
- * Erteleme eşiği — bu tutarın üstündeki ödül 24 saat sonra açılır (Ü28).
+ * Erteleme eşiği — bu tutarın üstündeki ödül 12 saat sonra açılır (Ü28, Ü97).
  *
  * Kafenin ayarı, platformun değil: ödül ekonomisi kafeden kafeye değişiyor.
  * E6'nın kanıt kademesi buradan **etkilenmiyor** — kafe kendi ödülünün kanıt
@@ -113,8 +113,8 @@ export async function esikEylemi(_onceki: EsikDurumu, form: FormData): Promise<E
   return {
     bilgi:
       tl === 0
-        ? "Artık her ödül 24 saat sonra açılıyor."
-        : `${tl.toLocaleString("tr-TR")} TL üstündeki ödüller 24 saat sonra açılacak.`,
+        ? "Artık her ödül 12 saat sonra açılıyor."
+        : `${tl.toLocaleString("tr-TR")} TL üstündeki ödüller 12 saat sonra açılacak.`,
   };
 }
 

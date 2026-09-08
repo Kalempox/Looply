@@ -101,7 +101,7 @@ export default async function OdullerSayfasi() {
         <SayiKarti
           etiket="Hemen açılan"
           deger={String(hemenAcilan)}
-          alt={`üstü 24 saat bekliyor`}
+          alt={`üstü 12 saat bekliyor`}
           ikon={IKON.saat}
           alan="genel"
         />

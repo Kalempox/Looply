@@ -6,7 +6,7 @@
 > Yan dosyalar: neyin **var** olduğu → `21-looply-kapsam-haritasi.md` ·
 > demoda neyin **yapılabildiği** → `22-demo-yapilabilirlik.md`
 
-**Son güncelleme:** 2026-09-02 · **Kararlar:** Ü76 – Ü96
+**Son güncelleme:** 2026-09-02 · **Kararlar:** Ü76 – Ü97
 
 ---
 
@@ -166,9 +166,16 @@ Ayrı ayrı yazılırsa üçüncüsü ilk ikisini bozar.
 `looply cafeplay ilişkisi ve landing page dönüşümleri.txt` · panel görseli ·
 ChatGPT analiz bağlantısı.
 
-## 🔴 Önce bir çatışma çözülmeli
+## ✅ Çatışma çözüldü — Ü97
 
-- [ ] **Ç1 · "50 TL kazandın" mı, ödülün adı mı?**
+- [x] **Ç1 · "50 TL kazandın" mı, ödülün adı mı?** ✅ **ÇÖZÜLDÜ** — Ü97
+  Ürün sahibi: *"ödülü tabii ki bilecek, zamanı bilmeyecek."*
+  Saklanacak şey tutar değil **saatmiş**. Çatışma kendiliğinden kalktı:
+  ödülün adı en baştan görünüyor (hep görünüyordu), TL hiç görünmüyor
+  (E9 duruyor), gizlenen tek şey açılma saati.
+  Süre 24 → **12 saat**.
+
+<details><summary>Çatışmanın özgün hâli</summary>
   `ödül açılma geyikleri.txt` açılma anında **tutarı** göstermek istiyor:
   *"50 TL kazandın. İşte burada rakam ilk defa ortaya çıkıyor."*
   **E9 + Ü76 bunu yasaklıyor** — oyuncu ekranında ödülün ADI durur, TL
@@ -178,10 +185,18 @@ ChatGPT analiz bağlantısı.
   ödülünse ad zaten sayı taşıyor ("50 TL indirim"), yani dramatik açılış
   bozulmadan çalışıyor; gizli kalan şey `cost_kurus` (kafenin maliyeti).
   ⚠️ Ürün sahibi onaylamadan mizah motoru yazılmamalı.
+</details>
 
 ## Ödül bekleme mizahı (`ödül açılma geyikleri.txt`)
 
-- [ ] **24 · Bekleme mesajı motoru**
+- [x] **24 · Bekleme mesajı motoru** ✅ **BİTTİ** — Ü97, 2026-09-08
+  34 cümle · 4 havuz · saate duyarlı · kupona göre sabit (rastgele değil).
+  Zaman ima eden cümleler yalnızca gerçekle uyuşuyorsa seçiliyor.
+  Yalnızca oyuncu görüyor; kasiyer gerçek saati görüyor.
+
+<details><summary>Özgün istek</summary>
+
+- **Bekleme mesajı motoru**
   Dört havuz: standart · astronomi · astroloji · absürt Looply.
   30–50 mesaj, son gösterilenleri tekrar etmeyen seçim.
   Saate duyarlı (akşam / gece / sabah farklı konuşuyor).
@@ -190,6 +205,7 @@ ChatGPT analiz bağlantısı.
   ⚠️ Mizah **ödül tutarıyla ilişkilendirilmez** ("Jüpiter güçlü, 50 TL
   çıktı" gibi bir mekanik kurulmaz) — yoksa şaka, ödül algoritması sanılır.
   Altyapı hazır: Ü28 erteleme + `activates_at` zaten var, bugün metin düz.
+</details>
 - [ ] **25 · Açılma bildirimi**
   Ödül açıldığında oyuncuya haber gitmeli. SMS altyapısı var; bildirim
   tetikleyicisi yok.

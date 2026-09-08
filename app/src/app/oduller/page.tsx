@@ -58,7 +58,8 @@ export default async function OdullerSayfasi() {
           <Sayac
             etiket="Yakında açılıyor"
             deger={String(e.bekleyen.length)}
-            alt={e.bekleyen.length > 0 ? "24 saat sonra" : "bekleyen yok"}
+            /* Ü97: saat söylenmiyor — sürpriz olan ödül değil, zamanı. */
+            alt={e.bekleyen.length > 0 ? "zamanı gelince" : "bekleyen yok"}
           />
         </div>
       </SayfaBasi>
@@ -105,7 +106,7 @@ export default async function OdullerSayfasi() {
           </OyuncuBolum>
 
           {e.bekleyen.length > 0 && (
-            <OyuncuBolum baslik="Yakında açılıyor" not="24 saat">
+            <OyuncuBolum baslik="Yakında açılıyor" not="zamanı gelince">
               <ul className="flex flex-col gap-2.5">
                 {e.bekleyen.map((k) => (
                   <li key={k.id}>

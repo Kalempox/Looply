@@ -23,6 +23,30 @@ export function isGunu(an: Date = new Date()): string {
   return BICIM.format(an);
 }
 
+/**
+ * İstanbul saatiyle şu an kaçıncı dakikadayız (0–1439).
+ *
+ * `getHours()` DEĞİL: sunucu UTC'de koşuyor ve gece yarısı çevresinde üç
+ * saat kayıyor. Aynı hata `isGunu()`de bir kez yapıldı, ikinci kez
+ * yapılmıyor.
+ *
+ * Ü97'de `butce.ts`'ten buraya taşındı: bekleme metni de gün dilimini
+ * (sabah/gündüz/akşam/gece) bilmek zorunda ve iki modülün aynı saat
+ * hesabını ayrı ayrı yazması, birinin bir gün yanlış düzeltilmesi demek.
+ */
+export function istanbulDakikasi(an: Date): number {
+  const [saat, dakika] = new Intl.DateTimeFormat("tr-TR", {
+    timeZone: "Europe/Istanbul",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  })
+    .format(an)
+    .split(":")
+    .map(Number);
+  return saat * 60 + dakika;
+}
+
 /* ── Hafta hesapları — bütçe dönemi (Ü25) ────────────────── */
 
 /** `YYYY-MM-DD` → UTC gün başlangıcı. Saat dilimi kayması olmasın diye UTC. */

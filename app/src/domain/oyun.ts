@@ -121,7 +121,7 @@ async function nitelikliMi(
 export type Kazanim = {
   puan: PuanSonucu | null;
   xp: number;
-  kupon: { baslik: string; kod: string; ertelendi: boolean } | null;
+  kupon: { kuponId: string; baslik: string; kod: string; ertelendi: boolean; aktiflesme: Date } | null;
   taht: taht.DevirmeSonucu | null;
   /**
    * Skor eşiği bonusu (Ü48) — ulaşıldıysa hangi eşik ve ne yazıldı.
@@ -141,7 +141,7 @@ export type Kazanim = {
    * görünmeli — oyuncu "kazandığım ödül" ile "kafenin verdiği indirim"i
    * karıştırmasın.
    */
-  kampanya: { baslik: string; kod: string; ertelendi: boolean } | null;
+  kampanya: { kuponId: string; baslik: string; kod: string; ertelendi: boolean; aktiflesme: Date } | null;
 };
 
 /**
@@ -225,7 +225,15 @@ async function kazanimIsle(
         kaynakId: opts.oturumId,
       });
       if (anlik?.ok) {
-        sonuc.kupon = { baslik: anlik.baslik, kod: anlik.kod, ertelendi: anlik.ertelendi };
+        // Ü97: kimlik ve aktifleşme anı bekleme metni için taşınıyor —
+        // metin kupona göre sabit kalmalı ve "yarın" derken doğru söylemeli.
+        sonuc.kupon = {
+          kuponId: anlik.kuponId,
+          baslik: anlik.baslik,
+          kod: anlik.kod,
+          ertelendi: anlik.ertelendi,
+          aktiflesme: anlik.aktiflesme,
+        };
       }
     }
   } else {
@@ -270,7 +278,13 @@ async function kazanimIsle(
       kanitSeviyesi: opts.proofLevel,
     });
     if (kmp?.ok) {
-      sonuc.kampanya = { baslik: kmp.baslik, kod: kmp.kod, ertelendi: kmp.ertelendi };
+      sonuc.kampanya = {
+        kuponId: kmp.kuponId,
+        baslik: kmp.baslik,
+        kod: kmp.kod,
+        ertelendi: kmp.ertelendi,
+        aktiflesme: kmp.aktiflesme,
+      };
     }
   }
 
@@ -433,9 +447,9 @@ export type BitirSonucu =
       /** Bu çağrıda kazanılan rozetler. */
       yeniRozetler: string[];
       /** E2: anlık ödül düştüyse. Oyuncuya TL değeri GÖSTERİLMEZ (E9). */
-      kupon: { baslik: string; kod: string; ertelendi: boolean } | null;
+      kupon: { kuponId: string; baslik: string; kod: string; ertelendi: boolean; aktiflesme: Date } | null;
       /** Ö4 · Ü82: kafenin kampanya kuponu düştüyse. Ödülden ayrı. */
-      kampanya: { baslik: string; kod: string; ertelendi: boolean } | null;
+      kampanya: { kuponId: string; baslik: string; kod: string; ertelendi: boolean; aktiflesme: Date } | null;
       /**
        * Bu oturum "kafeye yapılan sayılabilir ziyaret" olarak işaretlendi mi?
        *
@@ -693,9 +707,9 @@ export type MisafirYazSonucu =
       esik: { skor: number; puan: PuanSonucu } | null;
       seri: { gun: number; puan: PuanSonucu } | null;
       xp: number;
-      kupon: { baslik: string; kod: string; ertelendi: boolean } | null;
+      kupon: { kuponId: string; baslik: string; kod: string; ertelendi: boolean; aktiflesme: Date } | null;
       /** Ö4 · Ü82: kayıt anında bozdurulan misafir turunda da düşebiliyor. */
-      kampanya: { baslik: string; kod: string; ertelendi: boolean } | null;
+      kampanya: { kuponId: string; baslik: string; kod: string; ertelendi: boolean; aktiflesme: Date } | null;
       taht: taht.DevirmeSonucu | null;
       nitelikliOldu: boolean;
     }

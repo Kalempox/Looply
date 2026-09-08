@@ -1,7 +1,7 @@
 import { withCafe, type Db } from "@/db/context";
 import { audit } from "@/lib/audit";
 import { newId } from "@/lib/ids";
-import { isGunu, gunEkle, gunFarki } from "@/lib/tarih";
+import { istanbulDakikasi, isGunu, gunEkle, gunFarki } from "@/lib/tarih";
 import { log } from "@/lib/log";
 import * as ayar from "./ayar";
 
@@ -57,25 +57,6 @@ export const ILK_PAY = 0.1;
  */
 export const KAPANIS_PAYI_DK = 30;
 
-/**
- * İstanbul saatiyle şu an kaçıncı dakikadayız (0–1439).
- *
- * `getHours()` DEĞİL: sunucu UTC'de koşuyor ve gece yarısı çevresinde üç
- * saat kayıyor. Aynı hata `isGunu()`de bir kez yapıldı, ikinci kez
- * yapılmıyor.
- */
-function istanbulDakikasi(an: Date): number {
-  const [saat, dakika] = new Intl.DateTimeFormat("tr-TR", {
-    timeZone: "Europe/Istanbul",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  })
-    .format(an)
-    .split(":")
-    .map(Number);
-  return saat * 60 + dakika;
-}
 
 /**
  * Günlük bütçenin şu ana kadar açılmış oranı (Ü87, Ü90).

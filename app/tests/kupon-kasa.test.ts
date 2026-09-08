@@ -304,7 +304,7 @@ describe("kupon üretimi", () => {
     assert.equal(sonra.dagitilabilirKurus, once.dagitilabilirKurus - 25_00);
   });
 
-  test("eşiğin üstündeki ödül 24 saat ertelenir (Ü28)", async () => {
+  test("eşiğin üstündeki ödül ertelenir (Ü28, süre Ü97'de 12 saate indi)", async () => {
     // Eşiği tabana indir: 50 TL'lik ödül artık üstünde kalıyor.
     await ayar.sayiYaz({
       cafeId: kafeA,
@@ -319,10 +319,17 @@ describe("kupon üretimi", () => {
     const detay = await kuponDetayi(oyuncuId, s.kuponId);
     assert.equal(detay?.durum, "beklemede");
 
-    // 24 saat: takvim gününe değil oyuncunun kendi saatine bağlı. "Yarın
+    // Sabit süre: takvim gününe değil oyuncunun kendi saatine bağlı. "Yarın
     // 00:00" olsaydı sabah kazanan 15 saat, akşam kazanan 1 saat beklerdi.
+    //
+    // ⚠️ Süre SABİTTEN okunuyor. Önceki hâli 24'ü elle yazıyordu ve Ü97'de
+    // süre 12'ye inince test kırıldı — sınanan şey sürenin kaç olduğu değil,
+    // ertelemenin **sabit ve saate bağlı** olması.
     const saat = (detay!.aktiflesme.getTime() - Date.now()) / 3_600_000;
-    assert.ok(saat > 23.5 && saat <= 24, `açılma 24 saat sonra olmalıydı (${saat.toFixed(1)} sa)`);
+    assert.ok(
+      saat > kupon.ERTELEME_SAAT - 0.5 && saat <= kupon.ERTELEME_SAAT,
+      `açılma ${kupon.ERTELEME_SAAT} saat sonra olmalıydı (${saat.toFixed(1)} sa)`,
+    );
 
     // Eşiği kurulum değerine geri çek: bırakılsaydı sonraki testlerin
     // kuponları da ertelenir ve kasiyer onaylayamazdı. Bir tur böyle

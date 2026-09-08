@@ -37,7 +37,7 @@ import { idIleBul, odulKilidiBitis, takmaAdIle } from "./player";
  */
 
 /**
- * Ü28: bu tutarın üstündeki ödül **24 saat sonra** aktifleşir.
+ * Ü28: bu tutarın üstündeki ödül **12 saat sonra** aktifleşir.
  *
  * ── Neden sabit süre, neden "ertesi gün" değil ──────────────
  *
@@ -46,9 +46,17 @@ import { idIleBul, odulKilidiBitis, takmaAdIle } from "./player";
  * oyuncuya on beş kat farklı davranıyordu. Sabit süre herkese aynı pencereyi
  * veriyor.
  *
- * Süre 24 saat: ürün belgesinde ("Ödülün aktifleşme süresi: 24 saat") ve
- * oradaki örnekte birebir bu yazıyor. Bir tur 12 saat denendi ve belgeyle
- * çeliştiği görülünce geri alındı.
+ * ⚠️ **Süre Ü97'de 24 → 12 saate indi.** Bir tur 12 saat denenmiş, ürün
+ * belgesindeki *"aktifleşme süresi: 24 saat"* cümlesiyle çeliştiği için geri
+ * alınmıştı. Ürün sahibi şimdi doğrudan söyledi: *"sistemde hep 12 saat."*
+ * Belge ile sahibi çelişiyorsa sahibi kazanır — belge o cümleyi bir örnek
+ * olarak yazmıştı, kural olarak değil.
+ *
+ * ⚠️ Süre artık **oyuncuya söylenmiyor** (Ü97): oyuncu ödülünü biliyor,
+ * saatini bilmiyor ve bekleme ekranında bunun yerine bir mizah cümlesi
+ * görüyor (`domain/bekleme-metni.ts`). Sayı burada duruyor ve kasiyer
+ * ekranında da görünüyor — gizlenen şey oyuncunun beklentisi, sistemin
+ * kaydı değil.
  *
  * ── Eşik neden kafenin ayarı ────────────────────────────────
  *
@@ -59,7 +67,7 @@ import { idIleBul, odulKilidiBitis, takmaAdIle } from "./player";
  * E6'nın kanıt kademesi bu ayardan **etkilenmiyor** — o platform kuralı ve
  * `katalog.kanitSeviyesi` içinde duruyor.
  */
-export const ERTELEME_SAAT = 24;
+export const ERTELEME_SAAT = 12;
 
 /** Kupon kaç gün geçerli (docs/06 §10). */
 export const GECERLILIK_GUN = 7;
@@ -68,7 +76,15 @@ export const GECERLILIK_GUN = 7;
 export const GERI_ALMA_SANIYE = 60;
 
 export type KuponSonucu =
-  | { ok: true; kuponId: string; kod: string; baslik: string; ertelendi: boolean }
+  | {
+      ok: true;
+      kuponId: string;
+      kod: string;
+      baslik: string;
+      ertelendi: boolean;
+      /** Ü97: bekleme metni "yarın" mı "bugün" mü diyeceğini buradan biliyor. */
+      aktiflesme: Date;
+    }
   | { ok: false; hata: string };
 
 /* ── Ortak yazım ───────────────────────────────────────────── */
@@ -238,7 +254,7 @@ async function kuponUret(
 
   log.info("kupon uretildi", { ertelendi, kaynak: opts.kaynak });
 
-  return { ok: true, kuponId, kod, baslik: opts.kaynakNesnesi.baslik, ertelendi };
+  return { ok: true, kuponId, kod, baslik: opts.kaynakNesnesi.baslik, ertelendi, aktiflesme };
 }
 
 /** `rewards` satırını ortak kupon kaynağına çevirir. */

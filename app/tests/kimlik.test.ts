@@ -229,17 +229,49 @@ describe("doğrulama kodu", () => {
 });
 
 describe("global SMS tavanı (G14)", () => {
-  async function tavanDoldur(adet: number) {
+  /**
+   * Günün SMS sayacını **hedeflenen orana kurar** — üstüne eklemez.
+   *
+   * ⚠️ İlk hâli körlemesine `TAVAN * oran` kadar satır ekliyordu ve günün
+   * sayacının sıfıra yakın başladığını varsayıyordu. O varsayım bir gün
+   * bozuldu: tarayıcıda elle yapılan denemeler 216 gerçek SMS satırı
+   * üretti, test %92 sanarak %106'ya çıktı ve "giriş açık kalmalı"
+   * beklentisi düştü. Test yanlış bir sebeple kırılıyordu — sınanan şey
+   * kademelerin doğru çalışması, sayacın nereden başladığı değil.
+   *
+   * Kendi eklediği satırları önce siliyor, sonra **eksiği** tamamlıyor.
+   * Gerçek trafik hedefi zaten aşmışsa test atlanıyor: sessizce yanlış
+   * ölçmektense hiç ölçmemek dürüst.
+   */
+  async function tavanKur(hedef: number, onek: string): Promise<boolean> {
+    await yoneticiSorgu(`DELETE FROM sms_outbox WHERE id LIKE $1`, [`${onek}%`]);
+
+    const mevcut = await withBypass("test: günün sms sayısı", (db) =>
+      db.one<{ n: string }>(
+        // ⚠️ Üretimin saydığı ÖLÇÜNÜN AYNISI (`sms/index.ts`): son 24 saat
+        // ve yalnızca `sent`. İlk hâli takvim günü sayıyordu ve status
+        // süzmüyordu; sayı tutmayınca test hedeflediği oranı hiç
+        // kuramıyordu. Test, üretimin ölçtüğü şeyi ölçmeli.
+        `SELECT count(*)::text AS n FROM sms_outbox
+          WHERE status = 'sent' AND created_at > now() - interval '1 day'`,
+      ),
+    );
+    const eksik = hedef - Number(mevcut?.n ?? 0);
+    if (eksik <= 0) return false;
+
     await yoneticiSorgu(
       `INSERT INTO sms_outbox (id, phone_masked, phone_index, template, provider, status)
-       SELECT 'sms_test_' || g, '0555 *** ** 00', $1, 'otp', 'console', 'sent'
+       SELECT $3 || g, '0555 *** ** 00', $1, 'otp', 'console', 'sent'
          FROM generate_series(1, $2) g`,
-      [phoneIndex(yeniTelefon()), adet],
+      [phoneIndex(yeniTelefon()), eksik, onek],
     );
+    return true;
   }
 
-  test("%90'da kayıt durur, giriş devam eder", async () => {
-    await tavanDoldur(Math.ceil(GUNLUK_TAVAN * 0.92));
+
+  test("%90'da kayıt durur, giriş devam eder", async (t) => {
+    if (!(await tavanKur(Math.ceil(GUNLUK_TAVAN * 0.92), "sms_test_")))
+      return t.skip("günün gerçek SMS trafiği hedefi aşmış");
 
     const d = await tavanDurumu();
     assert.equal(d.kayitAcik, false, "%90 üstünde yeni kayıt durmalıydı");
@@ -255,8 +287,9 @@ describe("global SMS tavanı (G14)", () => {
     await yoneticiSorgu(`DELETE FROM sms_outbox WHERE id LIKE 'sms_test_%'`);
   });
 
-  test("%100'de her şey durur", async () => {
-    await tavanDoldur(GUNLUK_TAVAN + 10);
+  test("%100'de her şey durur", async (t) => {
+    if (!(await tavanKur(GUNLUK_TAVAN + 10, "sms_test_")))
+      return t.skip("günün gerçek SMS trafiği hedefi aşmış");
 
     assert.equal((await tavanDurumu()).girisAcik, false);
     assert.equal((await kodIste({ telefon: yeniTelefon(), amac: "login" })).durum, "kapasite_dolu");

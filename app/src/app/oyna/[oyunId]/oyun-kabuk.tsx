@@ -1,5 +1,6 @@
 "use client";
 
+import { beklemeMetni } from "@/domain/bekleme-metni";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { OyunEkrani } from "@/oyunlar/arayuz";
@@ -399,8 +400,11 @@ function SonucEkrani({
                   {kupon.baslik}
                 </span>
                 <span className="mt-0.5 block text-[13px] leading-relaxed text-yazi-sonuk">
+                  {/* ⚠️ Ü97: kaç saat sonra açıldığı YAZMIYOR. Oyuncu ne
+                      kazandığını biliyor — adı hemen üstünde duruyor — ne
+                      zaman açılacağını bilmiyor. */}
                   {kupon.ertelendi
-                    ? "24 saat sonra açılıyor. Ödüllerim ekranından takip edebilirsin."
+                    ? `${beklemeMetni(kupon.kuponId, new Date(kupon.aktiflesme))} Ödüllerim ekranından takip edebilirsin.`
                     : "Ödüllerim ekranından kasada gösterebilirsin."}
                 </span>
               </span>
@@ -427,7 +431,7 @@ function SonucEkrani({
                 </span>
                 <span className="mt-0.5 block text-[13px] leading-relaxed text-yazi-sonuk">
                   {kampanya.ertelendi
-                    ? "24 saat sonra açılıyor."
+                    ? beklemeMetni(kampanya.kuponId, new Date(kampanya.aktiflesme))
                     : "Kuponlarının arasında, kasada gösterebilirsin."}
                 </span>
               </span>

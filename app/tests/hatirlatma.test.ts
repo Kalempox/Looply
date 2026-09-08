@@ -289,13 +289,38 @@ describe("hatırlatma seçimi", () => {
    ═══════════════════════════════════════════════════════════ */
 
 describe("global SMS tavanı (G14)", () => {
-  async function tavanDoldur(oran: number) {
+  /**
+   * Günün SMS sayacını hedeflenen orana **kurar** — üstüne eklemez.
+   *
+   * ⚠️ İlk hâli günün sayacının sıfıra yakın başladığını varsayıyordu ve o
+   * varsayım bir gün bozuldu: tarayıcıda elle yapılan denemeler 216 gerçek
+   * satır üretti, test %92 sanarak %106'ya çıktı ve "giriş açık kalmalı"
+   * beklentisi düştü. Sınanan şey kademelerin çalışması; sayacın nereden
+   * başladığı değil.
+   */
+  async function tavanKur(oran: number): Promise<boolean> {
+    await yoneticiSorgu(`DELETE FROM sms_outbox WHERE id LIKE 'sms_htr_%'`);
+
+    const mevcut = await withBypass("test: günün sms sayısı", (db) =>
+      db.one<{ n: string }>(
+        // ⚠️ Üretimin saydığı ÖLÇÜNÜN AYNISI (`sms/index.ts`): son 24 saat
+        // ve yalnızca `sent`. İlk hâli takvim günü sayıyordu ve status
+        // süzmüyordu; sayı tutmayınca test hedeflediği oranı hiç
+        // kuramıyordu. Test, üretimin ölçtüğü şeyi ölçmeli.
+        `SELECT count(*)::text AS n FROM sms_outbox
+          WHERE status = 'sent' AND created_at > now() - interval '1 day'`,
+      ),
+    );
+    const eksik = Math.ceil(GUNLUK_TAVAN * oran) - Number(mevcut?.n ?? 0);
+    if (eksik <= 0) return false;
+
     await yoneticiSorgu(
       `INSERT INTO sms_outbox (id, phone_masked, phone_index, template, provider, status)
        SELECT 'sms_htr_' || g, '0557 *** ** 00', $1, 'otp', 'console', 'sent'
          FROM generate_series(1, $2) g`,
-      [phoneIndex(yeniTelefon()), Math.ceil(GUNLUK_TAVAN * oran)],
+      [phoneIndex(yeniTelefon()), eksik],
     );
+    return true;
   }
 
   /**
@@ -306,7 +331,7 @@ describe("global SMS tavanı (G14)", () => {
   test("%90'da hatırlatma durur, giriş devam eder", async (t) => {
     if (!hatirlatma.pencereAcikMi()) return t.skip("sessiz saatte koşuluyor");
 
-    await tavanDoldur(0.92);
+    if (!(await tavanKur(0.92))) return t.skip("günün gerçek SMS trafiği hedefi aşmış");
     const d = await tavanDurumu();
     assert.equal(d.kayitAcik, false, "%90 üstünde kayıt kademesi kapanmalı");
     assert.equal(d.girisAcik, true, "giriş açık kalmalı");
@@ -331,7 +356,7 @@ describe("global SMS tavanı (G14)", () => {
   test("engellenen hatırlatma kaybolmuyor, sonraki koşuda gidiyor", async (t) => {
     if (!hatirlatma.pencereAcikMi()) return t.skip("sessiz saatte koşuluyor");
 
-    await tavanDoldur(0.92);
+    if (!(await tavanKur(0.92))) return t.skip("günün gerçek SMS trafiği hedefi aşmış");
     const oyuncu = await testOyuncu();
     const kuponId = await kuponYaz({ playerId: oyuncu });
 
