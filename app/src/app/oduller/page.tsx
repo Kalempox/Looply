@@ -1,3 +1,4 @@
+import { acilmaMetni } from "@/domain/bekleme-metni";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import * as oturum from "@/domain/session";
@@ -85,6 +86,43 @@ export default async function OdullerSayfasi() {
         </div>
       ) : (
         <>
+          {/*
+            Açılma anı (Ü98).
+
+            ⚠️ Ü97 oyuncuya *"zamanı gelince"* diyor ama zamanı geldiğinde
+            uygulama içinde hiçbir şey söylemiyordu: kupon sessizce
+            "Yakında açılıyor"dan "Kullanılabilir"e geçiyordu. Bekleme
+            mizahının karşılığı olan **an** buydu ve yoktu — söz verilip
+            tutulmamış bir vaatti.
+
+            ⚠️ Bu şerit aynı kuponları AYRICA gösteriyor, listeden
+            almıyor: oyuncu ödülünü alışık olduğu yerde bulmaya devam
+            etmeli. Yirmi dört saat sonra kutlama kendiliğinden kalkıyor.
+          */}
+          {e.yeniAcilan.length > 0 && (
+            <div className="gir mb-7 rounded-2xl border border-odul bg-odul-zemin px-5 py-5">
+              <div className="etiket-caps text-odul-koyu">
+                {e.yeniAcilan.length > 1 ? `${e.yeniAcilan.length} ödülün açıldı` : "Ödülün açıldı"}
+              </div>
+              <ul className="mt-2 flex flex-col gap-2">
+                {e.yeniAcilan.map((k) => (
+                  <li key={k.id}>
+                    <p className="text-[14px] leading-relaxed text-yazi-sonuk">
+                      {acilmaMetni(k.id)}
+                    </p>
+                    <p className="mt-0.5 font-display text-[17px] leading-tight font-bold">
+                      {k.baslik}
+                    </p>
+                    <p className="text-[12px] text-yazi-sonuk">{k.cafeAdi}</p>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-3 border-t border-odul/40 pt-2.5 text-[12px] leading-relaxed text-yazi-sonuk">
+                Kasada gösterip kullanabilirsin.
+              </p>
+            </div>
+          )}
+
           <OyuncuBolum
             baslik="Kullanılabilir"
             renk="kahve"

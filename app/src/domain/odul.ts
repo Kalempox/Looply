@@ -58,8 +58,24 @@ export type EnvanterKuponu = {
   sonKullanim: Date;
 };
 
+/** Ü98: bir kuponun "yeni açıldı" sayılacağı pencere. */
+export const YENI_ACILDI_SAAT = 24;
+
 export type Envanter = {
   kullanilabilir: EnvanterKuponu[];
+  /**
+   * Son 24 saatte açılan kuponlar (Ü98).
+   *
+   * ⚠️ `kullanilabilir` listesinin **alt kümesi**, ayrı bir liste değil —
+   * aynı kupon iki yerde de duruyor. Ayırsaydık oyuncu ödülünü alışık
+   * olduğu yerde bulamazdı; buradaki tek iş, açılma anını **bir kez**
+   * kutlamak. Yirmi dört saat sonra kutlama kendiliğinden kayboluyor,
+   * ödül yerinde kalıyor.
+   *
+   * Açılma anı `coupon_events` defterinden okunuyor; kupona kolon
+   * eklenmiyor (E3).
+   */
+  yeniAcilan: EnvanterKuponu[];
   /** Beklemede olanlar — henüz aktifleşmemiş (A5). */
   bekleyen: EnvanterKuponu[];
   /** Kullanılmış, süresi dolmuş veya geri alınmışlar. */
@@ -78,6 +94,7 @@ type Satir = {
   kampanya_yuzde: number | null;
   urun_adi: string | null;
   kategori_turu: string | null;
+  acilma_ani: Date | null;
 };
 
 /**
@@ -137,7 +154,15 @@ export async function envanter(playerId: string): Promise<Envanter> {
               r.reward_type AS odul_tipi,
               pc.percent AS kampanya_yuzde,
               p.name     AS urun_adi,
-              COALESCE(rk.kind, pk.kind) AS kategori_turu
+              COALESCE(rk.kind, pk.kind) AS kategori_turu,
+              -- Ü98: kupon ne zaman açıldı? Defterden okunuyor,
+              -- kupona kolon eklenmiyor (E3).
+              -- Ters tırnak YOK: bu metin bir template literal içinde ve
+              -- coupon_events'i vurgulamak için konan ters tırnak dizgiyi
+              -- kapatıp dosyayı derlenemez yapmıştı.
+              (SELECT ce.created_at FROM coupon_events ce
+                WHERE ce.coupon_id = k.id AND ce.event = 'activated'
+                ORDER BY ce.created_at DESC LIMIT 1) AS acilma_ani
          FROM coupons k
          JOIN cafes c ON c.id = k.cafe_id
          LEFT JOIN rewards r ON r.id = k.reward_id
@@ -155,7 +180,7 @@ export async function envanter(playerId: string): Promise<Envanter> {
   );
 
   const simdi = Date.now();
-  const sonuc: Envanter = { kullanilabilir: [], bekleyen: [], gecmis: [] };
+  const sonuc: Envanter = { kullanilabilir: [], yeniAcilan: [], bekleyen: [], gecmis: [] };
 
   for (const r of satirlar) {
     const durum = durumBelirle(r, simdi);
@@ -171,7 +196,18 @@ export async function envanter(playerId: string): Promise<Envanter> {
       sonKullanim: r.expires_at,
     };
 
-    if (durum === "kullanilabilir") sonuc.kullanilabilir.push(kupon);
+    if (durum === "kullanilabilir") {
+      sonuc.kullanilabilir.push(kupon);
+
+      // Ertelenmemiş kupon hiç "açılmıyor" — kazanıldığı anda kullanıma
+      // hazır ve defterde `activated` satırı yok. Kutlanacak bir an da yok.
+      if (
+        r.acilma_ani &&
+        simdi - r.acilma_ani.getTime() < YENI_ACILDI_SAAT * 3_600_000
+      ) {
+        sonuc.yeniAcilan.push(kupon);
+      }
+    }
     else if (durum === "beklemede") sonuc.bekleyen.push(kupon);
     else sonuc.gecmis.push(kupon);
   }

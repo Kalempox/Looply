@@ -6,7 +6,7 @@
 > Yan dosyalar: neyin **var** olduğu → `21-looply-kapsam-haritasi.md` ·
 > demoda neyin **yapılabildiği** → `22-demo-yapilabilirlik.md`
 
-**Son güncelleme:** 2026-09-02 · **Kararlar:** Ü76 – Ü97
+**Son güncelleme:** 2026-09-02 · **Kararlar:** Ü76 – Ü98
 
 ---
 
@@ -206,9 +206,12 @@ ChatGPT analiz bağlantısı.
   çıktı" gibi bir mekanik kurulmaz) — yoksa şaka, ödül algoritması sanılır.
   Altyapı hazır: Ü28 erteleme + `activates_at` zaten var, bugün metin düz.
 </details>
-- [ ] **25 · Açılma bildirimi**
-  Ödül açıldığında oyuncuya haber gitmeli. SMS altyapısı var; bildirim
-  tetikleyicisi yok.
+- [x] **25 · Açılma bildirimi** ✅ **BİTTİ** — Ü98, 2026-09-08
+  ⚠️ **SMS tarafı zaten çalışıyormuş** — "tetikleyici yok" demek yanlıştı.
+  `bakim()` → `bekleyenleriAc()` → `activated` → `coupon_active` SMS.
+  Eksik olan uygulama içindeki **an**dı: "Ödülün açıldı" şeridi eklendi,
+  Ü97'nin `acilmaMetni`si nihayet kullanılıyor.
+  Kutlama 24 saat duruyor, sonra kendiliğinden kalkıyor.
 
 ## Kafe paneli (panel görseli + `cafe dashboard.txt`)
 

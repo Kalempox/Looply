@@ -12,7 +12,7 @@ import * as katalog from "@/domain/katalog";
 import * as kupon from "@/domain/kupon";
 import * as motor from "@/domain/odul-motoru";
 import * as ayar from "@/domain/ayar";
-import { kuponDetayi } from "@/domain/odul";
+import { kuponDetayi, envanter, YENI_ACILDI_SAAT } from "@/domain/odul";
 import { yazIle as puanYaz } from "@/domain/puan";
 import { isGunu } from "@/lib/tarih";
 import { yoneticiSorgu } from "./_yardim";
@@ -1392,5 +1392,89 @@ describe("tutar indirimi ödülü", () => {
       aktorId: yoneticiA,
     });
     assert.equal(sonuc.ok, false);
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════
+   Açılma anı (Ü98)
+   ═══════════════════════════════════════════════════════════ */
+
+describe("açılma anı oyuncuya gösteriliyor (Ü98)", () => {
+  test("bekleyen kupon açılınca 'yeni açılan' listesine giriyor", async () => {
+    // Eşiği tabana indir ki büyük ödül ertelensin.
+    await ayar.sayiYaz({
+      cafeId: kafeA,
+      anahtar: ayar.ANAHTARLAR.ertelemeEsigi,
+      deger: 25_00,
+      aktorId: kasiyerA,
+    });
+
+    try {
+      const s = await kuponAl(buyukOdulId);
+      assert.equal(s.ertelendi, true, "test kurulumu: ödül ertelenmedi");
+
+      // Henüz açılmadı: ne kullanılabilirde ne yeni açılanda.
+      const once = await envanter(oyuncuId);
+      assert.ok(!once.yeniAcilan.some((k) => k.id === s.kuponId), "açılmadan kutlandı");
+      assert.ok(once.bekleyen.some((k) => k.id === s.kuponId), "bekleyende değil");
+
+      // Zamanı geldi.
+      await yoneticiSorgu(
+        `UPDATE coupons SET activates_at = now() - interval '1 minute' WHERE id = $1`,
+        [s.kuponId],
+      );
+      await kupon.bekleyenleriAc();
+
+      const sonra = await envanter(oyuncuId);
+      assert.ok(
+        sonra.yeniAcilan.some((k) => k.id === s.kuponId),
+        "açılan kupon kutlanmadı — Ü97 'zamanı gelince' diyor, karşılığı burası",
+      );
+      // ⚠️ Alt küme: aynı kupon alışık olunan yerde de duruyor.
+      assert.ok(
+        sonra.kullanilabilir.some((k) => k.id === s.kuponId),
+        "kutlama kuponu asıl listesinden çaldı",
+      );
+    } finally {
+      await ayar.sayiYaz({
+        cafeId: kafeA,
+        anahtar: ayar.ANAHTARLAR.ertelemeEsigi,
+        deger: 50_00,
+        aktorId: kasiyerA,
+      });
+    }
+  });
+
+  test("kutlama penceresi geçince kalkıyor, ödül kalıyor", async () => {
+    // Kutlama süresiz kalsaydı "yeni açıldı" hiçbir şey anlatmaz olurdu.
+    const acik = await withBypass("test: açık kupon", (db) =>
+      db.one<{ id: string }>(
+        `SELECT c.id FROM coupons c
+          JOIN coupon_events ce ON ce.coupon_id = c.id AND ce.event = 'activated'
+         WHERE c.player_id = $1 AND c.status = 'active' LIMIT 1`,
+        [oyuncuId],
+      ),
+    );
+    if (!acik) return;
+
+    await yoneticiSorgu(
+      `UPDATE coupon_events SET created_at = now() - ($2 || ' hours')::interval
+        WHERE coupon_id = $1 AND event = 'activated'`,
+      [acik.id, YENI_ACILDI_SAAT + 1],
+    );
+
+    const e = await envanter(oyuncuId);
+    assert.ok(!e.yeniAcilan.some((k) => k.id === acik.id), "eski açılma hâlâ kutlanıyor");
+    assert.ok(e.kullanilabilir.some((k) => k.id === acik.id), "ödül listeden düştü");
+  });
+
+  test("ertelenmeyen kupon hiç kutlanmıyor", async () => {
+    // Kazanıldığı anda kullanıma hazır kuponun "açılma" anı yok; defterde
+    // `activated` satırı da yok. Kutlanacak bir şey yok.
+    const s = await kuponAl(katalogOdulId);
+    assert.equal(s.ertelendi, false, "test kurulumu: küçük ödül ertelendi");
+
+    const e = await envanter(oyuncuId);
+    assert.ok(!e.yeniAcilan.some((k) => k.id === s.kuponId), "ertelenmeyen kupon kutlandı");
   });
 });
