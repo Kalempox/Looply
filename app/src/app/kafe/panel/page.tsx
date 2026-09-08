@@ -5,6 +5,9 @@ import { kafeYoneticisiGerekli } from "@/domain/yetki";
 import * as oturum from "@/domain/session";
 import { durum as butceDurumu } from "@/domain/butce";
 import * as panel from "@/domain/panel";
+import * as rapor from "@/domain/rapor";
+import { bugunBeklenen } from "@/domain/beklenen";
+import { isGunu, gunEkle } from "@/lib/tarih";
 import { SayiKarti, IKON, type Alan } from "@/components/gosterge";
 import {
   IsletmeSayfa,
@@ -63,9 +66,23 @@ export default async function KafePaneli() {
     };
   });
 
-  const [butce, gosterge] = await Promise.all([
+  /**
+   * Ü99: panelin baş bölümü üç dönemi birden okuyor.
+   *
+   * ⚠️ Yeni SQL yazılmadı — `rapor.ozet` bu sayıları zaten hesaplıyor ve
+   * **kişi bazlı** "yeni müşteri" tanımı da onun içinde (bu kafede daha
+   * önce hiç oynamamış oyuncu). Panelde ayrı bir hesap kursaydık iki
+   * ekran aynı soruya iki farklı cevap verirdi.
+   */
+  const bugun = isGunu();
+  const buAyBasi = `${bugun.slice(0, 7)}-01`;
+  const [butce, gosterge, bugunku, son7, buAy, beklenen] = await Promise.all([
     butceDurumu(o.cafeId),
     panel.ozet(o.cafeId),
+    rapor.ozet(o.cafeId, { baslangic: bugun, bitis: gunEkle(bugun, 1) }),
+    rapor.ozet(o.cafeId, { baslangic: gunEkle(bugun, -6), bitis: gunEkle(bugun, 1) }),
+    rapor.ozet(o.cafeId, { baslangic: buAyBasi, bitis: gunEkle(bugun, 1) }),
+    bugunBeklenen(o.cafeId),
   ]);
 
   return (
@@ -88,48 +105,76 @@ export default async function KafePaneli() {
         </div>
       )}
 
-      {/* ── Bugünün göstergesi ───────────────────────────
-          Vardiya arasında iki saniye bakılan yer. Dört sayı ve bir
-          grafik; karar vermek için rapora gidiliyor. */}
-      <section className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Gosterge
-          etiket="Bugün gelen"
-          alt="sayılan ziyaret"
-          olcu={gosterge.ziyaret}
-          ikon="kisi"
-          alan="kisi"
-          yol="/kafe/panel/rapor"
-        />
-        <Gosterge
-          etiket="Verilen kupon"
-          alt="kazanıldı"
-          olcu={gosterge.kuponVerilen}
-          ikon="kupon"
-          alan="odul"
-          yol="/kafe/panel/oduller"
-        />
-        <Gosterge
-          etiket="Kullanılan"
-          alt="kasada onaylandı"
-          olcu={gosterge.kuponKullanilan}
-          ikon="onay"
-          alan="kampanya"
-          yol="/kafe/panel/rapor"
-        />
-        {/* Vurgu kartı: kafenin cebinden çıkan tek sayı. Referans
-            panellerde de kartlardan biri dolu renkli — göz önce oraya
-            gidiyor ve gitmesi gereken yer burası. */}
-        <Gosterge
-          etiket="Bugün ödediğin"
-          alt="gerçekleşen indirim"
-          olcu={gosterge.kullanilanKurus}
-          ikon="para"
-          birim="TL"
-          kurus
-          alan="para"
-          yol="/kafe/panel/butce"
-          vurgulu
-        />
+      {/* ── Bugünün özeti (Ü99) ──────────────────────────
+          Kafe sahibinin ekranı açtığında sorduğu beş soru, beş kart:
+          kaç kişi oynadı · kaç kupon kullanıldı · ne kadar indirim
+          verdim · kaç yeni müşteri kazandım · bugün kaç kişi bekleniyor.
+          Altındaki eski dört kart bunların günlük değişimini taşıyor. */}
+      <section className="mb-4">
+        <h2 className="etiket-caps mb-3 text-yazi-sonuk">Bugünün özeti</h2>
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+          <SayiKarti
+            etiket="Bugün oynayan"
+            deger={String(bugunku.tekilOyuncu)}
+            alt="benzersiz kişi"
+            ikon={IKON.kisi}
+            alan="kisi"
+          />
+          {/* Bu iki kart düne göre değişimi de taşıyor: `panel.ozet`
+              onları zaten günlük ölçüyor. Diğer üçünün günlük serisi yok
+              ve uydurmak yerine boş bırakılıyor. */}
+          <SayiKarti
+            etiket="Kullanılan kupon"
+            deger={String(bugunku.kuponKullanilan)}
+            alt={
+              bugunku.tekilOyuncu > 0
+                ? `oynayanın %${Math.round((bugunku.kuponKullanilan / bugunku.tekilOyuncu) * 100)}'i`
+                : "kasada onaylanan"
+            }
+            degisim={gosterge.kuponKullanilan.degisim}
+            seri={gosterge.kuponKullanilan.seri}
+            ikon={IKON.kupon}
+            alan="odul"
+            yol="/kafe/panel/rapor"
+          />
+          <SayiKarti
+            etiket="Verilen indirim"
+            deger={`${tlYaz(bugunku.kullanilanIndirimKurus)} TL`}
+            alt={
+              bugunku.kuponKullanilan > 0
+                ? `kupon başına ${tlYaz(Math.round(bugunku.kullanilanIndirimKurus / bugunku.kuponKullanilan))} TL`
+                : "fiilen ödediğin"
+            }
+            degisim={gosterge.kullanilanKurus.degisim}
+            seri={gosterge.kullanilanKurus.seri}
+            ikon={IKON.para}
+            alan="para"
+            vurgulu
+            yol="/kafe/panel/butce"
+          />
+          {/* ⚠️ Ü30: küçük sayılarda kişi işaret edilebiliyor; rapor o
+              durumda null dönüyor ve panel de saklıyor. */}
+          <SayiKarti
+            etiket="Yeni müşteri"
+            deger={bugunku.yeniOyuncu === null ? "—" : String(bugunku.yeniOyuncu)}
+            alt={
+              bugunku.yeniOyuncu === null
+                ? "sayı gizlendi — çok az kişi"
+                : "bu kafede ilk kez"
+            }
+            ikon={IKON.kisi}
+            alan="kisi"
+          />
+          <BeklenenKarti beklenen={beklenen} />
+        </div>
+      </section>
+
+      {/* ── Dönem tabloları (Ü99) ────────────────────────
+          Grafik haftanın şeklini veriyor; tablo sayıyı veriyor. İkisi
+          farklı soruya cevap: "nasıl gidiyor" ve "tam olarak kaç". */}
+      <section className="mb-9 grid gap-3 lg:grid-cols-2">
+        <DonemTablosu baslik="Son 7 gün" ozet={son7} />
+        <DonemTablosu baslik="Bu ay" ozet={buAy} />
       </section>
 
       <section className="mb-9">
@@ -236,52 +281,6 @@ export default async function KafePaneli() {
   );
 }
 
-/**
- * Panelin gösterge kutusu — ortak karta ince sarmalayıcı.
- *
- * Kartın kendisi `components/gosterge.tsx`'te (Ü62): panel bir belge
- * değil gösterge takımı ve sekiz sayfada aynı kartın sekiz kopyası
- * olmamalı. Burada kalan tek iş, `Olcu` tipini karta çevirmek —
- * kuruşu TL'ye bölmek ve "düne göre" cümlesini kurmak.
- */
-function Gosterge({
-  etiket,
-  alt,
-  olcu,
-  ikon,
-  birim,
-  kurus = false,
-  vurgulu = false,
-  alan = "genel",
-  yol,
-}: {
-  etiket: string;
-  alt: string;
-  olcu: panel.Olcu;
-  ikon: keyof typeof IKON;
-  birim?: string;
-  /** Değer kuruş cinsindense TL'ye çevrilip yazılıyor. */
-  kurus?: boolean;
-  vurgulu?: boolean;
-  alan?: Alan;
-  yol?: string;
-}) {
-  const deger = kurus ? Math.round(olcu.bugun / 100) : olcu.bugun;
-
-  return (
-    <SayiKarti
-      etiket={etiket}
-      deger={`${deger.toLocaleString("tr-TR")}${birim ? ` ${birim}` : ""}`}
-      alt={olcu.degisim !== null ? "düne göre" : alt}
-      degisim={olcu.degisim}
-      seri={olcu.seri}
-      ikon={IKON[ikon]}
-      vurgulu={vurgulu}
-      alan={alan}
-      yol={yol}
-    />
-  );
-}
 
 /**
  * Son yedi günün ziyaret grafiği.
@@ -667,4 +666,104 @@ async function cikisYap() {
   "use server";
   await oturum.kapat("kullanici_cikisi");
   redirect("/kafe/giris");
+}
+
+/**
+ * Beklenen müşteri kartı (Ü99).
+ *
+ * ⚠️ **Kesin sayı yazmıyor, aralık yazıyor.** Kesin sayı yazan bir panel,
+ * ilk yanlış tahminde işletmecinin panele güvenmeyi bırakmasına yol açar.
+ * Tahmin gerçekte bir bant ve o bandı gizlemiyoruz.
+ *
+ * ⚠️ Veri yetmiyorsa **tahmin üretilmiyor**. "Henüz söyleyemiyoruz" demek,
+ * uydurulmuş bir sayı göstermekten dürüst — panelin bütün değeri
+ * güvenilirliğinde.
+ */
+function BeklenenKarti({ beklenen }: { beklenen: Awaited<ReturnType<typeof bugunBeklenen>> }) {
+  if (!beklenen.yeterliVeri) {
+    return (
+      <SayiKarti
+        etiket="Bugün beklenen"
+        deger="—"
+        alt={`${beklenen.eksikGun} gün daha veri gerekiyor`}
+        ikon={IKON.kupon}
+        alan="odul"
+      />
+    );
+  }
+
+  return (
+    <SayiKarti
+      etiket="Bugün beklenen"
+      deger={beklenen.alt === beklenen.ust ? String(beklenen.ust) : `${beklenen.alt}–${beklenen.ust}`}
+      alt={`${beklenen.gerceklesen} geldi · ${beklenen.acikKupon} açık kupon`}
+      ikon={IKON.kupon}
+      alan="odul"
+    />
+  );
+}
+
+/**
+ * Dönem tablosu (Ü99).
+ *
+ * ⚠️ Grafik "nasıl gidiyor" sorusuna, tablo "tam olarak kaç" sorusuna
+ * cevap veriyor. İkisi de duruyor çünkü ikisi farklı an: vardiya arasında
+ * grafiğe bakılıyor, ay sonu hesabında tabloya.
+ *
+ * ⚠️ **Ek satış satırı YOK.** Görselde "840 TL ek satış geliri" yazıyor ama
+ * POS'umuz olmadığı için bir müşterinin ne satın aldığını bilemiyoruz;
+ * yazsaydık uydurmuş olurduk. Ölçebildiğimiz kupon kullanımı ve onun
+ * tuttuğu tutar — ikisi de burada.
+ */
+function DonemTablosu({ baslik, ozet }: { baslik: string; ozet: rapor.RaporOzeti }) {
+  const satirlar: { etiket: string; deger: string }[] = [
+    { etiket: "Oynayan kişi", deger: ozet.tekilOyuncu.toLocaleString("tr-TR") },
+    /**
+     * ⚠️ Ü29: adı "oyuncu" olan ama **ziyaret** sayan ölçü — fatura bundan
+     * kesiliyor. Panelin üst kartlarından çıkarıldı çünkü "bugün gelen 0"
+     * ile "bugün oynayan 5" yan yana durunca ekran kendisiyle çelişiyor
+     * görünüyordu; tanımı yazılabilecek tek yer burası.
+     */
+    { etiket: "Sayılan ziyaret", deger: ozet.nitelikliOyuncu.toLocaleString("tr-TR") },
+    { etiket: "Oynanan oyun", deger: ozet.toplamOyun.toLocaleString("tr-TR") },
+    { etiket: "Verilen kupon", deger: ozet.kuponVerilen.toLocaleString("tr-TR") },
+    { etiket: "Kullanılan kupon", deger: ozet.kuponKullanilan.toLocaleString("tr-TR") },
+    { etiket: "Verilen indirim", deger: `${tlYaz(ozet.kullanilanIndirimKurus)} TL` },
+    {
+      etiket: "Yeni müşteri",
+      deger: ozet.yeniOyuncu === null ? "—" : ozet.yeniOyuncu.toLocaleString("tr-TR"),
+    },
+    {
+      etiket: "Tekrar gelen",
+      deger: ozet.tekrarGelenOyuncu === null ? "—" : ozet.tekrarGelenOyuncu.toLocaleString("tr-TR"),
+    },
+  ];
+
+  return (
+    <div className="rounded-2xl border border-cizgi bg-yuzey px-5 py-5">
+      <div className="flex items-baseline justify-between gap-3">
+        <span className="etiket-caps text-yazi-sonuk">{baslik}</span>
+        <Link href="/kafe/panel/rapor" className="font-data text-[11px] text-yazi-sonuk underline">
+          Detaylı rapor
+        </Link>
+      </div>
+      <table className="mt-3 w-full text-[13px]">
+        <tbody>
+          {satirlar.map((r) => (
+            <tr key={r.etiket} className="border-t border-cizgi">
+              <td className="py-2 pr-2 leading-tight text-yazi-sonuk">{r.etiket}</td>
+              <td className="py-2 text-right font-data font-bold tabular">{r.deger}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {/* Ü30: küçük sayılarda kişi işaret edilebiliyor. */}
+      {ozet.yeniOyuncu === null && (
+        <p className="mt-2.5 text-[12px] leading-relaxed text-yazi-sonuk">
+          Müşteri sayıları çok az olduğunda gizleniyor — tek bir kişiyi işaret
+          etmesin diye.
+        </p>
+      )}
+    </div>
+  );
 }

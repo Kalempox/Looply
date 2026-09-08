@@ -6,7 +6,7 @@
 > Yan dosyalar: neyin **var** olduğu → `21-looply-kapsam-haritasi.md` ·
 > demoda neyin **yapılabildiği** → `22-demo-yapilabilirlik.md`
 
-**Son güncelleme:** 2026-09-02 · **Kararlar:** Ü76 – Ü98
+**Son güncelleme:** 2026-09-02 · **Kararlar:** Ü76 – Ü99
 
 ---
 
@@ -215,17 +215,21 @@ ChatGPT analiz bağlantısı.
 
 ## Kafe paneli (panel görseli + `cafe dashboard.txt`)
 
-- [ ] **26 · Bugünün beş ana metriği**
+- [x] **26 · Bugünün beş ana metriği** ✅ **BİTTİ** — Ü99, 2026-09-08
   Oynayan · kullanılan kupon (+dönüşüm) · verilen indirim (+kupon başına
   ortalama) · yeni müşteri · beklenen müşteri.
   Bugün panelde yalnızca "bugün ödediğin" var; kalanı rapor ekranında
   dağınık duruyor. 🟢 İlk üçü mevcut veriyle hesaplanıyor.
-- [ ] **27 · "Yeni müşteri" tanımı** 🟡
+- [x] **27 · "Yeni müşteri" tanımı** ✅ **ZATEN VARDI** — `rapor.ozet.yeniOyuncu`
+  kişi bazlı hesaplıyordu; çıkarma yöntemi hiç kullanılmadı. 🟡
   ⚠️ Çıkarma ile hesaplanmayacak (`oynayan − kupon kullanan` DEĞİL).
   Kişi bazlı geçmiş gerekiyor: *"bu kişinin bu işletmeyle Looply üzerinden
   ilk doğrulanmış etkileşimi mi?"* POS olmadığı için "işletmeye ilk
   ziyareti" diyemeyiz; tanımı dürüst tutmalıyız.
-- [ ] **28 · "Bugün beklenen müşteri"** 🟡 → Dalga 4 madde 16 ile aynı iş
+- [x] **28 · "Bugün beklenen müşteri"** ✅ **BİTTİ** — Ü99, kural tabanlı
+  Son 28 günün dönüş oranı × bugünün açık kuponu, aynı haftagünü iki kat
+  ağırlıkta. **Aralık** olarak gösteriliyor. Veri yetmezse tahmin yok.
+  🔴 Hava durumu ve özel gün girdileri hâlâ eksik (Dalga 5 · madde 21).
   ⚠️ Açık kupon sayısı beklenen müşteri DEĞİLDİR. Kural tabanlı tahmin:
   kalan süre · ödül türü · gün · saat · geçmiş kullanım. MVP'de makine
   öğrenmesi yok. Kesin sayı değil **aralık** gösterilmeli.
@@ -234,8 +238,9 @@ ChatGPT analiz bağlantısı.
   ⚠️ POS yok: "müşteri cheesecake aldı" diyemeyiz. Ölçebildiğimiz kupon
   kullanımı; ötesi işletmecinin manuel beyanı ve **ayrı güven seviyesinde**
   tutulmalı. Bugün sistemde "upsell kampanyası" diye bir kavram yok.
-- [ ] **30 · Son 7 gün / Bu ay tabloları**
-  Grafik var, tablo yok. Aynı metrikler, iki pencere.
+- [x] **30 · Son 7 gün / Bu ay tabloları** ✅ **BİTTİ** — Ü99
+  Yedi satır: oynayan · sayılan ziyaret · oyun · verilen kupon ·
+  kullanılan kupon · indirim · yeni müşteri · tekrar gelen.
 - [ ] **31 · Panel kabuğu**
   Kafe seçici (bir sahip, çok şube) · bildirim çanı · gün gezinme
   (‹ dün › bugün) · "bugünkü durum" ve "önerimiz" kartları.
