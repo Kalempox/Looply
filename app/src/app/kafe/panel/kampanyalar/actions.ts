@@ -29,12 +29,21 @@ export async function olusturEylemi(
     gunlukLimit: sayi(form, "gunlukLimit"),
     toplamLimit: toplamHam ? Number(toplamHam) : null,
     gunSayisi: sayi(form, "gunSayisi"),
+    // Ü100: upsell kipi. İşaretliyse kupon ertelenmiyor ve oyun sonunda
+    // kendiliğinden verilmiyor — oyuncuya teklif olarak gösteriliyor.
+    hemen: form.get("hemen") === "on",
+    gecerliSaat: sayi(form, "gecerliSaat") || 3,
     aktorId: o.ozneId,
   });
 
   revalidatePath("/kafe/panel/kampanyalar");
   return sonuc.ok
-    ? { bilgi: "Kampanya taslak olarak kaydedildi. Yayına almadan oyunculara görünmez." }
+    ? {
+        bilgi:
+          form.get("hemen") === "on"
+            ? "Upsell teklifi taslak olarak kaydedildi. Yayına aldığında oyun sonunda teklif olarak çıkacak."
+            : "Kampanya taslak olarak kaydedildi. Yayına almadan oyunculara görünmez.",
+      }
     : { hata: sonuc.hata };
 }
 

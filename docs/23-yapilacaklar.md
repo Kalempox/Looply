@@ -6,7 +6,7 @@
 > Yan dosyalar: neyin **var** olduğu → `21-looply-kapsam-haritasi.md` ·
 > demoda neyin **yapılabildiği** → `22-demo-yapilabilirlik.md`
 
-**Son güncelleme:** 2026-09-02 · **Kararlar:** Ü76 – Ü99
+**Son güncelleme:** 2026-09-02 · **Kararlar:** Ü76 – Ü100
 
 ---
 
@@ -233,7 +233,16 @@ ChatGPT analiz bağlantısı.
   ⚠️ Açık kupon sayısı beklenen müşteri DEĞİLDİR. Kural tabanlı tahmin:
   kalan süre · ödül türü · gün · saat · geçmiş kullanım. MVP'de makine
   öğrenmesi yok. Kesin sayı değil **aralık** gösterilmeli.
-- [ ] **29 · Upsell hunisi (cheesecake)** 🔴
+- [x] **29 · Upsell hunisi** ✅ **BİTTİ** — Ü100, 2026-09-08
+  Kampanyaya "bu ziyarette kullanılsın" kipi eklendi. Teklif oyun sonunda
+  çıkıyor, oyuncu **kabul ederse** kupon oluşuyor (bütçe ve ölçüm).
+  Kupon ertelenmiyor, saatlerle sınırlı.
+  Panelde huni: gösterildi → aldı → kasada kullandı + dönüşüm.
+  ⚠️ Son basamak "kullanıldı", "satıldı" değil — POS yok.
+
+<details><summary>Özgün istek</summary>
+
+- **Upsell hunisi (cheesecake)** 🔴
   Teklif gösterildi → kupon alındı → kullanıldı → dönüşüm → ek satış.
   ⚠️ POS yok: "müşteri cheesecake aldı" diyemeyiz. Ölçebildiğimiz kupon
   kullanımı; ötesi işletmecinin manuel beyanı ve **ayrı güven seviyesinde**
@@ -249,6 +258,7 @@ ChatGPT analiz bağlantısı.
   **Bizde gerek yok**: ödül değeri katalogda tanımlı ve kupon onaylanınca
   `committed_kurus` kendiliğinden yazılıyor — daha güvenilir. Yalnızca
   yüzde kampanyasında gerçek indirim değişken; oraya manuel giriş gerekebilir.
+</details>
 
 ## Pazarlama mimarisi (`looply cafeplay ilişkisi...`)
 

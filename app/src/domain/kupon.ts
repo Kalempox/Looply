@@ -150,6 +150,14 @@ async function kuponUret(
     kaynak: string;
     /** Ö3: kupon bir Happy Hour penceresinde üretildiyse o pencerenin kimliği. */
     happyHourId?: string;
+    /**
+     * Ü100: upsell kuponu — hiç ertelenmiyor, saatlerle sınırlı.
+     *
+     * Varlığı erteleme kuralını **atlıyor**; eşiği okumuyoruz bile.
+     * Bu ziyarette kullanılacak bir kupon için erteleme sorusunun anlamı
+     * yok.
+     */
+    hemen?: { gecerliSaat: number };
     /** Ü88: kuponu doğuran oyun oturumu. Çark ve kampanyada yok. */
     oturumId?: string;
     /**
@@ -196,13 +204,30 @@ async function kuponUret(
     return { ok: false, hata: "Bu kafenin bu haftaki ödül bütçesi doldu." };
   }
 
-  // Ü28: eşiğin üstündeki ödül 24 saat sonra aktifleşir; ziyareti geri
-  // getiren şey bu. Eşik kafenin ayarı — 50 TL yalnızca varsayılan.
-  const esik = await ayar.sayiOku(opts.cafeId, ayar.ANAHTARLAR.ertelemeEsigi);
-  const ertelendi = tutar > esik;
+  /**
+   * Ü28: eşiğin üstündeki ödül 12 saat sonra aktifleşir; ziyareti geri
+   * getiren şey bu. Eşik kafenin ayarı — 35 TL yalnızca varsayılan.
+   *
+   * ⚠️ **Upsell bu kuralın dışında (Ü100).** Upsell kuponu bu ziyarette
+   * kullanılmak için var; 12 saat beklerse müşteri çoktan kalkmış olur ve
+   * kupon upsell olmaktan çıkar. `hemen` geldiğinde erteleme hiç
+   * sorulmuyor ve süre günlerle değil **saatlerle** ölçülüyor.
+   */
   const simdi = Date.now();
+  let ertelendi = false;
+  let sonKullanim: Date;
+
+  if (opts.hemen) {
+    sonKullanim = new Date(simdi + opts.hemen.gecerliSaat * 3_600_000);
+  } else {
+    const esik = await ayar.sayiOku(opts.cafeId, ayar.ANAHTARLAR.ertelemeEsigi);
+    ertelendi = tutar > esik;
+    sonKullanim = new Date(
+      simdi + (ertelendi ? ERTELEME_SAAT * 3_600_000 : 0) + GECERLILIK_GUN * 86_400_000,
+    );
+  }
+
   const aktiflesme = new Date(simdi + (ertelendi ? ERTELEME_SAAT * 3_600_000 : 0));
-  const sonKullanim = new Date(aktiflesme.getTime() + GECERLILIK_GUN * 86_400_000);
 
   const kuponId = newId("kpn");
   const kod = couponCode();
@@ -587,6 +612,46 @@ export async function kampanyaKuponuVer(
     kanitSeviyesi: opts.kanitSeviyesi,
     kaynak: "kampanya",
     an: opts.an,
+  });
+}
+
+/**
+ * Upsell teklifinin kuponu (Ü100).
+ *
+ * `kampanyaKuponuVer` ile aynı kaynağı kullanıyor ama iki farkla:
+ * uygunluk kontrolü burada **yok** (teklif zaten `upsell.uygunTeklif`
+ * içinde seçildi ve deftere yazıldı) ve kupon `hemen` ile üretiliyor —
+ * ertelenmiyor, saatlerle sınırlı.
+ *
+ * ⚠️ Ayrı bir INSERT yazılmadı: bütçe rezervasyonu (E10), kanıt kademesi
+ * (E6), takma ad (G1) ve defter satırı (E3) `kuponUret` içinde. İkinci bir
+ * kupon üretme yolu açmak, o kuralların birini bir gün unutmak demektir.
+ */
+export async function upsellKuponuVer(
+  db: Db,
+  opts: {
+    playerId: string;
+    cafeId: string;
+    kampanyaId: string;
+    baslik: string;
+    tavanKurus: number;
+    gecerliSaat: number;
+    kanitSeviyesi: number;
+  },
+): Promise<KuponSonucu> {
+  return kuponUret(db, {
+    playerId: opts.playerId,
+    cafeId: opts.cafeId,
+    kaynakNesnesi: {
+      id: opts.kampanyaId,
+      kolon: "campaign_id",
+      baslik: opts.baslik,
+      tutarKurus: opts.tavanKurus,
+      enAzKanit: kanitSeviyesi(opts.tavanKurus),
+    },
+    kanitSeviyesi: opts.kanitSeviyesi,
+    kaynak: "upsell",
+    hemen: { gecerliSaat: opts.gecerliSaat },
   });
 }
 

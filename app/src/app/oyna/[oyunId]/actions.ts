@@ -1,8 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import * as oturum from "@/domain/session";
 import * as oyunDomain from "@/domain/oyun";
+import * as masaOturumu from "@/domain/masa";
+import * as upsell from "@/domain/upsell";
+import { upsellKuponuVer } from "@/domain/kupon";
 
 /**
  * Oyun oturumu eylemleri.
@@ -44,4 +48,44 @@ export async function bitirEylemi(
   revalidatePath("/profil");
 
   return sonuc;
+}
+
+/**
+ * Upsell teklifini kabul et (Ü100).
+ *
+ * ⚠️ İstemciden gelen tek şey **teklif kimliği**. Ürün, yüzde, tavan ve
+ * süre sunucuda teklif satırından okunuyor — Değişmez kural #4: para
+ * değeri taşıyan hiçbir sayı istemciden alınmıyor. Teklif başkasının
+ * olamaz: sorguda `player_id` süzgeci duruyor.
+ */
+export async function teklifAlEylemi(
+  teklifId: string,
+): Promise<{ ok: true; baslik: string } | { ok: false; hata: string }> {
+  const o = await oturum.oku();
+  if (!o || o.rol !== "oyuncu") redirect("/giris");
+
+  // Kanıt kademesi masadan geliyor, istemciden değil (E6).
+  const masa = await masaOturumu.aktif(o.ozneId);
+  if (!masa) return { ok: false, hata: "Masa oturumun kapanmış." };
+
+  const sonuc = await upsell.teklifiAl({
+    playerId: o.ozneId,
+    teklifId,
+    kanitSeviyesi: masa.kanitSeviyesi,
+    kuponVer: (db, g) =>
+      upsellKuponuVer(db, {
+        playerId: o.ozneId,
+        cafeId: g.cafeId,
+        kampanyaId: g.kampanyaId,
+        baslik: g.baslik,
+        tavanKurus: g.tavanKurus,
+        gecerliSaat: g.gecerliSaat,
+        kanitSeviyesi: masa.kanitSeviyesi,
+      }),
+  });
+
+  if (!sonuc.ok) return { ok: false, hata: sonuc.hata };
+
+  revalidatePath("/oduller");
+  return { ok: true, baslik: sonuc.baslik };
 }

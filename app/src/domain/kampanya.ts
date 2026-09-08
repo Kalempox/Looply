@@ -38,6 +38,10 @@ export type Kampanya = {
   baslangic: Date;
   bitis: Date;
   durum: KampanyaDurumu;
+  /** Ü100: upsell kipi — bu ziyarette kullanılan teklif. */
+  hemen: boolean;
+  /** Upsell teklifinin geçerlilik süresi (saat). */
+  gecerliSaat: number;
   /** Bugün bu kampanyadan kaç kupon çıktı — canlı sayaç. */
   bugunKullanilan: number;
   /** Kampanya başından beri toplam. */
@@ -62,11 +66,14 @@ export async function listele(cafeId: string): Promise<Kampanya[]> {
       starts_at: Date;
       ends_at: Date;
       status: KampanyaDurumu;
+      instant: boolean;
+      offer_hours: number;
       bugun: string;
       toplam: string;
     }>(
       `SELECT pc.id, pc.product_id, p.name AS urun_adi, pc.percent, pc.max_discount_kurus,
               pc.daily_limit, pc.total_limit, pc.starts_at, pc.ends_at, pc.status,
+              pc.instant, pc.offer_hours,
               -- Gün başlangıcı İstanbul gece yarısı; sunucunun UTC günü değil.
               (SELECT count(*) FROM coupons k
                 WHERE k.campaign_id = pc.id
@@ -93,6 +100,8 @@ export async function listele(cafeId: string): Promise<Kampanya[]> {
     baslangic: r.starts_at,
     bitis: r.ends_at,
     durum: r.status,
+    hemen: r.instant,
+    gecerliSaat: r.offer_hours,
     bugunKullanilan: Number(r.bugun),
     toplamKullanilan: Number(r.toplam),
   }));
@@ -149,6 +158,13 @@ export async function uygunOlan(
        JOIN products p ON p.id = pc.product_id
       WHERE pc.cafe_id = $1
         AND pc.status = 'active'
+        -- ⚠️ Ü100: upsell kampanyaları buradan GEÇMİYOR. Onlar oyun
+        -- sonunda kendiliğinden kupona dönmüyor; oyuncuya teklif olarak
+        -- gösteriliyor ve kabul edilirse kupon oluyor (domain/upsell.ts).
+        -- Süzgeç konmasaydı upsell kuponu iki yoldan birden üretilirdi.
+        -- Not: bu yorumda ters tırnak YOK — dizgiyi kapatır (Ü98'de bir
+        -- kez yaşandı).
+        AND NOT pc.instant
         AND pc.starts_at <= now() AND pc.ends_at > now()
         -- Günlük limit: gün başlangıcı İstanbul gece yarısı, sunucunun UTC günü değil.
         AND (SELECT count(*) FROM coupons k
@@ -189,6 +205,15 @@ export async function olustur(opts: {
   gunlukLimit: number;
   toplamLimit?: number | null;
   gunSayisi: number;
+  /**
+   * Ü100: upsell kipi — bu ziyarette kullanılan teklif.
+   *
+   * Kupon ertelenmiyor, saatlerle sınırlı ve oyun sonunda kendiliğinden
+   * verilmiyor; oyuncuya teklif olarak gösteriliyor.
+   */
+  hemen?: boolean;
+  /** Upsell teklifinin kaç saat geçerli olduğu. Ziyaret süresi kadar. */
+  gecerliSaat?: number;
   aktorId: string;
 }): Promise<KampanyaSonucu> {
   if (!Number.isInteger(opts.yuzde) || opts.yuzde < 1 || opts.yuzde > 100) {
@@ -205,6 +230,10 @@ export async function olustur(opts: {
   }
   if (!Number.isInteger(opts.gunSayisi) || opts.gunSayisi < 1 || opts.gunSayisi > EN_UZUN_GUN) {
     return { ok: false, hata: `Süre 1 ile ${EN_UZUN_GUN} gün arasında olmalı.` };
+  }
+  const gecerliSaat = opts.gecerliSaat ?? 3;
+  if (opts.hemen && (!Number.isInteger(gecerliSaat) || gecerliSaat < 1 || gecerliSaat > 24)) {
+    return { ok: false, hata: "Teklif süresi 1 ile 24 saat arasında olmalı." };
   }
 
   return withCafe(opts.cafeId, async (db) => {
@@ -229,8 +258,9 @@ export async function olustur(opts: {
     await db.query(
       `INSERT INTO percentage_campaigns
          (id, cafe_id, product_id, percent, max_discount_kurus, daily_limit, total_limit,
-          starts_at, ends_at, status, created_by)
-       VALUES ($1,$2,$3,$4,$5,$6,$7, now(), now() + ($8 || ' days')::interval, 'draft', $9)`,
+          starts_at, ends_at, status, created_by, instant, offer_hours)
+       VALUES ($1,$2,$3,$4,$5,$6,$7, now(), now() + ($8 || ' days')::interval, 'draft', $9,
+               $10, $11)`,
       [
         id,
         opts.cafeId,
@@ -241,6 +271,8 @@ export async function olustur(opts: {
         opts.toplamLimit ?? null,
         String(opts.gunSayisi),
         opts.aktorId,
+        opts.hemen ?? false,
+        gecerliSaat,
       ],
     );
 
@@ -256,6 +288,7 @@ export async function olustur(opts: {
         tavanKurus: opts.tavanKurus,
         gunlukLimit: opts.gunlukLimit,
         gunSayisi: opts.gunSayisi,
+        hemen: opts.hemen ?? false,
       },
     });
 

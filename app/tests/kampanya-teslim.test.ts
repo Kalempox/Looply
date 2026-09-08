@@ -3,7 +3,8 @@ import { test, before, after, describe } from "node:test";
 import assert from "node:assert/strict";
 import { withBypass } from "@/db/context";
 import { closePools } from "@/db/pool";
-import { kampanyaKuponuVer } from "@/domain/kupon";
+import { kampanyaKuponuVer, upsellKuponuVer } from "@/domain/kupon";
+import * as upsell from "@/domain/upsell";
 import * as odul from "@/domain/odul";
 import { kaydet } from "@/domain/player";
 import { normalizePhone } from "@/lib/crypto";
@@ -361,5 +362,205 @@ describe("kampanya kuponu envanterde", () => {
       !JSON.stringify(kupon).includes(String(TAVAN_KURUS)),
       "kupon çıktısında TL değeri sızmış (E9)",
     );
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════
+   Upsell — bu ziyarette kullanılan teklif (Ü100)
+   ═══════════════════════════════════════════════════════════ */
+
+describe("upsell teklifi (Ü100)", () => {
+  const UPSELL_ID = "cmp_test_upsell";
+  const UPSELL_URUN = "prd_test_upsell";
+
+  /**
+   * ⚠️ **Kendi ürünü**, dıştaki suite'inkini paylaşmıyor.
+   *
+   * İlk hâli `prd_test_kmp`'yi kullanıyordu ve dosya çöktüğünde temizlik
+   * sırası kilitleniyordu: dış `after` ürünü silmeye çalışıyor, bu
+   * kampanya hâlâ ona bağlı olduğu için yabancı anahtar engelliyor, artık
+   * satır kalıyor ve BİR SONRAKİ koşu "duplicate key" ile açılışta
+   * ölüyordu. Testler birbirinin kurulumuna dayanmamalı.
+   */
+  before(async () => {
+    await yoneticiSorgu(
+      `INSERT INTO products (id, cafe_id, name, price_kurus, active)
+       VALUES ($1, $2, 'TEST UPS Cheesecake', 10000, true)
+       ON CONFLICT (id) DO NOTHING`,
+      [UPSELL_URUN, kafeA],
+    );
+    await yoneticiSorgu(
+      `INSERT INTO percentage_campaigns
+         (id, cafe_id, product_id, percent, max_discount_kurus, daily_limit, total_limit,
+          starts_at, ends_at, status, created_by, instant, offer_hours)
+       VALUES ($1, $2, $4, 25, 2500, 50, NULL,
+               now() - interval '1 hour', now() + interval '7 days', 'active', $3, true, 3)
+       ON CONFLICT (id) DO NOTHING`,
+      [UPSELL_ID, kafeA, yoneticiA, UPSELL_URUN],
+    );
+  });
+
+  after(async () => {
+    await yoneticiSorgu(`DELETE FROM campaign_offers WHERE campaign_id = $1`, [UPSELL_ID]);
+    await yoneticiSorgu(
+      `DELETE FROM coupon_events WHERE coupon_id IN (SELECT id FROM coupons WHERE campaign_id = $1)`,
+      [UPSELL_ID],
+    );
+    await yoneticiSorgu(`DELETE FROM coupons WHERE campaign_id = $1`, [UPSELL_ID]);
+    await yoneticiSorgu(`DELETE FROM percentage_campaigns WHERE id = $1`, [UPSELL_ID]);
+    await yoneticiSorgu(`DELETE FROM products WHERE id = $1`, [UPSELL_URUN]);
+  });
+
+  test("🔴 upsell kampanyası oyun sonunda KENDİLİĞİNDEN kupona dönmüyor", async () => {
+    // ⚠️ Dönseydi teklif mekaniği anlamsız olurdu: teklifi görmezden
+    // geçecek oyuncuya da kupon basılır ve kafenin bütçesi
+    // kullanılmayacak sözlere bağlanırdı (Ü7).
+    const s = await withBypass("test: normal kampanya yolu", (db) =>
+      kampanyaKuponuVer(db, { playerId: oyuncu2, cafeId: kafeA, kanitSeviyesi: 2 }),
+    );
+    // Normal kampanya gelebilir ama upsell'inki ASLA.
+    if (s?.ok) {
+      const k = await withBypass("test: kuponun kampanyası", (db) =>
+        db.one<{ campaign_id: string }>(`SELECT campaign_id FROM coupons WHERE id = $1`, [s.kuponId]),
+      );
+      assert.notEqual(k?.campaign_id, UPSELL_ID, "upsell kuponu otomatik verildi");
+    }
+  });
+
+  test("teklif gösteriliyor ve deftere yazılıyor", async () => {
+    const t = await withBypass("test: teklif", (db) =>
+      upsell.uygunTeklif(db, { cafeId: kafeA, playerId: oyuncu1 }),
+    );
+    assert.ok(t, "upsell teklifi gelmedi");
+    assert.equal(t.yuzde, 25);
+    assert.equal(t.gecerliSaat, 3);
+
+    const satir = await withBypass("test: teklif satırı", (db) =>
+      db.one<{ taken_at: Date | null }>(`SELECT taken_at FROM campaign_offers WHERE id = $1`, [
+        t.teklifId,
+      ]),
+    );
+    // Gösterildi ama alınmadı: huninin kaybı burada görünüyor.
+    assert.equal(satir?.taken_at, null, "gösterim kabul sayıldı");
+  });
+
+  test("🔴 kabul edilen teklif ERTELENMİYOR ve saatlerle sınırlı", async () => {
+    // ⚠️ Upsell'in tek ayırt edici özelliği bu. 12 saat beklerse müşteri
+    // çoktan kalkmış olur ve kupon upsell olmaktan çıkar.
+    const t = await withBypass("test: teklif", (db) =>
+      upsell.uygunTeklif(db, { cafeId: kafeA, playerId: oyuncu2 }),
+    );
+    assert.ok(t);
+
+    /**
+     * Eşiği tabana indir: normal yolda bu tutar KESİN ertelenirdi.
+     *
+     * ⚠️ Sonunda **geri alınıyor**. İlk hâli almıyordu ve ayar dosyadan
+     * dosyaya sızıyordu: bu test tek başına geçiyor, bütün takımla
+     * koşarken bütçe temposu testini düşürüyordu. Testin bıraktığı ayar,
+     * başka bir testin sessizce yanlış sebeple kırılması demek.
+     */
+    const oncekiEsik = await withBypass("test: mevcut eşik", (db) =>
+      db.one<{ value: string }>(
+        `SELECT value::text FROM cafe_config WHERE cafe_id = $1 AND key = 'erteleme_esigi_kurus'`,
+        [kafeA],
+      ),
+    );
+
+    await yoneticiSorgu(
+      `INSERT INTO cafe_config (cafe_id, key, value) VALUES ($1,'erteleme_esigi_kurus','2000')
+       ON CONFLICT (cafe_id, key) DO UPDATE SET value = EXCLUDED.value`,
+      [kafeA],
+    );
+
+    try {
+    const s = await upsell.teklifiAl({
+      playerId: oyuncu2,
+      teklifId: t.teklifId,
+      kanitSeviyesi: 2,
+      kuponVer: (db, g) =>
+        upsellKuponuVer(db, {
+          playerId: oyuncu2,
+          cafeId: g.cafeId,
+          kampanyaId: g.kampanyaId,
+          baslik: g.baslik,
+          tavanKurus: g.tavanKurus,
+          gecerliSaat: g.gecerliSaat,
+          kanitSeviyesi: 2,
+        }),
+    });
+    assert.ok(s.ok, s.ok === false ? s.hata : "");
+
+    const k = await withBypass("test: upsell kuponu", (db) =>
+      db.one<{ status: string; activates_at: Date; expires_at: Date }>(
+        `SELECT status, activates_at, expires_at FROM coupons WHERE id = $1`,
+        [s.kuponId],
+      ),
+    );
+    assert.equal(k?.status, "active", "upsell kuponu ertelendi — upsell olmaktan çıkar");
+    assert.ok(k!.activates_at.getTime() <= Date.now() + 1000, "aktifleşme ileri atıldı");
+
+    const saat = (k!.expires_at.getTime() - Date.now()) / 3_600_000;
+    assert.ok(saat > 2.5 && saat <= 3.1, `süre 3 saat olmalıydı (${saat.toFixed(1)} sa)`);
+    } finally {
+      if (oncekiEsik) {
+        await yoneticiSorgu(
+          `UPDATE cafe_config SET value = $2::jsonb WHERE cafe_id = $1 AND key = 'erteleme_esigi_kurus'`,
+          [kafeA, oncekiEsik.value],
+        );
+      } else {
+        await yoneticiSorgu(
+          `DELETE FROM cafe_config WHERE cafe_id = $1 AND key = 'erteleme_esigi_kurus'`,
+          [kafeA],
+        );
+      }
+    }
+  });
+
+  test("aynı teklif iki kez alınamıyor", async () => {
+    const t = await withBypass("test: teklif satırı", (db) =>
+      db.one<{ id: string }>(
+        `SELECT id FROM campaign_offers WHERE campaign_id = $1 AND taken_at IS NOT NULL LIMIT 1`,
+        [UPSELL_ID],
+      ),
+    );
+    assert.ok(t, "kabul edilmiş teklif yok");
+
+    const s = await upsell.teklifiAl({
+      playerId: oyuncu2,
+      teklifId: t.id,
+      kanitSeviyesi: 2,
+      kuponVer: async () => ({ ok: true as const, kuponId: "x", kod: "x" }),
+    });
+    assert.equal(s.ok, false, "aynı teklif ikinci kez alındı");
+  });
+
+  test("başkasının teklifi alınamıyor", async () => {
+    // Değişmez kural #3'ün buradaki karşılığı: istemciden gelen tek şey
+    // teklif kimliği ve o kimlik başkasının satırını açamıyor.
+    const t = await withBypass("test: oyuncu1'in teklifi", (db) =>
+      db.one<{ id: string }>(
+        `SELECT id FROM campaign_offers WHERE campaign_id = $1 AND player_id = $2 LIMIT 1`,
+        [UPSELL_ID, oyuncu1],
+      ),
+    );
+    if (!t) return;
+
+    const s = await upsell.teklifiAl({
+      playerId: oyuncu2,
+      teklifId: t.id,
+      kanitSeviyesi: 2,
+      kuponVer: async () => ({ ok: true as const, kuponId: "x", kod: "x" }),
+    });
+    assert.equal(s.ok, false, "başkasının teklifi alındı");
+  });
+
+  test("huni gösterildi / alındı / kullanıldı sayıyor", async () => {
+    const h = await upsell.huni(kafeA, { baslangic: bugun, bitis: isGunu(new Date(Date.now() + 86_400_000)) });
+    const satir = h.find((x) => x.kampanyaId === UPSELL_ID);
+    assert.ok(satir, "huni satırı yok");
+    assert.ok(satir.gosterildi >= satir.alindi, "alınan gösterilenden çok");
+    assert.ok(satir.alindi >= satir.kullanildi, "kullanılan alınandan çok");
+    assert.ok(satir.gosterildi >= 2, `gösterim az: ${satir.gosterildi}`);
   });
 });

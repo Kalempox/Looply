@@ -25,6 +25,8 @@ export function KampanyaOlusturma({
   const [durum, action, bekliyor] = useActionState(olusturEylemi, BOS);
   const [urunId, setUrunId] = useState(urunler[0]?.id ?? "");
   const [yuzde, setYuzde] = useState(20);
+  /** Ü100: upsell kipi — form bir alan daha açıyor. */
+  const [hemen, setHemen] = useState(false);
 
   const urun = urunler.find((u) => u.id === urunId);
   const makulTavanTl = urun ? Math.ceil((urun.fiyatKurus * yuzde) / 100 / 100) : null;
@@ -113,8 +115,51 @@ export function KampanyaOlusturma({
         </IsletmeAlan>
       </div>
 
+      {/* ── Upsell kipi (Ü100) ────────────────────────────
+          Normal kampanya "bir ara gel kullan" diyor; upsell "şimdi, bu
+          masada" diyor. İkisi aynı formda çünkü teknik olarak aynı şey —
+          değişen tek şey kuponun ne zaman kullanılabildiği. */}
+      <label className="mt-6 flex cursor-pointer items-start gap-3 rounded-xl border border-cizgi bg-cukur px-4 py-3.5">
+        <input
+          type="checkbox"
+          name="hemen"
+          checked={hemen}
+          onChange={(e) => setHemen(e.target.checked)}
+          className="mt-0.5 size-4 shrink-0"
+        />
+        <span className="min-w-0">
+          <span className="block text-[14px] font-semibold">Bu ziyarette kullanılsın (upsell)</span>
+          <span className="mt-0.5 block text-[12px] leading-relaxed text-yazi-sonuk">
+            Müşteri zaten masada. Teklif oyun sonunda çıkar, kabul ederse kupon
+            hemen açılır ve birkaç saat geçerli olur. Amaç yarın değil,{" "}
+            <strong className="text-yazi">şimdi ikinci ürünü sattırmak</strong>.
+          </span>
+        </span>
+      </label>
+
+      {hemen && (
+        <div className="mt-3">
+          <IsletmeAlan
+            etiket="Teklif kaç saat geçerli?"
+            ipucu="Bir oturum kadar. Uzun süre verirsen upsell olmaktan çıkar, normal kampanyaya döner."
+          >
+            <input
+              name="gecerliSaat"
+              type="text"
+              inputMode="numeric"
+              defaultValue="3"
+              className={isletmeGirdi}
+            />
+          </IsletmeAlan>
+        </div>
+      )}
+
       <IsletmeDugme type="submit" disabled={bekliyor}>
-        {bekliyor ? "Kaydediliyor…" : "Taslak olarak kaydet"}
+        {bekliyor
+          ? "Kaydediliyor…"
+          : hemen
+            ? "Upsell teklifini taslak olarak kaydet"
+            : "Taslak olarak kaydet"}
       </IsletmeDugme>
     </form>
   );

@@ -5,6 +5,7 @@ import { isGunu } from "@/lib/tarih";
 import { log } from "@/lib/log";
 import { oyunBul, gununOyunu, tekrarOyna, EN_FAZLA_GIRDI, saatTutarliMi } from "@/oyunlar";
 import * as masaOturumu from "./masa";
+import * as upsell from "./upsell";
 import { K2 } from "./masa";
 import * as acil from "./acil";
 import * as davet from "./davet";
@@ -142,6 +143,14 @@ export type Kazanim = {
    * karıştırmasın.
    */
   kampanya: { kuponId: string; baslik: string; kod: string; ertelendi: boolean; aktiflesme: Date } | null;
+  /**
+   * Ü100: upsell teklifi — kupon DEĞİL.
+   *
+   * Oyuncu "Al" demeden kupon üretilmiyor: kupon üretmek kafenin
+   * bütçesini bağlıyor (Ü7) ve teklifi görmezden geçecek kişiye kupon
+   * basmak o bütçeyi kullanılmayacak sözlere harcar.
+   */
+  teklif: { teklifId: string; yuzde: number; urunAdi: string; gecerliSaat: number } | null;
 };
 
 /**
@@ -172,6 +181,7 @@ async function kazanimIsle(
     puan: null,
     xp: 0,
     kupon: null,
+    teklif: null,
     taht: null,
     esik: null,
     seri: null,
@@ -277,6 +287,25 @@ async function kazanimIsle(
       cafeId: opts.cafeId,
       kanitSeviyesi: opts.proofLevel,
     });
+    /**
+     * Ü100: upsell teklifi. Kampanya kuponundan **sonra** bakılıyor ve
+     * ikisi birbirini dışlamıyor — biri kafenin ikramı, öbürü kafenin
+     * satmak istediği ürün. Aynı ekranda ikisi de çıkabilir.
+     */
+    const t = await upsell.uygunTeklif(db, {
+      cafeId: opts.cafeId,
+      playerId: opts.playerId,
+      oturumId: opts.oturumId,
+    });
+    if (t) {
+      sonuc.teklif = {
+        teklifId: t.teklifId,
+        yuzde: t.yuzde,
+        urunAdi: t.urunAdi,
+        gecerliSaat: t.gecerliSaat,
+      };
+    }
+
     if (kmp?.ok) {
       sonuc.kampanya = {
         kuponId: kmp.kuponId,
@@ -450,6 +479,14 @@ export type BitirSonucu =
       kupon: { kuponId: string; baslik: string; kod: string; ertelendi: boolean; aktiflesme: Date } | null;
       /** Ö4 · Ü82: kafenin kampanya kuponu düştüyse. Ödülden ayrı. */
       kampanya: { kuponId: string; baslik: string; kod: string; ertelendi: boolean; aktiflesme: Date } | null;
+  /**
+   * Ü100: upsell teklifi — kupon DEĞİL.
+   *
+   * Oyuncu "Al" demeden kupon üretilmiyor: kupon üretmek kafenin
+   * bütçesini bağlıyor (Ü7) ve teklifi görmezden geçecek kişiye kupon
+   * basmak o bütçeyi kullanılmayacak sözlere harcar.
+   */
+  teklif: { teklifId: string; yuzde: number; urunAdi: string; gecerliSaat: number } | null;
       /**
        * Bu oturum "kafeye yapılan sayılabilir ziyaret" olarak işaretlendi mi?
        *
@@ -658,6 +695,7 @@ export async function bitir(opts: {
       yeniRozetler: [] as string[],
       kupon: kazanim.kupon,
       kampanya: kazanim.kampanya,
+      teklif: kazanim.teklif,
       nitelikliOldu: nitelikli,
       cafeId: oturum.cafe_id,
       taht: kazanim.taht,
@@ -710,6 +748,14 @@ export type MisafirYazSonucu =
       kupon: { kuponId: string; baslik: string; kod: string; ertelendi: boolean; aktiflesme: Date } | null;
       /** Ö4 · Ü82: kayıt anında bozdurulan misafir turunda da düşebiliyor. */
       kampanya: { kuponId: string; baslik: string; kod: string; ertelendi: boolean; aktiflesme: Date } | null;
+  /**
+   * Ü100: upsell teklifi — kupon DEĞİL.
+   *
+   * Oyuncu "Al" demeden kupon üretilmiyor: kupon üretmek kafenin
+   * bütçesini bağlıyor (Ü7) ve teklifi görmezden geçecek kişiye kupon
+   * basmak o bütçeyi kullanılmayacak sözlere harcar.
+   */
+  teklif: { teklifId: string; yuzde: number; urunAdi: string; gecerliSaat: number } | null;
       taht: taht.DevirmeSonucu | null;
       nitelikliOldu: boolean;
     }
@@ -846,6 +892,7 @@ export async function misafirOyunuYaz(opts: {
       xp: kazanim.xp,
       kupon: kazanim.kupon,
       kampanya: kazanim.kampanya,
+      teklif: kazanim.teklif,
       taht: kazanim.taht,
       nitelikliOldu: nitelikli,
     };

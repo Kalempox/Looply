@@ -9,7 +9,7 @@ import { RENK, oyunRengi } from "@/components/oyuncu-renk";
 import { oyunGorseli } from "@/components/oyuncu-gorsel";
 import { OyunIkonu, HediyeIkonu, TacIkonu } from "@/components/oyuncu-ikon";
 import { Gorsel } from "@/components/oyuncu-gorsel";
-import { baslaEylemi, bitirEylemi, type BitirCevabi } from "./actions";
+import { baslaEylemi, bitirEylemi, type BitirCevabi, teklifAlEylemi } from "./actions";
 
 /**
  * Oyun kabuğu — oyna, sonucu gör.
@@ -252,7 +252,7 @@ function SonucEkrani({
     );
   }
 
-  const { skor, basarili, puan, esik, seri, xp, kazandirir, yeniRozetler, kupon, taht, kampanya } =
+  const { skor, basarili, puan, esik, seri, xp, kazandirir, yeniRozetler, kupon, taht, kampanya, teklif } =
     cevap;
 
   /*
@@ -437,6 +437,18 @@ function SonucEkrani({
               </span>
             </Link>
           )}
+          {/* ── Upsell teklifi (Ü100) ─────────────────────
+              ⚠️ Bu bir kupon DEĞİL, bir teklif. "Al" denene kadar hiçbir
+              kupon üretilmiyor ve kafenin bütçesinden hiçbir şey
+              bağlanmıyor (Ü7). Teklifi görmezden geçen oyuncu kafeye
+              hiçbir şeye mal olmuyor.
+
+              ⚠️ Ödül ve kampanya kartlarından **sonra** duruyor: ödül
+              oynamanın karşılığı, teklif kafenin satmak istediği şey.
+              Sıralama ikisini karıştırmamalı. */}
+          {teklif && (
+            <TeklifKarti teklif={teklif} gecikme={290 + satirlar.length * 90} />
+          )}
         </div>
       </div>
 
@@ -503,6 +515,83 @@ function Dugmeler({
       </button>
       <button type="button" onClick={geri} className="py-2 text-[14px] text-yazi-sonuk underline">
         Oyunlara dön
+      </button>
+    </div>
+  );
+}
+
+/**
+ * Upsell teklifi kartı (Ü100).
+ *
+ * ── Neden bir düğme, neden hazır kupon değil ────────────────
+ *
+ * Kupon üretmek kafenin bütçesini bağlıyor. Teklifi görmezden geçecek on
+ * kişiye kupon basmak, o bütçeyi kullanılmayacak sözlere harcar. Bir de
+ * ölçüm: "gösterildi" ile "aldı" ayrı olmazsa teklifin ilgi çekip
+ * çekmediği hiç öğrenilemez.
+ *
+ * ⚠️ Süre **açıkça yazıyor** — Ü97'nin tersine. Orada saklanan şey
+ * ödülün ne zaman AÇILACAĞIydı ve mizah beklemeyi keyifli kılıyordu;
+ * burada süre teklifin kendisi: "şimdi kullan" demezsek upsell çalışmaz.
+ */
+function TeklifKarti({
+  teklif,
+  gecikme,
+}: {
+  teklif: { teklifId: string; yuzde: number; urunAdi: string; gecerliSaat: number };
+  gecikme: number;
+}) {
+  const [bekliyor, basla] = useTransition();
+  const [sonuc, setSonuc] = useState<{ ok: boolean; mesaj: string } | null>(null);
+
+  if (sonuc?.ok) {
+    return (
+      <Link
+        href="/oduller"
+        className="gir flex items-center gap-3 rounded-2xl border border-vurgu bg-cukur px-4 py-3.5"
+      >
+        <span className="min-w-0 flex-1">
+          <span className="block etiket-caps text-vurgu">Teklifi aldın</span>
+          <span className="mt-1 block font-display text-[16px] leading-tight font-bold">
+            {sonuc.mesaj}
+          </span>
+          <span className="mt-0.5 block text-[13px] leading-relaxed text-yazi-sonuk">
+            Kuponlarının arasında. Şimdi, bu ziyarette kasada göster.
+          </span>
+        </span>
+      </Link>
+    );
+  }
+
+  return (
+    <div
+      className="gir rounded-2xl border border-kampanya bg-kampanya-zemin px-4 py-3.5"
+      style={{ animationDelay: `${gecikme}ms` }}
+    >
+      <div className="etiket-caps text-kampanya">Sana özel · bugüne</div>
+      <div className="mt-1 font-display text-[17px] leading-tight font-bold">
+        %{teklif.yuzde} · {teklif.urunAdi}
+      </div>
+      <p className="mt-1 text-[13px] leading-relaxed text-yazi-sonuk">
+        {teklif.gecerliSaat} saat geçerli — masadan kalkmadan kullanabilirsin.
+      </p>
+
+      {sonuc && !sonuc.ok && (
+        <p className="mt-2 text-[13px] text-tehlike">{sonuc.mesaj}</p>
+      )}
+
+      <button
+        type="button"
+        disabled={bekliyor}
+        onClick={() =>
+          basla(async () => {
+            const c = await teklifAlEylemi(teklif.teklifId);
+            setSonuc(c.ok ? { ok: true, mesaj: c.baslik } : { ok: false, mesaj: c.hata });
+          })
+        }
+        className="mt-3 w-full rounded-xl bg-kampanya px-5 py-3 font-display text-[15px] font-bold tracking-tight text-white disabled:opacity-50"
+      >
+        {bekliyor ? "…" : "Teklifi al"}
       </button>
     </div>
   );

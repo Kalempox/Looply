@@ -7,6 +7,7 @@ import { durum as butceDurumu } from "@/domain/butce";
 import * as panel from "@/domain/panel";
 import * as rapor from "@/domain/rapor";
 import { bugunBeklenen } from "@/domain/beklenen";
+import * as upsell from "@/domain/upsell";
 import { isGunu, gunEkle } from "@/lib/tarih";
 import { SayiKarti, IKON, type Alan } from "@/components/gosterge";
 import {
@@ -76,13 +77,14 @@ export default async function KafePaneli() {
    */
   const bugun = isGunu();
   const buAyBasi = `${bugun.slice(0, 7)}-01`;
-  const [butce, gosterge, bugunku, son7, buAy, beklenen] = await Promise.all([
+  const [butce, gosterge, bugunku, son7, buAy, beklenen, huni] = await Promise.all([
     butceDurumu(o.cafeId),
     panel.ozet(o.cafeId),
     rapor.ozet(o.cafeId, { baslangic: bugun, bitis: gunEkle(bugun, 1) }),
     rapor.ozet(o.cafeId, { baslangic: gunEkle(bugun, -6), bitis: gunEkle(bugun, 1) }),
     rapor.ozet(o.cafeId, { baslangic: buAyBasi, bitis: gunEkle(bugun, 1) }),
     bugunBeklenen(o.cafeId),
+    upsell.huni(o.cafeId, { baslangic: gunEkle(bugun, -6), bitis: gunEkle(bugun, 1) }),
   ]);
 
   return (
@@ -168,6 +170,21 @@ export default async function KafePaneli() {
           <BeklenenKarti beklenen={beklenen} />
         </div>
       </section>
+
+      {/* ── Upsell hunisi (Ü100) ─────────────────────────
+          Ürün sahibinin sorusu üzerine tanımı netleşti: müşteri masada
+          otururken ikinci ürünü sattırmak. Huni bunun kaç adımda
+          kaybettiğini gösteriyor. */}
+      {huni.length > 0 && (
+        <section className="mb-9">
+          <h2 className="etiket-caps mb-3 text-yazi-sonuk">Upsell · son 7 gün</h2>
+          <div className="grid gap-3">
+            {huni.map((h) => (
+              <UpsellHunisi key={h.kampanyaId} satir={h} />
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* ── Dönem tabloları (Ü99) ────────────────────────
           Grafik haftanın şeklini veriyor; tablo sayıyı veriyor. İkisi
@@ -764,6 +781,61 @@ function DonemTablosu({ baslik, ozet }: { baslik: string; ozet: rapor.RaporOzeti
           etmesin diye.
         </p>
       )}
+    </div>
+  );
+}
+
+/**
+ * Upsell hunisi (Ü100).
+ *
+ * ⚠️ **Son basamak "kullanıldı", "satıldı" değil.** Panel görselinde
+ * huninin altında *"840 TL ek satış geliri"* yazıyor; POS'umuz olmadığı
+ * için bunu yazamayız. Kupon kasada onaylandığında bildiğimiz şey
+ * "cheesecake kuponu kullanıldı" — "cheesecake satıldı ve şu kadar gelir
+ * oldu" değil. İkisi kulağa aynı geliyor ama biri ölçüm, öbürü tahmin;
+ * tahmini kesin gibi yazan panel ilk tutmayan sayıda güvenini kaybeder.
+ *
+ * Gösterilen tutar bu yüzden **verilen indirim**: kafenin cebinden çıkan,
+ * gerçekten ölçtüğümüz sayı.
+ */
+function UpsellHunisi({ satir }: { satir: upsell.HuniSatiri }) {
+  const basamaklar = [
+    { etiket: "Teklif gösterildi", sayi: satir.gosterildi },
+    { etiket: "Kuponu aldı", sayi: satir.alindi },
+    { etiket: "Kasada kullandı", sayi: satir.kullanildi },
+  ];
+  const donusum = satir.gosterildi > 0 ? (satir.kullanildi / satir.gosterildi) * 100 : 0;
+
+  return (
+    <div className="rounded-2xl border border-cizgi bg-yuzey px-5 py-5">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <span className="font-display text-[16px] leading-tight font-bold">
+          %{satir.yuzde} · {satir.urunAdi}
+        </span>
+        <span className="font-data text-[13px] font-bold tabular text-kampanya">
+          %{donusum.toFixed(1)} dönüşüm
+        </span>
+      </div>
+
+      <div className="mt-4 grid grid-cols-3 gap-2">
+        {basamaklar.map((b, i) => (
+          <div key={b.etiket} className="rounded-xl bg-cukur px-3 py-3">
+            <div className="font-data text-xl leading-none font-bold tabular">{b.sayi}</div>
+            <div className="mt-1 text-[11px] leading-tight text-yazi-sonuk">{b.etiket}</div>
+            {i > 0 && basamaklar[i - 1].sayi > 0 && (
+              <div className="mt-1 font-data text-[11px] text-yazi-sonuk">
+                önceki adımın %{Math.round((b.sayi / basamaklar[i - 1].sayi) * 100)}&apos;i
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <p className="mt-3 border-t border-cizgi pt-3 text-[12px] leading-relaxed text-yazi-sonuk">
+        Bu tekliflerden <strong className="text-yazi">{tlYaz(satir.indirimKurus)} TL</strong>{" "}
+        indirim verildi. ⚠️ Kaç ürün satıldığını sistem bilmiyor — kasa
+        bağlantımız yok; ölçtüğümüz şey kuponun kasada onaylanması.
+      </p>
     </div>
   );
 }
