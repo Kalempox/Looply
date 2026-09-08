@@ -6,7 +6,7 @@
 > Yan dosyalar: neyin **var** olduğu → `21-looply-kapsam-haritasi.md` ·
 > demoda neyin **yapılabildiği** → `22-demo-yapilabilirlik.md`
 
-**Son güncelleme:** 2026-09-02 · **Kararlar:** Ü76 – Ü95
+**Son güncelleme:** 2026-09-02 · **Kararlar:** Ü76 – Ü96
 
 ---
 
@@ -145,6 +145,11 @@ Ayrı ayrı yazılırsa üçüncüsü ilk ikisini bozar.
   yapılacağını söylüyor; konumsuz kafede çalışmayan "Doğrula" düğmesi
   kaldırıldı.
 
+- [x] **8c · Karekod doğrudan çarkla açılıyor** ✅ **BİTTİ** — Ü96, 2026-09-08
+  Karekodu okutan çarkı tam ekran görüyor, çeviriyor, ödül çıkınca
+  "kullanmak için hesabını aç" diyor. Girişli oyuncu da artık `/cark`'a
+  gidiyor — eskiden `/oyna`'da bir kart olarak görüp çevirmiyordu.
+
 - [ ] **9 · Haftalık leaderboard sezonu + haftalık puan**
 - [ ] **10 · Günün Challenge'ı rotasyonu**
   Bugün yalnızca 2× çarpan var; gün rotasyonu yok.
@@ -152,6 +157,90 @@ Ayrı ayrı yazılırsa üçüncüsü ilk ikisini bozar.
   Kapsam belgesinin "en kritik metrik" dediği şey. Veri var, hesap yok.
 - [ ] **12 · Ödül başına günlük adet limiti + kupon kullanım günü ve saati**
 - [ ] **13 · Kasa, menü ve fiş karekodları + kafe oyun yönetimi**
+
+---
+
+# DALGA 3B · YENİ — 2026-09-08 belgelerinden çıkanlar
+
+**Kaynaklar:** `cafe dashboard.txt` · `ödül açılma geyikleri.txt` ·
+`looply cafeplay ilişkisi ve landing page dönüşümleri.txt` · panel görseli ·
+ChatGPT analiz bağlantısı.
+
+## 🔴 Önce bir çatışma çözülmeli
+
+- [ ] **Ç1 · "50 TL kazandın" mı, ödülün adı mı?**
+  `ödül açılma geyikleri.txt` açılma anında **tutarı** göstermek istiyor:
+  *"50 TL kazandın. İşte burada rakam ilk defa ortaya çıkıyor."*
+  **E9 + Ü76 bunu yasaklıyor** — oyuncu ekranında ödülün ADI durur, TL
+  değeri durmaz; kasiyerin sistemi atlamasını tasarımla engelliyoruz ve
+  ürün sahibi bunu *"bu konuda sen haklısın"* diyerek onaylamıştı.
+  **Önerilen çözüm:** açılış anında ödülün **adı** açıklanır. Tutar
+  ödülünse ad zaten sayı taşıyor ("50 TL indirim"), yani dramatik açılış
+  bozulmadan çalışıyor; gizli kalan şey `cost_kurus` (kafenin maliyeti).
+  ⚠️ Ürün sahibi onaylamadan mizah motoru yazılmamalı.
+
+## Ödül bekleme mizahı (`ödül açılma geyikleri.txt`)
+
+- [ ] **24 · Bekleme mesajı motoru**
+  Dört havuz: standart · astronomi · astroloji · absürt Looply.
+  30–50 mesaj, son gösterilenleri tekrar etmeyen seçim.
+  Saate duyarlı (akşam / gece / sabah farklı konuşuyor).
+  ⚠️ **Mizah değişir, aktivasyon kuralı değişmez** — `activates_at` neyse
+  odur; metin onu ne öne alır ne erteler.
+  ⚠️ Mizah **ödül tutarıyla ilişkilendirilmez** ("Jüpiter güçlü, 50 TL
+  çıktı" gibi bir mekanik kurulmaz) — yoksa şaka, ödül algoritması sanılır.
+  Altyapı hazır: Ü28 erteleme + `activates_at` zaten var, bugün metin düz.
+- [ ] **25 · Açılma bildirimi**
+  Ödül açıldığında oyuncuya haber gitmeli. SMS altyapısı var; bildirim
+  tetikleyicisi yok.
+
+## Kafe paneli (panel görseli + `cafe dashboard.txt`)
+
+- [ ] **26 · Bugünün beş ana metriği**
+  Oynayan · kullanılan kupon (+dönüşüm) · verilen indirim (+kupon başına
+  ortalama) · yeni müşteri · beklenen müşteri.
+  Bugün panelde yalnızca "bugün ödediğin" var; kalanı rapor ekranında
+  dağınık duruyor. 🟢 İlk üçü mevcut veriyle hesaplanıyor.
+- [ ] **27 · "Yeni müşteri" tanımı** 🟡
+  ⚠️ Çıkarma ile hesaplanmayacak (`oynayan − kupon kullanan` DEĞİL).
+  Kişi bazlı geçmiş gerekiyor: *"bu kişinin bu işletmeyle Looply üzerinden
+  ilk doğrulanmış etkileşimi mi?"* POS olmadığı için "işletmeye ilk
+  ziyareti" diyemeyiz; tanımı dürüst tutmalıyız.
+- [ ] **28 · "Bugün beklenen müşteri"** 🟡 → Dalga 4 madde 16 ile aynı iş
+  ⚠️ Açık kupon sayısı beklenen müşteri DEĞİLDİR. Kural tabanlı tahmin:
+  kalan süre · ödül türü · gün · saat · geçmiş kullanım. MVP'de makine
+  öğrenmesi yok. Kesin sayı değil **aralık** gösterilmeli.
+- [ ] **29 · Upsell hunisi (cheesecake)** 🔴
+  Teklif gösterildi → kupon alındı → kullanıldı → dönüşüm → ek satış.
+  ⚠️ POS yok: "müşteri cheesecake aldı" diyemeyiz. Ölçebildiğimiz kupon
+  kullanımı; ötesi işletmecinin manuel beyanı ve **ayrı güven seviyesinde**
+  tutulmalı. Bugün sistemde "upsell kampanyası" diye bir kavram yok.
+- [ ] **30 · Son 7 gün / Bu ay tabloları**
+  Grafik var, tablo yok. Aynı metrikler, iki pencere.
+- [ ] **31 · Panel kabuğu**
+  Kafe seçici (bir sahip, çok şube) · bildirim çanı · gün gezinme
+  (‹ dün › bugün) · "bugünkü durum" ve "önerimiz" kartları.
+- [ ] **32 · Manuel indirim girişi?** ⚠️ *karar gerekiyor*
+  ChatGPT analizi POS yerine işletmecinin tutarı manuel girmesini öneriyor.
+  **Bizde gerek yok**: ödül değeri katalogda tanımlı ve kupon onaylanınca
+  `committed_kurus` kendiliğinden yazılıyor — daha güvenilir. Yalnızca
+  yüzde kampanyasında gerçek indirim değişken; oraya manuel giriş gerekebilir.
+
+## Pazarlama mimarisi (`looply cafeplay ilişkisi...`)
+
+Çoğu **kod dışı** iş; buraya yalnızca yazılıma dokunanları alıyorum.
+
+- [ ] **33 · Kaynak takibi (attribution)** 🟢
+  İşletme kaydında `source · sector · campaign · creative · landing`
+  saklanmalı. Zincir: landing → kayıt → aktivasyon → QR → ilk oyuncu →
+  ilk kupon → kullanım. Amaç *"en ucuz kaydı getiren reklam"* değil,
+  **"en fazla değer üreten işletmeyi getiren reklam"**.
+- [ ] **34 · Aktivasyon takibi / CRM** 🟡
+  Kayıt olup kampanya açmayan, QR üretmeyen kafeye hatırlatma.
+  Panelde "kafenizi 5 dakikada yayına alın" yönlendirmesi.
+- [ ] **35 · Landing page'ler** *(kod dışı, ayrı proje)*
+  `cafeplay.com.tr/tekrar-musteri` · `/ikinci-siparis` · `/musteri-sadakati`
+  · `/yeni-musteri` · `/kampanya` · `/ek-satis`. Her biri ayrı ölçülür.
 
 ---
 

@@ -25,7 +25,12 @@ export const metadata = { title: "Şans çarkı · Looply" };
  * dolduran bir şey; `/oyna` zaten puan, kupon, seviye, liderlik ve oyun
  * listesini taşıyor ve altıncı bir büyük blok orayı okunmaz yapardı.
  */
-export default async function CarkSayfasi() {
+export default async function CarkSayfasi({
+  searchParams,
+}: {
+  searchParams: Promise<{ cark?: string }>;
+}) {
+  const sp = await searchParams;
   const o = await oturum.oku();
   if (!o || o.rol !== "oyuncu") redirect("/giris");
 
@@ -62,6 +67,7 @@ export default async function CarkSayfasi() {
         </p>
       ) : (
         <GunlukCark
+          otomatikAc={sp.cark === "1"}
           dilimler={dilimler.map((d) => ({ baslik: d.baslik }))}
           acik={durum.acik}
           kapaliMetin={cark.durumMetni(durum)}

@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { masayaOturt } from "@/domain/masaya-oturt";
+import * as masaOturumu from "@/domain/masa";
 import { cookies } from "next/headers";
 import { biletCoz, MASA_COOKIE } from "@/domain/qr";
 import * as oturum from "@/domain/session";
@@ -25,7 +26,12 @@ export const dynamic = "force-dynamic";
  * Girişli oyuncunun burada işi yok: onun için `/oyna` zaten var ve orada
  * oynadığı oyun doğrudan hesabına yazılıyor.
  */
-export default async function HemenSayfasi() {
+export default async function HemenSayfasi({
+  searchParams,
+}: {
+  searchParams: Promise<{ cark?: string }>;
+}) {
+  const sp = await searchParams;
   const acikOturum = await oturum.oku();
   if (acikOturum?.rol === "oyuncu") {
     // ⚠️ Ü95: yollamadan ÖNCE masaya oturt. Eskiden burada yalnızca
@@ -34,6 +40,22 @@ export default async function HemenSayfasi() {
     // karekodu tekrar okutuyor, yine aynı ekrana düşüyordu. İlk ziyarette
     // çalışması hatayı gizliyordu — kayıt akışı oturumu kendisi açıyor.
     await masayaOturt(acikOturum.ozneId);
+
+    /**
+     * ⚠️ Ü96: karekodu okutan girişli oyuncu **çarka** gidiyor, ana ekrana
+     * değil. Ürün sahibi: *"karekodu okutunca otomatik direkt çarka
+     * çevirmeyle başlamalı."* Misafir zaten burada çarkı görüyordu;
+     * girişli oyuncu `/oyna`'ya düşüp çarkı bir kart olarak görüyor ve
+     * çoğu zaman hiç çevirmiyordu — aynı karekod, iki farklı ilk deneyim.
+     *
+     * Çark kapalıysa (bugün çevrilmiş) ana ekrana gidiyor: tam ekran bir
+     * sahnenin tek işi "yarın gel" demek olmamalı.
+     */
+    const masaBilgisi = await masaOturumu.aktif(acikOturum.ozneId);
+    if (masaBilgisi) {
+      const c = await cark.durum({ playerId: acikOturum.ozneId, cafeId: masaBilgisi.cafeId });
+      if (c.acik) redirect("/cark?cark=1");
+    }
     redirect("/oyna");
   }
 
@@ -82,7 +104,11 @@ export default async function HemenSayfasi() {
           çift çerçeve yapıyordu. */}
       {carkDurumu.length > 0 && (
         <section className="mb-10">
-          <MisafirCarki dilimler={carkDurumu} kazanilan={carkTalebi ? carkTalebi.baslik : null} />
+          <MisafirCarki
+            dilimler={carkDurumu}
+            kazanilan={carkTalebi ? carkTalebi.baslik : null}
+            otomatikAc={sp.cark === "1"}
+          />
         </section>
       )}
 

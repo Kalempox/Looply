@@ -27,9 +27,12 @@ import { carkiCevir } from "./actions";
 export function MisafirCarki({
   dilimler,
   kazanilan,
+  otomatikAc,
 }: {
   dilimler: { baslik: string }[];
   kazanilan: string | null;
+  /** Ü96: karekoddan gelindiyse sahne kendiliğinden açılıyor. */
+  otomatikAc: boolean;
 }) {
   const [acilistakiOdul] = useState(kazanilan);
 
@@ -57,6 +60,7 @@ export function MisafirCarki({
     <CarkSahnesi
       dilimler={dilimler}
       cevir={carkiCevir}
+      otomatikAc={otomatikAc}
       davetBaslik="Şans çarkın hazır"
       davetMetin="Dokun, çark tam ekranda açılsın. Bir kez çevirebilirsin."
       altMetin="Bir kez çevir. Çıkan ödülü kullanmak için hesap açman gerekiyor."

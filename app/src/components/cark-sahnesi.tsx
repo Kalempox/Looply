@@ -37,6 +37,7 @@ export function CarkSahnesi({
   kazandiMetni,
   davetBaslik,
   davetMetin,
+  otomatikAc,
 }: {
   dilimler: CarkDilimi[];
   cevir: () => Promise<CevirmeCevabi>;
@@ -47,8 +48,27 @@ export function CarkSahnesi({
   kazandiMetni: React.ReactNode;
   davetBaslik: string;
   davetMetin: string;
+  /**
+   * Sahne kendiliğinden açılsın mı? (Ü96)
+   *
+   * Ürün sahibi: *"karekodu okutunca otomatik direkt çarka çevirmeyle
+   * başlamalı."* Karekodu okutan kişi bir karar vermek için değil,
+   * **oynamak** için okutuyor; araya "dokun, çark açılsın" diye bir adım
+   * koymak hunideki ilk dönüşümü boşa harcıyor.
+   *
+   * ⚠️ Kararı **sunucu** veriyor: karekod adresi `?cark=1` ile geliyor ve
+   * bayrak yalnızca o girişte doluyor. İlk sürüm burada `sessionStorage`
+   * okuyordu ve hiç açılmadı — `useState` başlatıcısı sunucuda da
+   * çalışıyor, orada `sessionStorage` yok, `catch` `false` dönüyor ve
+   * hidrasyon o değeri koruyordu. Tarayıcıya özel bir API'yi ilk render'ın
+   * kararına sokmak bu yüzden çalışmıyor.
+   *
+   * Kilitli çarkta (bugün çevrilmiş ya da kapalı) hiç açılmıyor — açılsaydı
+   * sahne yalnızca "yarın gel" demek için tam ekranı kaplardı.
+   */
+  otomatikAc?: boolean;
 }) {
-  const [acik, setAcik] = useState(false);
+  const [acik, setAcik] = useState(!!otomatikAc && !kilitli);
   const [donuyor, setDonuyor] = useState(false);
 
   /**

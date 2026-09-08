@@ -22,10 +22,13 @@ export function GunlukCark({
   dilimler,
   acik,
   kapaliMetin,
+  otomatikAc,
 }: {
   dilimler: { baslik: string }[];
   acik: boolean;
   kapaliMetin: string;
+  /** Ü96: karekodu yeni okutan oyuncuda sahne kendiliğinden açılıyor. */
+  otomatikAc?: boolean;
 }) {
   return (
     <CarkSahnesi
@@ -33,6 +36,7 @@ export function GunlukCark({
       cevir={carkiCevir}
       kilitli={!acik}
       kapaliMetin={kapaliMetin}
+      otomatikAc={otomatikAc}
       davetBaslik={acik ? "Çarkın hazır" : "Çark kapalı"}
       davetMetin="Dokun, çark tam ekranda açılsın."
       altMetin="Çark 24 saatte bir açılıyor. Çıkan ödül doğrudan hesabına işlenir."

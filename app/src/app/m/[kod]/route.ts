@@ -36,7 +36,11 @@ export async function GET(istek: Request, ctx: { params: Promise<{ kod: string }
   // Ü35: karekodu okutan kişi **önce oynuyor**. `/hemen` girişli oyuncuyu
   // zaten `/oyna`'ya yolluyor, bu yüzden burada oturum sorulmuyor — tek
   // yerde karar veriliyor.
-  const cevap = NextResponse.redirect(new URL("/hemen", istek.url));
+  // Ü96: `?cark=1` — karekodu okutan doğrudan çarkla karşılaşıyor.
+  // Bayrak adreste taşınıyor çünkü kararı **sunucu** vermeli: sahnenin
+  // ilk render'ında açık olması gerekiyor ve tarayıcıya özel bir API
+  // (sessionStorage) sunucuda okunamıyor.
+  const cevap = NextResponse.redirect(new URL("/hemen?cark=1", istek.url));
   cevap.cookies.set(MASA_COOKIE, biletUret(masa.cafeId, masa.tableId), {
     httpOnly: true,
     secure: process.env.APP_ENV === "production",
