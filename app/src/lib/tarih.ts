@@ -47,6 +47,32 @@ export function istanbulDakikasi(an: Date): number {
   return saat * 60 + dakika;
 }
 
+/**
+ * `YYYY-MM-DD` → "10 Eylül" (Ü101).
+ *
+ * ⚠️ Burada duruyor, panelin istemci bileşeninde değil: hem sunucu
+ * (başlık) hem istemci (gün gezinme) yazıyor. İstemci dosyasında
+ * kalınca sunucu onu çağıramadı — *"Attempted to call gunYaz() from the
+ * server but gunYaz is on the client"* — ve panel geçmiş günde 500 döndü.
+ *
+ * `timeZone: "UTC"` ve öğlen saati: tarih dizgisi zaten gün, saat dilimi
+ * kayması bir gün öncesine düşürmesin.
+ */
+export function gunYaz(gun: string): string {
+  return new Date(`${gun}T12:00:00Z`).toLocaleDateString("tr-TR", {
+    day: "numeric",
+    month: "long",
+    timeZone: "UTC",
+  });
+}
+
+/** `YYYY-MM-DD` + gün. UTC üzerinden: saat dilimi kayması olmasın. */
+export function gunKaydir(gun: string, fark: number): string {
+  const d = new Date(`${gun}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + fark);
+  return d.toISOString().slice(0, 10);
+}
+
 /* ── Hafta hesapları — bütçe dönemi (Ü25) ────────────────── */
 
 /** `YYYY-MM-DD` → UTC gün başlangıcı. Saat dilimi kayması olmasın diye UTC. */

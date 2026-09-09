@@ -8,11 +8,12 @@ import * as urun from "@/domain/urun";
 import * as katalog from "@/domain/katalog";
 import * as kampanya from "@/domain/kampanya";
 import * as cafe from "@/domain/cafe";
+import * as panelDurum from "@/domain/panel-durum";
 import * as masa from "@/domain/masa";
 import * as masaYonetim from "@/domain/masa-yonetim";
 import * as qr from "@/domain/qr";
 import { kaydet } from "@/domain/player";
-import { normalizePhone } from "@/lib/crypto";
+import { normalizePhone, decryptPII } from "@/lib/crypto";
 import { randomInt } from "node:crypto";
 import { pazartesi, isGunu } from "@/lib/tarih";
 import { yoneticiSorgu } from "./_yardim";
@@ -380,9 +381,31 @@ describe("bütçe temposu (Ü87)", () => {
   });
 
   test("aynı tutar sabah reddediliyor, akşam kabul ediliyor", async () => {
-    // Tutar sabit yazılmıyor: tohum ve önceki testler bu dönemde zaten
-    // rezervasyon bırakmış olabilir. Sınanan şey mutlak bir sayı değil,
-    // **aynı tutara iki saatte iki farklı cevap** verilmesi.
+    /**
+     * Tutar sabit yazılmıyor: tohum ve önceki testler bu dönemde zaten
+     * rezervasyon bırakmış olabilir. Sınanan şey mutlak bir sayı değil,
+     * **aynı tutara iki saatte iki farklı cevap** verilmesi.
+     *
+     * ⚠️ Taahhüt testin **kendisi** tarafından açılıyor. Önceki hâli
+     * dönemde kalan paya güveniyordu ve o pay başka dosyaların ne kadar
+     * harcadığına bağlıydı: upsell testleri eklenince (Ü100) kupon
+     * rezervasyonları arttı, aralık kapandı ve bu test **yanlış sebeple**
+     * düştü — tempoyu değil, kalan bütçeyi ölçer hâle gelmişti.
+     *
+     * Bütçe defteri append-only (E3): kupon silinse de rezervasyon
+     * satırı kalıyor. Yani "sonra temizlerim" diye bir yol yok; testin
+     * kendi payını açması gerekiyor.
+     */
+    const ilk = await butce.durum(kafeA, bugun);
+    assert.ok(ilk.donem, "test kurulumu: dönem yok");
+    const oncekiTaahhut = ilk.donem.taahhutKurus;
+    await yoneticiSorgu(
+      `UPDATE budget_periods SET committed_kurus = committed_kurus + 500000
+        WHERE cafe_id = $1 AND period_start <= $2 AND period_end > $2`,
+      [kafeA, bugun],
+    );
+
+    try {
     const d = await butce.durum(kafeA, bugun);
     assert.ok(d.donem, "test kurulumu: dönem yok");
 
@@ -403,6 +426,13 @@ describe("bütçe temposu (Ü87)", () => {
       butce.rezerveEt(db, { cafeId: kafeA, kurus: tutar, not: "test tempo", gun: bugun, an: saat(22) }),
     );
     assert.equal(aksam, true, "akşam 22'de reddedildi — tempo, tavan değil engel olmuş");
+    } finally {
+      await yoneticiSorgu(
+        `UPDATE budget_periods SET committed_kurus = $3
+          WHERE cafe_id = $1 AND period_start <= $2 AND period_end > $2`,
+        [kafeA, bugun, oncekiTaahhut],
+      );
+    }
   });
 });
 
@@ -563,6 +593,162 @@ describe("ad düzeltme (Ü94)", () => {
 
     const hala = (await katalog.listele(kafeA)).find((o) => o.id === odulId);
     assert.equal(hala?.baslik, "TEST Ice Americano Büyük", "yabancı kafe adı değiştirdi");
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════
+   Çok şube ve panel kabuğu (Ü101)
+   ═══════════════════════════════════════════════════════════ */
+
+describe("çok şube (Ü101)", () => {
+  let ikinciStaff = "";
+  let bizimEklediğimiz = false;
+
+  before(async () => {
+    // Kafe A yöneticisinin telefonunu Kafe B'ye de yönetici olarak ekle.
+    const a = await withBypass("test: yöneticinin telefonu", (db) =>
+      db.one<{ phone_index: Buffer | null; phone_enc: Buffer | null; pin_hash: string }>(
+        `SELECT phone_index, phone_enc, pin_hash FROM staff WHERE id = $1`,
+        [yoneticiA],
+      ),
+    );
+    assert.ok(a?.phone_index, "test kurulumu: yöneticinin telefonu yok");
+
+    /**
+     * ⚠️ Satır zaten varsa yeniden kullanılıyor, ikinci kez eklenmiyor.
+     *
+     * İlk hâli körlemesine INSERT ediyordu ve demo verisinde aynı numara
+     * Kafe B'ye elle eklenmiş olduğu için `staff_kafe_phone_idx` çakıştı:
+     * test, sınadığı şeyle ilgisi olmayan bir sebeple açılışta ölüyordu.
+     * Testin kurulumu, veritabanında ne bulacağına dair varsayım
+     * yapmamalı.
+     */
+    const mevcut = await withBypass("test: kafe B'de var mı", (db) =>
+      db.one<{ id: string }>(
+        `SELECT id FROM staff WHERE cafe_id = $1 AND phone_index = $2`,
+        [kafeB, a.phone_index],
+      ),
+    );
+
+    if (mevcut) {
+      ikinciStaff = mevcut.id;
+      bizimEklediğimiz = false;
+    } else {
+      ikinciStaff = `stf_test_sube_${randomInt(100000)}`;
+      bizimEklediğimiz = true;
+      await yoneticiSorgu(
+        `INSERT INTO staff (id, cafe_id, name, pin_hash, role, phone_index, phone_enc)
+         VALUES ($1, $2, 'TEST Sube Yoneticisi', $3, 'manager', $4, $5)`,
+        [ikinciStaff, kafeB, a.pin_hash, a.phone_index, a.phone_enc],
+      );
+    }
+  });
+
+  after(async () => {
+    // Bulduğumuz satır bizim değilse dokunmuyoruz.
+    if (bizimEklediğimiz) await yoneticiSorgu(`DELETE FROM staff WHERE id = $1`, [ikinciStaff]);
+  });
+
+  test("aynı telefon iki şubede yönetici olabiliyor", async () => {
+    // ⚠️ Ü101'den önce şema bunu engelliyordu: `staff_phone_idx` global
+    // tekildi. Tekillik artık kafe başına.
+    const liste = await cafe.subeler(yoneticiA);
+    assert.ok(liste.length >= 2, `iki şube bekleniyordu, ${liste.length} geldi`);
+    assert.ok(liste.some((x) => x.cafeId === kafeA));
+    assert.ok(liste.some((x) => x.cafeId === kafeB));
+  });
+
+  test("aynı kafede aynı telefon iki kez olamıyor", async () => {
+    // Tekillik gevşedi ama kaybolmadı.
+    await assert.rejects(
+      yoneticiSorgu(
+        `INSERT INTO staff (id, cafe_id, name, pin_hash, role, phone_index, phone_enc)
+         SELECT $1, cafe_id, 'TEST Kopya', pin_hash, 'manager', phone_index, phone_enc
+           FROM staff WHERE id = $2`,
+        [`stf_test_kopya_${randomInt(100000)}`, ikinciStaff],
+      ),
+      "aynı kafede ikinci kez eklenebildi",
+    );
+  });
+
+  test("🔴 yetkisi olmayan şubeye geçilemiyor", async () => {
+    // Değişmez kural #3: cafe_id oturumdan gelir. Şube değiştirme isteği
+    // istemciden geliyor ve doğrulanmadan oturuma yazılamaz — yazılsaydı
+    // yönetici, formdaki kimliği değiştirip başka işletmenin paneline
+    // girerdi.
+    const yabanci = await withBypass("test: yabancı kafe", (db) =>
+      db.one<{ id: string }>(
+        `SELECT id FROM cafes WHERE status = 'approved' AND id <> $1 AND id <> $2 LIMIT 1`,
+        [kafeA, kafeB],
+      ),
+    );
+    assert.ok(yabanci, "test kurulumu: üçüncü kafe yok");
+
+    assert.equal(
+      await cafe.subeyeGecebilirMi(yoneticiA, yabanci.id),
+      null,
+      "yetkisi olmayan şubeye geçiş kabul edildi",
+    );
+  });
+
+  test("yetkili olduğu şubeye geçiş o şubenin personel kaydını veriyor", async () => {
+    // ⚠️ Yalnızca `cafeId` değişse yetmezdi: her şubede ayrı personel
+    // satırı var ve denetim izi doğru satıra bağlanmalı.
+    const hedef = await cafe.subeyeGecebilirMi(yoneticiA, kafeB);
+    assert.ok(hedef, "kendi şubesine geçemedi");
+    assert.equal(hedef.cafeId, kafeB);
+    assert.equal(hedef.staffId, ikinciStaff, "eski şubenin personel kaydı taşındı");
+  });
+
+  test("giriş çoğul kafe döndürüyor, rastgele seçmiyor", async () => {
+    // Önceki sürüm `db.one` kullanıyordu — yani rows[0]. İki şubeli sahip
+    // sıralaması belirsiz bir sorgudan gelen rastgele bir şubeye düşerdi.
+    const telefon = await withBypass("test: telefon", (db) =>
+      db.one<{ phone_enc: Buffer }>(`SELECT phone_enc FROM staff WHERE id = $1`, [yoneticiA]),
+    );
+    assert.ok(telefon);
+    const liste = await cafe.yoneticiKafeleri(decryptPII(telefon.phone_enc));
+    assert.ok(liste.length >= 2, "giriş yalnızca bir kafe gördü");
+  });
+});
+
+describe("panel durumu ve uyarıları (Ü101)", () => {
+  test("kurulum eksikse engel uyarısı çıkıyor", async () => {
+    await yoneticiSorgu(`UPDATE cafes SET lat = NULL, lng = NULL WHERE id = $1`, [kafeA]);
+    try {
+      const d = await panelDurum.panelDurumu(kafeA);
+      const konum = d.uyarilar.find((u) => u.baslik.includes("konum"));
+      assert.ok(konum, "konumsuz kafede uyarı yok");
+      assert.equal(konum.onem, "engel");
+      assert.ok(d.bekleyen > 0, "çan rozeti boş");
+      assert.equal(d.iyiMi, false);
+    } finally {
+      await yoneticiSorgu(`UPDATE cafes SET lat = $2, lng = $3 WHERE id = $1`, [
+        kafeA,
+        41.0369,
+        28.9838,
+      ]);
+    }
+  });
+
+  test("bilgi uyarısı çan rozetini şişirmiyor", async () => {
+    // ⚠️ Her bilgi satırı rozeti şişirseydi çan sürekli dolu görünür ve
+    // işletmeci bakmayı bırakırdı. Rozet "bir şey yapman gerekiyor" demeli.
+    const d = await panelDurum.panelDurumu(kafeA);
+    const bilgiler = d.uyarilar.filter((u) => u.onem === "bilgi").length;
+    assert.equal(
+      d.bekleyen,
+      d.uyarilar.length - bilgiler,
+      "bilgi satırları rozete sayıldı",
+    );
+  });
+
+  test("öneri dayanaksız üretilmiyor", async () => {
+    // Her öneri elimizdeki bir sayıya dayanmalı; dayanak yoksa öneri de yok.
+    const d = await panelDurum.panelDurumu(kafeA);
+    for (const o of d.oneriler) {
+      assert.ok(/\d/.test(o.metin), `öneride sayı yok: ${o.metin}`);
+    }
   });
 });
 

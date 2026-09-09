@@ -102,8 +102,16 @@ before(async () => {
   kafeA = v.a;
   yoneticiA = v.y;
 
-  // Bütçe dönemi tohumdan geliyor; taahhüdü yükseltiyoruz ki testin
-  // kuponları "bütçe doldu" diye reddedilmesin. Sonda geri konuyor.
+  /**
+   * Bütçe dönemi tohumdan geliyor; taahhüdü yükseltiyoruz ki testin
+   * kuponları "bütçe doldu" diye reddedilmesin. Sonda geri konuyor.
+   *
+   * ⚠️ Pay 500 → 2.000 TL'ye çıktı (Ü101). Upsell testleri eklenince
+   * dosya daha çok kupon üretiyor ve 500 TL yetmedi: test "ertelenmiyor"
+   * iddiasını sınayacakken "bütçe doldu" diye düşüyordu — yani **yanlış
+   * sebeple** kırılıyordu. Kurulumun payı, dosyanın ürettiği kupondan
+   * bol olmalı.
+   */
   const donem = await withBypass("test: dönem", (db) =>
     db.one<{ id: string; committed_kurus: string }>(
       `SELECT id, committed_kurus FROM budget_periods
@@ -115,7 +123,7 @@ before(async () => {
   ilkTaahhut = Number(donem.committed_kurus);
   await yoneticiSorgu(`UPDATE budget_periods SET committed_kurus = $2 WHERE id = $1`, [
     donem.id,
-    ilkTaahhut + 500_00,
+    ilkTaahhut + 2000_00,
   ]);
 
   await yoneticiSorgu(
@@ -487,6 +495,10 @@ describe("upsell teklifi (Ü100)", () => {
           tavanKurus: g.tavanKurus,
           gecerliSaat: g.gecerliSaat,
           kanitSeviyesi: 2,
+          // ⚠️ Kafe kapalıyken hiçbir kupon çıkmıyor (Ü90) ve testin
+          // koştuğu saat belirsiz. `an` dikişi bunun için var: testin
+          // sınadığı şey erteleme kuralı, günün saati değil.
+          an: KAFE_ACIK,
         }),
     });
     assert.ok(s.ok, s.ok === false ? s.hata : "");

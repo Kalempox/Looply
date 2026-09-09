@@ -8,7 +8,10 @@ import * as panel from "@/domain/panel";
 import * as rapor from "@/domain/rapor";
 import { bugunBeklenen } from "@/domain/beklenen";
 import * as upsell from "@/domain/upsell";
-import { isGunu, gunEkle } from "@/lib/tarih";
+import { panelDurumu } from "@/domain/panel-durum";
+import { subeler as subeleriBul } from "@/domain/cafe";
+import { PanelKabugu, DurumKartlari } from "./kabuk";
+import { isGunu, gunEkle, gunYaz } from "@/lib/tarih";
 import { SayiKarti, IKON, type Alan } from "@/components/gosterge";
 import {
   IsletmeSayfa,
@@ -37,7 +40,12 @@ export const metadata = { title: "İşletme paneli · Looply" };
  * Her sorgu `withCafe` bağlamından geçiyor; `cafe_id` oturumdan geliyor ve
  * satırları RLS süzüyor.
  */
-export default async function KafePaneli() {
+export default async function KafePaneli({
+  searchParams,
+}: {
+  searchParams: Promise<{ gun?: string }>;
+}) {
+  const sp = await searchParams;
   const o = await kafeYoneticisiGerekli();
 
   const veri = await withCafe(o.cafeId, async (db) => {
@@ -75,20 +83,48 @@ export default async function KafePaneli() {
    * önce hiç oynamamış oyuncu). Panelde ayrı bir hesap kursaydık iki
    * ekran aynı soruya iki farklı cevap verirdi.
    */
+  /**
+   * Hangi güne bakıyoruz? (Ü101)
+   *
+   * ⚠️ **Gelecek gün seçilemiyor.** Adres çubuğuna yarının tarihi
+   * yazılabilirdi ve panel boş sayılarla "yarın hiç müşteri gelmedi" der
+   * gibi görünürdü. İleri düğmesi de bugünde kapanıyor.
+   *
+   * ⚠️ Biçim doğrulanıyor: `gun` istemciden geliyor ve doğrudan SQL
+   * parametresine giriyor. Parametreli sorgu enjeksiyonu zaten kapatıyor
+   * ama bozuk bir metin sorguyu hataya düşürür; süzgeç önce burada.
+   */
   const bugun = isGunu();
-  const buAyBasi = `${bugun.slice(0, 7)}-01`;
-  const [butce, gosterge, bugunku, son7, buAy, beklenen, huni] = await Promise.all([
+  const istenen = /^\d{4}-\d{2}-\d{2}$/.test(sp.gun ?? "") ? sp.gun! : bugun;
+  const gun = istenen > bugun ? bugun : istenen;
+  const buGun = gun === bugun;
+  const buAyBasi = `${gun.slice(0, 7)}-01`;
+  const [butce, gosterge, bugunku, son7, buAy, beklenen, huni, durum, subeListesi] =
+    await Promise.all([
     butceDurumu(o.cafeId),
-    panel.ozet(o.cafeId),
-    rapor.ozet(o.cafeId, { baslangic: bugun, bitis: gunEkle(bugun, 1) }),
-    rapor.ozet(o.cafeId, { baslangic: gunEkle(bugun, -6), bitis: gunEkle(bugun, 1) }),
-    rapor.ozet(o.cafeId, { baslangic: buAyBasi, bitis: gunEkle(bugun, 1) }),
+    panel.ozet(o.cafeId, gun),
+    rapor.ozet(o.cafeId, { baslangic: gun, bitis: gunEkle(gun, 1) }),
+    rapor.ozet(o.cafeId, { baslangic: gunEkle(gun, -6), bitis: gunEkle(gun, 1) }),
+    rapor.ozet(o.cafeId, { baslangic: buAyBasi, bitis: gunEkle(gun, 1) }),
     bugunBeklenen(o.cafeId),
-    upsell.huni(o.cafeId, { baslangic: gunEkle(bugun, -6), bitis: gunEkle(bugun, 1) }),
+    upsell.huni(o.cafeId, { baslangic: gunEkle(gun, -6), bitis: gunEkle(gun, 1) }),
+    panelDurumu(o.cafeId),
+    subeleriBul(o.ozneId),
   ]);
 
   return (
     <IsletmeSayfa genis>
+      {/* Ü101: şube seçici + uyarı çanı. Görselin üst şeridi. */}
+      <PanelKabugu
+        kafeAdi={veri.kafe?.name ?? "İşletme"}
+        sehir={veri.kafe?.city ?? null}
+        subeler={subeListesi.map((x) => ({ cafeId: x.cafeId, kafeAdi: x.kafeAdi }))}
+        aktifCafeId={o.cafeId}
+        durum={durum}
+        gun={gun}
+        bugun={bugun}
+      />
+
       <IsletmeBaslik ust="İşletme paneli" alt={veri.kafe?.city ?? undefined}>
         {veri.kafe?.name ?? "İşletme"}
       </IsletmeBaslik>
@@ -113,10 +149,12 @@ export default async function KafePaneli() {
           verdim · kaç yeni müşteri kazandım · bugün kaç kişi bekleniyor.
           Altındaki eski dört kart bunların günlük değişimini taşıyor. */}
       <section className="mb-4">
-        <h2 className="etiket-caps mb-3 text-yazi-sonuk">Bugünün özeti</h2>
+        <h2 className="etiket-caps mb-3 text-yazi-sonuk">
+          {buGun ? "Bugünün özeti" : `${gunYaz(gun)} özeti`}
+        </h2>
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
           <SayiKarti
-            etiket="Bugün oynayan"
+            etiket={buGun ? "Bugün oynayan" : "Oynayan"}
             deger={String(bugunku.tekilOyuncu)}
             alt="benzersiz kişi"
             ikon={IKON.kisi}
@@ -167,8 +205,28 @@ export default async function KafePaneli() {
             ikon={IKON.kisi}
             alan="kisi"
           />
-          <BeklenenKarti beklenen={beklenen} />
+          {/* ⚠️ Beklenen müşteri bir TAHMİN ve yalnızca bugün için
+              anlamlı. Geçmiş günde tahmin göstermek, olmuş bir şeyi
+              tahmin ediyormuş gibi yapmak olurdu; orada gerçekleşen
+              sayı duruyor. */}
+          {buGun ? (
+            <BeklenenKarti beklenen={beklenen} />
+          ) : (
+            <SayiKarti
+              etiket="O gün gelen"
+              deger={String(bugunku.kuponKullanilan)}
+              alt="kupon kullanan"
+              ikon={IKON.kupon}
+              alan="odul"
+            />
+          )}
         </div>
+      </section>
+
+      {/* Ü101: durum ve öneri kartları — özetin hemen altında, çünkü
+          sayılara bakan gözün bir sonraki sorusu "peki ne yapmalıyım". */}
+      <section className="mb-9">
+        <DurumKartlari durum={durum} />
       </section>
 
       {/* ── Upsell hunisi (Ü100) ─────────────────────────

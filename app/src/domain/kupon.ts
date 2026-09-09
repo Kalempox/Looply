@@ -637,6 +637,8 @@ export async function upsellKuponuVer(
     tavanKurus: number;
     gecerliSaat: number;
     kanitSeviyesi: number;
+    /** Ü90: bütçe temposunun okuduğu an. Yalnızca testler için. */
+    an?: Date;
   },
 ): Promise<KuponSonucu> {
   return kuponUret(db, {
@@ -652,6 +654,7 @@ export async function upsellKuponuVer(
     kanitSeviyesi: opts.kanitSeviyesi,
     kaynak: "upsell",
     hemen: { gecerliSaat: opts.gecerliSaat },
+    an: opts.an,
   });
 }
 

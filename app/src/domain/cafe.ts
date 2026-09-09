@@ -335,22 +335,98 @@ export async function reddet(cafeId: string, onaylayanId: string, sebep: string)
 export type Yonetici = { staffId: string; cafeId: string; ad: string; kafeAdi: string };
 
 /**
- * Telefonla yönetici arar.
- * **Yalnızca onaylı kafenin yöneticisi bulunur** — G5'in giriş tarafındaki karşılığı.
+ * Telefonla yöneticinin **bütün** kafelerini bulur (Ü101).
+ *
+ * **Yalnızca onaylı kafeler** — G5'in giriş tarafındaki karşılığı.
+ *
+ * ── ⚠️ Neden çoğul ──────────────────────────────────────────
+ *
+ * `staff` satırı kafe başına; aynı kişi iki şubede yönetici olabiliyor ve
+ * şema bunu hep destekliyordu. Önceki sürüm `db.one` kullanıyordu ve o
+ * **rows[0]** demek: iki şubeli sahip, sıralaması belirsiz bir sorgudan
+ * dönen rastgele bir şubeye düşerdi ve panelde neden öbür şubeyi
+ * göremediğini anlayamazdı. Bugün veritabanında çok şubeli yönetici yok —
+ * yani hata henüz yaşanmadı, ama kapı açıktı.
+ *
+ * Sıralama ada göre: seçim ekranı her girişte aynı düzende çıksın.
  */
-export async function yoneticiBul(telefon: string): Promise<Yonetici | null> {
-  const r = await withBypass("yönetici arama", (db) =>
-    db.one<{ id: string; cafe_id: string; name: string; kafe_adi: string }>(
+export async function yoneticiKafeleri(telefon: string): Promise<Yonetici[]> {
+  const satirlar = await withBypass("yönetici arama", (db) =>
+    db.all<{ id: string; cafe_id: string; name: string; kafe_adi: string }>(
       `SELECT s.id, s.cafe_id, s.name, c.name AS kafe_adi
          FROM staff s JOIN cafes c ON c.id = s.cafe_id
         WHERE s.phone_index = $1
           AND s.role = 'manager'
           AND s.active = true
-          AND c.status = 'approved'`,
+          AND c.status = 'approved'
+        ORDER BY c.name, c.id`,
       [phoneIndex(telefon)],
     ),
   );
+
+  return satirlar.map((r) => ({
+    staffId: r.id,
+    cafeId: r.cafe_id,
+    ad: r.name,
+    kafeAdi: r.kafe_adi,
+  }));
+}
+
+/** Tek kafe bekleyen çağıranlar için — ilk kafeyi veriyor. */
+export async function yoneticiBul(telefon: string): Promise<Yonetici | null> {
+  const hepsi = await yoneticiKafeleri(telefon);
+  return hepsi[0] ?? null;
+}
+
+/**
+ * Bu yönetici bu kafeye geçebilir mi? (Ü101)
+ *
+ * ⚠️ Şube değiştirme isteği istemciden geliyor ve **doğrulanmadan**
+ * uygulanamaz: aksi hâlde herhangi bir yönetici, kafe kimliğini yazarak
+ * başka bir işletmenin paneline girerdi. Değişmez kural #3'ün buradaki
+ * karşılığı — `cafe_id` oturumdan geliyor ve oturuma yazılmadan önce
+ * personel kaydıyla eşleşmesi gerekiyor.
+ */
+export async function subeyeGecebilirMi(
+  staffId: string,
+  hedefCafeId: string,
+): Promise<Yonetici | null> {
+  const r = await withBypass("şube değiştirme yetkisi", (db) =>
+    db.one<{ id: string; cafe_id: string; name: string; kafe_adi: string }>(
+      `SELECT h.id, h.cafe_id, h.name, c.name AS kafe_adi
+         FROM staff s
+         JOIN staff h ON h.phone_index = s.phone_index
+                     AND h.role = 'manager' AND h.active
+         JOIN cafes c ON c.id = h.cafe_id AND c.status = 'approved'
+        WHERE s.id = $1 AND h.cafe_id = $2`,
+      [staffId, hedefCafeId],
+    ),
+  );
+
   return r ? { staffId: r.id, cafeId: r.cafe_id, ad: r.name, kafeAdi: r.kafe_adi } : null;
+}
+
+/** Oturumdaki yöneticinin erişebildiği kafeler — panel başlığı için. */
+export async function subeler(staffId: string): Promise<Yonetici[]> {
+  const satirlar = await withBypass("yöneticinin şubeleri", (db) =>
+    db.all<{ id: string; cafe_id: string; name: string; kafe_adi: string }>(
+      `SELECT h.id, h.cafe_id, h.name, c.name AS kafe_adi
+         FROM staff s
+         JOIN staff h ON h.phone_index = s.phone_index
+                     AND h.role = 'manager' AND h.active
+         JOIN cafes c ON c.id = h.cafe_id AND c.status = 'approved'
+        WHERE s.id = $1
+        ORDER BY c.name, c.id`,
+      [staffId],
+    ),
+  );
+
+  return satirlar.map((r) => ({
+    staffId: r.id,
+    cafeId: r.cafe_id,
+    ad: r.name,
+    kafeAdi: r.kafe_adi,
+  }));
 }
 
 /* ── Kafe konumu ───────────────────────────────────────────── */
