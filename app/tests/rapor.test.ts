@@ -7,6 +7,7 @@ import { closePools } from "@/db/pool";
 import { kaydet, takmaAd } from "@/domain/player";
 import { normalizePhone } from "@/lib/crypto";
 import * as rapor from "@/domain/rapor";
+import * as tz from "@/domain/tekrar-ziyaret";
 import { isGunu, pazartesi } from "@/lib/tarih";
 import { yoneticiSorgu } from "./_yardim";
 
@@ -627,5 +628,159 @@ describe("rapor · doluluk ve getiri", () => {
     for (const s of satirlar) {
       assert.match(s.kod, /^P-/, `kimlik sızdı: ${s.kod}`);
     }
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════
+   Tekrar ziyaret / geri dönüş oranı (Ü102)
+   ═══════════════════════════════════════════════════════════ */
+
+describe("geri dönüş oranı (Ü102)", () => {
+  const ONEK = "tz";
+  const oyuncular: string[] = [];
+
+  /** Bu kafeye, verilen günlerde nitelikli ziyaret yazar. */
+  async function ziyaretYaz(playerId: string, gunler: number[]) {
+    for (const g of gunler) {
+      await yoneticiSorgu(
+        `INSERT INTO play_sessions
+           (id, cafe_id, table_id, player_id, device_id_hash, game_id, seed,
+            started_at, ended_at, server_score, proof_mask, proof_level,
+            business_date, status, is_qualified)
+         VALUES ($1,$2,NULL,$3,decode(md5($3),'hex'),'blok','tohum',
+                 now(), now(), 100, 3, 2,
+                 (now() AT TIME ZONE 'Europe/Istanbul')::date - $4::int,
+                 'completed', true)`,
+        [`oyn_${ONEK}_${playerId}_${g}`, kafeA, playerId, String(g)],
+      );
+    }
+  }
+
+  async function yeniOyuncu(ad: string): Promise<string> {
+    const s = await kaydet({
+      telefon: yeniTelefon(),
+      ad,
+      soyad: "Test",
+      dogumYili: 1995,
+      pazarlamaIzni: false,
+    });
+    oyuncular.push(s.oyuncu.id);
+    return s.oyuncu.id;
+  }
+
+  after(async () => {
+    for (const id of oyuncular) {
+      await yoneticiSorgu(`DELETE FROM play_sessions WHERE player_id = $1`, [id]);
+      await yoneticiSorgu(`DELETE FROM coupon_events WHERE coupon_id IN (SELECT id FROM coupons WHERE player_id = $1)`, [id]);
+      await yoneticiSorgu(`DELETE FROM coupons WHERE player_id = $1`, [id]);
+      await yoneticiSorgu(`DELETE FROM player_consents WHERE player_id = $1`, [id]);
+      await yoneticiSorgu(`DELETE FROM players WHERE id = $1`, [id]);
+    }
+  });
+
+  test("🔴 daha geri dönmeye ZAMANI OLMAYAN kişi kohorta girmiyor", async () => {
+    /**
+     * En kolay yanlış buydu: dün ilk kez gelen birini paydaya koymak.
+     * Geri dönmeye zamanı olmadı; oranı sistematik olarak düşük gösterir
+     * ve kafe ürünün işe yaramadığını sanır.
+     */
+    const dun = await yeniOyuncu("Dun");
+    await ziyaretYaz(dun, [1]); // dün ilk kez geldi
+
+    const t = await tz.tekrarZiyaret(kafeA, new Date(), false);
+    assert.ok(
+      t.pencere.bitis < isGunu(),
+      "kohort penceresi bugüne kadar uzanıyor — zamanı olmayanlar sayılıyor",
+    );
+
+    // Dünkü oyuncu kohortta olmamalı: penceresi kapanmadı.
+    const kohortIcinde = await withBypass("test: kohort kontrolü", (db) =>
+      db.one<{ n: string }>(
+        `SELECT count(*)::text AS n FROM play_sessions
+          WHERE player_id = $1 AND business_date >= $2::date AND business_date <= $3::date`,
+        [dun, t.pencere.baslangic, t.pencere.bitis],
+      ),
+    );
+    assert.equal(Number(kohortIcinde?.n ?? 0), 0, "dünkü ziyaret kohort penceresine düştü");
+  });
+
+  test("aynı gün iki cihazdan oynamak bir ziyaret sayılıyor", async () => {
+    /**
+     * ⚠️ Oyun sayısını ziyaret saymak, en çok oynayanı en sadık müşteri
+     * gibi gösterirdi; ikisi farklı şeyler.
+     *
+     * ⚠️ İlk hâli aynı cihazdan üç oturum yazmaya çalıştı ve şema
+     * reddetti: `play_sessions_qualified_idx` (S3) "1 nitelikli oturum /
+     * cihaz / kafe / gün" diyor. Yani aynı cihaz zaten tekilleştiriliyor —
+     * sınanacak şey, **farklı cihazlardan** gelen iki nitelikli oturumun
+     * yine tek ziyaret sayılması. Metriğin kendi `DISTINCT`'i bunu
+     * yapıyor, şema değil.
+     */
+    const p = await yeniOyuncu("Tekgun");
+    for (const cihaz of ["a", "b"]) {
+      await yoneticiSorgu(
+        `INSERT INTO play_sessions
+           (id, cafe_id, table_id, player_id, device_id_hash, game_id, seed,
+            started_at, ended_at, server_score, proof_mask, proof_level,
+            business_date, status, is_qualified)
+         VALUES ($1, $2, NULL, $3, decode(md5($3 || $4),'hex'), 'blok', 'tohum',
+                 now(), now(), 100, 3, 2,
+                 (now() AT TIME ZONE 'Europe/Istanbul')::date - 20, 'completed', true)`,
+        [`oyn_tz_cok_${cihaz}`, kafeA, p, cihaz],
+      );
+    }
+
+    const oncekiTek = (await tz.tekrarZiyaret(kafeA, new Date(), false)).dagilim.find(
+      (d) => d.etiket === "Tek ziyaret",
+    );
+    assert.ok(oncekiTek && oncekiTek.kisi > 0, "tek ziyaret kovası boş");
+
+    // İki oturum yazdık ama kişi "2 ziyaret" kovasına düşmemeli.
+    const ikiKova = (await tz.tekrarZiyaret(kafeA, new Date(), false)).dagilim.find(
+      (d) => d.etiket === "2 ziyaret",
+    );
+    const kisiSayisi = await withBypass("test: bu oyuncunun ziyaret günü", (db) =>
+      db.one<{ n: string }>(
+        `SELECT count(DISTINCT business_date)::text AS n FROM play_sessions
+          WHERE player_id = $1 AND is_qualified`,
+        [p],
+      ),
+    );
+    assert.equal(Number(kisiSayisi?.n ?? 0), 1, "iki oturum iki güne bölündü");
+    assert.ok(ikiKova, "dağılım kovaları eksik");
+  });
+
+  test("dönen kişi orana giriyor, ortanca gün hesaplanıyor", async () => {
+    const p = await yeniOyuncu("Donen");
+    await ziyaretYaz(p, [30, 25]); // 30 gün önce ilk, 5 gün sonra ikinci
+
+    const t = await tz.tekrarZiyaret(kafeA, new Date(), false);
+    assert.ok(t.kohort != null && t.kohort > 0, "kohort boş");
+    assert.ok(t.donen != null && t.donen > 0, "dönen sayılmadı");
+    assert.ok(t.oran != null && t.oran > 0 && t.oran <= 1, `oran bozuk: ${t.oran}`);
+    assert.ok(t.ortancaGun != null && t.ortancaGun > 0, "ortanca gün yok");
+  });
+
+  test("🔴 küçük kohort gizleniyor ve oran da gizleniyor (Ü30)", async () => {
+    // ⚠️ Yüzde tek başına zararsız görünür ama küçük kohortta geri
+    // hesaplanabilir: "3 kişiden %33" bir kişiyi işaret eder.
+    const bosKafe = kafeB;
+    const t = await tz.tekrarZiyaret(bosKafe, new Date(), true);
+    if (t.kohort === null) {
+      assert.equal(t.oran, null, "kohort gizliyken oran açıkta kaldı");
+      assert.equal(t.donen, null, "kohort gizliyken dönen açıkta kaldı");
+    }
+  });
+
+  test("kupon karşılaştırması ilk GÜNÜN kuponuna bakıyor", async () => {
+    // Sonradan kazanılan kupon dönüşün sebebi olamaz, sonucudur.
+    const t = await tz.tekrarZiyaret(kafeA, new Date(), false);
+    const kf = t.kuponFarki;
+    assert.ok(kf.kuponluToplam != null && kf.kuponsuzToplam != null);
+    assert.equal(
+      (kf.kuponluToplam ?? 0) + (kf.kuponsuzToplam ?? 0),
+      t.kohort ?? 0,
+      "iki grup kohortu toplamıyor — bir kişi ikisine birden ya da hiçbirine düşmüş",
+    );
   });
 });

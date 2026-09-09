@@ -1,5 +1,7 @@
 import { kafeYoneticisiGerekli } from "@/domain/yetki";
 import * as rapor from "@/domain/rapor";
+import { tekrarZiyaret, type TekrarZiyaret } from "@/domain/tekrar-ziyaret";
+import { gunYaz } from "@/lib/tarih";
 import * as ayar from "@/domain/ayar";
 import { bakim } from "@/domain/bakim";
 import {
@@ -73,6 +75,7 @@ export default async function RaporSayfasi({
     odul,
     kullanim,
     getiri,
+    donus,
   ] = await Promise.all([
     rapor.ozet(o.cafeId, aralik),
     rapor.ziyaretler(o.cafeId, aralik),
@@ -82,6 +85,7 @@ export default async function RaporSayfasi({
     rapor.odulDagilimi(o.cafeId, aralik),
     rapor.kuponKullanimi(o.cafeId, aralik),
     rapor.getiri(o.cafeId, aralik, adisyonKurus),
+    tekrarZiyaret(o.cafeId),
   ]);
 
   // Faz 8 güvenlik kapısı: her rapor görüntüleme denetim izine düşer.
@@ -292,6 +296,14 @@ export default async function RaporSayfasi({
             </div>
           </div>
         </div>
+      </Bolum>
+
+      {/* ── Geri dönüş oranı (Ü102) ─────────────────────
+          Kapsam belgesinin "en kritik metrik" dediği şey. Üstteki bölüm
+          "bu dönemde kaç kişi tekrar geldi" diyor; bu bölüm asıl soruyu
+          soruyor: **ilk kez gelenlerin kaçı geri döndü?** */}
+      <Bolum baslik="Geri dönüş oranı">
+        <DonusBolumu donus={donus} />
       </Bolum>
 
       {/* ── İndirim ────────────────────────────────────── */}
@@ -677,4 +689,127 @@ function kanitCumlesi(seviye: number): string {
   if (seviye === 3) return "masada 5 dk kaldı";
   if (seviye === 2) return "konumu doğrulandı";
   return "karekod okuttu";
+}
+
+/**
+ * Geri dönüş oranı (Ü102).
+ *
+ * ── ⚠️ Pencere ekranda yazıyor ──────────────────────────────
+ *
+ * Dün ilk kez gelen birinin geri dönmeye **zamanı olmadı**. Onu paydaya
+ * koymak oranı sistematik olarak düşük gösterir ve kafe ürünün işe
+ * yaramadığını sanır. Bu yüzden kohort kapanmış bir aralıktan seçiliyor
+ * ve aralık okunur biçimde yazılıyor — okuyan neyi okuduğunu bilmeli.
+ */
+function DonusBolumu({ donus }: { donus: TekrarZiyaret }) {
+  const toplamKisi = donus.dagilim.reduce((t, d) => t + d.kisi, 0);
+  const kf = donus.kuponFarki;
+
+  const karsilastirilabilir =
+    kf.kuponluToplam != null &&
+    kf.kuponsuzToplam != null &&
+    kf.kuponluToplam > 0 &&
+    kf.kuponsuzToplam > 0;
+
+  const yuzde = (bolum: number | null, toplam: number | null) =>
+    bolum != null && toplam != null && toplam > 0
+      ? `%${Math.round((bolum / toplam) * 100)}`
+      : "—";
+
+  return (
+    <div className="grid gap-4">
+      <p className="text-[13px] leading-relaxed text-yazi-sonuk">
+        {gunYaz(donus.pencere.baslangic)} – {gunYaz(donus.pencere.bitis)} arasında{" "}
+        <strong className="text-yazi">ilk kez</strong> gelenler. Herkese geri
+        dönmek için en az {donus.pencere.firsatGunu} gün tanındı — daha yeni
+        gelenler bu hesaba girmiyor, yoksa oran haksız yere düşük çıkardı.
+      </p>
+
+      {donus.kohort == null ? (
+        <p className="rounded-2xl border border-cizgi bg-yuzey px-5 py-5 text-[14px] leading-relaxed text-yazi-sonuk">
+          Bu pencerede oran verecek kadar müşteri yok. Sayı çok küçükken
+          gizleniyor — tek bir kişiyi işaret etmesin diye.
+        </p>
+      ) : (
+        <div className="grid gap-px overflow-hidden rounded-2xl border border-cizgi bg-cizgi sm:grid-cols-3">
+          <div className="bg-yuzey px-5 py-5">
+            <div className="etiket-caps text-yazi-sonuk">Geri dönen</div>
+            <div className="mt-1.5 font-data text-3xl leading-none font-bold text-vurgu tabular">
+              {donus.oran == null ? "—" : `%${Math.round(donus.oran * 100)}`}
+            </div>
+            <p className="mt-1.5 text-[12px] leading-relaxed text-yazi-sonuk">
+              {donus.donen ?? "—"} / {donus.kohort} kişi en az bir kez daha geldi
+            </p>
+          </div>
+
+          <div className="bg-yuzey px-5 py-5">
+            <div className="etiket-caps text-yazi-sonuk">Ne kadar sonra</div>
+            <div className="mt-1.5 font-data text-3xl leading-none font-bold tabular">
+              {donus.ortancaGun == null ? "—" : `${donus.ortancaGun} gün`}
+            </div>
+            <p className="mt-1.5 text-[12px] leading-relaxed text-yazi-sonuk">
+              İlk ve ikinci ziyaret arasındaki ortanca süre
+            </p>
+          </div>
+
+          <div className="bg-yuzey px-5 py-5">
+            <div className="etiket-caps text-yazi-sonuk">Kaçıncı ziyaret</div>
+            <ul className="mt-2 space-y-1">
+              {donus.dagilim.map((d) => (
+                <li key={d.etiket} className="flex items-baseline justify-between gap-2 text-[12px]">
+                  <span className="text-yazi-sonuk">{d.etiket}</span>
+                  <span className="font-data font-bold tabular">
+                    {d.kisi}
+                    {toplamKisi > 0 && (
+                      <span className="ml-1 font-normal text-yazi-sonuk">
+                        %{Math.round((d.kisi / toplamKisi) * 100)}
+                      </span>
+                    )}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
+
+      {/* 🔴 Nedensellik iddiası DEĞİL — bkz. domain/tekrar-ziyaret.ts */}
+      <div className="rounded-2xl border border-cizgi bg-yuzey px-5 py-5">
+        <div className="etiket-caps text-yazi-sonuk">İlk gün kupon kazananlar</div>
+
+        {!karsilastirilabilir ? (
+          <p className="mt-2 text-[13px] leading-relaxed text-yazi-sonuk">
+            Karşılaştırma yapılamıyor: bu pencerede iki gruptan biri boş ya da
+            çok küçük. Kupon kazanan ve kazanmayan yeterince müşteri olduğunda
+            burada ikisinin dönüş oranı yan yana duracak.
+          </p>
+        ) : (
+          <div className="mt-2 grid gap-3 sm:grid-cols-2">
+            <div>
+              <div className="font-data text-2xl leading-none font-bold text-vurgu tabular">
+                {yuzde(kf.kuponluDonen, kf.kuponluToplam)}
+              </div>
+              <p className="mt-1 text-[12px] text-yazi-sonuk">
+                kupon kazandı ({kf.kuponluToplam} kişi)
+              </p>
+            </div>
+            <div>
+              <div className="font-data text-2xl leading-none font-bold tabular">
+                {yuzde(kf.kuponsuzDonen, kf.kuponsuzToplam)}
+              </div>
+              <p className="mt-1 text-[12px] text-yazi-sonuk">
+                kupon kazanmadı ({kf.kuponsuzToplam} kişi)
+              </p>
+            </div>
+          </div>
+        )}
+
+        <p className="mt-3 border-t border-cizgi pt-3 text-[12px] leading-relaxed text-yazi-sonuk">
+          ⚠️ Bu bir <strong className="text-yazi">gözlem</strong>, kanıt değil.
+          Kupon kazanan oyuncu zaten daha çok oynamış ve daha bağlı olabilir;
+          aradaki farkın tamamını kupona bağlayamayız.
+        </p>
+      </div>
+    </div>
+  );
 }

@@ -6,7 +6,7 @@
 > Yan dosyalar: neyin **var** olduğu → `21-looply-kapsam-haritasi.md` ·
 > demoda neyin **yapılabildiği** → `22-demo-yapilabilirlik.md`
 
-**Son güncelleme:** 2026-09-02 · **Kararlar:** Ü76 – Ü101
+**Son güncelleme:** 2026-09-02 · **Kararlar:** Ü76 – Ü102
 
 ---
 
@@ -153,8 +153,13 @@ Ayrı ayrı yazılırsa üçüncüsü ilk ikisini bozar.
 - [ ] **9 · Haftalık leaderboard sezonu + haftalık puan**
 - [ ] **10 · Günün Challenge'ı rotasyonu**
   Bugün yalnızca 2× çarpan var; gün rotasyonu yok.
-- [ ] **11 · Tekrar ziyaret metriği**
-  Kapsam belgesinin "en kritik metrik" dediği şey. Veri var, hesap yok.
+- [x] **11 · Tekrar ziyaret metriği** ✅ **BİTTİ** — Ü102, 2026-09-10
+  Raporda "Geri dönüş oranı": kohort · oran · ortanca dönüş süresi ·
+  kaçıncı ziyaret dağılımı · kupon karşılaştırması.
+  ⚠️ Kohorta **zaman tanınıyor** (`[D-42, D-14]`) — dün gelenin geri
+  dönmeye zamanı olmadı, onu paydaya koymak oranı haksız düşürürdü.
+  ⚠️ Kupon karşılaştırması **gözlem, kanıt değil** ve ekranda öyle yazıyor.
+  ⚠️ Küçük kohortta oran da gizleniyor (Ü30).
 - [ ] **12 · Ödül başına günlük adet limiti + kupon kullanım günü ve saati**
 - [ ] **13 · Kasa, menü ve fiş karekodları + kafe oyun yönetimi**
 
