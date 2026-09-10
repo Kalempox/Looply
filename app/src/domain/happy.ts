@@ -254,3 +254,267 @@ export async function pencereKapat(opts: {
     return { ok: true as const, id: opts.pencereId };
   });
 }
+
+
+/* ── Haftalık program (Ü104) ────────────────────────────────
+ *
+ * Ürün sahibi: *"kafe istediği gibi günü ve saati seçer; ister haftanın
+ * her günü belirli saat, ister farklı günlerde farklı saatler."*
+ *
+ * Program **haftagünü başına bir satır**. Tek bir "her gün şu saat" kalıbı
+ * sorulanın yarısını karşılardı; kafenin salı ve cumartesi boş saatleri
+ * aynı değil.
+ *
+ * ⚠️ Program pencereyi kendisi açmıyor — `programlariUygula` açıyor ve o da
+ * bakım köprüsünden (dakikada bir) çağrılıyor. Program satırı bir **niyet**;
+ * pencere ise gerçekleşmiş olan şey ve havuzu erimeye başlıyor. İkisini
+ * ayırmasaydık "bugün ne kadar dağıtıldı" sorusunun cevabı programın içinde
+ * kaybolurdu.
+ */
+
+export type Program = {
+  id: string;
+  haftaGunu: number;
+  baslangicDakika: number;
+  sureDakika: number;
+  havuzKurus: number;
+};
+
+type HamProgram = {
+  id: string;
+  weekday: number;
+  start_minute: number;
+  duration_min: number;
+  pool_kurus: string;
+};
+
+function programCevir(r: HamProgram): Program {
+  return {
+    id: r.id,
+    haftaGunu: r.weekday,
+    baslangicDakika: r.start_minute,
+    sureDakika: r.duration_min,
+    havuzKurus: Number(r.pool_kurus),
+  };
+}
+
+/** Kafenin haftalık programı — panel için, gün sırasıyla. */
+export async function programlar(cafeId: string): Promise<Program[]> {
+  const satirlar = await withCafe(cafeId, (db) =>
+    db.all<HamProgram>(
+      `SELECT id, weekday, start_minute, duration_min, pool_kurus
+         FROM happy_hour_plans
+        WHERE active
+        ORDER BY weekday`,
+    ),
+  );
+  return satirlar.map(programCevir);
+}
+
+/**
+ * Bir haftagününün programını kurar ya da kaldırır.
+ *
+ * `havuzKurus` null geldiğinde o günün programı **kapatılıyor** — satır
+ * silinmiyor, `active = false` oluyor: geçmişte o programdan açılmış
+ * pencereler `plan_id` ile ona bağlı ve geçmiş bozulmamalı (E3).
+ */
+export async function programKur(opts: {
+  cafeId: string;
+  haftaGunu: number;
+  baslangicDakika: number | null;
+  sureDakika: number | null;
+  havuzKurus: number | null;
+  aktorId: string;
+}): Promise<PencereSonucu> {
+  if (!Number.isInteger(opts.haftaGunu) || opts.haftaGunu < 0 || opts.haftaGunu > 6) {
+    return { ok: false, hata: "Geçersiz gün." };
+  }
+
+  const kaldir = opts.havuzKurus == null;
+
+  if (!kaldir) {
+    if (!Number.isFinite(opts.havuzKurus) || (opts.havuzKurus ?? 0) <= 0) {
+      return { ok: false, hata: "Havuz tutarı sıfırdan büyük olmalı." };
+    }
+    const bas = opts.baslangicDakika;
+    if (bas == null || !Number.isInteger(bas) || bas < 0 || bas > 1439) {
+      return { ok: false, hata: "Başlangıç saati geçersiz." };
+    }
+    const sure = opts.sureDakika ?? 0;
+    if (sure < EN_KISA_SAAT * 60 || sure > EN_UZUN_SAAT * 60) {
+      return { ok: false, hata: `Pencere ${EN_KISA_SAAT}–${EN_UZUN_SAAT} saat arası olmalı.` };
+    }
+    // Ü90 ve Ü103'teki aynı bilinen sınır: pencere gece yarısını aşamıyor.
+    if (bas + sure > 1440) {
+      return { ok: false, hata: "Pencere gece yarısını aşamıyor." };
+    }
+  }
+
+  return withCafe(opts.cafeId, async (db) => {
+    // Haftagünü başına tek aktif program (tekil indeks): varsa önce kapat.
+    await db.query(
+      `UPDATE happy_hour_plans SET active = false WHERE weekday = $1 AND active`,
+      [opts.haftaGunu],
+    );
+
+    if (kaldir) {
+      await audit(db, {
+        actorType: "staff",
+        actorId: opts.aktorId,
+        cafeId: opts.cafeId,
+        action: "happyhour.open",
+        targetType: "happy_hour",
+        detail: { program: "kaldirildi", haftaGunu: opts.haftaGunu },
+      });
+      return { ok: true as const, id: "" };
+    }
+
+    const id = newId("hhp");
+    await db.query(
+      `INSERT INTO happy_hour_plans
+         (id, cafe_id, weekday, start_minute, duration_min, pool_kurus, created_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+      [
+        id,
+        opts.cafeId,
+        opts.haftaGunu,
+        opts.baslangicDakika,
+        opts.sureDakika,
+        opts.havuzKurus,
+        opts.aktorId,
+      ],
+    );
+
+    await audit(db, {
+      actorType: "staff",
+      actorId: opts.aktorId,
+      cafeId: opts.cafeId,
+      action: "happyhour.open",
+      targetType: "happy_hour",
+      targetId: id,
+      detail: {
+        program: "kuruldu",
+        haftaGunu: opts.haftaGunu,
+        baslangicDakika: opts.baslangicDakika,
+        sureDakika: opts.sureDakika,
+        havuzKurus: opts.havuzKurus,
+      },
+    });
+
+    return { ok: true as const, id };
+  });
+}
+
+/**
+ * Bugüne düşen programları pencereye çevirir (Ü104).
+ *
+ * Bakım köprüsünden dakikada bir çağrılıyor.
+ *
+ * ⚠️ **Aynı gün ikinci kez açılmıyor**: `(plan_id, business_date)` tekil.
+ * Köprü dakikada bir koştuğu için bu şart — yoksa her dakika yeni bir
+ * pencere doğar ve kafenin havuzu katlanarak açılırdı.
+ *
+ * ⚠️ **Geçmişe dönük açılmıyor.** Bitiş saati geçmişse o gün atlanıyor:
+ * akşam 20:00'de "öğlen 14:00'te happy hour vardı" diye pencere açmak
+ * kimseye ödül dağıtmaz, yalnızca raporu kirletir.
+ *
+ * ⚠️ Bütçe kontrolü **burada yok**. Havuz artık günlük bütçeden ayrı bir
+ * para (ürün sahibi: *"happy hour'a özel bütçe olacak"*); pencerenin
+ * açılması günlük bütçenin durumuna bağlı değil.
+ */
+export async function programlariUygula(): Promise<number> {
+  const gun = isGunu();
+  const simdi = new Date();
+  const haftaGunu = istanbulHaftaGunu(simdi);
+
+  return withBypass("happy hour programlarını uygula", async (db) => {
+    const adaylar = await db.all<HamProgram & { cafe_id: string; created_by: string }>(
+      `SELECT p.id, p.cafe_id, p.weekday, p.start_minute, p.duration_min,
+              p.pool_kurus, p.created_by
+         FROM happy_hour_plans p
+        WHERE p.active AND p.weekday = $2
+          AND NOT EXISTS (
+            SELECT 1 FROM happy_hours h
+             WHERE h.plan_id = p.id AND h.business_date = $1
+          )`,
+      [gun, haftaGunu],
+    );
+
+    let acilan = 0;
+
+    for (const a of adaylar) {
+      const baslangic = istanbulAn(gun, a.start_minute);
+      const bitis = new Date(baslangic.getTime() + a.duration_min * 60_000);
+
+      // Saati geçmişse bugün için atlanıyor — yarın tekrar denenir.
+      if (bitis <= simdi) continue;
+
+      await db.query(
+        `INSERT INTO happy_hours
+           (id, cafe_id, business_date, starts_at, ends_at, pool_kurus, created_by, plan_id)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+         ON CONFLICT DO NOTHING`,
+        [
+          newId("hh"),
+          a.cafe_id,
+          gun,
+          baslangic,
+          bitis,
+          Number(a.pool_kurus),
+          a.created_by,
+          a.id,
+        ],
+      );
+      acilan++;
+    }
+
+    if (acilan) log.info("happy hour programdan acildi", { adet: acilan });
+    return acilan;
+  });
+}
+
+/**
+ * Bugünün Happy Hour havuzu toplamı (Ü104).
+ *
+ * Bütçe ekranı toplam taahhüdü yazabilsin diye var: kafenin o günkü
+ * taahhüdü artık `günlük bütçe + happy hour havuzu` ve ikisini ayrı ayrı
+ * göstermek, kafenin gerçekte ne kadar söz verdiğini gizlemek olurdu.
+ */
+export async function bugunkuHavuzKurus(cafeId: string, gun = isGunu()): Promise<number> {
+  const r = await withCafe(cafeId, (db) =>
+    db.one<{ toplam: string }>(
+      `SELECT COALESCE(sum(pool_kurus), 0) AS toplam FROM happy_hours
+        WHERE business_date = $1 AND cancelled_at IS NULL`,
+      [gun],
+    ),
+  );
+  return Number(r?.toplam ?? 0);
+}
+
+const KISA_EN = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+/**
+ * İstanbul saatiyle haftanın günü (0=Pazar…6=Cumartesi).
+ *
+ * `getDay()` DEĞİL: sunucu UTC'de koşuyor ve gece yarısı çevresinde gün
+ * kayıyor. Ü103'teki aynı gerekçe, aynı numaralandırma.
+ */
+export function istanbulHaftaGunu(an: Date): number {
+  const kisa = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Europe/Istanbul",
+    weekday: "short",
+  }).format(an);
+  return KISA_EN.indexOf(kisa);
+}
+
+/**
+ * `YYYY-MM-DD` + gün içi dakika → gerçek an (İstanbul).
+ *
+ * Dizgiden kuruluyor: `setHours` sunucunun yerel saatini kullanır ve
+ * sunucu UTC'de koştuğu için üç saat kayardı.
+ */
+function istanbulAn(gunIso: string, dakika: number): Date {
+  const saat = String(Math.floor(dakika / 60)).padStart(2, "0");
+  const dk = String(dakika % 60).padStart(2, "0");
+  return new Date(`${gunIso}T${saat}:${dk}:00+03:00`);
+}

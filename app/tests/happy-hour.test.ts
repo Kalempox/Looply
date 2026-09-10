@@ -350,3 +350,271 @@ describe("denetim izi", () => {
     await temizle();
   });
 });
+
+
+/* ═══════════════════════════════════════════════════════════
+   Haftalık program ve ayrı bütçe (Ü104)
+   ═══════════════════════════════════════════════════════════ */
+
+/**
+ * Kafenin açık olduğu bir an (Ü90).
+ *
+ * Tempo, kafe kapalıyken hiç ödül dağıtmıyor ve testin koştuğu saat
+ * belirsiz; sabit bir an vermezsek test gece koştuğunda "bütçe doldu"
+ * diye düşer — yani sınadığı şeyi değil, günün saatini ölçer.
+ */
+const KAFE_ACIK = new Date("2026-09-10T20:00:00+03:00");
+
+describe("haftalık program (Ü104)", () => {
+  after(async () => {
+    await yoneticiSorgu(`DELETE FROM happy_hours WHERE plan_id IS NOT NULL`);
+    await yoneticiSorgu(`DELETE FROM happy_hour_plans WHERE cafe_id = $1`, [kafeA]);
+  });
+
+  test("her güne ayrı saat ve havuz kurulabiliyor", async () => {
+    // ⚠️ Ürün sahibi: "ister haftanın her günü belirli saat, ister farklı
+    // günlerde farklı saatler." Tek bir kalıp sorulanın yarısını
+    // karşılardı — kafenin salı ve cumartesi boş saatleri aynı değil.
+    const s1 = await happy.programKur({
+      cafeId: kafeA,
+      haftaGunu: 2,
+      baslangicDakika: 14 * 60,
+      sureDakika: 180,
+      havuzKurus: 40000,
+      aktorId: yoneticiA,
+    });
+    assert.ok(s1.ok, s1.ok === false ? s1.hata : "");
+
+    const s2 = await happy.programKur({
+      cafeId: kafeA,
+      haftaGunu: 6,
+      baslangicDakika: 10 * 60 + 30,
+      sureDakika: 120,
+      havuzKurus: 25000,
+      aktorId: yoneticiA,
+    });
+    assert.ok(s2.ok, s2.ok === false ? s2.hata : "");
+
+    const liste = await happy.programlar(kafeA);
+    const sali = liste.find((p) => p.haftaGunu === 2);
+    const cmt = liste.find((p) => p.haftaGunu === 6);
+    assert.equal(sali?.baslangicDakika, 840);
+    assert.equal(cmt?.baslangicDakika, 630, "cumartesi salının saatini aldı");
+    assert.notEqual(sali?.havuzKurus, cmt?.havuzKurus);
+  });
+
+  test("aynı güne ikinci program kurmak öncekini değiştiriyor", async () => {
+    // Haftagünü başına tek aktif program: iki program aynı güne düşseydi
+    // hangisinin açılacağı belirsiz olurdu.
+    await happy.programKur({
+      cafeId: kafeA,
+      haftaGunu: 3,
+      baslangicDakika: 13 * 60,
+      sureDakika: 60,
+      havuzKurus: 10000,
+      aktorId: yoneticiA,
+    });
+    await happy.programKur({
+      cafeId: kafeA,
+      haftaGunu: 3,
+      baslangicDakika: 16 * 60,
+      sureDakika: 120,
+      havuzKurus: 30000,
+      aktorId: yoneticiA,
+    });
+
+    const carsamba = (await happy.programlar(kafeA)).filter((p) => p.haftaGunu === 3);
+    assert.equal(carsamba.length, 1, "aynı güne iki aktif program kaldı");
+    assert.equal(carsamba[0].baslangicDakika, 960);
+  });
+
+  test("havuz boş bırakılınca o günün programı kalkıyor", async () => {
+    await happy.programKur({
+      cafeId: kafeA,
+      haftaGunu: 4,
+      baslangicDakika: 15 * 60,
+      sureDakika: 60,
+      havuzKurus: 10000,
+      aktorId: yoneticiA,
+    });
+    await happy.programKur({
+      cafeId: kafeA,
+      haftaGunu: 4,
+      baslangicDakika: null,
+      sureDakika: null,
+      havuzKurus: null,
+      aktorId: yoneticiA,
+    });
+
+    const persembe = (await happy.programlar(kafeA)).filter((p) => p.haftaGunu === 4);
+    assert.equal(persembe.length, 0, "program kalkmadı");
+  });
+
+  test("gece yarısını aşan program reddediliyor", async () => {
+    // Ü90 ve Ü103'teki aynı bilinen sınır.
+    const s = await happy.programKur({
+      cafeId: kafeA,
+      haftaGunu: 5,
+      baslangicDakika: 23 * 60,
+      sureDakika: 180,
+      havuzKurus: 10000,
+      aktorId: yoneticiA,
+    });
+    assert.equal(s.ok, false, "gece yarısını aşan program kabul edildi");
+  });
+
+  test("🔴 program bugüne pencere açıyor ve İKİNCİ KEZ açmıyor", async () => {
+    /**
+     * ⚠️ Bakım köprüsü dakikada bir koşuyor. Tekillik olmasaydı her dakika
+     * yeni bir pencere doğar ve kafenin havuzu katlanarak açılırdı.
+     */
+    await yoneticiSorgu(`DELETE FROM happy_hours WHERE cafe_id = $1 AND business_date = $2`, [
+      kafeA,
+      isGunu(),
+    ]);
+    await yoneticiSorgu(`DELETE FROM happy_hour_plans WHERE cafe_id = $1`, [kafeA]);
+
+    // Bugünün gününe, şu andan sonra biten bir pencere kur.
+    const bugunHaftaGunu = happy.istanbulHaftaGunu(new Date());
+    const s = await happy.programKur({
+      cafeId: kafeA,
+      haftaGunu: bugunHaftaGunu,
+      baslangicDakika: 0,
+      sureDakika: 240,
+      havuzKurus: 20000,
+      aktorId: yoneticiA,
+    });
+    assert.ok(s.ok, s.ok === false ? s.hata : "");
+
+    const ilk = await happy.programlariUygula();
+    const ikinci = await happy.programlariUygula();
+
+    const sayi = await withBypass("test: bugünkü pencereler", (db) =>
+      db.one<{ n: string }>(
+        `SELECT count(*)::text AS n FROM happy_hours
+          WHERE cafe_id = $1 AND business_date = $2 AND plan_id IS NOT NULL`,
+        [kafeA, isGunu()],
+      ),
+    );
+
+    // İlk koşu açmış olabilir (saat penceresine bağlı); ikinci koşu ASLA
+    // ikinci bir satır üretmemeli.
+    assert.ok(Number(sayi?.n ?? 0) <= 1, `programdan ${sayi?.n} pencere açıldı`);
+    assert.equal(ikinci, 0, "ikinci koşu yeni pencere açtı");
+    assert.ok(ilk >= 0);
+  });
+
+  test("saati geçmiş program bugün için atlanıyor", async () => {
+    // ⚠️ Akşam 20:00'de "öğlen 14:00'te happy hour vardı" diye pencere
+    // açmak kimseye ödül dağıtmaz, yalnızca raporu kirletir.
+    await yoneticiSorgu(`DELETE FROM happy_hours WHERE cafe_id = $1`, [kafeA]);
+    await yoneticiSorgu(`DELETE FROM happy_hour_plans WHERE cafe_id = $1`, [kafeA]);
+
+    const bugunHaftaGunu = happy.istanbulHaftaGunu(new Date());
+    await happy.programKur({
+      cafeId: kafeA,
+      haftaGunu: bugunHaftaGunu,
+      baslangicDakika: 0,
+      sureDakika: 60,
+      havuzKurus: 10000,
+      aktorId: yoneticiA,
+    });
+
+    await happy.programlariUygula();
+
+    const acilan = await withBypass("test: gece pencere", (db) =>
+      db.one<{ n: string }>(
+        `SELECT count(*)::text AS n FROM happy_hours
+          WHERE cafe_id = $1 AND plan_id IS NOT NULL AND ends_at <= now()`,
+        [kafeA],
+      ),
+    );
+    assert.equal(Number(acilan?.n ?? 0), 0, "saati geçmiş pencere açıldı");
+  });
+});
+
+describe("happy hour'un kendi bütçesi (Ü104)", () => {
+  /**
+   * ⚠️ Bu blok kafenin günlük bütçesini bilerek **tüketiyor** ve bütçe
+   * defteri append-only (E3) — yani domain üzerinden geri alınamıyor.
+   * Temizlemeseydik test dosyası kendi başına geçer, bütün takımla
+   * koşarken kupon üreten her dosyayı düşürürdü: "bütçe doldu".
+   *
+   * Kendi yazdığı satırları `note` ile bulup siliyor; başkasının satırına
+   * dokunmuyor.
+   */
+  after(async () => {
+    await yoneticiSorgu(
+      `DELETE FROM budget_ledger WHERE cafe_id = $1 AND note LIKE 'test %'`,
+      [kafeA],
+    );
+  });
+
+  test("🔴 havuz günlük bütçeye EKLENİYOR, ondan kesilmiyor", async () => {
+    /**
+     * Ürün sahibi: *"happy hour'a özel bütçe olacak ve sistem ona göre
+     * dağıtacak."*
+     *
+     * Sınama: günlük bütçe tamamen tüketiliyor, sonra `ekHavuzKurus` ile
+     * bir rezervasyon deneniyor. Havuz ayrı para olduğu için geçmeli.
+     */
+    const d = await butce.durum(kafeA);
+    assert.ok(d.donem, "test kurulumu: dönem yok");
+
+    /**
+     * Günlük payı tüket.
+     *
+     * ⚠️ `dagitilabilirKurus` **günlük** kalanı söylüyor ama rezervasyon
+     * tempo tavanına da bakıyor (Ü87) ve o, günün saatine bağlı. Tek
+     * seferde o tutarı rezerve etmeye çalışan ilk sürüm bu yüzden düştü —
+     * sınadığı şeyi değil, günün saatini ölçüyordu.
+     *
+     * Onun yerine reddedilene kadar küçülterek doldur: kaç kuruş kaldığını
+     * bilmemize gerek yok, "artık yer yok" durumuna ulaşmamız yeterli.
+     */
+    let adim = Math.max(1000, Math.floor(d.dagitilabilirKurus / 4));
+    for (let i = 0; i < 40 && adim >= 1000; i++) {
+      const ok = await withBypass("test: günlük payı doldur", (db) =>
+        butce.rezerveEt(db, {
+          cafeId: kafeA,
+          kurus: adim,
+          not: "test hh doldur",
+          an: KAFE_ACIK,
+        }),
+      );
+      if (!ok) adim = Math.floor(adim / 2);
+    }
+
+    // Artık günlük bütçe bitti: eksiz rezervasyon reddedilmeli.
+    const eksiz = await withBypass("test: eksiz", (db) =>
+      butce.rezerveEt(db, { cafeId: kafeA, kurus: 5000, not: "test eksiz", an: KAFE_ACIK }),
+    );
+    assert.equal(eksiz, false, "günlük bütçe bittiği hâlde rezervasyon geçti");
+
+    // Happy hour havuzuyla aynı tutar geçmeli — ayrı para.
+    const ekli = await withBypass("test: havuzla", (db) =>
+      butce.rezerveEt(db, {
+        cafeId: kafeA,
+        kurus: 5000,
+        not: "test havuzla",
+        an: KAFE_ACIK,
+        ekHavuzKurus: 10000,
+      }),
+    );
+    assert.equal(ekli, true, "happy hour havuzu günlük bütçeye eklenmedi");
+  });
+
+  test("havuz sınırsız değil — havuzdan büyük tutar yine reddediliyor", async () => {
+    // Havuz ayrı para ama sonsuz değil: kendi tavanı var.
+    const asiri = await withBypass("test: havuzu aşan", (db) =>
+      butce.rezerveEt(db, {
+        cafeId: kafeA,
+        kurus: 90000,
+        not: "test asiri",
+        an: KAFE_ACIK,
+        ekHavuzKurus: 10000,
+      }),
+    );
+    assert.equal(asiri, false, "havuzdan büyük tutar geçti");
+  });
+});

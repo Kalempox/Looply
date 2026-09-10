@@ -159,6 +159,8 @@ async function kuponUret(
      * yok.
      */
     hemen?: { gecerliSaat: number };
+    /** Ü104: Happy Hour havuzunun kalanı — günlük tavanın üstüne ekleniyor. */
+    ekHavuzKurus?: number;
     /** Ü88: kuponu doğuran oyun oturumu. Çark ve kampanyada yok. */
     oturumId?: string;
     /**
@@ -198,6 +200,7 @@ async function kuponUret(
     cafeId: opts.cafeId,
     kurus: tutar,
     an: opts.an,
+    ekHavuzKurus: opts.ekHavuzKurus,
   });
   if (!rezerveEdildi) {
     // Kafenin bütçesi bittiği için ödül çıkmıyor. Oyuncuya söylenen cümle
@@ -461,6 +464,8 @@ export async function anlikOdulVer(
     kanitSeviyesi: opts.kanitSeviyesi,
     kaynak: pencereden ? "happy_hour" : "anlik",
     happyHourId: pencereden && pencere ? pencere.id : undefined,
+    // Ü104: yalnızca pencereden çıkan kupon havuzun payını kullanabiliyor.
+    ekHavuzKurus: pencereden && pencere ? pencere.kalanKurus : undefined,
     oturumId: opts.kaynakId,
     an: opts.an,
   });

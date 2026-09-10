@@ -1,5 +1,6 @@
 import { bekleyenleriAc, sureDolanlariSupur } from "./kupon";
 import { gonderilecekleriGonder } from "./hatirlatma";
+import { programlariUygula } from "./happy";
 import { sureDolanlariKapat } from "./davet";
 import { log } from "@/lib/log";
 
@@ -51,6 +52,10 @@ export async function bakim(): Promise<void> {
   sonKosu = simdi;
 
   try {
+    // Ü104: bugüne düşen Happy Hour programları pencereye çevriliyor.
+    // Kupon açmadan ÖNCE: pencere açılmadan üretilen kupon, o pencerenin
+    // havuzundan sayılmaz ve kafe "programı kurdum ama işlemedi" der.
+    const hhPencere = await programlariUygula();
     const acilan = await bekleyenleriAc();
     const dolan = await sureDolanlariSupur();
     // Kupon açıldıktan SONRA hatırlatma: sıra tersine dönerse aynı koşuda
@@ -59,8 +64,9 @@ export async function bakim(): Promise<void> {
     // Süresi dolan davet, "sürüyor" sayacını sonsuza kadar şişik tutar
     // (Faz 9). Aynı gerekçe, aynı köprü.
     const davet = await sureDolanlariKapat();
-    if (acilan || dolan || davet || hatirlatma.acilan || hatirlatma.suresiDolan) {
+    if (acilan || dolan || davet || hhPencere || hatirlatma.acilan || hatirlatma.suresiDolan) {
       log.info("bakim", {
+        hhPencere,
         acilan,
         dolan,
         davet,

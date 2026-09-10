@@ -6,7 +6,7 @@
 > Yan dosyalar: neyin **var** olduğu → `21-looply-kapsam-haritasi.md` ·
 > demoda neyin **yapılabildiği** → `22-demo-yapilabilirlik.md`
 
-**Son güncelleme:** 2026-09-10 · **Kararlar:** Ü76 – Ü103
+**Son güncelleme:** 2026-09-10 · **Kararlar:** Ü76 – Ü104
 
 ---
 
@@ -172,6 +172,22 @@ Ayrı ayrı yazılırsa üçüncüsü ilk ikisini bozar.
   `onayla` içinde sınanıyor.
   ⚠️ Pencere gece yarısını aşamıyor — 6c ile aynı bilinen sınır.
 - [ ] **13 · Kasa, menü ve fiş karekodları + kafe oyun yönetimi**
+- [x] **12b · Happy Hour: haftalık program + kendi bütçesi** ✅ **BİTTİ**
+  — Ü104, 2026-09-10 *(ürün sahibinin yeni isteği, listede yoktu)*
+  Panelde **haftalık program**: her güne ayrı başlangıç saati, süre ve
+  havuz. Bugüne düşen program bakım köprüsünde kendiliğinden pencereye
+  dönüyor — kafenin her sabah elle açması gerekmiyor.
+  ⚠️ Havuz artık günlük bütçeye **ekleniyor**, ondan kesilmiyor: o günkü
+  taahhüt `günlük bütçe + havuz` ve bütçe ekranı bu toplamı kırılımıyla
+  yazıyor ("1.800 TL · 1.500 bütçe + 300 happy hour").
+  ⚠️ Havuzu yalnızca **happy hour kuponu** harcayabiliyor — yoksa kafenin
+  "bu saate ayırdım" dediği para başka saate akardı.
+  ⚠️ Aynı gün ikinci kez açılmıyor (`plan_id, business_date` tekil);
+  köprü dakikada bir koşuyor.
+  ⚠️ Saati geçmiş program bugün için **atlanıyor**.
+  ⚠️ Havuzu boş bırakmak = o gün happy hour yok. Satır silinmiyor,
+  `active = false` oluyor (geçmiş pencereler ona bağlı, E3).
+  ⚠️ Pencere gece yarısını aşamıyor — 6c ile aynı bilinen sınır.
 
 ---
 

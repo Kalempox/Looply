@@ -1,6 +1,7 @@
 import { kafeYoneticisiGerekli } from "@/domain/yetki";
 import { durum, donemAraligi, tabanKurus, sonYediGun } from "@/domain/butce";
 import { odulDokumu } from "@/domain/kupon";
+import * as happy from "@/domain/happy";
 import { bakim } from "@/domain/bakim";
 import { isGunu } from "@/lib/tarih";
 import { IsletmeSayfa, IsletmeBaslik, Bolum } from "@/components/isletme";
@@ -28,10 +29,11 @@ export default async function ButceSayfasi() {
   // gösterdiği için iadeyi okumadan önce çalıştırıyoruz.
   await bakim();
 
-  const [d, yedi, dagitim] = await Promise.all([
+  const [d, yedi, dagitim, hhHavuz] = await Promise.all([
     durum(o.cafeId),
     sonYediGun(o.cafeId),
     odulDokumu(o.cafeId),
+    happy.bugunkuHavuzKurus(o.cafeId),
   ]);
   const aralik = donemAraligi(isGunu());
   const taban = d.donem?.tabanKurus ?? tabanKurus(aralik.gunSayisi);
@@ -224,7 +226,18 @@ export default async function ButceSayfasi() {
               <YediGunButce gunler={yedi} />
               <div className="mt-4 flex items-baseline justify-between border-t border-cizgi pt-3 text-[13px] text-yazi-sonuk">
                 <span>
-                  Bugünkü taahhüt <strong className="text-yazi">{tlYaz(taahhut)} TL</strong>
+                  Bugünkü taahhüt{" "}
+                  <strong className="text-yazi">{tlYaz(taahhut + hhHavuz)} TL</strong>
+                  {/* ⚠️ Ü104: Happy Hour havuzu günlük bütçeden AYRI bir para
+                      ve o günkü taahhüdü büyütüyor. Ayrı ayrı gösterip
+                      toplamı yazmasaydık, 1.500 TL taahhüt ettiğini sanan
+                      kafe gerçekte 1.900 TL taahhüt etmiş olurdu — ve bunu
+                      ay sonunda öğrenirdi. */}
+                  {hhHavuz > 0 && (
+                    <span className="block text-[11px] text-yazi-sonuk">
+                      {tlYaz(taahhut)} bütçe + {tlYaz(hhHavuz)} happy hour
+                    </span>
+                  )}
                 </span>
                 <span>
                   Alt sınır {tlYaz(taban)} TL

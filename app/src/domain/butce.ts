@@ -391,6 +391,23 @@ export async function rezerveEt(
     gun?: string;
     /** Ü87: tempo hesabının okuduğu an. Testler için; normalde şimdi. */
     an?: Date;
+    /**
+     * Ü104: Happy Hour havuzunun kalanı — günlük tavanın ÜSTÜNE ekleniyor.
+     *
+     * Ürün sahibi: *"happy hour'a özel bütçe olacak ve sistem ona göre
+     * dağıtacak."* Havuz artık günlük bütçeden kesilmiyor, ayrı para.
+     *
+     * ⚠️ Yalnızca **happy hour kuponu** bu payı geçirebiliyor. Tavanı
+     * koşulsuz yükseltseydik, pencere açıkken üretilen sıradan bir kupon da
+     * o parayı yerdi ve kafenin "bu saate ayırdım" dediği bütçe başka saate
+     * akardı.
+     *
+     * ⚠️ Tempo tavanına da ekleniyor: tempo günün saatine göre günlük
+     * bütçeyi kademeli açıyor (Ü87) ve happy hour zaten belirli bir saat
+     * aralığı. Eklemeseydik, sabah 10'da açılan bir happy hour penceresi
+     * kendi havuzunu kullanamazdı.
+     */
+    ekHavuzKurus?: number;
   },
 ): Promise<boolean> {
   const gun = opts.gun ?? isGunu();
@@ -402,9 +419,10 @@ export async function rezerveEt(
 
   // Ü87: iki tavan birden. Günlük taahhüt (E10) hiçbir zaman aşılmıyor;
   // tempo tavanı ise günün o saatine kadar açılmış payı sınırlıyor.
-  const gunlukKalan = donem.taahhutKurus - kullanilan;
+  const ek = Math.max(0, opts.ekHavuzKurus ?? 0);
+  const gunlukKalan = donem.taahhutKurus + ek - kullanilan;
   const tempoTavani = await tempoTavaniHesapla(opts.cafeId, donem.taahhutKurus, opts.an);
-  const tempoKalan = tempoTavani - kullanilan;
+  const tempoKalan = tempoTavani + ek - kullanilan;
   const dagitilabilir = Math.min(gunlukKalan, tempoKalan);
 
   if (opts.kurus > dagitilabilir) {

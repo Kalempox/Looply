@@ -9,6 +9,7 @@ import {
   IkiKolon,
 } from "@/components/isletme";
 import { SayiKarti, Halka, IKON } from "@/components/gosterge";
+import { HaftalikProgram } from "./program";
 import { PencereFormu, KapatDugmesi } from "./kontroller";
 
 export const dynamic = "force-dynamic";
@@ -32,9 +33,10 @@ export const metadata = { title: "Happy Hour · Looply" };
  */
 export default async function HappyHourSayfasi() {
   const o = await kafeYoneticisiGerekli();
-  const [pencereler, butce] = await Promise.all([
+  const [pencereler, butce, program] = await Promise.all([
     happy.bugunkuler(o.cafeId),
     butceDurumu(o.cafeId),
+    happy.programlar(o.cafeId),
   ]);
 
   const acik = pencereler.filter((p) => !p.iptalMi).length;
@@ -118,10 +120,30 @@ export default async function HappyHourSayfasi() {
               </div>
             </Bolum>
 
+            {/* ── Haftalık program (Ü104) ─────────────────
+                Ürün sahibi: "kafe istediği gibi günü ve saati seçer."
+                Elle pencere açmak kaldı ama artık istisna: tekrarlayan
+                boş saatler bir kez kurulup unutuluyor. */}
+            <Bolum
+              baslik="Haftalık program"
+              alt="Her gün için ayrı saat ve havuz kurabilirsin. O gün geldiğinde pencere kendiliğinden açılır. Havuzu boş bırakırsan o gün happy hour olmaz."
+            >
+              <HaftalikProgram
+                programlar={program.map((p) => ({
+                  haftaGunu: p.haftaGunu,
+                  baslangicDakika: p.baslangicDakika,
+                  sureDakika: p.sureDakika,
+                  havuzKurus: p.havuzKurus,
+                }))}
+                enKisaSaat={happy.EN_KISA_SAAT}
+                enUzunSaat={happy.EN_UZUN_SAAT}
+              />
+            </Bolum>
+
             {acik < happy.GUNLUK_EN_FAZLA && (
               <Bolum
-                baslik="Yeni pencere"
-                alt={`Dağıtılabilir bütçen ${tl(butce.dagitilabilirKurus)} TL. Havuz bundan büyük olamaz.`}
+                baslik="Bugüne tek seferlik pencere"
+                alt={`Havuz günlük bütçenden AYRI bir para — ondan büyük olabilir. Bugünkü toplam taahhüdün: ${tl(butce.donem?.taahhutKurus ?? 0)} TL bütçe + ${tl(havuzKurus)} TL happy hour.`}
               >
                 <PencereFormu
                   enKisaSaat={happy.EN_KISA_SAAT}

@@ -3,7 +3,6 @@
 import { revalidatePath } from "next/cache";
 import { kafeYoneticisiGerekli } from "@/domain/yetki";
 import * as happy from "@/domain/happy";
-import { durum as butceDurumu } from "@/domain/butce";
 
 export type HappyDurumu = { hata?: string; bilgi?: string };
 
@@ -51,14 +50,19 @@ export async function pencereAc(_onceki: HappyDurumu, form: FormData): Promise<H
 
   const havuzKurus = Math.round(havuzTl * 100);
 
-  const butce = await butceDurumu(o.cafeId);
-  if (havuzKurus > butce.dagitilabilirKurus) {
-    return {
-      hata: `Havuz, dağıtılabilir bütçenden büyük olamaz (${Math.floor(
-        butce.dagitilabilirKurus / 100,
-      ).toLocaleString("tr-TR")} TL).`,
-    };
-  }
+  /**
+   * ⚠️ Ü104: havuzun günlük bütçeden küçük olma şartı **kalktı**.
+   *
+   * Ürün sahibi: *"happy hour'a özel bütçe olacak ve sistem ona göre
+   * dağıtacak."* Havuz artık günlük bütçeden kesilmiyor, ona ekleniyor —
+   * dolayısıyla ondan büyük olması bir çelişki değil, kafenin o saate
+   * ayrıca para ayırması.
+   *
+   * Kafenin o günkü toplam taahhüdü artık `günlük bütçe + havuz` ve bütçe
+   * ekranı bu toplamı yazıyor: 1.500 TL taahhüt ettiğini sanan kafenin
+   * gerçekte 1.900 TL taahhüt etmiş olduğunu ay sonunda öğrenmesi kabul
+   * edilemez.
+   */
 
   const gun = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Istanbul" });
   const baslangic = istanbulSaati(gun, saat, dakika);
@@ -92,4 +96,57 @@ export async function pencereKapat(pencereId: string): Promise<HappyDurumu> {
 
   revalidatePath("/kafe/panel/happy-hour");
   return { bilgi: "Pencere kapatıldı. Kalan havuz genel bütçende — hiçbir şey kaybolmadı." };
+}
+
+/**
+ * Haftalık program kurma / kaldırma (Ü104).
+ *
+ * ⚠️ Boş havuz alanı **o günün programını kaldırıyor**. Ayrı bir "sil"
+ * düğmesi yerine bu: kafe zaten havuzu silerek "bu gün happy hour yok"
+ * demek istiyor ve iki ayrı yol iki ayrı sonuç doğurma riski taşırdı.
+ */
+export async function programEylemi(
+  onceki: HappyDurumu,
+  form: FormData,
+): Promise<HappyDurumu> {
+  const o = await kafeYoneticisiGerekli();
+
+  const haftaGunu = Number(String(form.get("haftaGunu") ?? ""));
+  const havuzHam = String(form.get("havuz") ?? "").replace(/[^\d]/g, "");
+  const saatHam = String(form.get("baslangic") ?? "");
+  const sureSaat = Number(String(form.get("sure") ?? "3"));
+
+  if (!havuzHam) {
+    const sonuc = await happy.programKur({
+      cafeId: o.cafeId,
+      haftaGunu,
+      baslangicDakika: null,
+      sureDakika: null,
+      havuzKurus: null,
+      aktorId: o.ozneId,
+    });
+    revalidatePath("/kafe/panel/happy-hour");
+    return sonuc.ok
+      ? { bilgi: "Bu günün programı kaldırıldı." }
+      : { hata: sonuc.hata };
+  }
+
+  const [saat, dakika] = saatHam.split(":").map(Number);
+  if (!Number.isInteger(saat) || !Number.isInteger(dakika)) {
+    return { hata: "Başlangıç saatini gir." };
+  }
+
+  const sonuc = await happy.programKur({
+    cafeId: o.cafeId,
+    haftaGunu,
+    baslangicDakika: saat * 60 + dakika,
+    sureDakika: sureSaat * 60,
+    havuzKurus: Number(havuzHam) * 100,
+    aktorId: o.ozneId,
+  });
+
+  revalidatePath("/kafe/panel/happy-hour");
+  return sonuc.ok
+    ? { bilgi: "Program kaydedildi. O gün geldiğinde pencere kendiliğinden açılacak." }
+    : { hata: sonuc.hata };
 }
