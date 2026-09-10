@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import { withCafe, withPlayer, withBypass } from "@/db/context";
 import { appPool, closePools } from "@/db/pool";
 import { normalizePhone, phoneIndex } from "@/lib/crypto";
+import { yoneticiSorgu } from "./_yardim";
 
 /**
  * FAZ 2 GÜVENLİK KAPISI — kiracı izolasyonu.
@@ -65,6 +66,59 @@ describe("kafe bağlamı", () => {
       satirlar.every((r) => r.cafe_id === kafeA),
       "başka kafenin satırı sızdı",
     );
+  });
+
+  /**
+   * 🔴 Ü104'te açılan gerçek sızıntı — soyut değil, `happy.programlar`
+   * ve `happy.programKur` üzerinden.
+   *
+   * Göç 0030 tabloyu RLS'siz açmıştı. `programKur` içindeki
+   * `UPDATE ... WHERE weekday = $1 AND active` ev usulü `cafe_id` süzgeci
+   * yazmıyor; politika yokken bu, **bir kafenin bütün kafelerin aynı gün
+   * programını kapatması** demekti. Okuma tarafı da aynı: Kafe A'nın
+   * paneli Kafe B'nin havuz tutarlarını gösterirdi.
+   */
+  test("🔴 happy hour programında okuma ve YAZMA sızıntısı yok", async () => {
+    await withBypass("test: program kurulumu", (db) =>
+      db.query(
+        `INSERT INTO happy_hour_plans
+           (id, cafe_id, weekday, start_minute, duration_min, pool_kurus, created_by)
+         SELECT 'hhp_izole_' || c.slug, c.id, 2, 840, 120, 50000,
+                (SELECT id FROM staff WHERE cafe_id = c.id LIMIT 1)
+           FROM cafes c WHERE c.slug IN ('kafe-a','kafe-b')
+         ON CONFLICT (id) DO NOTHING`,
+      ),
+    );
+
+    try {
+      // Okuma: sorguda cafe_id süzgeci YOK, süzen şey RLS.
+      const gorulen = await withCafe(kafeA, (db) =>
+        db.all<{ cafe_id: string }>(`SELECT cafe_id FROM happy_hour_plans WHERE active`),
+      );
+      assert.ok(gorulen.length > 0, "test kurulumu: Kafe A'nın programı yok");
+      assert.ok(
+        gorulen.every((r) => r.cafe_id === kafeA),
+        "başka kafenin happy hour programı sızdı",
+      );
+
+      // Yazma: Kafe A salıyı kapatıyor. Kafe B'nin salısı AÇIK kalmalı.
+      await withCafe(kafeA, (db) =>
+        db.query(`UPDATE happy_hour_plans SET active = false WHERE weekday = 2 AND active`),
+      );
+
+      const bDurumu = await withBypass("test: kafe b programı", (db) =>
+        db.one<{ active: boolean }>(
+          `SELECT active FROM happy_hour_plans WHERE id = 'hhp_izole_kafe-b'`,
+        ),
+      );
+      assert.equal(
+        bDurumu?.active,
+        true,
+        "Kafe A'nın yazması Kafe B'nin programını kapattı",
+      );
+    } finally {
+      await yoneticiSorgu(`DELETE FROM happy_hour_plans WHERE id LIKE 'hhp_izole_%'`);
+    }
   });
 
   test("başka kafenin kuponunu id ile bile okuyamaz", async () => {
@@ -214,6 +268,89 @@ describe("uygulama rolü yetkileri", () => {
     }
 
     assert.deepEqual(okunamayan, [], "uygulama rolü bu tabloları okuyamıyor");
+  });
+
+  /**
+   * 🔴 Bu test de bir hatadan doğdu ve yukarıdakiyle aynı sınıfı kapatıyor.
+   *
+   * Göç 0030 `happy_hour_plans` tablosunu açtı ve **RLS kurmayı atladı.**
+   * Şemadaki `cafe_id` taşıyan diğer bütün tablolarda politikalar vardı;
+   * bu tek tablo dışarıda kalmıştı ve kimse fark etmedi.
+   *
+   * Sonucu okuma değil **yazma** sızıntısıydı: `programKur` içindeki
+   * `UPDATE ... WHERE weekday = $1 AND active` — ev usulü `cafe_id`
+   * süzgeci yazmıyor, izolasyonu politikaya bırakıyor — salıya program
+   * kuran kafenin bütün kafelerin salı programını kapatması demekti.
+   *
+   * Tek tabloyu düzeltmek yetmez. Sorun sınıfı şu: **"cafe_id taşıyan
+   * yeni bir tablo eklenir, RLS unutulur, sızıntı ancak ikinci kafe o
+   * özelliği kullanınca görünür."** Bu test her yeni tabloyu
+   * kendiliğinden kapsıyor.
+   */
+  test("🔴 cafe_id taşıyan HER tabloda RLS açık ve zorunlu", async () => {
+    const acik = await withBypass("test: rls durumu", (db) =>
+      db.all<{ tablo: string; rls: boolean; zorunlu: boolean }>(
+        `SELECT c.relname AS tablo,
+                c.relrowsecurity      AS rls,
+                c.relforcerowsecurity AS zorunlu
+           FROM pg_class c
+           JOIN pg_namespace n ON n.oid = c.relnamespace
+          WHERE n.nspname = 'public'
+            AND c.relkind = 'r'
+            AND EXISTS (
+              SELECT 1 FROM information_schema.columns col
+               WHERE col.table_schema = 'public'
+                 AND col.table_name = c.relname
+                 AND col.column_name = 'cafe_id'
+            )
+          ORDER BY c.relname`,
+      ),
+    );
+
+    assert.ok(acik.length >= 15, `beklenenden az kiracı tablosu: ${acik.length}`);
+
+    const korumasiz = acik
+      .filter((t) => !t.rls || !t.zorunlu)
+      .map((t) => `${t.tablo} (rls=${t.rls}, zorunlu=${t.zorunlu})`);
+
+    assert.deepEqual(korumasiz, [], "bu kiracı tablolarında RLS eksik");
+  });
+
+  /**
+   * RLS açık olmak tek başına yetmiyor: politikası **hiç olmayan** tablo,
+   * açık RLS ile kimseye satır göstermez ve özellik sessizce ölür.
+   * `happy_hour_plans` tam olarak bu durumdaydı — sıfır politika.
+   *
+   * ⚠️ Politikaların **adı** sınanmıyor, yalnızca varlığı. `fraud_flags`
+   * bilerek yalnızca `bypass` taşıyor (platform tablosu, kafe görmemeli),
+   * `player_badges` ise `owner` politikası kullanıyor. Şablona uymayan bu
+   * tercihler doğru; testin işi kuralı değil **boşluğu** yakalamak.
+   */
+  test("🔴 RLS açık olan her kiracı tablosunun en az bir politikası var", async () => {
+    const politikasiz = await withBypass("test: politika sayımı", (db) =>
+      db.all<{ tablo: string }>(
+        `SELECT c.relname AS tablo
+           FROM pg_class c
+           JOIN pg_namespace n ON n.oid = c.relnamespace
+          WHERE n.nspname = 'public'
+            AND c.relkind = 'r'
+            AND c.relrowsecurity
+            AND EXISTS (
+              SELECT 1 FROM information_schema.columns col
+               WHERE col.table_schema = 'public'
+                 AND col.table_name = c.relname
+                 AND col.column_name = 'cafe_id'
+            )
+            AND NOT EXISTS (SELECT 1 FROM pg_policy p WHERE p.polrelid = c.oid)
+          ORDER BY c.relname`,
+      ),
+    );
+
+    assert.deepEqual(
+      politikasiz.map((e) => e.tablo),
+      [],
+      "bu tablolarda RLS açık ama hiç politika yok — kimse satır göremez",
+    );
   });
 
   test("append-only defterlere yazabiliyor ama değiştiremiyor", async () => {
