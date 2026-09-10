@@ -9,6 +9,7 @@ import { OYUNLAR, gununOyunu } from "@/oyunlar";
 import * as liderlik from "@/domain/liderlik";
 import * as cark from "@/domain/cark";
 import * as seri from "@/domain/seri";
+import * as challenge from "@/domain/challenge";
 import { withBypass } from "@/db/context";
 import * as happy from "@/domain/happy";
 import { isGunu } from "@/lib/tarih";
@@ -69,6 +70,14 @@ export default async function OynaSayfasi() {
     ? await liderlik.bugun({ cafeId: masa.cafeId, oyunId: bonus.id, bakanId: o.ozneId })
     : null;
 
+  // Ü105: haftalık sezondaki kendi sıran — liderlik kartının altında tek
+  // satır. Ayrı kart açmak ana ekranı uzatırdı; sezonun asıl yeri
+  // /liderlik ve bu satır oraya gitmek için bir sebep veriyor.
+  const sezon = liderlik.sezon();
+  const haftalik = masa
+    ? liderlik.kendiSatiri(await liderlik.hafta({ cafeId: masa.cafeId, bakanId: o.ozneId }))
+    : null;
+
   // Ü49: günlük çark — yalnızca kafedeyken, ödül kafenin bütçesinden çıkıyor.
   const carkDurumu = masa
     ? await cark.durum({ playerId: o.ozneId, cafeId: masa.cafeId })
@@ -80,6 +89,15 @@ export default async function OynaSayfasi() {
   const seriDurumu = masa
     ? await withBypass("günlük seri", (db) =>
         seri.hesapla(db, { playerId: o.ozneId, cafeId: masa.cafeId }),
+      )
+    : null;
+
+  // Ü106: günün görevi. Kafe dışında gösterilmiyor — görev kafede oynayarak
+  // tamamlanıyor ve tamamlanamayacak bir hedefi göstermek yalnızca hayal
+  // kırıklığı üretir.
+  const gorev = masa
+    ? await withBypass("günün görevi", (db) =>
+        challenge.ilerleme(db, { playerId: o.ozneId, cafeId: masa.cafeId }),
       )
     : null;
 
@@ -125,11 +143,20 @@ export default async function OynaSayfasi() {
 
         {pencere && <HavuzKarti pencere={pencere} kafeAdi={masa!.cafeAdi} />}
 
+        {gorev && <GorevKarti ilerleme={gorev} />}
+
         {seriDurumu && seriDurumu.gun > 0 && <SeriKarti seri={seriDurumu} />}
 
         {carkDurumu && <CarkKarti durum={carkDurumu} />}
 
-        {lider && <LiderKarti liste={lider} oyunAdi={bonus.ad} />}
+        {lider && (
+          <LiderKarti
+            liste={lider}
+            oyunAdi={bonus.ad}
+            haftalik={haftalik}
+            kalanGun={sezon.kalanGun}
+          />
+        )}
 
         {/* ── Günün oyunu ───────────────────────────────── */}
         <section className="mb-10">
@@ -411,6 +438,71 @@ function HavuzKarti({ pencere, kafeAdi }: { pencere: happy.Pencere; kafeAdi: str
 }
 
 /**
+ * Günün görevi (Ü106).
+ *
+ * ── Neden ilerleme çubuğu var ───────────────────────────────
+ *
+ * "2 tur oyna" ile "1/2 tur oynadın" arasındaki fark, hedefin
+ * ulaşılabilir olduğunu görmek. Yalnızca hedefi yazan bir kart, yarısını
+ * yapmış oyuncuya hiçbir şey söylemez ve o kişi çoğu zaman bir tur
+ * eksikle bırakır.
+ *
+ * ── Tamamlanınca kaybolmuyor ────────────────────────────────
+ *
+ * Kart yeşile dönüyor ama duruyor: kaybolan bir kart "özellik
+ * kaldırıldı" diye okunuyor (çark kartıyla aynı gerekçe) ve yarın yeni
+ * bir görev geleceğini söyleyecek yer kalmıyor.
+ */
+function GorevKarti({ ilerleme: i }: { ilerleme: challenge.Ilerleme }) {
+  const tamam = i.tamam;
+  const yuzde = Math.min(100, Math.round((i.mevcut / i.gorev.hedef) * 100));
+  const renk: OyuncuRengi = tamam ? "yesil" : "buz";
+
+  return (
+    <section className="mb-10">
+      <div className="mb-3 flex items-baseline justify-between">
+        <h2 className="etiket-caps" style={{ color: RENK[renk].ana }}>
+          Günün görevi
+        </h2>
+        <span className="font-data text-[10px] tracking-[0.14em] text-odul-koyu">
+          +{i.gorev.xp} XP
+        </span>
+      </div>
+
+      <div
+        className="rounded-2xl border bg-yuzey px-5 py-5"
+        style={{ borderColor: RENK[renk].ana }}
+      >
+        <div className="flex items-baseline justify-between gap-3">
+          <span className="font-display text-lg leading-tight font-bold">
+            {i.gorev.baslik}
+          </span>
+          <span
+            className="shrink-0 font-data text-[13px] leading-none font-bold tabular"
+            style={{ color: RENK[renk].ana }}
+          >
+            {i.mevcut.toLocaleString("tr-TR")}/{i.gorev.hedef.toLocaleString("tr-TR")}
+          </span>
+        </div>
+
+        <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-cukur">
+          <div
+            className="asil-serit h-full rounded-full"
+            style={{ width: `${Math.max(2, yuzde)}%`, background: RENK[renk].ana }}
+          />
+        </div>
+
+        <p className="mt-2.5 text-[13px] leading-relaxed text-yazi-sonuk">
+          {tamam
+            ? "Tamamladın. Yarın yeni bir görev geliyor."
+            : i.gorev.aciklama}
+        </p>
+      </div>
+    </section>
+  );
+}
+
+/**
  * Günlük seri kartı (Ü54).
  *
  * ── Neden yalnızca seri varken görünüyor ────────────────────
@@ -548,7 +640,18 @@ function CarkKarti({ durum }: { durum: cark.CarkDurumu }) {
  * Kart tıklanınca tüm zamanlar listesine gidiyor — bugünün ilk üçüne
  * giremeyen için "hiç yokum" demek yerine gidilecek bir yer kalıyor.
  */
-function LiderKarti({ liste, oyunAdi }: { liste: liderlik.Liste; oyunAdi: string }) {
+function LiderKarti({
+  liste,
+  oyunAdi,
+  haftalik,
+  kalanGun,
+}: {
+  liste: liderlik.Liste;
+  oyunAdi: string;
+  /** Ü105: haftalık sezondaki kendi satırın — hiç puanın yoksa null. */
+  haftalik: liderlik.LiderSatiri | null;
+  kalanGun: number;
+}) {
   const bos = liste.satirlar.length === 0;
 
   return (
@@ -586,8 +689,29 @@ function LiderKarti({ liste, oyunAdi }: { liste: liderlik.Liste; oyunAdi: string
           </ol>
         )}
 
-        <p className="mt-4 font-data text-[10px] tracking-wide text-yazi-sonuk">
-          TÜM ZAMANLAR SIRALAMASI →
+        {/* Ü105: haftalık sezon. Tüm zamanlar listesi kazanılamaz — üç
+            aydır gelenin birikimi bu hafta gelen için erişilemez. Sezon
+            her pazartesi sıfırlandığı için burada gösterilebilecek
+            gerçek bir hedef var. */}
+        <div className="mt-4 flex items-baseline justify-between gap-3 border-t border-cizgi pt-3">
+          <span className="text-[13px] text-yazi-sonuk">
+            {haftalik ? (
+              <>
+                Bu sezon{" "}
+                <strong className="text-odul-koyu">{haftalik.sira}. sıradasın</strong> ·{" "}
+                {haftalik.deger.toLocaleString("tr-TR")} puan
+              </>
+            ) : (
+              <>Bu sezon henüz puanın yok</>
+            )}
+          </span>
+          <span className="shrink-0 font-data text-[10px] text-yazi-sonuk tabular">
+            {kalanGun === 1 ? "SON GÜN" : `${kalanGun} GÜN`}
+          </span>
+        </div>
+
+        <p className="mt-3 font-data text-[10px] tracking-wide text-yazi-sonuk">
+          SEZON VE TÜM ZAMANLAR →
         </p>
       </Link>
     </section>

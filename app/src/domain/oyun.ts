@@ -11,6 +11,7 @@ import * as acil from "./acil";
 import * as davet from "./davet";
 import * as taht from "./taht";
 import * as seri from "./seri";
+import * as challenge from "./challenge";
 import {
   yazIle as puanYaz,
   OYUN_PUANI,
@@ -135,6 +136,14 @@ export type Kazanim = {
   /** Ü54: günlük seri — kaçıncı gün ve bugün ne kadar bonus yazıldı. */
   seri: { gun: number; puan: PuanSonucu } | null;
   /**
+   * Ü106: günün görevi bu turda tamamlandıysa.
+   *
+   * Yalnızca **tamamlandığı anda** doluyor; günün geri kalanında null
+   * kalıyor. Her turda "görevi zaten yapmıştın" demek, tamamlama anını
+   * sıradanlaştırırdı.
+   */
+  challenge: { baslik: string; xp: number } | null;
+  /**
    * Ü82: kafenin yayındaki yüzde kampanyasından düşen kupon.
    *
    * `kupon`dan **ayrı alan**: o oynamanın ödülü, bu kafenin pazarlaması
@@ -185,6 +194,7 @@ async function kazanimIsle(
     taht: null,
     esik: null,
     seri: null,
+    challenge: null,
     kampanya: null,
   };
   if (!opts.kazandirir || !opts.cafeId) return bos;
@@ -368,6 +378,37 @@ async function kazanimIsle(
     }
   }
 
+  // ── Günün görevi (Ü106) ────────────────────────────────
+  //
+  // AYNI İŞLEMDE: biten oturum yukarıda `completed` yazıldı ama henüz
+  // commit edilmedi. Ayrı bağlantıdan sorulsaydı sorgu bu turu göremez
+  // ve "3 tur oyna" görevi üçüncü turda değil dördüncüde tamamlanırdı.
+  //
+  // Başarı şartı yok: görev kendi hedefini kendisi tanımlıyor. "1.200
+  // skor" zaten bir başarı ölçüsü; "2 tur oyna" ise bilerek başarıdan
+  // bağımsız — ikinci turu oynayıp kaybetmek de görevi tamamlar.
+  const gorev = await challenge.ilerleme(db, {
+    playerId: opts.playerId,
+    cafeId: opts.cafeId,
+  });
+
+  if (gorev.tamam && !gorev.yazildi) {
+    const yazildi = await xpYaz(db, {
+      playerId: opts.playerId,
+      cafeId: opts.cafeId,
+      delta: gorev.gorev.xp,
+      kaynak: "CHALLENGE",
+      kaynakId: opts.oturumId,
+    });
+
+    // `yazildi` false ise kanıt kapısı reddetmiştir (Ü3) — ekranda
+    // kazanılmamış bir XP göstermiyoruz.
+    if (yazildi) {
+      sonuc.xp += gorev.gorev.xp;
+      sonuc.challenge = { baslik: gorev.gorev.baslik, xp: gorev.gorev.xp };
+    }
+  }
+
   // ── Masa tahtı (Ö1) ────────────────────────────────────
   //
   // AYNI İŞLEMDE: biten oturumun yazımı henüz commit edilmedi; ayrı
@@ -470,6 +511,8 @@ export type BitirSonucu =
       esik: { skor: number; puan: PuanSonucu } | null;
       /** Ü54: günlük seri bonusu — bugün yazıldıysa. */
       seri: { gun: number; puan: PuanSonucu } | null;
+      /** Ü106: günün görevi bu turda tamamlandıysa. XP toplamın içinde. */
+      challenge: { baslik: string; xp: number } | null;
       xp: number;
       kazandirir: boolean;
       bonusMu: boolean;
@@ -688,6 +731,7 @@ export async function bitir(opts: {
       puan: kazanim.puan,
       esik: kazanim.esik,
       seri: kazanim.seri,
+      challenge: kazanim.challenge,
       xp: kazanim.xp,
       kazandirir,
       bonusMu,
@@ -889,6 +933,7 @@ export async function misafirOyunuYaz(opts: {
       puan: kazanim.puan,
       esik: kazanim.esik,
       seri: kazanim.seri,
+      challenge: kazanim.challenge,
       xp: kazanim.xp,
       kupon: kazanim.kupon,
       kampanya: kazanim.kampanya,

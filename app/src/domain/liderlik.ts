@@ -1,6 +1,6 @@
 import { withBypass, type Db } from "@/db/context";
 import { decryptPII } from "@/lib/crypto";
-import { isGunu } from "@/lib/tarih";
+import { isGunu, pazartesi, gunEkle, gunFarki } from "@/lib/tarih";
 
 /**
  * Liderlik tablosu — bugünün ve tüm zamanların.
@@ -177,7 +177,48 @@ export async function bugun(opts: {
   });
 }
 
-/* ── Tüm zamanlar ──────────────────────────────────────────── */
+/* ── Puana dayalı listeler ─────────────────────────────────── */
+
+/**
+ * Kafedeki toplam puana göre satırlar — isteğe bağlı gün aralığıyla.
+ *
+ * Tüm zamanlar ve haftalık sezon **aynı sorgudan** geçiyor. Ayrı yazılsalardı
+ * maskeleme, anonimleşmiş oyuncunun elenmesi ve "harcanan puan sıralamayı
+ * düşürmez" kuralı iki yerde durur, biri bir gün düzeltilirken öbürü geride
+ * kalırdı — iki liste aynı kafede farklı sıralama gösterirdi.
+ *
+ * `GREATEST(l.delta, 0)`: harcama defterde eksi satır (E3) ama sıralamayı
+ * düşürmüyor. Ödülünü alan oyuncunun listede geriye düşmesi, ödül almayı
+ * cezalandırmak olurdu.
+ */
+async function puanSatirlari(
+  db: Db,
+  cafeId: string,
+  aralik: { baslangic: string; bitis: string } | null,
+): Promise<HamSatir[]> {
+  const kosul = aralik ? "AND l.business_date BETWEEN $2::date AND $3::date" : "";
+  const parametreler = aralik ? [cafeId, aralik.baslangic, aralik.bitis] : [cafeId];
+
+  return db.all<HamSatir>(
+    `SELECT l.player_id,
+            sum(GREATEST(l.delta, 0)) AS deger,
+            p.leaderboard_name_visible AS ad_gorunur,
+            p.first_name_enc AS ad_enc,
+            p.last_name_enc  AS soyad_enc,
+            (SELECT code FROM player_aliases a
+              WHERE a.cafe_id = l.cafe_id AND a.player_id = l.player_id) AS takma_ad
+       FROM points_ledger l
+       JOIN players p ON p.id = l.player_id
+      WHERE l.cafe_id = $1
+        AND p.anonymized_at IS NULL
+        ${kosul}
+      GROUP BY l.player_id, l.cafe_id, p.leaderboard_name_visible,
+               p.first_name_enc, p.last_name_enc
+     HAVING sum(GREATEST(l.delta, 0)) > 0
+      ORDER BY 2 DESC`,
+    parametreler,
+  );
+}
 
 /**
  * Bu kafede tüm zamanların toplam puanı.
@@ -189,34 +230,103 @@ export async function bugun(opts: {
  * soruyu cevaplıyor: *"bu kafenin en düzenli müşterisi kim"*. Tek seferlik
  * yüksek skor değil, süreklilik kazanıyor — sadakat ürününün ödüllendirmek
  * istediği davranış da bu.
- *
- * Harcanan puan da defterde eksi kayıt olduğu için toplam, **kalan bakiye**
- * değil net birikim; ödül alan oyuncu sıralamada geriye düşmüyor.
  */
 export async function tumZamanlar(opts: {
   cafeId: string;
   bakanId: string | null;
 }): Promise<Liste> {
   return withBypass("tüm zamanlar liderlik tablosu", async (db) => {
-    const hepsi = await db.all<HamSatir>(
-      `SELECT l.player_id,
-              sum(GREATEST(l.delta, 0)) AS deger,
-              p.leaderboard_name_visible AS ad_gorunur,
-              p.first_name_enc AS ad_enc,
-              p.last_name_enc  AS soyad_enc,
-              (SELECT code FROM player_aliases a
-                WHERE a.cafe_id = l.cafe_id AND a.player_id = l.player_id) AS takma_ad
-         FROM points_ledger l
-         JOIN players p ON p.id = l.player_id
-        WHERE l.cafe_id = $1
-          AND p.anonymized_at IS NULL
-        GROUP BY l.player_id, l.cafe_id, p.leaderboard_name_visible,
-                 p.first_name_enc, p.last_name_enc
-       HAVING sum(GREATEST(l.delta, 0)) > 0
-        ORDER BY 2 DESC`,
-      [opts.cafeId],
-    );
-
+    const hepsi = await puanSatirlari(db, opts.cafeId, null);
     return listeKur(db, opts.bakanId, hepsi);
   });
+}
+
+/* ── Haftalık sezon (Ü105) ─────────────────────────────────── */
+
+/**
+ * Haftalık sezon.
+ *
+ * ── Neden gerekti ───────────────────────────────────────────
+ *
+ * Tüm zamanlar listesi **kazanılamaz**: üç aydır gelen müşterinin birikimi,
+ * bu hafta gelen için erişilemez bir sayı. Yeni oyuncu listeye bakıp
+ * yarışacak bir şey görmüyor, yalnızca ne kadar geride olduğunu görüyor —
+ * ve sıralama ancak insan kendini yarışın içinde görebildiğinde bir hedef.
+ *
+ * Sezon her pazartesi sıfırlanıyor: herkesin her hafta gerçek bir şansı var.
+ *
+ * ── ⚠️ Sezon haftası BÜTÇE haftasıyla aynı ──────────────────
+ *
+ * `pazartesi()` Ü25'in bütçe dönemi için yazılmıştı ve sezon onu tekrar
+ * kullanıyor. Kendi haftasını kursaydık kafenin panelde gördüğü *"bu hafta
+ * 43 oyuncu"* ile oyuncunun gördüğü sezon **farklı günleri** kapsardı;
+ * kafe sezon şampiyonunu kendi haftalık raporunda bulamazdı.
+ *
+ * ── ⚠️ Sezonun ödülü YOK ────────────────────────────────────
+ *
+ * Sıralama puan, kupon ya da çarpan vermiyor — bu dosyanın baştaki kuralı
+ * (E5) sezonla da bozulmuyor. Otomatik bir sezon ödülü koysaydık kafenin
+ * bütçesinden **kafenin istemediği** bir para çıkardı ve şans mevzuatı
+ * (S7) sorusunu ağırlaştırırdı. Sezon statü; ödül vermek isteyen kafe onu
+ * kendi kampanyasıyla kurar.
+ */
+export type Sezon = {
+  /** Sezonun ilk günü — pazartesi. */
+  baslangic: string;
+  /** Sezonun son günü — pazar. */
+  bitis: string;
+  /** Bugün dahil kaç gün kaldı. Pazar günü 1. */
+  kalanGun: number;
+};
+
+export function sezon(gun: string = isGunu()): Sezon {
+  const baslangic = pazartesi(gun);
+  const bitis = gunEkle(baslangic, 6);
+  return { baslangic, bitis, kalanGun: gunFarki(gun, bitis) + 1 };
+}
+
+/** Bir önceki sezon — geçen haftanın şampiyonu için. */
+export function oncekiSezon(gun: string = isGunu()): Sezon {
+  return sezon(gunEkle(pazartesi(gun), -1));
+}
+
+/** Bu sezonda bu kafede toplanan puan. */
+export async function hafta(opts: {
+  cafeId: string;
+  bakanId: string | null;
+  gun?: string;
+}): Promise<Liste> {
+  const s = sezon(opts.gun ?? isGunu());
+
+  return withBypass("haftalık sezon liderlik tablosu", async (db) => {
+    const hepsi = await puanSatirlari(db, opts.cafeId, s);
+    return listeKur(db, opts.bakanId, hepsi);
+  });
+}
+
+/**
+ * Geçen sezonun şampiyonu — kimse oynamadıysa null.
+ *
+ * Saklanmıyor, **sorulup bulunuyor**: bir "sezon şampiyonları" tablosu
+ * defterle ayrışabilecek ikinci bir gerçek olurdu (seri ve tahtla aynı
+ * tercih). Oyuncu adını sonradan gizlerse ya da hesabını silerse buradaki
+ * cevap da kendiliğinden değişiyor.
+ */
+export async function gecenSezonunSampiyonu(opts: {
+  cafeId: string;
+  /** Şampiyon bakan oyuncunun kendisiyse ekran "sendin" diyebilsin. */
+  bakanId: string | null;
+  gun?: string;
+}): Promise<LiderSatiri | null> {
+  const s = oncekiSezon(opts.gun ?? isGunu());
+
+  return withBypass("geçen sezonun şampiyonu", async (db) => {
+    const hepsi = await puanSatirlari(db, opts.cafeId, s);
+    return hepsi.length ? satiraCevir(hepsi[0], 1, opts.bakanId) : null;
+  });
+}
+
+/** Oyuncunun listedeki kendi satırı — ilk N'de olsun olmasın. */
+export function kendiSatiri(l: Liste): LiderSatiri | null {
+  return l.satirlar.find((s) => s.benMiyim) ?? l.benimSiram;
 }

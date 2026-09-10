@@ -9,7 +9,7 @@ import { normalizePhone } from "@/lib/crypto";
 import * as liderlik from "@/domain/liderlik";
 import { adGorunurluguAyarla } from "@/domain/taht";
 import { newId } from "@/lib/ids";
-import { isGunu } from "@/lib/tarih";
+import { isGunu, pazartesi, gunEkle } from "@/lib/tarih";
 
 /**
  * LİDERLİK TABLOSU.
@@ -202,5 +202,134 @@ describe("liderlik · sıralama ve sınırlar", () => {
     const l = await liderlik.bugun({ cafeId: bos, oyunId: OYUN, bakanId: null });
     assert.deepEqual(l.satirlar, []);
     assert.equal(l.benimSiram, null);
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════
+   Haftalık sezon (Ü105)
+   ═══════════════════════════════════════════════════════════ */
+
+/** Doğrudan `points_ledger` yazıyor: sınanan şey puan motoru değil, sezon. */
+async function puanYaz(opts: {
+  playerId: string;
+  cafeId: string;
+  puan: number;
+  gun: string;
+}): Promise<void> {
+  await withBypass("test puan", (db) =>
+    db.query(
+      `INSERT INTO points_ledger
+         (id, cafe_id, player_id, business_date, delta, reason, proof_level)
+       VALUES ($1,$2,$3,$4::date,$5,'test sezon',2)`,
+      [newId("pnt"), opts.cafeId, opts.playerId, opts.gun, opts.puan],
+    ),
+  );
+}
+
+describe("haftalık sezon (Ü105)", () => {
+  let sezonKafe = "";
+
+  before(async () => {
+    sezonKafe = await kafeKur("SezonTest");
+  });
+
+  test("sezon pazartesi başlıyor, pazar bitiyor", () => {
+    const s = liderlik.sezon("2026-09-10"); // perşembe
+    assert.equal(s.baslangic, "2026-09-07");
+    assert.equal(s.bitis, "2026-09-13");
+    assert.equal(s.kalanGun, 4, "perşembe dahil dört gün kalmalı");
+  });
+
+  test("pazar günü sezonun son günü — bir sonraki haftaya kaymıyor", () => {
+    // JavaScript'te pazar 0; Türkiye'de hafta pazartesi başlıyor ve pazar
+    // ÖNCEKİ haftanın son günü. `pazartesi()` bunu zaten çözüyor, sezon
+    // kendi hesabını kurmadığı için hata da tekrarlanmıyor.
+    const s = liderlik.sezon("2026-09-13");
+    assert.equal(s.baslangic, "2026-09-07");
+    assert.equal(s.kalanGun, 1, "pazar günü 'son gün' olmalı");
+  });
+
+  /**
+   * ⚠️ Sezon haftası, BÜTÇE haftasıyla aynı olmak zorunda (Ü25).
+   *
+   * Ayrı olsaydı kafenin panelde gördüğü "bu hafta" ile oyuncunun gördüğü
+   * sezon farklı günleri kapsardı; kafe sezon şampiyonunu kendi haftalık
+   * raporunda bulamazdı.
+   */
+  test("🔴 sezon haftası bütçe haftasıyla aynı gün başlıyor", () => {
+    for (const gun of ["2026-09-07", "2026-09-10", "2026-09-13", "2026-01-01"]) {
+      assert.equal(
+        liderlik.sezon(gun).baslangic,
+        pazartesi(gun),
+        `${gun}: sezon bütçe haftasından ayrıldı`,
+      );
+    }
+  });
+
+  test("🔴 geçen haftanın puanı bu sezona girmiyor", async () => {
+    const buHafta = pazartesi(isGunu());
+    const gecenHafta = gunEkle(buHafta, -3);
+
+    await puanYaz({ playerId: oyuncular[0].id, cafeId: sezonKafe, puan: 5_000, gun: gecenHafta });
+    await puanYaz({ playerId: oyuncular[0].id, cafeId: sezonKafe, puan: 120, gun: isGunu() });
+
+    const l = await liderlik.hafta({ cafeId: sezonKafe, bakanId: null });
+    const satir = l.satirlar.find((s) => s.deger > 0);
+
+    assert.ok(satir, "sezon listesi boş");
+    assert.equal(satir.deger, 120, "geçen haftanın puanı bu sezona sızdı");
+  });
+
+  test("tüm zamanlar listesi geçen haftayı SAYIYOR — iki liste ayrı sorulara cevap veriyor", async () => {
+    const l = await liderlik.tumZamanlar({ cafeId: sezonKafe, bakanId: null });
+    const satir = l.satirlar.find((s) => s.deger > 0);
+    assert.equal(satir?.deger, 5_120, "tüm zamanlar toplamı haftaya kısıldı");
+  });
+
+  test("geçen sezonun şampiyonu geçen haftadan geliyor", async () => {
+    const gecen = liderlik.oncekiSezon(isGunu());
+    await puanYaz({
+      playerId: oyuncular[1].id,
+      cafeId: sezonKafe,
+      puan: 9_000,
+      gun: gecen.baslangic,
+    });
+
+    const s = await liderlik.gecenSezonunSampiyonu({ cafeId: sezonKafe, bakanId: null });
+    assert.ok(s, "geçen sezonun şampiyonu bulunamadı");
+    assert.equal(s.deger, 9_000);
+
+    // Bu sezonun listesinde o puan yok — sezon gerçekten sıfırlanıyor.
+    const bu = await liderlik.hafta({ cafeId: sezonKafe, bakanId: null });
+    assert.ok(
+      bu.satirlar.every((r) => r.deger !== 9_000),
+      "geçen sezonun puanı bu sezonda duruyor",
+    );
+  });
+
+  test("harcanan puan sezondaki sırayı düşürmüyor", async () => {
+    // Ödülünü alan oyuncunun listede geriye düşmesi, ödül almayı
+    // cezalandırmak olurdu. `GREATEST(delta, 0)` bunu koruyor.
+    await puanYaz({ playerId: oyuncular[0].id, cafeId: sezonKafe, puan: -100, gun: isGunu() });
+
+    const l = await liderlik.hafta({ cafeId: sezonKafe, bakanId: null });
+    const satir = l.satirlar.find((s) => s.deger > 0);
+    assert.equal(satir?.deger, 120, "harcama sezon puanını düşürdü");
+  });
+
+  test("sezon listesi de adı maskeliyor — ortak sorgu", async () => {
+    const l = await liderlik.hafta({ cafeId: sezonKafe, bakanId: null });
+    for (const s of l.satirlar) {
+      for (const o of oyuncular) {
+        assert.ok(!s.gorunenAd.includes(o.soyad), `tam soyad sızdı: ${s.gorunenAd}`);
+      }
+    }
+  });
+
+  test("boş kafede sezon boş — hata değil", async () => {
+    const bos = await kafeKur("SezonBos");
+    const l = await liderlik.hafta({ cafeId: bos, bakanId: null });
+    assert.deepEqual(l.satirlar, []);
+    assert.equal(await liderlik.gecenSezonunSampiyonu({ cafeId: bos, bakanId: null }), null);
   });
 });

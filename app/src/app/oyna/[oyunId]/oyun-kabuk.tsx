@@ -252,7 +252,7 @@ function SonucEkrani({
     );
   }
 
-  const { skor, basarili, puan, esik, seri, xp, kazandirir, yeniRozetler, kupon, taht, kampanya, teklif } =
+  const { skor, basarili, puan, esik, seri, challenge, xp, kazandirir, yeniRozetler, kupon, taht, kampanya, teklif } =
     cevap;
 
   /*
@@ -303,11 +303,25 @@ function SonucEkrani({
       });
     }
 
+    // Ü106: görev XP'si `xp` toplamının içinde geliyor; ayrı satır olarak
+    // gösterilip taban satırından düşülüyor. Puan tarafında eşik ve seri
+    // bonusları da böyle — toplamı tek satırda göstermek "neden bu kadar
+    // çok" sorusunu cevapsız bırakırdı.
+    const gorevXp = challenge?.xp ?? 0;
+
     satirlar.push({
-      baslik: `+${xp} XP`,
+      baslik: `+${xp - gorevXp} XP`,
       aciklama: "Seviyen bu kafede ilerledi. XP harcanmaz.",
       vurgu: true,
     });
+
+    if (challenge) {
+      satirlar.push({
+        baslik: `+${challenge.xp} XP · günün görevi`,
+        aciklama: `"${challenge.baslik}" tamamlandı. Yarın yeni bir görev geliyor.`,
+        vurgu: true,
+      });
+    }
   }
 
   if (yeniRozetler.length > 0) {

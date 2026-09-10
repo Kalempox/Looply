@@ -6,7 +6,7 @@
 > Yan dosyalar: neyin **var** olduğu → `21-looply-kapsam-haritasi.md` ·
 > demoda neyin **yapılabildiği** → `22-demo-yapilabilirlik.md`
 
-**Son güncelleme:** 2026-09-10 · **Kararlar:** Ü76 – Ü104
+**Son güncelleme:** 2026-09-11 · **Kararlar:** Ü76 – Ü106
 
 ---
 
@@ -150,9 +150,31 @@ Ayrı ayrı yazılırsa üçüncüsü ilk ikisini bozar.
   "kullanmak için hesabını aç" diyor. Girişli oyuncu da artık `/cark`'a
   gidiyor — eskiden `/oyna`'da bir kart olarak görüp çevirmiyordu.
 
-- [ ] **9 · Haftalık leaderboard sezonu + haftalık puan**
-- [ ] **10 · Günün Challenge'ı rotasyonu**
-  Bugün yalnızca 2× çarpan var; gün rotasyonu yok.
+- [x] **9 · Haftalık leaderboard sezonu + haftalık puan** ✅ **BİTTİ** — Ü105,
+  2026-09-11
+  `/liderlik`te üçüncü liste: **bu haftanın sezonu** (pazartesi–pazar) ·
+  geri sayım · oyuncunun haftalık puanı · geçen sezonun birincisi.
+  Ana ekrandaki liderlik kartının altında da tek satır özet.
+  ⚠️ Sezon haftası **bütçe haftasıyla aynı** (`pazartesi()`, Ü25) — ayrı
+  olsaydı kafenin raporundaki "bu hafta" ile oyuncunun sezonu farklı
+  günleri kapsardı.
+  ⚠️ **Sezonun ödülü yok** (E5 bozulmadı). Otomatik ödül, kafenin
+  istemediği bir parayı bütçeden çıkarır ve S7'yi ağırlaştırırdı.
+  ⚠️ Tüm zamanlar listesi kazanılamaz olduğu için var: aynı oyuncu
+  tüm zamanlarda 7., sezonda 2. sırada çıkıyor.
+  ⚠️ Yeni tablo yok — sezon `points_ledger`'dan türüyor; iki liste
+  aynı sorgudan geçiyor.
+- [x] **10 · Günün Challenge'ı rotasyonu** ✅ **BİTTİ** — Ü106, 2026-09-11
+  Artık gerçek bir görev var: **skor** · **tur sayısı** · **oyun çeşidi**,
+  beşli havuzdan dönüşümlü. Ana ekranda ilerleme çubuğu, oyun sonunda
+  ayrı satır.
+  ⚠️ Ödül **XP, puan değil**: günlük tavan 900 ve bonuslu oyun tek başına
+  600 yazıyor — puan olsaydı görev yalnızca az oynayana öderdi.
+  ⚠️ Havuz boyu (5) ile oyun sayısı (4) **aralarında asal olmak zorunda**;
+  beşinci oyun eklenince sessizce bozulur, test onu bekliyor.
+  ⚠️ Yarım tur ve kafe dışı tur saymıyor (Ü3).
+  ⚠️ Günde bir kez **şemadan** (göç 0031 tekil indeks). Aynı açık
+  Ü54'ün seri bonusunda da vardı, o da bu göçte kapandı.
 - [x] **11 · Tekrar ziyaret metriği** ✅ **BİTTİ** — Ü102, 2026-09-10
   Raporda "Geri dönüş oranı": kohort · oran · ortanca dönüş süresi ·
   kaçıncı ziyaret dağılımı · kupon karşılaştırması.

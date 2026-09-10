@@ -4,7 +4,7 @@ import * as oturum from "@/domain/session";
 import * as masaOturumu from "@/domain/masa";
 import * as liderlik from "@/domain/liderlik";
 import { gununOyunu } from "@/oyunlar";
-import { isGunu } from "@/lib/tarih";
+import { isGunu, gunYaz } from "@/lib/tarih";
 import {
   OyuncuSayfa,
   SayfaBasi,
@@ -80,10 +80,15 @@ export default async function LiderlikSayfasi() {
 
   const oyun = gununOyunu(isGunu());
   const renk = oyunRengi(oyun.id);
-  const [bugun, tum] = await Promise.all([
+  const s = liderlik.sezon();
+  const [bugun, buHafta, tum, sampiyon] = await Promise.all([
     liderlik.bugun({ cafeId: masa.cafeId, oyunId: oyun.id, bakanId: o.ozneId }),
+    liderlik.hafta({ cafeId: masa.cafeId, bakanId: o.ozneId }),
     liderlik.tumZamanlar({ cafeId: masa.cafeId, bakanId: o.ozneId }),
+    liderlik.gecenSezonunSampiyonu({ cafeId: masa.cafeId, bakanId: o.ozneId }),
   ]);
+
+  const benimHaftam = liderlik.kendiSatiri(buHafta);
 
   // Kürsüde duran üç kişi listede tekrar edilmiyor.
   const kursu = bugun.satirlar.slice(0, 3);
@@ -132,6 +137,16 @@ export default async function LiderlikSayfasi() {
         />
       </OyuncuBolum>
 
+      <OyuncuBolum baslik="Bu haftanın sezonu" renk="amber" not="pazartesi–pazar">
+        <SezonBasligi sezon={s} benim={benimHaftam} sampiyon={sampiyon} />
+        <Liste
+          liste={buHafta}
+          satirlar={buHafta.satirlar}
+          birim="puan"
+          bosMetin="Bu sezonda bu kafede henüz puan toplanmadı. İlk sen ol."
+        />
+      </OyuncuBolum>
+
       <OyuncuBolum baslik="Tüm zamanlar" not="bu kafede toplanan puan">
         <Liste
           liste={tum}
@@ -157,6 +172,73 @@ export default async function LiderlikSayfasi() {
 function benimSiram(l: liderlik.Liste): number | null {
   const listede = l.satirlar.find((s) => s.benMiyim);
   return listede?.sira ?? l.benimSiram?.sira ?? null;
+}
+
+/* ── Sezon başlığı (Ü105) ──────────────────────────────────── */
+
+/**
+ * Sezonun üstündeki şerit: ne zaman bittiği, oyuncunun haftalık puanı ve
+ * geçen haftanın şampiyonu.
+ *
+ * ── Neden geri sayım var ────────────────────────────────────
+ *
+ * Sıfırlanan bir sıralamanın bütün gücü **ne zaman sıfırlanacağını
+ * bilmekten** geliyor. "Bu hafta 3. sıradasın" tek başına bir bilgi;
+ * "2 gün kaldı" onu bir karara çeviriyor.
+ *
+ * ── Neden geçen haftanın şampiyonu ──────────────────────────
+ *
+ * Sezon pazar akşamı sıfırlanıyor ve pazartesi sabahı liste bomboş —
+ * hiçbir şey olmamış gibi görünürdü. Geçen haftanın adı, sezonun
+ * gerçekten bittiğini ve kazanılabilir olduğunu gösteren tek işaret.
+ * ⚠️ Kupa metaforu kurulmuyor: kazanılan bir ödül yok, yalnızca sıra.
+ */
+function SezonBasligi({
+  sezon: s,
+  benim,
+  sampiyon,
+}: {
+  sezon: liderlik.Sezon;
+  benim: liderlik.LiderSatiri | null;
+  sampiyon: liderlik.LiderSatiri | null;
+}) {
+  return (
+    <div className="mb-2.5 rounded-2xl border border-cizgi bg-yuzey px-5 py-4">
+      <div className="flex items-baseline justify-between gap-3">
+        <span className="font-display text-[15px] font-bold">
+          {gunYaz(s.baslangic)} – {gunYaz(s.bitis)}
+        </span>
+        <span className="font-data text-[11px] text-yazi-sonuk tabular">
+          {s.kalanGun === 1 ? "son gün" : `${s.kalanGun} gün kaldı`}
+        </span>
+      </div>
+
+      <p className="mt-1.5 text-[13px] leading-relaxed text-yazi-sonuk">
+        {benim ? (
+          <>
+            Bu sezon{" "}
+            <strong className="text-yazi">
+              {benim.deger.toLocaleString("tr-TR")} puan
+            </strong>{" "}
+            topladın — <strong className="text-yazi">{benim.sira}. sıradasın</strong>. Pazar
+            akşamı sıralama sıfırlanıyor.
+          </>
+        ) : (
+          <>Bu sezon henüz puanın yok. Sıralama her pazartesi sıfırdan başlıyor.</>
+        )}
+      </p>
+
+      {sampiyon && (
+        <p className="mt-2.5 border-t border-cizgi pt-2.5 text-[12px] text-yazi-sonuk">
+          Geçen sezonun birincisi{" "}
+          <strong className="text-yazi">
+            {sampiyon.benMiyim ? "sendin" : sampiyon.gorunenAd}
+          </strong>{" "}
+          · {sampiyon.deger.toLocaleString("tr-TR")} puan
+        </p>
+      )}
+    </div>
+  );
 }
 
 /* ── Kürsü ─────────────────────────────────────────────── */

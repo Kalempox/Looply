@@ -29,7 +29,11 @@ import { K2 } from "./masa";
  */
 export const SEVIYE_ESIKLERI = [0, 100, 300, 700, 1_500, 3_000, 5_500, 9_000, 14_000, 21_000];
 
-export type KaynakTipi = "GAME" | "BADGE" | "REFERRAL" | "ADJUSTMENT";
+/** Ü106: `CHALLENGE` günün görevi — `GAME` ile aynı kanıt kapısından geçiyor. */
+export type KaynakTipi = "GAME" | "BADGE" | "REFERRAL" | "ADJUSTMENT" | "CHALLENGE";
+
+/** Kanıtlanmış masa oturumu isteyen kaynaklar (şemada `xp_oyun_kafede`). */
+const KAFEDE_OLMALI: readonly KaynakTipi[] = ["GAME", "CHALLENGE"];
 
 export type KafeSeviyesi = {
   cafeId: string;
@@ -117,7 +121,7 @@ export async function yazIle(db: Db, opts: XpYazim): Promise<boolean> {
 
   let kanit = 0;
 
-  if (kaynak === "GAME") {
+  if (KAFEDE_OLMALI.includes(kaynak)) {
       // Ü3'ün kapısı: doğrulanmış (K2) ve süresi geçmemiş masa oturumu şart.
     const oturum = await db.one<{ proof_mask: number; proof_level: number }>(
       `SELECT proof_mask, proof_level FROM table_sessions
