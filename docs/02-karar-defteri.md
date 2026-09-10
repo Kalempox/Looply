@@ -2,7 +2,7 @@
 
 > **CANLI DOKÜMAN.** Her karar turunda güncellenir. Çelişkide bu dosya kazanır.
 
-**Son güncelleme:** 2026-08-27
+**Son güncelleme:** 2026-09-10
 
 ---
 
