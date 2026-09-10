@@ -1,3 +1,4 @@
+import { isGunu } from "@/lib/tarih";
 import { randomInt } from "node:crypto";
 import { imzala, imzaGecerliMi } from "@/lib/crypto";
 import { withBypass, type Db } from "@/db/context";
@@ -86,13 +87,26 @@ type OdulSatiri = { id: string; title: string; cost_kurus: string };
  * liste ile ekrana giden liste ayrışabilirdi.
  */
 async function odulleriOku(db: Db, cafeId: string, ustSinirKurus: number): Promise<Dilim[]> {
+  /**
+   * ⚠️ Ü103: günlük adedi dolan ödül çarkın **dilimlerinden de** çıkıyor.
+   *
+   * Yalnızca oyun tarafında süzseydik çarkta görünen ama asla çıkmayan bir
+   * dilim kalırdı — oyuncu onu görüp beklerdi ve çark yalan söylemiş
+   * olurdu. Dilim listesi ile çekiliş listesi aynı olmak zorunda.
+   */
   const satirlar = await db.all<OdulSatiri>(
-    `SELECT id, title, cost_kurus
-       FROM rewards
-      WHERE cafe_id = $1 AND kind = 'instant' AND active
-        AND cost_kurus <= $2
-      ORDER BY cost_kurus, id`,
-    [cafeId, ustSinirKurus],
+    `SELECT r.id, r.title, r.cost_kurus
+       FROM rewards r
+      WHERE r.cafe_id = $1 AND r.kind = 'instant' AND r.active
+        AND r.cost_kurus <= $2
+        AND (r.daily_limit IS NULL
+             OR (SELECT count(*) FROM coupons c
+                  WHERE c.reward_id = r.id
+                    AND c.status <> 'undone'
+                    AND c.issued_at >= ($3::date::timestamp AT TIME ZONE 'Europe/Istanbul')
+                ) < r.daily_limit)
+      ORDER BY r.cost_kurus, r.id`,
+    [cafeId, ustSinirKurus, isGunu()],
   );
 
   return satirlar.map((r) => ({

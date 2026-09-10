@@ -12,6 +12,7 @@ import {
 } from "@/components/isletme";
 import { OdulEkleme, DurumDugmesi, EsikAyari, CarkSiniri } from "./kontroller";
 import { AdDuzeltme } from "../ad-duzeltme";
+import { SinirKutusu } from "./sinir-kutusu";
 import { adEylemi } from "./actions";
 import { OdulSekmeleri } from "../odul-sekmeleri";
 import { SayiKarti, IKON } from "@/components/gosterge";
@@ -240,6 +241,16 @@ function OdulKarti({ odul }: { odul: katalog.Odul }) {
           geçmişini kaybetmek ("ize amreicano", Ü75). */}
       <span className="flex shrink-0 flex-col items-end gap-1.5">
         <DurumDugmesi odulId={odul.id} aktif={odul.aktif} />
+        <SinirKutusu
+          odulId={odul.id}
+          gunlukLimit={odul.gunlukLimit}
+          bugunVerilen={odul.bugunVerilen}
+          gunler={odul.pencere.gunler}
+          baslangicSaati={odul.pencere.baslangicSaati}
+          bitisSaati={odul.pencere.bitisSaati}
+          pencereMetni={odul.pencereMetni}
+          acikKupon={odul.acikKupon}
+        />
         <AdDuzeltme
           eylem={adEylemi}
           kimlikAlani="odulId"

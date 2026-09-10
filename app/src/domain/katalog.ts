@@ -1,3 +1,4 @@
+import * as pencere from "./kullanim-penceresi";
 import { withCafe } from "@/db/context";
 import { audit } from "@/lib/audit";
 import { newId } from "@/lib/ids";
@@ -49,6 +50,13 @@ export type Odul = {
   aktif: boolean;
   /** Ü94: adı değiştirmenin kaç dolaşımdaki kuponu etkileyeceği. */
   acikKupon: number;
+  /** Ü103: günde en fazla kaç kupon verilebilir. null = sınırsız. */
+  gunlukLimit: number | null;
+  /** Ü103: bugün bu ödülden kaç kupon verildi — limitin canlı sayacı. */
+  bugunVerilen: number;
+  /** Ü103: kullanım penceresi cümlesi — kısıt yoksa null. */
+  pencereMetni: string | null;
+  pencere: pencere.Pencere;
 };
 
 export type OdulSonucu = { ok: true; id: string } | { ok: false; hata: string };
@@ -119,12 +127,22 @@ export async function listele(cafeId: string): Promise<Odul[]> {
       urun_adi: string | null;
       active: boolean;
       acik_kupon: string;
+      daily_limit: number | null;
+      bugun_verilen: string;
+      usable_days: number[] | null;
+      usable_from_hour: number | null;
+      usable_to_hour: number | null;
     }>(
       `SELECT r.id, r.reward_type, r.title, r.description, r.cost_kurus, r.percent,
               r.points_price, r.kind, r.min_proof_level, r.product_id,
               p.name AS urun_adi, r.active,
               (SELECT count(*) FROM coupons c
-                WHERE c.reward_id = r.id AND c.status IN ('pending','active')) AS acik_kupon
+                WHERE c.reward_id = r.id AND c.status IN ('pending','active')) AS acik_kupon,
+              r.daily_limit, r.usable_days, r.usable_from_hour, r.usable_to_hour,
+              (SELECT count(*) FROM coupons c
+                WHERE c.reward_id = r.id AND c.status <> 'undone'
+                  AND c.issued_at >= ((now() AT TIME ZONE 'Europe/Istanbul')::date::timestamp
+                                       AT TIME ZONE 'Europe/Istanbul')) AS bugun_verilen
          FROM rewards r
          LEFT JOIN products p ON p.id = r.product_id
         ORDER BY r.active DESC, r.kind DESC, r.sort_order, r.points_price`,
@@ -145,6 +163,18 @@ export async function listele(cafeId: string): Promise<Odul[]> {
     urunAdi: r.urun_adi,
     aktif: r.active,
     acikKupon: Number(r.acik_kupon),
+    gunlukLimit: r.daily_limit,
+    bugunVerilen: Number(r.bugun_verilen),
+    pencereMetni: pencere.pencereYaz({
+      gunler: r.usable_days,
+      baslangicSaati: r.usable_from_hour,
+      bitisSaati: r.usable_to_hour,
+    }),
+    pencere: {
+      gunler: r.usable_days,
+      baslangicSaati: r.usable_from_hour,
+      bitisSaati: r.usable_to_hour,
+    },
   }));
 }
 
@@ -332,6 +362,92 @@ export async function adDegistir(opts: {
     });
 
     return { ok: true as const, etkilenenKupon: Number(etkilenen?.n ?? 0) };
+  });
+}
+
+export type SinirSonucu = { ok: true } | { ok: false; hata: string };
+
+/**
+ * Günlük adet limiti ve kullanım penceresi (Ü103).
+ *
+ * ── Neden ad düzeltmesinden AYRI ────────────────────────────
+ *
+ * Ü94 ad kutusunu bilerek dar tutmuştu: değer ve tip orada değişmiyor.
+ * Bu ayar da oraya sığmıyor ama sebebi farklı — burada değişen şey ödülün
+ * **ne olduğu** değil, **ne kadar ve ne zaman** dağıtıldığı. İkisi ayrı
+ * karar, ayrı form.
+ *
+ * ⚠️ **Dolaşımdaki kuponları etkilemiyor mu?** Etkiliyor: pencere kupon
+ * satırından değil ödül satırından okunuyor. Kafe pencereyi daraltırsa
+ * elinde kupon olan oyuncu dünkü kuralla değil bugünkü kuralla karşılaşır.
+ * Bu bilerek böyle: kafenin mutfağı akşam 17'de kapanıyorsa, dün verilmiş
+ * kupon o gerçeği değiştirmiyor. Panel kaç kuponun etkileneceğini
+ * **önceden** söylüyor (Ü94'teki aynı kural).
+ */
+export async function siniriDegistir(opts: {
+  cafeId: string;
+  odulId: string;
+  gunlukLimit: number | null;
+  gunler: number[] | null;
+  baslangicSaati: number | null;
+  bitisSaati: number | null;
+  aktorId: string;
+}): Promise<SinirSonucu> {
+  if (opts.gunlukLimit != null && (!Number.isInteger(opts.gunlukLimit) || opts.gunlukLimit < 1)) {
+    return { ok: false, hata: "Günlük adet en az 1 olmalı. Sınırsız için boş bırak." };
+  }
+
+  const saatVar = opts.baslangicSaati != null || opts.bitisSaati != null;
+  if (saatVar && (opts.baslangicSaati == null || opts.bitisSaati == null)) {
+    return { ok: false, hata: "Saat aralığının iki ucu da girilmeli." };
+  }
+  if (saatVar && opts.bitisSaati! <= opts.baslangicSaati!) {
+    // Ü90'daki aynı bilinen sınır: pencere gece yarısını aşamıyor.
+    return { ok: false, hata: "Bitiş saati başlangıçtan sonra olmalı. Pencere gece yarısını aşamıyor." };
+  }
+  if (opts.gunler != null && (opts.gunler.length === 0 || opts.gunler.some((g) => g < 0 || g > 6))) {
+    return { ok: false, hata: "En az bir gün seçilmeli. Hepsi geçerliyse gün seçme." };
+  }
+
+  return withCafe(opts.cafeId, async (db) => {
+    const etkilenen = await db.one<{ n: string }>(
+      `SELECT count(*) AS n FROM coupons
+        WHERE reward_id = $1 AND status IN ('pending','active')`,
+      [opts.odulId],
+    );
+
+    const r = await db.query(
+      `UPDATE rewards
+          SET daily_limit = $2, usable_days = $3,
+              usable_from_hour = $4, usable_to_hour = $5
+        WHERE id = $1`,
+      [
+        opts.odulId,
+        opts.gunlukLimit,
+        opts.gunler != null && opts.gunler.length === 7 ? null : opts.gunler,
+        opts.baslangicSaati,
+        opts.bitisSaati,
+      ],
+    );
+    if (!r.rowCount) return { ok: false as const, hata: "Ödül bulunamadı." };
+
+    await audit(db, {
+      actorType: "staff",
+      actorId: opts.aktorId,
+      cafeId: opts.cafeId,
+      action: "reward.update",
+      targetType: "reward",
+      targetId: opts.odulId,
+      detail: {
+        gunlukLimit: opts.gunlukLimit,
+        gunler: opts.gunler,
+        baslangicSaati: opts.baslangicSaati,
+        bitisSaati: opts.bitisSaati,
+        etkilenenAcikKupon: Number(etkilenen?.n ?? 0),
+      },
+    });
+
+    return { ok: true as const };
   });
 }
 

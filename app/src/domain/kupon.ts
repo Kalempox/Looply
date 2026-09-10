@@ -7,6 +7,7 @@ import * as butce from "./butce";
 import * as acil from "./acil";
 import * as happy from "./happy";
 import * as ayar from "./ayar";
+import * as pencere from "./kullanim-penceresi";
 import * as cark from "./cark";
 import * as kampanya from "./kampanya";
 import * as motor from "./odul-motoru";
@@ -393,12 +394,32 @@ export async function anlikOdulVer(
     if (pencereden) return null;
   }
 
+  /**
+   * Adaylar — günlük adedi dolan ödül **listeye hiç girmiyor** (Ü103).
+   *
+   * ⚠️ Süzgeç seçimden ÖNCE. Motor limiti dolmuş bir ödülü seçip sonra
+   * reddedilseydi, tur boşa gider ve düşme oranı sessizce azalırdı:
+   * oyuncu "şansım tuttu ama ödül gelmedi" derdi, kafe de neden daha az
+   * ödül çıktığını anlayamazdı. Aynı gerekçe Happy Hour havuzunda da
+   * geçerli ve süzgeç bir satır aşağıda aynı yerde duruyor.
+   *
+   * ⚠️ **Verilen kupon sayılıyor, kullanılan değil.** Kafenin taahhüdü
+   * kuponu verdiği anda doğuyor (Ü7). Kullanılanı saysaydık kafe günde 50
+   * kupon dağıtır, hepsi ertesi gün kullanılır ve "günde 5" sözü hiçbir
+   * şeyi sınırlamamış olurdu.
+   */
   const adaylar = await db.all<OdulSatiri>(
-    `SELECT id, title, cost_kurus, min_proof_level, reward_type, percent
-       FROM rewards
-      WHERE cafe_id = $1 AND kind = 'instant' AND active
-      ORDER BY sort_order, id`,
-    [opts.cafeId],
+    `SELECT r.id, r.title, r.cost_kurus, r.min_proof_level, r.reward_type, r.percent
+       FROM rewards r
+      WHERE r.cafe_id = $1 AND r.kind = 'instant' AND r.active
+        AND (r.daily_limit IS NULL
+             OR (SELECT count(*) FROM coupons c
+                  WHERE c.reward_id = r.id
+                    AND c.status <> 'undone'
+                    AND c.issued_at >= ($2::date::timestamp AT TIME ZONE 'Europe/Istanbul')
+                ) < r.daily_limit)
+      ORDER BY r.sort_order, r.id`,
+    [opts.cafeId, isGunu()],
   );
   if (adaylar.length === 0) return null;
 
@@ -669,6 +690,24 @@ export async function upsellKuponuVer(
  * sorusunun cevabı, kodun içinde bulunmalı.
  */
 
+/**
+ * Ödül satırından kullanım penceresi (Ü103).
+ *
+ * Kampanya ve upsell kuponlarında `reward_id` boş; onların penceresi yok
+ * ve `null` alanlar serbest pencere demek.
+ */
+function kuponPenceresi(r: {
+  usable_days: number[] | null;
+  usable_from_hour: number | null;
+  usable_to_hour: number | null;
+}): pencere.Pencere {
+  return {
+    gunler: r.usable_days,
+    baslangicSaati: r.usable_from_hour,
+    bitisSaati: r.usable_to_hour,
+  };
+}
+
 /* ── Kasiyer tarafı ────────────────────────────────────────── */
 
 export type KasaGorunumu =
@@ -710,10 +749,14 @@ export async function coz(cafeId: string, girdi: string): Promise<KasaGorunumu> 
       title: string | null;
       reward_type: string | null;
       percent: number | null;
+      usable_days: number[] | null;
+      usable_from_hour: number | null;
+      usable_to_hour: number | null;
       alias: string | null;
     }>(
       `SELECT c.id, c.status, c.activates_at, c.expires_at, c.reserved_kurus,
               r.title, r.reward_type, r.percent,
+              r.usable_days, r.usable_from_hour, r.usable_to_hour,
               (SELECT code FROM player_aliases a
                 WHERE a.cafe_id = c.cafe_id AND a.player_id = c.player_id) AS alias
          FROM coupons c
@@ -743,6 +786,16 @@ export async function coz(cafeId: string, girdi: string): Promise<KasaGorunumu> 
       // kalınca bile kendiliğinden açılıyor.
       gecerli = false;
       sebep = `Bu kupon ${r.activates_at.toLocaleString("tr-TR", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })} itibarıyla açılıyor.`;
+    } else if (!pencere.icindeMi(kuponPenceresi(r))) {
+      /**
+       * Ü103: kullanım penceresi.
+       *
+       * ⚠️ Kasiyere **ne zaman geçerli olduğu** söyleniyor, yalnızca
+       * "geçersiz" değil. Kasiyer müşteriye bir cevap vermek zorunda;
+       * elinde cevap yoksa "sistem kabul etmiyor" der ve suç ürüne kalır.
+       */
+      gecerli = false;
+      sebep = pencere.retCumlesi(kuponPenceresi(r));
     }
 
     const tutar = Number(r.reserved_kurus);
@@ -796,8 +849,12 @@ export async function onayla(opts: {
       budget_period_id: string | null;
       player_id: string;
       reward_type: string | null;
+      usable_days: number[] | null;
+      usable_from_hour: number | null;
+      usable_to_hour: number | null;
     }>(
-      `SELECT c.reserved_kurus, c.budget_period_id, c.player_id, r.reward_type
+      `SELECT c.reserved_kurus, c.budget_period_id, c.player_id, r.reward_type,
+              r.usable_days, r.usable_from_hour, r.usable_to_hour
          FROM coupons c LEFT JOIN rewards r ON r.id = c.reward_id
         WHERE c.id = $1
           AND c.status IN ('active', 'pending')
@@ -809,6 +866,29 @@ export async function onayla(opts: {
 
     if (!kupon) {
       return { ok: false as const, hata: "Bu kupon kullanılamaz." };
+    }
+
+    /**
+     * ⚠️ Ü103: kullanım penceresi burada da sınanıyor, yalnızca `coz`'de
+     * değil.
+     *
+     * `coz` **ekranı** hazırlıyor; onay **kaydı** yazıyor. Kontrol sadece
+     * ekranda olsaydı, arayüzü atlayıp doğrudan onay isteği gönderen biri
+     * pencerenin dışında kuponu bozdurabilirdi. Görünen kural ile
+     * uygulanan kural aynı olmak zorunda.
+     *
+     * Ret deftere geçiyor: kafe "neden kullanılamadı" sorusunu
+     * sorabilmeli.
+     */
+    if (!pencere.icindeMi(kuponPenceresi(kupon))) {
+      await olayYaz(db, {
+        kuponId: opts.kuponId,
+        cafeId: opts.cafeId,
+        olay: "rejected",
+        not: "kullanım penceresi dışında",
+        staffId: opts.staffId,
+      });
+      return { ok: false as const, hata: pencere.retCumlesi(kuponPenceresi(kupon)) };
     }
 
     const tavan = Number(kupon.reserved_kurus);

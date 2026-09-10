@@ -1,3 +1,4 @@
+import * as pencere from "./kullanim-penceresi";
 import { withBypass } from "@/db/context";
 import type { KategoriTuru } from "./kategori-tur";
 
@@ -56,6 +57,15 @@ export type EnvanterKuponu = {
   /** A5: büyük ödül yarından itibaren geçerli. */
   aktiflesme: Date;
   sonKullanim: Date;
+  /**
+   * Ü103: kullanım penceresi cümlesi — kısıt yoksa `null`.
+   *
+   * ⚠️ E9 TL'yi saklıyor, Ü97 açılma saatini saklıyor; **bu saklanmıyor.**
+   * İkisi de oyuncunun elindeki şeyi kullanabilmesini engellemiyor,
+   * kullanım penceresi ise engelliyor: bilinmezse oyuncu kasaya gidiyor,
+   * reddediliyor ve suçu kafeye yüklüyor.
+   */
+  pencereMetni: string | null;
 };
 
 /** Ü98: bir kuponun "yeni açıldı" sayılacağı pencere. */
@@ -95,6 +105,9 @@ type Satir = {
   urun_adi: string | null;
   kategori_turu: string | null;
   acilma_ani: Date | null;
+  usable_days: number[] | null;
+  usable_from_hour: number | null;
+  usable_to_hour: number | null;
 };
 
 /**
@@ -194,6 +207,11 @@ export async function envanter(playerId: string): Promise<Envanter> {
       durum,
       aktiflesme: r.activates_at,
       sonKullanim: r.expires_at,
+      pencereMetni: pencere.pencereYaz({
+        gunler: r.usable_days,
+        baslangicSaati: r.usable_from_hour,
+        bitisSaati: r.usable_to_hour,
+      }),
     };
 
     if (durum === "kullanilabilir") {
@@ -230,6 +248,8 @@ export type KuponDetayi = {
   kod: string;
   aktiflesme: Date;
   sonKullanim: Date;
+  /** Ü103: kullanım penceresi cümlesi — kısıt yoksa `null`. */
+  pencereMetni: string | null;
 };
 
 /**
@@ -250,7 +270,8 @@ export async function kuponDetayi(playerId: string, kuponId: string): Promise<Ku
               r.reward_type AS odul_tipi,
               pc.percent AS kampanya_yuzde,
               p.name     AS urun_adi,
-              COALESCE(rk.kind, pk.kind) AS kategori_turu
+              COALESCE(rk.kind, pk.kind) AS kategori_turu,
+              r.usable_days, r.usable_from_hour, r.usable_to_hour
          FROM coupons k
          JOIN cafes c ON c.id = k.cafe_id
          LEFT JOIN rewards r ON r.id = k.reward_id
@@ -279,5 +300,10 @@ export async function kuponDetayi(playerId: string, kuponId: string): Promise<Ku
     kod: r.code,
     aktiflesme: r.activates_at,
     sonKullanim: r.expires_at,
+    pencereMetni: pencere.pencereYaz({
+      gunler: r.usable_days,
+      baslangicSaati: r.usable_from_hour,
+      bitisSaati: r.usable_to_hour,
+    }),
   };
 }

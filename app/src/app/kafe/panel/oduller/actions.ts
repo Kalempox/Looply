@@ -145,3 +145,35 @@ export async function carkSiniriEylemi(
   revalidatePath("/kafe/panel/oduller");
   return { bilgi: `Çarkta en fazla ${tl.toLocaleString("tr-TR")} TL değerinde ödül çıkacak.` };
 }
+
+/**
+ * Günlük adet limiti ve kullanım penceresi (Ü103).
+ *
+ * ⚠️ Boş alan **sınırsız** demek, sıfır değil. Sıfır kabul etseydik
+ * "günde 0 kupon" diye bir ödül kurulabilir, ödül sessizce ölürdü ve kafe
+ * neden hiç çıkmadığını aramakla uğraşırdı.
+ */
+export async function sinirEylemi(onceki: OdulDurumu, form: FormData): Promise<OdulDurumu> {
+  const o = await kafeYoneticisiGerekli();
+
+  const ham = (alan: string) => String(form.get(alan) ?? "").replace(/[^\d]/g, "");
+  const sayiVeyaBos = (alan: string) => (ham(alan) ? Number(ham(alan)) : null);
+
+  // Seçilmemiş gün kutusu = o gün kapalı. Hiç kutu yoksa kısıt yok.
+  const gunler = form.getAll("gun").map((g) => Number(String(g)));
+
+  const sonuc = await katalog.siniriDegistir({
+    cafeId: o.cafeId,
+    odulId: String(form.get("odulId") ?? ""),
+    gunlukLimit: sayiVeyaBos("gunlukLimit"),
+    gunler: gunler.length > 0 && gunler.length < 7 ? gunler : null,
+    baslangicSaati: sayiVeyaBos("baslangicSaati"),
+    bitisSaati: sayiVeyaBos("bitisSaati"),
+    aktorId: o.ozneId,
+  });
+
+  if (!sonuc.ok) return { hata: sonuc.hata, sira: onceki.sira };
+
+  revalidatePath("/kafe/panel/oduller");
+  return { sira: (onceki.sira ?? 0) + 1, bilgi: "Sınırlar kaydedildi." };
+}

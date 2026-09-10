@@ -90,6 +90,18 @@ export default async function KuponSayfasi({
         </div>
       )}
 
+      {/* ⚠️ Ü103: kullanım penceresi kasada gösterilecek karekodun HEMEN
+          altında. E9 TL'yi, Ü97 açılma saatini saklıyor; bu saklanmıyor —
+          ikisi de oyuncunun elindeki şeyi kullanabilmesini engellemiyor,
+          bu engelliyor. Bilinmezse oyuncu kasaya gidiyor, reddediliyor ve
+          suçu kafeye yüklüyor. */}
+      {kupon.pencereMetni && (
+        <div className="mt-4 rounded-xl border border-odul bg-odul-zemin px-4 py-3">
+          <div className="etiket-caps text-odul-koyu">Ne zaman kullanılır</div>
+          <div className="mt-1 text-[14px] leading-relaxed">{kupon.pencereMetni}</div>
+        </div>
+      )}
+
       {/* Geri dönüş üstteki şeritte (Ü66): "Ödüllerime dön" bağlantısı
           sayfanın en altındaydı ve karekodun altında kalıyordu — kasada
           telefonu uzatan oyuncunun kaydırması gereken son şey. */}

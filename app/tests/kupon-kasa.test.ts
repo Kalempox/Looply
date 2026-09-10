@@ -1478,3 +1478,143 @@ describe("açılma anı oyuncuya gösteriliyor (Ü98)", () => {
     assert.ok(!e.yeniAcilan.some((k) => k.id === s.kuponId), "ertelenmeyen kupon kutlandı");
   });
 });
+
+/* ═══════════════════════════════════════════════════════════
+   Günlük adet limiti ve kullanım penceresi (Ü103)
+   ═══════════════════════════════════════════════════════════ */
+
+describe("ödül sınırları (Ü103)", () => {
+  after(async () => {
+    await yoneticiSorgu(
+      `UPDATE rewards SET daily_limit = NULL, usable_days = NULL,
+              usable_from_hour = NULL, usable_to_hour = NULL
+        WHERE cafe_id = $1`,
+      [kafeA],
+    );
+  });
+
+  test("🔴 günlük adedi dolan ödül ADAY LİSTESİNE hiç girmiyor", async () => {
+    /**
+     * ⚠️ Süzgeç seçimden ÖNCE olmak zorunda. Motor limiti dolmuş bir ödülü
+     * seçip sonra reddedilseydi tur boşa gider ve düşme oranı sessizce
+     * azalırdı: oyuncu "şansım tuttu ama ödül gelmedi" derdi.
+     *
+     * Sınama: katalogdaki TEK ödül bırakılıp limiti 1 yapılıyor, bir kupon
+     * veriliyor ve ikinci denemede hiç aday kalmadığı için `null` dönüyor.
+     */
+    await yoneticiSorgu(`UPDATE rewards SET active = false WHERE cafe_id = $1`, [kafeA]);
+    await yoneticiSorgu(
+      `UPDATE rewards SET active = true, daily_limit = 1 WHERE id = $1`,
+      [katalogOdulId],
+    );
+
+    try {
+      const ilk = await kuponAl(katalogOdulId);
+      assert.ok(ilk.ok);
+
+      const ikinci = await withBypass("test: limit sonrası", (db) =>
+        kupon.anlikOdulVer(db, {
+          playerId: oyuncuId,
+          cafeId: kafeA,
+          kanitSeviyesi: 3,
+          skor: 5000,
+          oyunId: "blok",
+          an: KAFE_ACIK,
+        }),
+      );
+      assert.equal(ikinci, null, "günlük adedi dolan ödül yine verildi");
+    } finally {
+      await yoneticiSorgu(`UPDATE rewards SET active = true, daily_limit = NULL WHERE cafe_id = $1`, [kafeA]);
+    }
+  });
+
+  test("🔴 pencere dışındaki kupon kasada ONAYLANMIYOR", async () => {
+    /**
+     * ⚠️ Kontrol yalnızca `coz`'de (ekran) olsaydı, arayüzü atlayıp
+     * doğrudan onay isteği gönderen biri pencerenin dışında kuponu
+     * bozdurabilirdi. Görünen kural ile uygulanan kural aynı olmalı.
+     */
+    const s = await kuponAl(katalogOdulId);
+    assert.ok(s.ok);
+
+    // Bu ödülü "yalnızca pazar 03:00–04:00" yap: şu an neredeyse kesin dışarıda.
+    await yoneticiSorgu(
+      `UPDATE rewards SET usable_days = ARRAY[0], usable_from_hour = 3, usable_to_hour = 4
+        WHERE id = $1`,
+      [katalogOdulId],
+    );
+
+    try {
+      const onay = await kupon.onayla({
+        cafeId: kafeA,
+        kuponId: s.kuponId,
+        staffId: kasiyerA,
+      });
+      assert.equal(onay.ok, false, "pencere dışında onaylandı");
+      if (!onay.ok) {
+        assert.ok(/kullanılamıyor/i.test(onay.hata), `ret cümlesi beklenmedik: ${onay.hata}`);
+      }
+
+      // Ret deftere geçmeli: kafe "neden kullanılamadı" sorabilmeli.
+      const iz = await withCafe(kafeA, (db) =>
+        db.all(`SELECT 1 FROM coupon_events WHERE coupon_id = $1 AND event = 'rejected'`, [
+          s.kuponId,
+        ]),
+      );
+      assert.ok(iz.length > 0, "ret defterine yazılmadı");
+    } finally {
+      await yoneticiSorgu(
+        `UPDATE rewards SET usable_days = NULL, usable_from_hour = NULL, usable_to_hour = NULL
+          WHERE id = $1`,
+        [katalogOdulId],
+      );
+    }
+  });
+
+  test("pencere içindeki kupon normal onaylanıyor", async () => {
+    const s = await kuponAl(katalogOdulId);
+    assert.ok(s.ok);
+
+    // Her gün, 00–24: kısıt var ama her zaman geçerli.
+    await yoneticiSorgu(
+      `UPDATE rewards SET usable_from_hour = 0, usable_to_hour = 24 WHERE id = $1`,
+      [katalogOdulId],
+    );
+
+    try {
+      const onay = await kupon.onayla({ cafeId: kafeA, kuponId: s.kuponId, staffId: kasiyerA });
+      assert.equal(onay.ok, true, onay.ok === false ? onay.hata : "");
+    } finally {
+      await yoneticiSorgu(
+        `UPDATE rewards SET usable_from_hour = NULL, usable_to_hour = NULL WHERE id = $1`,
+        [katalogOdulId],
+      );
+    }
+  });
+
+  test("pencere oyuncunun kupon ekranında YAZIYOR", async () => {
+    // ⚠️ Gizli kural, tutulmamış söz demektir: oyuncu kasaya gidiyor,
+    // reddediliyor ve suçu kafeye yüklüyor.
+    const s = await kuponAl(katalogOdulId);
+    assert.ok(s.ok);
+
+    await yoneticiSorgu(
+      `UPDATE rewards SET usable_days = ARRAY[1,2,3,4,5], usable_from_hour = 14, usable_to_hour = 17
+        WHERE id = $1`,
+      [katalogOdulId],
+    );
+
+    try {
+      const detay = await kuponDetayi(oyuncuId, s.kuponId);
+      assert.ok(detay?.pencereMetni, "kullanım penceresi oyuncuya gösterilmiyor");
+      assert.ok(/hafta içi/i.test(detay.pencereMetni), detay.pencereMetni);
+      assert.ok(/14:00/.test(detay.pencereMetni), detay.pencereMetni);
+    } finally {
+      await yoneticiSorgu(
+        `UPDATE rewards SET usable_days = NULL, usable_from_hour = NULL, usable_to_hour = NULL
+          WHERE id = $1`,
+        [katalogOdulId],
+      );
+    }
+  });
+});

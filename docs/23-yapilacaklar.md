@@ -6,7 +6,7 @@
 > Yan dosyalar: neyin **var** olduğu → `21-looply-kapsam-haritasi.md` ·
 > demoda neyin **yapılabildiği** → `22-demo-yapilabilirlik.md`
 
-**Son güncelleme:** 2026-09-10 · **Kararlar:** Ü76 – Ü102
+**Son güncelleme:** 2026-09-10 · **Kararlar:** Ü76 – Ü103
 
 ---
 
@@ -160,7 +160,17 @@ Ayrı ayrı yazılırsa üçüncüsü ilk ikisini bozar.
   dönmeye zamanı olmadı, onu paydaya koymak oranı haksız düşürürdü.
   ⚠️ Kupon karşılaştırması **gözlem, kanıt değil** ve ekranda öyle yazıyor.
   ⚠️ Küçük kohortta oran da gizleniyor (Ü30).
-- [ ] **12 · Ödül başına günlük adet limiti + kupon kullanım günü ve saati**
+- [x] **12 · Ödül başına günlük adet limiti + kupon kullanım günü ve saati**
+  ✅ **BİTTİ** — Ü103, 2026-09-10
+  Panelde her ödülün yanında "sınırlar" kutusu: günde en fazla kaç adet ·
+  hangi günler · hangi saatler. Özet satırda görünüyor
+  ("günde 5 · hafta içi 14:00–17:00 arası · bugün 0").
+  ⚠️ Limit **seçimden önce** süzülüyor — sonra reddedilseydi düşme oranı
+  sessizce azalırdı. Çarkın dilimlerinden de çıkıyor.
+  ⚠️ Verilen kupon sayılıyor, kullanılan değil (Ü7).
+  ⚠️ Kullanım penceresi **oyuncuya gösteriliyor** ve hem `coz` hem
+  `onayla` içinde sınanıyor.
+  ⚠️ Pencere gece yarısını aşamıyor — 6c ile aynı bilinen sınır.
 - [ ] **13 · Kasa, menü ve fiş karekodları + kafe oyun yönetimi**
 
 ---
