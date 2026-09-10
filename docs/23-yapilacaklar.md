@@ -6,7 +6,7 @@
 > Yan dosyalar: neyin **var** olduğu → `21-looply-kapsam-haritasi.md` ·
 > demoda neyin **yapılabildiği** → `22-demo-yapilabilirlik.md`
 
-**Son güncelleme:** 2026-09-02 · **Kararlar:** Ü76 – Ü102
+**Son güncelleme:** 2026-09-10 · **Kararlar:** Ü76 – Ü102
 
 ---
 
