@@ -255,9 +255,15 @@ ChatGPT analiz bağlantısı.
 - [x] **30 · Son 7 gün / Bu ay tabloları** ✅ **BİTTİ** — Ü99
   Yedi satır: oynayan · sayılan ziyaret · oyun · verilen kupon ·
   kullanılan kupon · indirim · yeni müşteri · tekrar gelen.
-- [ ] **31 · Panel kabuğu**
-  Kafe seçici (bir sahip, çok şube) · bildirim çanı · gün gezinme
-  (‹ dün › bugün) · "bugünkü durum" ve "önerimiz" kartları.
+- [x] **31 · Panel kabuğu** ✅ **BİTTİ** — Ü101, 2026-09-10
+  Şube seçici · gün gezinme (‹ dün ›) · uyarı çanı · durum/öneri kartları.
+  🔴 Yol boyunca bir hata bulundu: `yoneticiBul` `db.one` kullanıyordu,
+  iki şubeli sahip **rastgele** bir şubeye düşerdi. Şema da global tekildi;
+  tekillik `(cafe_id, phone_index)`'e taşındı (göç 0026).
+  ⚠️ Başvurudaki telefon bloğu **kaldırılmadı** — çok şube kontrollü
+  yoldan (personel listesine ekleme) açılıyor, self-servis başvurudan değil.
+  ⚠️ Uyarılar saklanmıyor, türetiliyor; öneriler sayıya dayanmadan
+  yazılmıyor.
 - [ ] **32 · Manuel indirim girişi?** ⚠️ *karar gerekiyor*
   ChatGPT analizi POS yerine işletmecinin tutarı manuel girmesini öneriyor.
   **Bizde gerek yok**: ödül değeri katalogda tanımlı ve kupon onaylanınca
