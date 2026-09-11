@@ -3,8 +3,8 @@ import { redirect } from "next/navigation";
 import * as oturum from "@/domain/session";
 import * as masaOturumu from "@/domain/masa";
 import * as liderlik from "@/domain/liderlik";
-import { gununOyunu } from "@/oyunlar";
-import { isGunu, gunYaz } from "@/lib/tarih";
+import * as oyunSecimi from "@/domain/oyun-secimi";
+import { gunYaz } from "@/lib/tarih";
 import {
   OyuncuSayfa,
   SayfaBasi,
@@ -78,7 +78,9 @@ export default async function LiderlikSayfasi() {
     );
   }
 
-  const oyun = gununOyunu(isGunu());
+  // Ü109: liste kafenin bugünkü oyununa ait. Kapalı bir oyunun
+  // sıralamasını göstermek, kimsenin giremeyeceği bir liste demek.
+  const oyun = await oyunSecimi.gununOyunuKafede(masa.cafeId);
   const renk = oyunRengi(oyun.id);
   const s = liderlik.sezon();
   const [bugun, buHafta, tum, sampiyon] = await Promise.all([

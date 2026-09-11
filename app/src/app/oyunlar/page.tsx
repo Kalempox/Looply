@@ -2,9 +2,9 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import * as oturum from "@/domain/session";
 import * as masaOturumu from "@/domain/masa";
+import * as oyunSecimi from "@/domain/oyun-secimi";
 import { K2 } from "@/domain/masa";
-import { OYUNLAR, gununOyunu, type HerhangiOyun } from "@/oyunlar";
-import { isGunu } from "@/lib/tarih";
+import { type HerhangiOyun } from "@/oyunlar";
 import {
   OyuncuSayfa,
   SayfaBasi,
@@ -71,12 +71,14 @@ export default async function OyunlarSayfasi() {
 
   const masa = await masaOturumu.aktif(o.ozneId);
   const kazandirir = !!masa && (masa.kanitMaskesi & K2) !== 0;
-  const bugun = gununOyunu(isGunu());
+  // Ü109: katalog kafenin açık oyunlarını gösteriyor.
+  const acik = await oyunSecimi.acikOyunlar(masa?.cafeId ?? null);
+  const bugun = await oyunSecimi.gununOyunuKafede(masa?.cafeId ?? null);
 
   // Kategoriye girmemiş oyun ekrandan düşmemeli: yeni bir oyun
   // eklendiğinde katalog listesi güncellenmezse oyun kaybolurdu.
   const yerlesik = new Set(KATEGORILER.flatMap((k) => k.oyunlar));
-  const digerleri = OYUNLAR.filter((oy) => !yerlesik.has(oy.id));
+  const digerleri = acik.filter((oy) => !yerlesik.has(oy.id));
 
   return (
     <OyuncuSayfa aktif="/oyna" geri={{ href: "/oyna", etiket: "Ana ekran" }}>
@@ -89,8 +91,11 @@ export default async function OyunlarSayfasi() {
       </SayfaBasi>
 
       {KATEGORILER.map((kat) => {
+        // Ü109: `OYUNLAR` değil `acik` — kafenin kapattığı oyun kategoride
+        // de görünmemeli. Kategoriden düşen tek oyun kategoriyi boşaltıyor
+        // ve boş kategori hiç çizilmiyor.
         const liste = kat.oyunlar
-          .map((id) => OYUNLAR.find((oy) => oy.id === id))
+          .map((id) => acik.find((oy) => oy.id === id))
           .filter((oy): oy is HerhangiOyun => !!oy);
         if (liste.length === 0) return null;
 

@@ -39,7 +39,8 @@ const GUNLUK = [
 /** Yalnızca kenar çubuğunda — kurulum sırasında bir kez kullanılıyor. */
 const KURULUM = [
   { yol: "/kafe/panel/urunler", ad: "Ürünler", ikon: UrunIkonu },
-  { yol: "/kafe/panel/masalar", ad: "Masalar", ikon: MasaIkonu },
+  { yol: "/kafe/panel/masalar", ad: "Karekodlar", ikon: MasaIkonu },
+  { yol: "/kafe/panel/oyunlar", ad: "Oyunlar", ikon: OyunIkonu },
   { yol: "/kafe/panel/personel", ad: "Personel", ikon: PersonelIkonu },
   { yol: "/kafe/panel/happy-hour", ad: "Happy Hour", ikon: SaatIkonu },
   { yol: "/kafe/panel/konum", ad: "Konum", ikon: KonumIkonu },
@@ -224,6 +225,16 @@ function MasaIkonu() {
       <rect x="14" y="3" width="7" height="7" rx="1.5" />
       <rect x="3" y="14" width="7" height="7" rx="1.5" />
       <path d="M14 14h3v3h-3zM18 18h3v3h-3z" />
+    </svg>
+  );
+}
+
+/** Ü109: oyun yönetimi — kumanda kolu. */
+function OyunIkonu() {
+  return (
+    <svg {...ORTAK}>
+      <rect x="2" y="7" width="20" height="11" rx="4" />
+      <path d="M7 11v3M5.5 12.5h3M15.5 11.5h.01M18 13.5h.01" />
     </svg>
   );
 }

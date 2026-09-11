@@ -51,9 +51,26 @@ after(async () => {
 });
 
 describe("kafe bağlamı", () => {
-  test("kendi masalarını görür", async () => {
-    const satirlar = await withCafe(kafeA, (db) => db.all("SELECT id FROM cafe_tables"));
-    assert.equal(satirlar.length, 9, "8 masa + kasa beklenir");
+  /**
+   * ⚠️ Sabit sayı değil, **gerçek sayıyla** karşılaştırılıyor.
+   *
+   * Burada önce `assert.equal(satirlar.length, 9)` yazıyordu ve sayı
+   * tohumun o günkü hâlini çiviliyordu: Ü108'de tohuma menü ve fiş
+   * karekodu eklenince test, güvenlikte hiçbir şey bozulmadığı hâlde
+   * kırmızıya döndü. Sayının kendisi zaten bir şey kanıtlamıyor —
+   * kanıtlayan şey, kafenin gördüğü satır sayısının **ona ait olan**
+   * satır sayısına eşit olması: ne eksik, ne fazla.
+   */
+  test("kendi masalarını görür — hepsini ve yalnızca onları", async () => {
+    const gorulen = await withCafe(kafeA, (db) => db.all("SELECT id FROM cafe_tables"));
+    const gercek = await withBypass("test: kafe a masaları", (db) =>
+      db.one<{ n: string }>(`SELECT count(*)::text AS n FROM cafe_tables WHERE cafe_id = $1`, [
+        kafeA,
+      ]),
+    );
+
+    assert.ok(gorulen.length > 0, "test kurulumu: kafenin hiç masası yok");
+    assert.equal(gorulen.length, Number(gercek?.n), "kafe kendi satırlarının hepsini görmüyor");
   });
 
   test("WHERE yazılmasa bile başka kafenin masalarını GÖRMEZ", async () => {

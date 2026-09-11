@@ -2,10 +2,17 @@
 
 import { useActionState, useTransition } from "react";
 import { masaEkle, masaDurumu, type MasaDurumu } from "./actions";
+import { TURLER, TUR_ADI } from "@/domain/karekod-turu";
 import { IsletmeDugme, IsletmeAlan, isletmeGirdi, IsletmeUyari } from "@/components/isletme";
 
 const BOS: MasaDurumu = {};
 
+/**
+ * Yeni karekod (Ü108).
+ *
+ * Tür seçimi burada, ayrı bir "kasa karekodu ekle" düğmesi yerine: dördü
+ * de aynı şeyi üretiyor ve ayrı düğmeler dört ayrı akış öğretirdi.
+ */
 export function MasaEkleme() {
   const [durum, action, bekliyor] = useActionState(masaEkle, BOS);
 
@@ -14,12 +21,24 @@ export function MasaEkleme() {
       {durum.hata && <IsletmeUyari>{durum.hata}</IsletmeUyari>}
       {durum.bilgi && <IsletmeUyari tur="bilgi">{durum.bilgi}</IsletmeUyari>}
 
-      <div className="grid gap-4 sm:grid-cols-[1fr_160px] sm:items-end">
-        <IsletmeAlan etiket="Masa adı" ipucu="Müşterinin masada göreceği ad — örn. Masa 7, Bahçe 2">
+      <div className="grid gap-4 sm:grid-cols-[140px_1fr_160px] sm:items-end">
+        <IsletmeAlan etiket="Nereye">
+          <select name="tur" className={isletmeGirdi} defaultValue="masa">
+            {TURLER.map((t) => (
+              <option key={t} value={t}>
+                {TUR_ADI[t].tekil}
+              </option>
+            ))}
+          </select>
+        </IsletmeAlan>
+        <IsletmeAlan
+          etiket="Ad"
+          ipucu="Müşterinin göreceği ad — örn. Masa 7, Bahçe 2, Kasa"
+        >
           <input name="ad" className={isletmeGirdi} placeholder="Masa 7" maxLength={40} />
         </IsletmeAlan>
         <IsletmeDugme type="submit" disabled={bekliyor}>
-          {bekliyor ? "Ekleniyor…" : "Masa ekle"}
+          {bekliyor ? "Ekleniyor…" : "Karekod ekle"}
         </IsletmeDugme>
       </div>
     </form>

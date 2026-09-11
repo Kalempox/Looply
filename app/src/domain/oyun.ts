@@ -3,7 +3,7 @@ import { newId } from "@/lib/ids";
 import { randomToken, identifierHash } from "@/lib/crypto";
 import { isGunu } from "@/lib/tarih";
 import { log } from "@/lib/log";
-import { oyunBul, gununOyunu, tekrarOyna, EN_FAZLA_GIRDI, saatTutarliMi } from "@/oyunlar";
+import { oyunBul, tekrarOyna, EN_FAZLA_GIRDI, saatTutarliMi } from "@/oyunlar";
 import * as masaOturumu from "./masa";
 import * as upsell from "./upsell";
 import { K2 } from "./masa";
@@ -12,6 +12,7 @@ import * as davet from "./davet";
 import * as taht from "./taht";
 import * as seri from "./seri";
 import * as challenge from "./challenge";
+import * as oyunSecimi from "./oyun-secimi";
 import {
   yazIle as puanYaz,
   OYUN_PUANI,
@@ -461,7 +462,15 @@ export async function basla(opts: {
 
   const masa = await masaOturumu.aktif(opts.playerId);
   const kazandirir = !!masa && (masa.kanitMaskesi & K2) !== 0;
-  const bonusMu = gununOyunu(isGunu()).id === oyun.id;
+
+  // ⚠️ Ü109: kafe bu oyunu kapattıysa oturum HİÇ açılmıyor. Süzgeç
+  // yalnızca katalogda olsaydı adres çubuğuna `/oyna/kelime` yazan
+  // oyuncu kapalı oyunu oynar ve kapatma bir dilek olarak kalırdı.
+  if (!(await oyunSecimi.acikMi(masa?.cafeId ?? null, oyun.id))) {
+    return { ok: false, hata: "Bu kafede bu oyun kapalı. Diğer oyunlardan birini seçebilirsin." };
+  }
+
+  const bonusMu = (await oyunSecimi.gununOyunuKafede(masa?.cafeId ?? null)).id === oyun.id;
 
   const oturumId = newId("oyn");
   const tohum = randomToken(16);
@@ -708,7 +717,9 @@ export async function bitir(opts: {
       ],
     );
 
-    const bonusMu = gununOyunu(isGunu()).id === oyun.id;
+    // Ü109: bonuslu oyun kafeye göre. Aynı işlemin içinden okunuyor ki
+    // az önce yazılmış bir ayar değişikliği de görülsün.
+    const bonusMu = (await oyunSecimi.gununOyunuIle(db, oturum.cafe_id)).id === oyun.id;
 
     const kazanim = await kazanimIsle(db, {
       playerId: opts.playerId,
@@ -876,7 +887,9 @@ export async function misafirOyunuYaz(opts: {
     }
 
     const kazandirir = (masa.kanitMaskesi & K2) !== 0;
-    const bonusMu = gununOyunu(isGunu()).id === oyun.id;
+    // Ü109: misafir yolu da kafenin açık listesinden geçiyor — Ü35,
+    // "iki yol aynı kuraldan geçmeli".
+    const bonusMu = (await oyunSecimi.gununOyunuIle(db, opts.cafeId)).id === oyun.id;
 
     const nitelikli = await nitelikliMi(db, {
       playerId: opts.playerId,

@@ -1,7 +1,8 @@
 import { type Db } from "@/db/context";
 import { isGunu } from "@/lib/tarih";
-import { gununOyunu, OYUNLAR } from "@/oyunlar";
+import { gununOyunu, OYUNLAR, type HerhangiOyun } from "@/oyunlar";
 import { K2 } from "./masa";
+import { kapaliIdlerIle, suz } from "./oyun-secimi";
 
 /**
  * Günün görevi — Ü106.
@@ -95,9 +96,22 @@ function gunSayaci(gunIso: string): number {
   return Math.floor(Date.parse(`${gunIso}T00:00:00Z`) / 86_400_000);
 }
 
-export function gununGorevi(gunIso: string = isGunu()): Challenge {
+/**
+ * Günün görevi.
+ *
+ * ⚠️ `havuz` (Ü109): kafe oyun kapatabiliyor ve `skor` görevi **günün
+ * oyununa** bağlı. Havuz verilmezse kafenin kapattığı oyun görev olarak
+ * çıkabilir — *"Yılan'da 1.200 skor"* diyen ama Yılan'ı oynatmayan bir
+ * kafe, tamamlanması imkânsız bir görev göstermiş olur.
+ */
+export function gununGorevi(
+  gunIso: string = isGunu(),
+  havuz?: readonly HerhangiOyun[],
+): Challenge {
   const t = HAVUZ[gunSayaci(gunIso) % HAVUZ.length];
-  const oyun = gununOyunu(gunIso);
+  // Rotasyon hesabı `gununOyunu`nun içinde, tek yerde: burada tekrarlansaydı
+  // biri değiştiğinde görev ile bonuslu oyun sessizce ayrışırdı.
+  const oyun = gununOyunu(gunIso, havuz);
 
   switch (t.tur) {
     case "skor":
@@ -151,7 +165,9 @@ export async function ilerleme(
   opts: { playerId: string; cafeId: string; gun?: string },
 ): Promise<Ilerleme> {
   const gun = opts.gun ?? isGunu();
-  const gorev = gununGorevi(gun);
+  // Ü109: görev kafenin AÇIK oyunları üzerinden kuruluyor. Aynı işlemin
+  // içinden okunuyor — panelden az önce kapatılmış bir oyun da görülsün.
+  const gorev = gununGorevi(gun, suz(await kapaliIdlerIle(db, opts.cafeId)));
 
   // Üç görev türü de aynı satır kümesine bakıyor; yalnızca ölçtükleri şey
   // farklı. Tek sorgu, üç sayı: türe göre ayrı sorgu yazmak aynı süzgeci

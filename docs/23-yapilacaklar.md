@@ -6,7 +6,7 @@
 > Yan dosyalar: neyin **var** olduğu → `21-looply-kapsam-haritasi.md` ·
 > demoda neyin **yapılabildiği** → `22-demo-yapilabilirlik.md`
 
-**Son güncelleme:** 2026-09-11 · **Kararlar:** Ü76 – Ü106
+**Son güncelleme:** 2026-09-11 · **Kararlar:** Ü76 – Ü109
 
 ---
 
@@ -193,7 +193,31 @@ Ayrı ayrı yazılırsa üçüncüsü ilk ikisini bozar.
   ⚠️ Kullanım penceresi **oyuncuya gösteriliyor** ve hem `coz` hem
   `onayla` içinde sınanıyor.
   ⚠️ Pencere gece yarısını aşamıyor — 6c ile aynı bilinen sınır.
-- [ ] **13 · Kasa, menü ve fiş karekodları + kafe oyun yönetimi**
+- [x] **13 · Kasa, menü ve fiş karekodları + kafe oyun yönetimi** ✅ **BİTTİ**
+  — Ü108 / Ü109, 2026-09-11
+  **Karekodlar:** masa · kasa · menü · fiş. Panel türe göre gruplanıyor,
+  yazdırma kartı türü ve nereye asılacağını taşıyor. Tohumda dördü de var.
+  ⚠️ **Fiş karekodu bir SATIN ALMA KANITI DEĞİL.** E6'nın K4 kademesi
+  (×2 çarpan, 51 TL+ ödül) bu değil — sabit bir koda K4 vermek, çarpanı
+  kodu fotoğraflayan herkese açmak olurdu. K4 hâlâ hiçbir yerden
+  verilmiyor ve ödül aralığı 25–50 TL olduğu için (Ü52) zararsız.
+  Panel bunu açıkça yazıyor, bir test de koruyor.
+  ⚠️ Ayrı tablo değil, `cafe_tables`a tür kolonu — dördü aynı işi yapıyor.
+  **Oyun yönetimi:** kafe hangi oyunun açık olacağını seçiyor.
+  ⚠️ Asıl iş **günün oyunu**: rotasyon artık kafenin açık listesi
+  üzerinde dönüyor. Yoksa kapalı oyun "bugünün oyunu" çıkar, bonus ölür,
+  liderlik boşalır ve günün görevi imkânsız olurdu.
+  ⚠️ Süzgeç beş yerde: katalog · ana ekran · liderlik · oyun sayfası ·
+  **misafir karekod ekranı** (bu sonuncusu tarayıcıda yakalandı).
+  ⚠️ Kapı `basla`da, `bitir`de değil — süren tur bitirilip ödeniyor.
+  ⚠️ Son açık oyun kapatılamıyor; üstüne bir savunma katmanı var.
+- [x] **13b · 🔴 `happy_hour_plans`a RLS** ✅ **BİTTİ** — Ü107, 2026-09-11
+  *(13'ü yazarken bulundu — Ü104'te açtığım göçte unutulmuştu)*
+  Şemadaki cafe_id taşıyan tek RLS'siz tabloydu. Okuma **ve yazma**
+  sızıntısı vardı: bir kafenin program kurması bütün kafelerin aynı gün
+  programını kapatıyordu. Sızıntı önce testle gösterildi, sonra kapatıldı.
+  ⚠️ Asıl düzeltme sınıfın kendisi: cafe_id taşıyan **her** tabloda
+  RLS'yi sınayan test — yeni tabloları kendiliğinden kapsıyor.
 - [x] **12b · Happy Hour: haftalık program + kendi bütçesi** ✅ **BİTTİ**
   — Ü104, 2026-09-10 *(ürün sahibinin yeni isteği, listede yoktu)*
   Panelde **haftalık program**: her güne ayrı başlangıç saati, süre ve

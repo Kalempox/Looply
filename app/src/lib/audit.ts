@@ -40,6 +40,11 @@ export type Islem =
   | "table.create"
   | "table.enable"
   | "table.disable"
+  // Ü109: kafenin oyun tercihi. Para başlığı altında çünkü kapalı oyun
+  // dağıtımı değiştiriyor — "bu hafta neden daha az kupon çıktı"
+  // sorusunun cevabı burada olabilir.
+  | "game.enable"
+  | "game.disable"
   // Mahremiyet
   | "pii.view"
   | "report.view"

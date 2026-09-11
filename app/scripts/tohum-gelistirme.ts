@@ -65,13 +65,20 @@ async function kafeKur(t: KafeTohum, playerId: string) {
     [cafeId, t.slug, t.name, t.city, t.lat, t.lng],
   );
 
-  // 8 masa + kasa
-  const labels = [...Array.from({ length: 8 }, (_, i) => `Masa ${i + 1}`), "Kasa"];
-  for (const [i, label] of labels.entries()) {
+  // Ü108: 8 masa + kasa, menü ve fiş karekodu. Dördü de aynı şekilde
+  // çalışıyor; tohumda dördü birden var ki panel gruplarının hepsi
+  // demoda görünsün. "Kasa" satırı zaten vardı, artık türü de doğru.
+  const noktalar: { ad: string; tur: string }[] = [
+    ...Array.from({ length: 8 }, (_, i) => ({ ad: `Masa ${i + 1}`, tur: "masa" })),
+    { ad: "Kasa", tur: "kasa" },
+    { ad: "Menü", tur: "menu" },
+    { ad: "Fiş", tur: "fis" },
+  ];
+  for (const [i, n] of noktalar.entries()) {
     await db.query(
-      `INSERT INTO cafe_tables (id, cafe_id, label, sort_order, qr_secret)
-       VALUES ($1,$2,$3,$4,$5)`,
-      [newId("tbl"), cafeId, label, i, randomBytes(16)],
+      `INSERT INTO cafe_tables (id, cafe_id, label, sort_order, qr_secret, kind)
+       VALUES ($1,$2,$3,$4,$5,$6)`,
+      [newId("tbl"), cafeId, n.ad, i, randomBytes(16), n.tur],
     );
   }
 

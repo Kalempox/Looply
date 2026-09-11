@@ -5,14 +5,13 @@ import * as masaOturumu from "@/domain/masa";
 import { idIleBul, gorunum } from "@/domain/player";
 import { ozet } from "@/domain/puan";
 import { kafeSeviyesi, type KafeSeviyesi } from "@/domain/xp";
-import { OYUNLAR, gununOyunu } from "@/oyunlar";
 import * as liderlik from "@/domain/liderlik";
 import * as cark from "@/domain/cark";
 import * as seri from "@/domain/seri";
 import * as challenge from "@/domain/challenge";
+import * as oyunSecimi from "@/domain/oyun-secimi";
 import { withBypass } from "@/db/context";
 import * as happy from "@/domain/happy";
-import { isGunu } from "@/lib/tarih";
 import {
   KoyuKart,
   CamKutu,
@@ -59,7 +58,13 @@ export default async function OynaSayfasi() {
   const sayilar = await ozet(o.ozneId, masa?.cafeId);
   // Ü15: seviye kafe bazında — kafe dışında gösterilecek bir seviye yok.
   const seviyeBilgisi = masa ? await kafeSeviyesi(o.ozneId, masa.cafeId) : null;
-  const bonus = gununOyunu(isGunu());
+  // Ü109: bonuslu oyun kafenin AÇIK listesinden. Kafe o günün oyununu
+  // kapattıysa platform takvimine uymak, oynanamayan bir oyunu
+  // "bugünün oyunu" diye göstermek olurdu.
+  const bonus = await oyunSecimi.gununOyunuKafede(masa?.cafeId ?? null);
+  // Katalog kartındaki sayı da kafeye göre: "4 oyun" yazıp katalogda üç
+  // oyun göstermek, kapatılan oyunu aramaya yollar.
+  const acikSayisi = (await oyunSecimi.acikOyunlar(masa?.cafeId ?? null)).length;
 
   // Ö3: açık Happy Hour penceresi — yalnızca kafedeyken anlamlı.
   const pencere = masa ? await happy.acikPencere(masa.cafeId) : null;
@@ -212,7 +217,7 @@ export default async function OynaSayfasi() {
             yol="/oyunlar"
             ust="Katalog"
             baslik="Tüm oyunlar"
-            alt={`${OYUNLAR.length} oyun · kategorilere ayrılmış`}
+            alt={`${acikSayisi} oyun · kategorilere ayrılmış`}
             renk="gok"
             gorsel="kumanda"
           />

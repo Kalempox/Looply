@@ -36,10 +36,29 @@ export function oyunBul(id: string): HerhangiOyun | undefined {
  * S15 hâlâ açık: bunu platform mu kafe mi seçmeli, günlük mü haftalık mı
  * değişmeli? Şimdilik platform seçiyor ve her gün değişiyor; tarihten
  * türediği için sunucu ve istemci aynı cevabı veriyor.
+ *
+ * ── `havuz` neden var (Ü109) ────────────────────────────────
+ *
+ * Kafe artık oyun kapatabiliyor. Havuz verilmezse rotasyon bütün kayıt
+ * defteri üzerinde döner ve **kafenin kapattığı oyun günün oyunu
+ * çıkabilir**: bonuslu oyun oynanamaz, liderlik kimsenin oynayamadığı
+ * bir oyunu listeler, günün görevi imkânsız olur.
+ *
+ * Kafe bağlamı olan her çağrı `domain/oyun-secimi.gununOyunuKafede`
+ * kullanıyor; bu imza kafe bilinmeyen yerler (kafe dışı oyuncu, testler)
+ * için duruyor.
+ *
+ * ⚠️ Boş havuz kayıt defterine düşüyor: "oyun yok" diye bir cevap
+ * üretmek, çağıran her yeri bir daha düşünmeye zorlar ve hiçbirinde
+ * doğru cevabı yoktur.
  */
-export function gununOyunu(gunIso: string): HerhangiOyun {
+export function gununOyunu(
+  gunIso: string,
+  havuz: readonly HerhangiOyun[] = OYUNLAR,
+): HerhangiOyun {
+  const liste = havuz.length > 0 ? havuz : OYUNLAR;
   const gun = Math.floor(Date.parse(`${gunIso}T00:00:00Z`) / 86_400_000);
-  return OYUNLAR[gun % OYUNLAR.length];
+  return liste[gun % liste.length];
 }
 
 export type { HerhangiOyun } from "./sozlesme";

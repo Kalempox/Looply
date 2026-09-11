@@ -7,7 +7,7 @@ import * as oturum from "@/domain/session";
 import * as misafir from "@/domain/misafir";
 import * as cark from "@/domain/cark";
 import { kodEkrandaGosterilir } from "@/sms";
-import { OYUNLAR } from "@/oyunlar";
+import * as oyunSecimi from "@/domain/oyun-secimi";
 import { withBypass } from "@/db/context";
 import { Sayfa, Baslik, MasaKunyesi } from "@/components/ui";
 import { MisafirKabugu } from "./misafir-kabuk";
@@ -88,6 +88,11 @@ export default async function HemenSayfasi({
   const carkTalebi = cark.talepCoz(c.get(cark.TALEP_COOKIE)?.value);
   const carkDurumu = await cark.misafirDurumu(masaBilet.cafeId);
 
+  // ⚠️ Ü109: misafir akışı da kafenin açık listesinden geçiyor. Yalnızca
+  // girişli ekranları süzseydik karekodu okutan misafir kapalı bir oyunu
+  // seçer, `basla` onu reddeder ve ilk deneyimi bir hata ekranı olurdu.
+  const acikOyunlar = await oyunSecimi.acikOyunlar(masaBilet.cafeId);
+
   return (
     <Sayfa>
       <MasaKunyesi kafe={masa.cafe_adi} masa={masa.masa_adi} />
@@ -113,7 +118,7 @@ export default async function HemenSayfasi({
       )}
 
       <MisafirKabugu
-        oyunlar={OYUNLAR.map((o) => ({
+        oyunlar={acikOyunlar.map((o) => ({
           id: o.id,
           ad: o.ad,
           ozet: o.ozet,

@@ -1,10 +1,10 @@
 import { notFound, redirect } from "next/navigation";
 import * as oturum from "@/domain/session";
 import * as masaOturumu from "@/domain/masa";
+import * as oyunSecimi from "@/domain/oyun-secimi";
 import { K2 } from "@/domain/masa";
-import { oyunBul, gununOyunu } from "@/oyunlar";
+import { oyunBul } from "@/oyunlar";
 import { kodEkrandaGosterilir } from "@/sms";
-import { isGunu } from "@/lib/tarih";
 import { KUPON_ESIGI } from "@/domain/puan";
 import { OyuncuSayfa } from "@/components/oyuncu";
 import { OyunKabugu } from "./oyun-kabuk";
@@ -40,7 +40,7 @@ export default async function OyunSayfasi({
 
   const masa = await masaOturumu.aktif(o.ozneId);
   const kazandirir = !!masa && (masa.kanitMaskesi & K2) !== 0;
-  const bonusMu = gununOyunu(isGunu()).id === oyun.id;
+  const bonusMu = (await oyunSecimi.gununOyunuKafede(masa?.cafeId ?? null)).id === oyun.id;
 
   /*
     Geri düğmesi katalogda (Ü67).

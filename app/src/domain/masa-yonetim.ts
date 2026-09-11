@@ -3,6 +3,11 @@ import { withCafe } from "@/db/context";
 import { newId } from "@/lib/ids";
 import { audit } from "@/lib/audit";
 import { basiliKod } from "./qr";
+// Ü108: tür tanımı saf bir modülde — panelin istemci bileşeni de onu
+// import ediyor ve bu dosya `pg`ye dokunuyor.
+import { TURLER, TUR_ADI, turMu, type Tur } from "./karekod-turu";
+
+export { TURLER, TUR_ADI, turMu, type Tur };
 
 /**
  * Masa ve karekod yönetimi — D11.
@@ -35,6 +40,7 @@ export type MasaSatiri = {
   kod: string;
   aktif: boolean;
   sira: number;
+  tur: Tur;
 };
 
 export type MasaSonucu = { ok: true; id: string } | { ok: false; hata: string };
@@ -42,8 +48,15 @@ export type MasaSonucu = { ok: true; id: string } | { ok: false; hata: string };
 /** Kafenin masaları — kapalılar dahil, sıralı. */
 export async function listele(cafeId: string): Promise<MasaSatiri[]> {
   const satirlar = await withCafe(cafeId, (db) =>
-    db.all<{ id: string; label: string; qr_secret: Buffer; active: boolean; sort_order: number }>(
-      `SELECT id, label, qr_secret, active, sort_order
+    db.all<{
+      id: string;
+      label: string;
+      qr_secret: Buffer;
+      active: boolean;
+      sort_order: number;
+      kind: string;
+    }>(
+      `SELECT id, label, qr_secret, active, sort_order, kind
          FROM cafe_tables ORDER BY sort_order, label`,
     ),
   );
@@ -54,6 +67,9 @@ export async function listele(cafeId: string): Promise<MasaSatiri[]> {
     kod: basiliKod(r.qr_secret),
     aktif: r.active,
     sira: r.sort_order,
+    // Bozuk değer masa sayılıyor: tür yüzünden karekod listesi
+    // çökmemeli, en kötü ihtimalle yanlış grupta görünür.
+    tur: turMu(r.kind) ? r.kind : "masa",
   }));
 }
 
@@ -67,16 +83,19 @@ export async function listele(cafeId: string): Promise<MasaSatiri[]> {
 export async function ekle(opts: {
   cafeId: string;
   ad: string;
+  tur?: Tur;
   aktorId: string;
 }): Promise<MasaSonucu> {
   const ad = opts.ad.trim();
+  const tur: Tur = opts.tur ?? "masa";
 
-  if (ad.length < 1) return { ok: false, hata: "Masaya bir ad ver." };
-  if (ad.length > 40) return { ok: false, hata: "Masa adı en fazla 40 karakter olabilir." };
+  if (ad.length < 1) return { ok: false, hata: "Karekoda bir ad ver." };
+  if (ad.length > 40) return { ok: false, hata: "Ad en fazla 40 karakter olabilir." };
+  if (!turMu(tur)) return { ok: false, hata: "Geçersiz karekod türü." };
 
   return withCafe(opts.cafeId, async (db) => {
     const cakisma = await db.one(`SELECT 1 FROM cafe_tables WHERE label = $1`, [ad]);
-    if (cakisma) return { ok: false as const, hata: "Bu adda bir masa zaten var." };
+    if (cakisma) return { ok: false as const, hata: "Bu adda bir karekod zaten var." };
 
     const sira = await db.one<{ n: number }>(
       `SELECT COALESCE(max(sort_order), -1) + 1 AS n FROM cafe_tables`,
@@ -84,9 +103,9 @@ export async function ekle(opts: {
 
     const id = newId("tbl");
     await db.query(
-      `INSERT INTO cafe_tables (id, cafe_id, label, sort_order, qr_secret)
-       VALUES ($1,$2,$3,$4,$5)`,
-      [id, opts.cafeId, ad, sira?.n ?? 0, randomBytes(16)],
+      `INSERT INTO cafe_tables (id, cafe_id, label, sort_order, qr_secret, kind)
+       VALUES ($1,$2,$3,$4,$5,$6)`,
+      [id, opts.cafeId, ad, sira?.n ?? 0, randomBytes(16), tur],
     );
 
     await audit(db, {
@@ -100,7 +119,7 @@ export async function ekle(opts: {
       // sayıyor ve haklı — kural alan adına bakıyor, "bu sefer masanın adı"
       // gibi bir istisna tanımıyor. Kuralı gevşetmek yerine anahtarı
       // netleştiriyoruz; masa etiketi ("Masa 7") kişisel veri değil.
-      detail: { masaEtiketi: ad },
+      detail: { masaEtiketi: ad, tur },
     });
 
     return { ok: true as const, id };
@@ -146,6 +165,8 @@ export async function durumDegistir(opts: {
 
 export type MasaKullanimi = {
   masaAdi: string;
+  /** Ü108: hangi tür karekod — "kasa karekodu hiç okutulmamış" cümlesi için. */
+  tur: Tur;
   /** Son yedi günde bu masada tamamlanan oyun. */
   oyun: number;
   /** Kaç farklı gün kullanıldı — "her gün mü, bir kez mi" sorusu. */
@@ -170,8 +191,8 @@ export type MasaKullanimi = {
  */
 export async function kullanim(cafeId: string, gunSayisi = 7): Promise<MasaKullanimi[]> {
   return withCafe(cafeId, async (db) => {
-    const satirlar = await db.all<{ masa: string; oyun: string; gun: string }>(
-      `SELECT t.label AS masa,
+    const satirlar = await db.all<{ masa: string; kind: string; oyun: string; gun: string }>(
+      `SELECT t.label AS masa, t.kind,
               count(ps.id) AS oyun,
               count(DISTINCT ps.business_date) AS gun
          FROM cafe_tables t
@@ -180,13 +201,14 @@ export async function kullanim(cafeId: string, gunSayisi = 7): Promise<MasaKulla
                AND ps.status = 'completed'
                AND ps.business_date > (CURRENT_DATE - $1::int)
         WHERE t.active
-        GROUP BY t.id, t.label
+        GROUP BY t.id, t.label, t.kind
         ORDER BY count(ps.id) DESC, t.sort_order`,
       [gunSayisi],
     );
 
     return satirlar.map((r) => ({
       masaAdi: r.masa,
+      tur: turMu(r.kind) ? r.kind : "masa",
       oyun: Number(r.oyun),
       gun: Number(r.gun),
     }));
