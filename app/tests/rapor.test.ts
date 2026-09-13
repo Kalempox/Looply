@@ -35,7 +35,7 @@ const bugun = isGunu();
 
 const TABAN = 3_000_000 + randomInt(5_000_000);
 let sayac = 0;
-const yeniTelefon = () => normalizePhone(`0555${String(TABAN + sayac++).slice(-7)}`);
+const yeniTelefon = () => normalizePhone(`0539${String(TABAN + sayac++).slice(-7)}`);
 
 /**
  * Rapor için kontrollü veri üretir.

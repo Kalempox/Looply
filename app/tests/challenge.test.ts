@@ -31,7 +31,7 @@ const bugun = isGunu();
 
 const TABAN = 7_400_000 + randomInt(400_000);
 let sayac = 0;
-const yeniTelefon = () => normalizePhone(`0555${String(TABAN + sayac++).slice(-7)}`);
+const yeniTelefon = () => normalizePhone(`0536${String(TABAN + sayac++).slice(-7)}`);
 
 async function kafeKur(ad: string): Promise<string> {
   const id = newId("cafe");

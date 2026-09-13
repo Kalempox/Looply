@@ -1,101 +1,73 @@
-import { bekleyenleriAc, sureDolanlariSupur } from "./kupon";
-import { gonderilecekleriGonder } from "./hatirlatma";
-import { programlariUygula } from "./happy";
-import { sureDolanlariKapat } from "./davet";
-import { silmeleriUygula } from "./player";
+import { ISLER } from "./isler";
 import { log } from "@/lib/log";
 
 /**
- * Bakım köprüsü — ertelenmiş kuponları açar, süresi dolan kupon ve davetleri
- * kapatır.
+ * Bakım köprüsü — arka plan işlerini çalıştırır.
  *
  * ── Neden burada, neden zamanlanmış iş değil ────────────────
  *
  * `bekleyenleriAc` ve `sureDolanlariSupur` Faz 7'de yazıldı ama **hiçbir
- * yerden çağrılmıyordu.** Sonucu iki gerçek arıza:
- *
- *   · Ertelenmiş kupon (Ü28: eşiğin üstündeki ödül 24 saat sonra açılır) satırda
- *     sonsuza kadar `pending` kalıyordu.
- *   · Süresi dolan kuponun rezervasyonu bütçeye **hiç geri dönmüyordu** —
- *     kafenin dağıtılabilir bütçesi sessizce eriyordu (E11).
+ * yerden çağrılmıyordu.** Sonucu iki gerçek arıza: ertelenmiş kupon sonsuza
+ * kadar `pending` kalıyordu, ve süresi dolan kuponun rezervasyonu bütçeye
+ * **hiç geri dönmüyordu** (E11).
  *
  * Birincisi artık burada değil, okuma tarafında çözülü: kuponun hâline
- * `status` kolonu değil **zaman** karar veriyor (`domain/odul.ts`
- * `durumBelirle`, `domain/kupon.ts` `coz`/`onayla`). Yani bakım gecikse bile
+ * `status` kolonu değil **zaman** karar veriyor. Yani bakım gecikse bile
  * oyuncu kuponunu kullanabiliyor. Bu bilinçli: **para yolundaki doğruluk
  * arka plan işine bağlanmaz.**
  *
- * Geriye ikincisi kalıyor — bütçe muhasebesi ve defterin toparlanması. Onun
- * için gerçek bir zamanlanmış iş gerekiyor ve o **Faz 10'un maddesi**. Burası
- * o iş gelene kadarki köprü: bütçenin okunduğu ve envanterin açıldığı
- * ekranlarda, dakikada en fazla bir kez.
+ * Gerçek zamanlanmış iş **Faz 10'un maddesi**. Burası o iş gelene kadarki
+ * köprü: bütçenin okunduğu ve envanterin açıldığı ekranlarda çalışıyor.
  *
- * ⚠️ Kupon hatırlatmaları da buradan gidiyor ve bunun bir bedeli var:
- * **kimse ekran açmazsa hatırlatma gecikir.** Kuponun kendisi gecikmiyor
- * (yukarıdaki gerekçe), ama SMS bir sonraki ziyarete kadar bekleyebilir.
- * Gerçek zamanlanmış iş geldiğinde ilk taşınacak şey bu.
+ * ⚠️ Köprünün bilinen bedeli: **kimse ekran açmazsa işler gecikir.**
+ * Hatırlatma SMS'i bir sonraki ziyarete kadar bekleyebilir; temizlik ve
+ * silme birkaç saat gecikebilir. Hiçbiri para yolunda değil.
  *
- * ── Hata yutuluyor ─────────────────────────────────────────
+ * ── Ü113: liste artık kayıt defterinden geliyor ─────────────
  *
- * Bakım bir yan iş. Başarısız olursa sayfa yine de açılmalı; ekranın
- * çökmesi, gecikmiş bir bütçe iadesinden çok daha kötü.
+ * İşler tek tek elle çağrılıyordu ve dört kez bir iş yazılıp bağlanmadan
+ * kaldı. Artık `domain/isler.ts` geziliyor; bağlamayı unutmak, işi hiç
+ * yazmamak kadar görünür.
+ *
+ * ── ⚠️ Her işin KENDİ hatası, kendi aralığı ────────────────
+ *
+ * Eskiden bütün işler **tek bir `try` bloğundaydı**: ilk patlayan iş,
+ * sonrakilerin hepsini durduruyordu — Happy Hour programı hata verdiğinde
+ * bütçe iadesi de, hatırlatma da hiç koşmuyordu. Artık her iş kendi
+ * hatasını yutuyor ve sıradaki koşmaya devam ediyor.
+ *
+ * Aralık da iş başına: temizlik işleri saatlik/günlük, kupon işleri
+ * dakikalık. Her dakika `DELETE` taramanın kimseye faydası yok.
  */
 
-/** İki koşu arasındaki en kısa süre. */
-const ARALIK_MS = 60_000;
-
-let sonKosu = 0;
+/** İş adı → son koşu zamanı (ms). */
+const sonKosu = new Map<string, number>();
 
 export async function bakim(): Promise<void> {
   const simdi = Date.now();
-  if (simdi - sonKosu < ARALIK_MS) return;
-  // Beklemeden işaretle: aynı anda gelen ikinci istek tekrar başlatmasın.
-  sonKosu = simdi;
+  const yapilan: Record<string, number> = {};
 
-  try {
-    // Ü104: bugüne düşen Happy Hour programları pencereye çevriliyor.
-    // Kupon açmadan ÖNCE: pencere açılmadan üretilen kupon, o pencerenin
-    // havuzundan sayılmaz ve kafe "programı kurdum ama işlemedi" der.
-    const hhPencere = await programlariUygula();
-    const acilan = await bekleyenleriAc();
-    const dolan = await sureDolanlariSupur();
-    // Kupon açıldıktan SONRA hatırlatma: sıra tersine dönerse aynı koşuda
-    // açılan kupon bir sonraki koşuyu bekler ve mesaj bir dakika gecikir.
-    const hatirlatma = await gonderilecekleriGonder();
-    // Süresi dolan davet, "sürüyor" sayacını sonsuza kadar şişik tutar
-    // (Faz 9). Aynı gerekçe, aynı köprü.
-    const davet = await sureDolanlariKapat();
+  for (const is of ISLER) {
+    const gecen = simdi - (sonKosu.get(is.ad) ?? 0);
+    if (gecen < is.aralikDk * 60_000) continue;
 
-    /**
-     * 🔴 Ü111: hesap silme işi **hiçbir yerden çağrılmıyordu.**
-     *
-     * `silmeleriUygula` Faz 2'de yazıldı ve yazıldığı günden beri ölü
-     * koddu — tıpkı bu köprüyü doğuran `bekleyenleriAc` gibi. Farkı şu:
-     * o bir özellik gecikmesiydi, bu **aydınlatma metninde verilmiş bir
-     * söz**. Metin *"hesabını silmenden 30 gün sonra geri döndürülemez
-     * şekilde silinir"* diyor; iş hiç koşmadığı için silinmiyordu.
-     *
-     * ⚠️ Köprünün bilinen sınırı burada da geçerli: kimse ekran açmazsa
-     * iş gecikir. 30 günlük pencerede birkaç saatlik gecikme önemsiz ve
-     * hiç koşmamaktan kıyaslanamayacak kadar iyi. Gerçek zamanlanmış iş
-     * (Faz 10) geldiğinde hatırlatmalarla birlikte oraya taşınacak.
-     */
-    const silinen = await silmeleriUygula();
-    if (
-      acilan || dolan || davet || hhPencere || silinen ||
-      hatirlatma.acilan || hatirlatma.suresiDolan
-    ) {
-      log.info("bakim", {
-        hhPencere,
-        acilan,
-        dolan,
-        davet,
-        silinen,
-        hatirlatmaAcilan: hatirlatma.acilan,
-        hatirlatmaSonGun: hatirlatma.suresiDolan,
-      });
+    // Beklemeden işaretle: aynı anda gelen ikinci istek tekrar başlatmasın.
+    sonKosu.set(is.ad, simdi);
+
+    try {
+      const adet = await is.calistir();
+      if (adet) yapilan[is.ad] = adet;
+    } catch (hata) {
+      // Bakım bir yan iş. Başarısız olursa sayfa yine de açılmalı; ekranın
+      // çökmesi, gecikmiş bir bütçe iadesinden çok daha kötü.
+      log.warn("bakim isi basarisiz", { is: is.ad, hata: String(hata).slice(0, 200) });
     }
-  } catch (hata) {
-    log.warn("bakim basarisiz", { hata: String(hata) });
   }
+
+  if (Object.keys(yapilan).length) log.info("bakim", yapilan);
+}
+
+/** Test için: son koşu kayıtlarını sıfırlar. */
+export function sifirla(): void {
+  sonKosu.clear();
 }

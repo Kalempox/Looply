@@ -29,7 +29,7 @@ const oyuncular: { id: string; ad: string; soyad: string }[] = [];
 
 const TABAN = 7_000_000 + randomInt(2_000_000);
 let sayac = 0;
-const yeniTelefon = () => normalizePhone(`0555${String(TABAN + sayac++).slice(-7)}`);
+const yeniTelefon = () => normalizePhone(`0534${String(TABAN + sayac++).slice(-7)}`);
 
 const OYUN = "blok";
 

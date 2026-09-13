@@ -40,7 +40,7 @@ let kafeB = "";
  */
 const TABAN = 2_000_000 + randomInt(6_000_000);
 let sayac = 0;
-const yeniTelefon = () => normalizePhone(`0555${String(TABAN + sayac++).slice(-7)}`);
+const yeniTelefon = () => normalizePhone(`0537${String(TABAN + sayac++).slice(-7)}`);
 
 /** Bu koşuda oluşturulanlar — sonunda temizlenir. */
 const olusturulanOyuncular: string[] = [];

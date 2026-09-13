@@ -32,7 +32,7 @@ let masaB = "";
 
 const TABAN = 2_000_000 + randomInt(6_000_000);
 let sayac = 0;
-const yeniTelefon = () => normalizePhone(`0555${String(TABAN + sayac++).slice(-7)}`);
+const yeniTelefon = () => normalizePhone(`0538${String(TABAN + sayac++).slice(-7)}`);
 
 const olusturulanOyuncular: string[] = [];
 
