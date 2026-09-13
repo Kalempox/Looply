@@ -153,8 +153,16 @@ export function CihazKaydiFormu() {
       {durum.hata && <IsletmeUyari>{durum.hata}</IsletmeUyari>}
       {durum.bilgi && <IsletmeUyari tur="bilgi">{durum.bilgi}</IsletmeUyari>}
 
+      {/*
+        ⚠️ Alan adı `etiket` — `etiket-caps` DEĞİL (Ü114).
+        `etiket-caps` bir CSS sınıfı; bir bul-değiştir turunda HTML
+        `name` özniteliğine de bulaşmış ve eylem `form.get("etiket")`
+        okuduğu için cihaz kaydı **hiç çalışmıyordu**. Kasiyer PIN'i
+        yalnızca kayıtlı cihazda geçtiğinden (G11), bu hiçbir kasiyerin
+        giriş yapamaması demekti.
+      */}
       <IsletmeAlan etiket="Cihaz adı" ipucu="Örn. Kasa tableti, Bar telefonu">
-        <input name="etiket-caps" className={isletmeGirdi} required />
+        <input name="etiket" className={isletmeGirdi} required />
       </IsletmeAlan>
 
       <IsletmeDugme type="submit" disabled={bekliyor || !cihazId}>
