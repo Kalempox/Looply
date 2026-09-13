@@ -8,6 +8,7 @@ import { kaydet, silmeleriUygula, silmeTalebiOlustur } from "@/domain/player";
 import * as parola from "@/domain/parola";
 import { normalizePhone } from "@/lib/crypto";
 import { dogumYiliSemasi } from "@/lib/validate";
+import { RIZA_SURUMU, rizaTarihiIso, rizaTarihiYazi } from "@/lib/riza-surumu";
 import { yoneticiSorgu } from "./_yardim";
 
 /**
@@ -251,5 +252,46 @@ describe("18 yaş sınırı", () => {
 
   test("gelecek yıl doğumlu reddediliyor", () => {
     assert.equal(dogumYiliSemasi.safeParse(buYil + 1).success, false);
+  });
+});
+
+/* ── Rıza sürümü (Ü112) ────────────────────────────────────── */
+
+describe("rıza sürümü ile metnin tarihi ayrışamıyor", () => {
+  /**
+   * 🔴 Ü112'nin sebebi: aynı gerçek iki yerde elle yazılıydı ve **ayrıştı.**
+   *
+   * Rıza defterine yazılan sürüm (`RIZA_SURUMU`) ile aydınlatma metninin
+   * ekranda gösterdiği "son güncelleme" tarihi ayrı ayrı duruyordu. Ü111'de
+   * metin üç yerde değişti; ikisi de ağustosta kaldı.
+   *
+   * Sonucu: oyuncu **bugünkü** metni okuyup onaylıyor, defterde
+   * **ağustostaki** sürüm yazıyor. Rıza kaydının tek işi "hangi metne onay
+   * verildi" sorusunu cevaplamak — yanlış sürüm yazan bir kayıt, hiç kayıt
+   * tutmamaktan daha kötü, çünkü doğruymuş gibi duruyor.
+   *
+   * Artık tarih sürümden türüyor; bu testler biçimin bozulmamasını koruyor.
+   */
+  test("🔴 sürüm etiketi tarih taşıyor", () => {
+    assert.match(RIZA_SURUMU, /\d{4}-\d{2}-\d{2}$/, "sürümde tarih yok");
+    assert.match(rizaTarihiIso(), /^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  test("tarih sürümden türüyor — elle yazılmıyor", () => {
+    assert.equal(rizaTarihiIso("v3-2027-01-09"), "2027-01-09");
+    assert.equal(rizaTarihiYazi("v3-2027-01-09"), "9 Ocak 2027");
+  });
+
+  test("🔴 tarihsiz sürüm sessizce geçmiyor, hata fırlatıyor", () => {
+    // Sessizce boş dönseydi ekranda tarihsiz bir metin belirir ve kimse
+    // fark etmezdi. Kırılma, geliştiricinin masasında olmalı.
+    assert.throws(() => rizaTarihiIso("v1-surumsuz"), /tarih taşımıyor/);
+  });
+
+  test("metnin tarihi gelecekte değil", () => {
+    assert.ok(
+      rizaTarihiIso() <= new Date().toISOString().slice(0, 10),
+      `sürüm tarihi gelecekte: ${rizaTarihiIso()}`,
+    );
   });
 });

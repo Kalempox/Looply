@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { RIZA_SURUMU, rizaTarihiYazi } from "@/lib/riza-surumu";
 
 export const metadata = { title: "Aydınlatma metni · Looply" };
 
@@ -27,8 +28,14 @@ export default function AydinlatmaSayfasi() {
           <h1 className="mt-2 font-display text-3xl leading-tight font-bold tracking-[-0.02em]">
             Aydınlatma metni
           </h1>
+          {/*
+            ⚠️ Tarih **elle yazılmıyor**, rıza sürümünden türüyor (Ü112).
+            Önce iki ayrı yerde elle duruyorlardı ve ayrıştılar: metin
+            değişti, ikisi de ağustosta kaldı. Oyuncu bugünkü metni
+            onaylarken deftere ağustostaki sürüm yazılıyordu.
+          */}
           <p className="mt-2 font-data text-[11px] font-medium text-yazi-sonuk tabular">
-            Son güncelleme 27 Ağustos 2026
+            Son güncelleme {rizaTarihiYazi()} · {RIZA_SURUMU}
           </p>
         </header>
 
@@ -108,11 +115,21 @@ export default function AydinlatmaSayfasi() {
             </p>
           </Bolum>
 
+          {/*
+            ⚠️ Veri sorumlusunun **tüzel kişi** bilgileri (tam unvan, vergi
+            no, kayıtlı adres, MERSİS) henüz girilmedi — `docs/24` §9'da
+            `[DOLDUR]` olarak duruyor ve hukuk incelemesinden (S20) önce
+            tamamlanmalı. KVKK, veri sorumlusunun kimliğinin metinde açıkça
+            yazmasını istiyor; "LOOPLY" tek başına yeterli değil.
+          */}
           <Bolum baslik="Bize nasıl ulaşırsınız">
             <p>
-              Veri sorumlusu: Looply. Sorularını ve taleplerini{" "}
-              <span className="font-data text-[14px] text-yazi">kvkk@looply.com</span> adresine
-              iletebilirsin.
+              Veri sorumlusu: <Guclu>LOOPLY</Guclu>. Sorularını, düzeltme
+              taleplerini ve KVKK başvurularını{" "}
+              <span className="font-data text-[14px] text-yazi">
+                kvkk@looplybusiness.com
+              </span>{" "}
+              adresine iletebilirsin. Başvurulara en geç 30 gün içinde dönülür.
             </p>
           </Bolum>
         </article>

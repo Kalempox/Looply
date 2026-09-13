@@ -40,6 +40,30 @@ karşılaştırmak. İki yerde ayrışıyorlardı — ikisi de düzeltildi.
 ⚠️ İkincisi için doğru çözüm uzun vadede metni değil **ürünü** düzeltmek:
 `/verilerim` ekranına ad-soyad düzeltme eklenmeli (`docs/23` → madde 36).
 
+### 🔴 Metin değişti ama SÜRÜMÜ değişmemişti (Ü112)
+
+Yukarıdaki düzeltmeler yapıldığında ortaya üçüncü bir arıza çıktı: aynı
+gerçek **iki yerde elle** yazılıydı ve ayrıştılar.
+
+- Rıza defterine yazılan sürüm: `RIZA_SURUMU` (`domain/player.ts`)
+- Ekranda görünen "son güncelleme" tarihi (`app/aydinlatma/page.tsx`)
+
+Metin üç yerde değişti; ikisi de ağustosta kaldı. Yani oyuncu **bugünkü**
+metni okuyup onaylarken deftere **ağustostaki** sürüm yazılıyordu.
+
+⚠️ Rıza kaydının tek işi *"hangi metne onay verildi"* sorusunu cevaplamak.
+Yanlış sürüm yazan bir kayıt, hiç kayıt tutmamaktan **daha kötü** — çünkü
+doğruymuş gibi duruyor ve bir uyuşmazlıkta ona dayanılır.
+
+Sürüm artık `lib/riza-surumu.ts` içinde tek yerde ve **tarih ondan
+türüyor**: ikisi tanım gereği aynı, ayrışamazlar. Güncel sürüm
+`v0-taslak-2026-09-13`.
+
+⚠️ **Avukata sorulacak:** `v0-taslak-2026-08` sürümüne rıza vermiş
+kullanıcıların rızası yenilenmeli mi? Değişiklikler işlemeyi **genişletmedi**
+— iki yanlış cümle düzeltildi ve veri sorumlusu adlandırıldı — ama kararı
+hukuk vermeli. `[AVUKAT ONAYI]`
+
 ---
 
 ## 1 · Toplanan veri envanteri
@@ -280,14 +304,23 @@ veli onayı rejiminin içine düşer.
 ### Diğer
 
 - ✅ **Hizmet verilen ülke: Türkiye.** GDPR bölümü açılmıyor (aşağıya bkz.).
-- **Veri sorumlusu:** `[DOLDUR: tüzel kişi tam unvanı]`
+- ✅ **Veri sorumlusu: LOOPLY**
+  ⚠️ KVKK, veri sorumlusunun **tüzel kişi** kimliğinin metinde açıkça
+  yazmasını istiyor. "LOOPLY" bir marka adı; tam unvan (A.Ş. / Ltd. Şti. /
+  şahıs şirketi) hukuk incelemesinden önce eklenmeli.
 - **Vergi dairesi ve numarası:** `[DOLDUR]`
 - **Kayıtlı adres:** `[DOLDUR]`
 - **MERSİS numarası:** `[DOLDUR — varsa]`
-- **KVKK başvuru e-postası:** `[DOLDUR — kvkk@looply.com gerçek mi?]`
+- **KVKK başvuru e-postası:** `kvkk@looplybusiness.com`
+  ⚠️ **Kutunun gerçekten açılması ve okunması şart.** Metinde yazan ve
+  30 gün taahhüdü verilen bir adres; kimse bakmıyorsa taahhüt en baştan
+  ihlal ediliyor. `[ONAY: kutu kuruldu mu?]`
 - **KEP adresi:** `[DOLDUR — varsa]`
-- **Alan adı:** `[DOLDUR — looply.com mu, cafeplay.com.tr mi?]`
-  ⚠️ Belgelerde iki ad birden geçiyor; aydınlatma metninde tek ad olmalı.
+- ✅ **Alan adı: `looplybusiness.com`**
+  ⚠️ Belgelerde eskiden `looply.com` ve `cafeplay.com.tr` geçiyordu;
+  ikisi de güncel değil. Aydınlatma metnindeki e-posta bu alan adına
+  taşındı — **sahibi olmadığımız bir alan adındaki e-posta**, hukuki bir
+  metinde durabilecek en kötü şeylerden biri.
 - **VERBİS kaydı:** `[DOLDUR]` — çalışan sayısı ve yıllık ciro eşiklerine
   bağlı; avukat söyleyecek.
 - **DPO / irtibat kişisi:** `[DOLDUR]`

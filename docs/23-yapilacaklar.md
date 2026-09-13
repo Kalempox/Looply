@@ -6,7 +6,7 @@
 > Yan dosyalar: neyin **var** olduğu → `21-looply-kapsam-haritasi.md` ·
 > demoda neyin **yapılabildiği** → `22-demo-yapilabilirlik.md`
 
-**Son güncelleme:** 2026-09-13 · **Kararlar:** Ü76 – Ü111
+**Son güncelleme:** 2026-09-13 · **Kararlar:** Ü76 – Ü112
 
 ---
 
@@ -372,7 +372,7 @@ ChatGPT analiz bağlantısı.
   Kayıt olup kampanya açmayan, QR üretmeyen kafeye hatırlatma.
   Panelde "kafenizi 5 dakikada yayına alın" yönlendirmesi.
 - [ ] **35 · Landing page'ler** *(kod dışı, ayrı proje)*
-  `cafeplay.com.tr/tekrar-musteri` · `/ikinci-siparis` · `/musteri-sadakati`
+  `looplybusiness.com/tekrar-musteri` · `/ikinci-siparis` · `/musteri-sadakati`
   · `/yeni-musteri` · `/kampanya` · `/ek-satis`. Her biri ayrı ölçülür.
 
 ---
@@ -433,10 +433,13 @@ Bunlar yazılım işi değil; bekleme süreleri haftalarla ölçülüyor.
   ✅ **Karar verilenler:** barındırma **Türkiye** (md. 9 hiç devreye
   girmiyor) · kapsam **yalnızca Türkiye** (GDPR bölümü açılmıyor) ·
   yaş sınırı **18+** (zaten vardı, testi yazıldı).
-  ⏳ **Kalan `[DOLDUR]`lar:** tüzel kişi kimliği (unvan, vergi no, adres,
-  MERSİS) · başvuru e-postası ve KEP · alan adı (looply.com mu
-  cafeplay.com.tr mi?) · ihlalde sorumlu kişi · VERBİS · barındırma
-  sağlayıcısı · SMS sağlayıcısı seçimi.
+  ✅ **Girildi:** veri sorumlusu **LOOPLY** · alan adı
+  **looplybusiness.com** · başvuru adresi `kvkk@looplybusiness.com`.
+  ⏳ **Kalan `[DOLDUR]`lar:** tüzel kişi **tam unvanı** (A.Ş./Ltd./şahıs) ·
+  vergi dairesi + no · kayıtlı adres · MERSİS · KEP · ihlalde sorumlu
+  kişi · VERBİS · barındırma sağlayıcısı · SMS sağlayıcısı seçimi.
+  ⚠️ `kvkk@looplybusiness.com` kutusu **gerçekten açılmalı** — metinde
+  30 gün taahhüdü verilen adres, kimse bakmıyorsa taahhüt baştan ihlal.
 - [x] **S21 · Yaş sınırı** ✅ **ZATEN VARDI** — Ü2, testi Ü111'de yazıldı
   İlk bulgum yanlıştı: 18+ sınırı `lib/validate.ts` içinde ve kayıt
   şemasına bağlı. Gerçek eksik **testi olmamasıydı** — testsiz bir

@@ -4,6 +4,7 @@ import { newId, aliasCode } from "@/lib/ids";
 import { audit } from "@/lib/audit";
 import { log } from "@/lib/log";
 import { maskele } from "@/sms";
+import { RIZA_SURUMU } from "@/lib/riza-surumu";
 
 /**
  * Oyuncu hesabı.
@@ -14,7 +15,10 @@ import { maskele } from "@/sms";
  * Kişisel alanlar şifreli, telefon ayrıca kör indeksli (docs/08 §5.2).
  */
 
-export const RIZA_SURUMU = "v0-taslak-2026-08";
+// Ü112: sürüm `lib/riza-surumu.ts`e taşındı — ekrandaki "son güncelleme"
+// tarihi de oradan türüyor ve ikisi artık ayrışamıyor. Buradan yeniden
+// dışa aktarılıyor ki mevcut çağıranlar değişmesin.
+export { RIZA_SURUMU };
 
 export type Oyuncu = {
   id: string;
