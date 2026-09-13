@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { kafeYoneticisiGerekli } from "@/domain/yetki";
 import * as katalog from "@/domain/katalog";
+import * as carkAgirlik from "@/domain/cark-agirlik";
 import * as ayar from "@/domain/ayar";
 
 /**
@@ -176,4 +177,47 @@ export async function sinirEylemi(onceki: OdulDurumu, form: FormData): Promise<O
 
   revalidatePath("/kafe/panel/oduller");
   return { sira: (onceki.sira ?? 0) + 1, bilgi: "Sınırlar kaydedildi." };
+}
+
+/* ── Çark olasılıkları (Ü110) ──────────────────────────────── */
+
+export type AgirlikDurumu = { hata?: string };
+
+/**
+ * Bir ödülün çarkta çıkma ağırlığını yazar.
+ *
+ * `cafeId` **oturumdan** (değişmez kural #3). Ağırlık istemciden geliyor
+ * ve gelmeli — para değeri taşımıyor, yalnızca dağılımı belirliyor ve
+ * aralık dışı değer domain tarafından reddediliyor.
+ */
+export async function agirlikEylemi(
+  _onceki: AgirlikDurumu,
+  form: FormData,
+): Promise<AgirlikDurumu> {
+  const o = await kafeYoneticisiGerekli();
+
+  const ham = String(form.get("agirlik") ?? "").replace(/[^\d]/g, "");
+  if (ham === "") return { hata: "Bir ağırlık yaz — 0 yazarsan bu ödül çarkta çıkmaz." };
+
+  const sonuc = await carkAgirlik.yaz({
+    cafeId: o.cafeId,
+    odulId: String(form.get("odulId") ?? ""),
+    agirlik: Number(ham),
+    aktorId: o.ozneId,
+  });
+
+  if (!sonuc.ok) return { hata: sonuc.hata };
+
+  revalidatePath("/kafe/panel/oduller");
+  return {};
+}
+
+/** Bütün ağırlıkları otomatiğe döndürür. */
+export async function otomatikEylemi(): Promise<AgirlikDurumu> {
+  const o = await kafeYoneticisiGerekli();
+  const sonuc = await carkAgirlik.otomatigeDon({ cafeId: o.cafeId, aktorId: o.ozneId });
+  if (!sonuc.ok) return { hata: sonuc.hata };
+
+  revalidatePath("/kafe/panel/oduller");
+  return {};
 }

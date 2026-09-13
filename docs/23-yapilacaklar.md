@@ -6,7 +6,7 @@
 > Yan dosyalar: neyin **var** olduğu → `21-looply-kapsam-haritasi.md` ·
 > demoda neyin **yapılabildiği** → `22-demo-yapilabilirlik.md`
 
-**Son güncelleme:** 2026-09-11 · **Kararlar:** Ü76 – Ü109
+**Son güncelleme:** 2026-09-13 · **Kararlar:** Ü76 – Ü110
 
 ---
 
@@ -193,6 +193,22 @@ Ayrı ayrı yazılırsa üçüncüsü ilk ikisini bozar.
   ⚠️ Kullanım penceresi **oyuncuya gösteriliyor** ve hem `coz` hem
   `onayla` içinde sınanıyor.
   ⚠️ Pencere gece yarısını aşamıyor — 6c ile aynı bilinen sınır.
+- [x] **13c · Çark olasılıkları kafenin elinde** ✅ **BİTTİ** — Ü110,
+  2026-09-13 *(ürün sahibinin yeni isteği, listede yoktu)*
+  Ödül kataloğunda **Çark olasılıkları** bölümü: her ödülün çıkma
+  ağırlığı ve yanında türetilmiş yüzdesi, toplam ağırlık, "otomatiğe dön".
+  ⚠️ Yüzde değil **ağırlık** giriliyor; yüzde o anki toplamdan türüyor.
+  Sabit yüzde olsaydı her ödül ekleme/çıkarma elle yeniden hesap demekti
+  ve Ü103'le (günlük adedi dolan ödül çarktan düşüyor) çelişirdi.
+  ⚠️ Paneli hiç açmayan kafede **Ü49'un dağılımı aynen** işliyor.
+  İlk ağırlık yazıldığında kalanlar o anki değerlerden sabitleniyor ve
+  bu, kimsenin payını değiştirmiyor.
+  ⚠️ 0 = çarkta çıkmaz. Hepsi sıfır olamaz.
+  ⚠️ Panel yalnızca çarka giren ödülleri gösteriyor; kalanlar sebebiyle
+  ayrı listede (üst sınır · günlük adet · en ucuz sekizin dışında).
+  ⚠️ Panelde yazan yüzde **çekilişle ölçülerek** sınandı (8.000 çevirme).
+  🔵 **S7 bu maddeyle daha da acil** — kafe artık kendi olasılığını
+  yazıyor, mevzuat görüşünün kapsamına açıkça girmeli.
 - [x] **13 · Kasa, menü ve fiş karekodları + kafe oyun yönetimi** ✅ **BİTTİ**
   — Ü108 / Ü109, 2026-09-11
   **Karekodlar:** masa · kasa · menü · fiş. Panel türe göre gruplanıyor,

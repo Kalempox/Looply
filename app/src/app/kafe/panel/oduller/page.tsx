@@ -3,6 +3,7 @@ import { kafeYoneticisiGerekli } from "@/domain/yetki";
 import * as katalog from "@/domain/katalog";
 import * as urun from "@/domain/urun";
 import * as ayar from "@/domain/ayar";
+import * as carkAgirlik from "@/domain/cark-agirlik";
 import {
   IsletmeSayfa,
   IsletmeBaslik,
@@ -13,6 +14,7 @@ import {
 import { OdulEkleme, DurumDugmesi, EsikAyari, CarkSiniri } from "./kontroller";
 import { AdDuzeltme } from "../ad-duzeltme";
 import { SinirKutusu } from "./sinir-kutusu";
+import { CarkAgirlikKutusu } from "./cark-agirlik-kutusu";
 import { adEylemi } from "./actions";
 import { OdulSekmeleri } from "../odul-sekmeleri";
 import { SayiKarti, IKON } from "@/components/gosterge";
@@ -33,11 +35,15 @@ export const metadata = { title: "Ödül kataloğu · Looply" };
  */
 export default async function OdullerSayfasi() {
   const o = await kafeYoneticisiGerekli();
-  const [oduller, urunler, esikKurus, carkSinirKurus] = await Promise.all([
+  const [oduller, urunler, esikKurus, carkSinirKurus, agirlik] = await Promise.all([
     katalog.listele(o.cafeId),
     urun.listele(o.cafeId, false),
     ayar.sayiOku(o.cafeId, ayar.ANAHTARLAR.ertelemeEsigi),
     ayar.sayiOku(o.cafeId, ayar.ANAHTARLAR.carkUstSinir),
+    // Ü110: çarkın olasılık tablosu. Liste çekilişin kullandığı aynı
+    // fonksiyonlardan geliyor — panel kendi listesini kursaydı ekrandaki
+    // yüzdelerle gerçek olasılıklar sessizce ayrışırdı.
+    carkAgirlik.durum(o.cafeId),
   ]);
 
   // Çarkın dönebilmesi için sınırın altında en az bir anlık ödül gerekiyor;
@@ -147,6 +153,31 @@ export default async function OdullerSayfasi() {
             <CarkSiniri
               mevcutTl={Math.round(carkSinirKurus / 100)}
               uygunSayisi={carkaUygun}
+            />
+          </Bolum>
+
+          {/* Ü110: hangi ödül yüzde kaç ihtimalle çıkacak. Üst sınırın
+              hemen altında duruyor çünkü ikisi aynı soruyu bölüşüyor —
+              biri çarka NE girecek, öbürü hangi sıklıkla çıkacak. */}
+          <Bolum
+            baslik="Çark olasılıkları"
+            alt="Ağırlığı sen yazıyorsun, yüzde toplamdan hesaplanıyor."
+          >
+            <CarkAgirlikKutusu
+              satirlar={agirlik.satirlar.map((r) => ({
+                odulId: r.odulId,
+                baslik: r.baslik,
+                agirlik: r.agirlik,
+                etkin: r.etkin,
+                yuzde: r.yuzde,
+              }))}
+              disarida={agirlik.disarida.map((d) => ({
+                odulId: d.odulId,
+                baslik: d.baslik,
+                aciklama: carkAgirlik.sebepMetni(d.sebep, agirlik.ustSinirKurus),
+              }))}
+              toplam={agirlik.toplam}
+              otomatikMi={agirlik.otomatikMi}
             />
           </Bolum>
         </div>

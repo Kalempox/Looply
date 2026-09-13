@@ -67,9 +67,17 @@ export type Dilim = {
   baslik: string;
   /** Ekranda gösterilmiyor; ağırlık hesabı ve bütçe için taşınıyor (E9). */
   kurusDegeri: number;
+  /**
+   * Ü110: kafenin yazdığı çıkma ağırlığı. `null` = kafe belirlemedi.
+   *
+   * ⚠️ **İstemciye geçmiyor.** `/cark` sayfası dilimleri
+   * `{ baslik }`e indirerek gönderiyor; ağırlığın oraya sızması,
+   * ekranda gizlenen olasılıkları (bkz. dosya başı) ifşa ederdi.
+   */
+  agirlik: number | null;
 };
 
-type OdulSatiri = { id: string; title: string; cost_kurus: string };
+type OdulSatiri = { id: string; title: string; cost_kurus: string; wheel_weight: number | null };
 
 /**
  * Çarka girecek ödüller.
@@ -86,7 +94,7 @@ type OdulSatiri = { id: string; title: string; cost_kurus: string };
  * Süzgeç **SQL'de**: JavaScript'te filtrelenseydi ağırlık hesabına giren
  * liste ile ekrana giden liste ayrışabilirdi.
  */
-async function odulleriOku(db: Db, cafeId: string, ustSinirKurus: number): Promise<Dilim[]> {
+export async function odulleriOku(db: Db, cafeId: string, ustSinirKurus: number): Promise<Dilim[]> {
   /**
    * ⚠️ Ü103: günlük adedi dolan ödül çarkın **dilimlerinden de** çıkıyor.
    *
@@ -95,7 +103,7 @@ async function odulleriOku(db: Db, cafeId: string, ustSinirKurus: number): Promi
    * olurdu. Dilim listesi ile çekiliş listesi aynı olmak zorunda.
    */
   const satirlar = await db.all<OdulSatiri>(
-    `SELECT r.id, r.title, r.cost_kurus
+    `SELECT r.id, r.title, r.cost_kurus, r.wheel_weight
        FROM rewards r
       WHERE r.cafe_id = $1 AND r.kind = 'instant' AND r.active
         AND r.cost_kurus <= $2
@@ -113,11 +121,12 @@ async function odulleriOku(db: Db, cafeId: string, ustSinirKurus: number): Promi
     odulId: r.id,
     baslik: r.title,
     kurusDegeri: Number(r.cost_kurus),
+    agirlik: r.wheel_weight,
   }));
 }
 
 /** Kafenin çark tavanı — `withBypass` dışında okunuyor (RLS açık kalsın). */
-async function ustSinir(cafeId: string): Promise<number> {
+export async function ustSinir(cafeId: string): Promise<number> {
   return ayar.sayiOku(cafeId, ayar.ANAHTARLAR.carkUstSinir);
 }
 
@@ -171,7 +180,7 @@ export function dilimleriYay(oduller: Dilim[]): Dilim[] {
  * değerinde ve öngörülebilir bir üreteç, sırayı tahmin etmeye çalışan biri
  * için açık kapı olurdu.
  */
-export function agirlikliSec(oduller: Dilim[]): number {
+export function otomatikAgirliklar(oduller: Dilim[]): number[] {
   // Liste değere göre artan sıralı gelmeli (SQL öyle veriyor); yine de
   // burada sıralıyoruz — çağıranın sırasına güvenmek, ağırlıkların sessizce
   // ters dönmesi demek olurdu.
@@ -180,12 +189,59 @@ export function agirlikliSec(oduller: Dilim[]): number {
     .sort((a, b) => a.kurus - b.kurus || a.i - b.i);
 
   const n = sira.length;
-  const kovalar = new Array<number>(n).fill(0);
+  const ham = new Array<number>(n).fill(0);
   // 2^(n-1-basamak): en ucuz en ağır. Üs 30'da sınırlanıyor — otuzdan
   // fazla ödülü olan bir kafede taşma riskini almaya değmez.
   sira.forEach((o, basamak) => {
-    kovalar[o.i] = 2 ** Math.min(30, n - 1 - basamak);
+    ham[o.i] = 2 ** Math.min(30, n - 1 - basamak);
   });
+
+  /**
+   * Ü110: ham ağırlıklar **yüzde ölçeğine** taşınıyor (toplam ≈ 100).
+   *
+   * Oran birebir korunuyor; değişen tek şey sayının okunabilirliği. Kafe
+   * paneli açıp otomatiği sabitlediğinde "Ağırlık 51 (≈%51)" görüyor —
+   * "Ağırlık 32 (≈%51)" görseydi iki sayının ilişkisini kurmak için
+   * toplamı elle hesaplaması gerekirdi.
+   *
+   * Alt sınır 1: sıfıra yuvarlanan ödül çarktan tamamen düşerdi ve bu,
+   * kafenin vermediği bir karar olurdu (0 kafenin açık tercihi).
+   */
+  const tam = ham.reduce((t, k) => t + k, 0);
+  return ham.map((h) => Math.max(1, Math.round((h / tam) * 100)));
+}
+
+/**
+ * Çekilişte kullanılacak ağırlıklar (Ü110).
+ *
+ * ── Hepsi NULL ise otomatik ─────────────────────────────────
+ *
+ * Paneli hiç açmamış kafede Ü49'un sıraya dayalı dağılımı aynen işliyor.
+ *
+ * ── Biri bile yazılmışsa hepsi elle sayılıyor ───────────────
+ *
+ * Kafe ilk ağırlığı yazdığında panel kalanları otomatik dağılımdan
+ * dolduruyor (`cark-agirlik.ts`), yani burada NULL kalması beklenmiyor.
+ * Yine de savunma var: yarı yolda kalmış bir satır, o ödülün otomatik
+ * payını alıyor — listeden sessizce düşmesi, kafenin görmediği bir
+ * kayıp olurdu.
+ *
+ * ── ⚠️ Hepsi sıfırsa otomatiğe dönülüyor ────────────────────
+ *
+ * "Çarkta hiçbir ödül çıkmasın" geçerli bir yapılandırma değil: çark
+ * dönecek bir şey bulamaz ve oyuncuya boş bir ekran kalır. Panel bunu
+ * zaten reddediyor; burası veri elle bozulursa diye duruyor.
+ */
+export function agirliklar(oduller: Dilim[]): number[] {
+  const otomatik = otomatikAgirliklar(oduller);
+  if (oduller.every((o) => o.agirlik == null)) return otomatik;
+
+  const elle = oduller.map((o, i) => (o.agirlik == null ? otomatik[i] : o.agirlik));
+  return elle.some((a) => a > 0) ? elle : otomatik;
+}
+
+export function agirlikliSec(oduller: Dilim[]): number {
+  const kovalar = agirliklar(oduller);
 
   const tam = kovalar.reduce((t, k) => t + k, 0);
   let atis = randomInt(tam);

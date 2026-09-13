@@ -197,6 +197,19 @@ describe("çark · üst sınır", () => {
 
 describe("çark · ağırlık", () => {
   /**
+   * Ü110: `Dilim` artık `agirlik` de taşıyor. Testler `null` (otomatik)
+   * kurarken her satıra elle yazmak yerine tek yerden geçiyor — alanı
+   * isteğe bağlı yapmak, gerçek bir kod yolunda unutulmasına ve sessizce
+   * otomatiğe düşmesine kapı açardı.
+   */
+  const dilim = (odulId: string, kurus: number, agirlik: number | null = null): cark.Dilim => ({
+    odulId,
+    baslik: String(kurus / 100),
+    kurusDegeri: kurus,
+    agirlik,
+  });
+
+  /**
    * "Çok da yüksek ödüller vermeyen bir çark" tarifi bir sayıya dönüşmeli.
    *
    * Ağırlık sıraya bağlı ve her basamakta yarıya iniyor. Üç ödülde
@@ -204,9 +217,9 @@ describe("çark · ağırlık", () => {
    */
   test("ucuz ödül belirgin biçimde daha sık çıkıyor", () => {
     const oduller: cark.Dilim[] = [
-      { odulId: "ucuz", baslik: "25", kurusDegeri: 25_00 },
-      { odulId: "orta", baslik: "35", kurusDegeri: 35_00 },
-      { odulId: "pahali", baslik: "50", kurusDegeri: 50_00 },
+      dilim("ucuz", 25_00),
+      dilim("orta", 35_00),
+      dilim("pahali", 50_00),
     ];
 
     const sayim = { ucuz: 0, orta: 0, pahali: 0 };
@@ -228,10 +241,7 @@ describe("çark · ağırlık", () => {
    * eski formül tam olarak burada çökmüştü.
    */
   test("ödüller birbirine çok yakınken bile dağılım bozulmuyor", () => {
-    const yakin: cark.Dilim[] = [
-      { odulId: "a", baslik: "45", kurusDegeri: 45_00 },
-      { odulId: "b", baslik: "50", kurusDegeri: 50_00 },
-    ];
+    const yakin: cark.Dilim[] = [dilim("a", 45_00), dilim("b", 50_00)];
 
     let a = 0;
     const N = 4000;
@@ -242,26 +252,19 @@ describe("çark · ağırlık", () => {
   });
 
   test("tek ödüllü kafede çark tek dilim — sekiz kez tekrarlamıyor", () => {
-    const tek: cark.Dilim[] = [{ odulId: "a", baslik: "A", kurusDegeri: 1000 }];
+    const tek: cark.Dilim[] = [dilim("a", 1000)];
     assert.equal(cark.dilimleriYay(tek).length, 1);
   });
 
   test("dört ve üstü ödülde her ödül bir kez görünüyor", () => {
-    const dort: cark.Dilim[] = ["a", "b", "c", "d"].map((x, i) => ({
-      odulId: x,
-      baslik: x,
-      kurusDegeri: (i + 1) * 1000,
-    }));
+    const dort: cark.Dilim[] = ["a", "b", "c", "d"].map((x, i) => dilim(x, (i + 1) * 1000));
     const yayilmis = cark.dilimleriYay(dort);
     assert.equal(yayilmis.length, 4);
     assert.equal(new Set(yayilmis.map((d) => d.odulId)).size, 4);
   });
 
   test("iki ödül eşit sayıda tekrarlanıyor — görünen sıklık yanıltmıyor", () => {
-    const iki: cark.Dilim[] = [
-      { odulId: "a", baslik: "A", kurusDegeri: 1000 },
-      { odulId: "b", baslik: "B", kurusDegeri: 2000 },
-    ];
+    const iki: cark.Dilim[] = [dilim("a", 1000), dilim("b", 2000)];
     const yayilmis = cark.dilimleriYay(iki);
     const a = yayilmis.filter((d) => d.odulId === "a").length;
     const b = yayilmis.filter((d) => d.odulId === "b").length;
