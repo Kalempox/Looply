@@ -7,6 +7,7 @@ import { closePools } from "@/db/pool";
 import { kaydet, silmeleriUygula, silmeTalebiOlustur } from "@/domain/player";
 import * as parola from "@/domain/parola";
 import { normalizePhone } from "@/lib/crypto";
+import { dogumYiliSemasi } from "@/lib/validate";
 import { yoneticiSorgu } from "./_yardim";
 
 /**
@@ -197,5 +198,58 @@ describe("silme işi gerçekten koşuyor", () => {
       null,
       "bakım koştu ama hesap silinmedi — iş köprüye bağlı değil",
     );
+  });
+});
+
+/* ── Yaş sınırı (Ü2) ───────────────────────────────────────── */
+
+describe("18 yaş sınırı", () => {
+  /**
+   * 🔴 Ü2: *"18+ zorunlu. Çocuk verisi hiç işlenmez; KVKK'nın veli onayı
+   * rejimi devreye girmez."*
+   *
+   * Kural `lib/validate.ts` içinde yaşıyordu ve **hiçbir testi yoktu.**
+   * KVKK veri envanteri çıkarılırken fark edildi (Ü111). Testi olmayan bir
+   * doğrulama, bir gün "şu alan fazla kısıtlıyor" diye sessizce
+   * gevşetilebilir — ve gevşediği an ürün, veli onayı rejiminin içine
+   * düşer. Sınırın kendisi değil, **kaybolmaması** sınanıyor.
+   */
+  const buYil = new Date().getFullYear();
+
+  test("🔴 18 yaşından küçük kaydolamıyor", () => {
+    for (const yas of [0, 5, 13, 17]) {
+      const s = dogumYiliSemasi.safeParse(buYil - yas);
+      assert.equal(s.success, false, `${yas} yaşındaki kabul edildi`);
+    }
+  });
+
+  test("tam 18 kaydolabiliyor — sınır dışlamıyor", () => {
+    const s = dogumYiliSemasi.safeParse(buYil - 18);
+    assert.equal(s.success, true, "18 yaşındaki reddedildi");
+  });
+
+  test("yetişkin yaşlar kabul ediliyor", () => {
+    for (const yas of [19, 35, 70, 100]) {
+      assert.equal(dogumYiliSemasi.safeParse(buYil - yas).success, true, `${yas} reddedildi`);
+    }
+  });
+
+  /**
+   * ⚠️ **Bilinen sınır: kontrol YIL bazlı, gün hassasiyeti yok.**
+   *
+   * Yalnızca doğum yılı toplanıyor, tam tarih değil. Bu yüzden 18'ine o yıl
+   * içinde girecek biri, doğum gününden önce de kaydolabiliyor.
+   *
+   * Tam tarih istemek bunu kapatırdı ama **daha fazla kişisel veri**
+   * toplamak demekti; veri minimizasyonu ile kesinlik arasında yıl bazlı
+   * kontrol bilinçli tercih. Aydınlatma metninde böyle anlatılıyor.
+   */
+  test("120 yaşından büyük değer reddediliyor — bozuk giriş", () => {
+    assert.equal(dogumYiliSemasi.safeParse(buYil - 121).success, false);
+    assert.equal(dogumYiliSemasi.safeParse(1800).success, false);
+  });
+
+  test("gelecek yıl doğumlu reddediliyor", () => {
+    assert.equal(dogumYiliSemasi.safeParse(buYil + 1).success, false);
   });
 });

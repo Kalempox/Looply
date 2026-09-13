@@ -96,10 +96,15 @@ export default function AydinlatmaSayfasi() {
 
           <Bolum baslik="Haklarınız">
             <p>
-              Hakkında tuttuğumuz verileri görme, dosya olarak indirme, düzeltme, silme ve
-              verdiğin izinleri geri alma hakkın var. Bunların hepsini uygulamadaki{" "}
-              <Guclu>Verilerim</Guclu> ekranından tek başına kullanabilirsin — talep göndermene
-              gerek yok.
+              Hakkında tuttuğumuz verileri <Guclu>görme</Guclu>,{" "}
+              <Guclu>dosya olarak indirme</Guclu>, <Guclu>silme</Guclu> ve verdiğin{" "}
+              <Guclu>izinleri geri alma</Guclu> hakkını uygulamadaki{" "}
+              <Guclu>Verilerim</Guclu> ekranından tek başına kullanabilirsin — talep
+              göndermene gerek yok.
+            </p>
+            <p className="mt-3">
+              Ad veya soyadında bir yanlışlık varsa <Guclu>düzeltme</Guclu> için aşağıdaki
+              adrese yazman yeterli; en geç 30 gün içinde dönüş yapılır.
             </p>
           </Bolum>
 

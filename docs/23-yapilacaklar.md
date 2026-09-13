@@ -429,15 +429,30 @@ Bunlar yazılım işi değil; bekleme süreleri haftalarla ölçülüyor.
   değil, ödül motorunun merkezinde (Ü77).
 - [ ] **S20 · Aydınlatma metni hukuk incelemesi** — 1–2 hafta, pilotu bloke eder
   🟢 **Hazırlık bitti (Ü111):** `docs/24-veri-envanteri.md` — checklist koddan
-  dolduruldu, avukata bu belge gidecek. `[DOLDUR]` kalanlar: barındırma
-  bölgesi · tüzel kişi kimliği · ihlal bildirim süreci · `sms_outbox`
-  saklama süresi · başvuru e-postası · VERBİS.
-- [ ] **S21 · ⚠️ Yaş sınırı kararı** — Ü111'de bulundu
-  Doğum yılı alınıyor, şifreleniyor ve **hiçbir yerde kullanılmıyor.**
-  Kullanılmayan kişisel veri topluyoruz (veri minimizasyonu) ve ödül
-  dağıtan, şans içeren bir ürüne 13 yaşındaki biri kaydolabiliyor.
-  Üç seçenek: (a) sınır koy ve doğum yılını onun için kullan ·
-  (b) doğum yılını hiç toplama · (c) sınır koyma, gerekçeyi yaz.
+  dolduruldu, avukata bu belge gidecek.
+  ✅ **Karar verilenler:** barındırma **Türkiye** (md. 9 hiç devreye
+  girmiyor) · kapsam **yalnızca Türkiye** (GDPR bölümü açılmıyor) ·
+  yaş sınırı **18+** (zaten vardı, testi yazıldı).
+  ⏳ **Kalan `[DOLDUR]`lar:** tüzel kişi kimliği (unvan, vergi no, adres,
+  MERSİS) · başvuru e-postası ve KEP · alan adı (looply.com mu
+  cafeplay.com.tr mi?) · ihlalde sorumlu kişi · VERBİS · barındırma
+  sağlayıcısı · SMS sağlayıcısı seçimi.
+- [x] **S21 · Yaş sınırı** ✅ **ZATEN VARDI** — Ü2, testi Ü111'de yazıldı
+  İlk bulgum yanlıştı: 18+ sınırı `lib/validate.ts` içinde ve kayıt
+  şemasına bağlı. Gerçek eksik **testi olmamasıydı** — testsiz bir
+  doğrulama sessizce gevşetilebilir ve gevşediği an ürün veli onayı
+  rejiminin içine düşer. Beş test eklendi.
+  ⚠️ Bilinen sınır: kontrol **yıl bazlı**, gün hassasiyeti yok. Tam tarih
+  istemek daha fazla kişisel veri toplamak olurdu — bilinçli tercih.
+- [ ] **36 · `/verilerim`e ad-soyad düzeltme** — Ü111'de bulundu
+  Aydınlatma metni "düzeltme hakkını Verilerim'den kullanabilirsin"
+  diyordu ama ekran yok, alan yalnızca gösteriliyor. Metin şimdilik
+  gerçeğe uyduruldu (düzeltme e-posta ile, 30 gün). **Doğru çözüm metni
+  değil ürünü düzeltmek.**
+- [ ] **37 · `sms_outbox` saklama süresi** — Ü111'de bulundu
+  Temizlik işi yok, gönderim kaydı süresiz birikiyor. Numara açık
+  değil (maskeli + kör indeks) ama süre kararı gerekiyor.
+  Öneri: **12 ay** (gönderim ispatı + itiraz penceresi), sonra silinsin.
 - [ ] **SMS gönderici başlığı** — yeni isimle, operatör onayı birkaç iş günü
 - [ ] **S17 · Kalan 7 oyunun listesi** → `18-oyun-adaylari.md`
 - [ ] **S6 / H2** · Ad-soyad-telefon için hukuki sebep

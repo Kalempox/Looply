@@ -13,20 +13,32 @@
 
 ---
 
-## 🔴 Envanter çıkarılırken bulunan üç arıza
+## 🔴 Envanter çıkarılırken bulunanlar
 
-Belgeyi doldurmak bir yazı işi değildi; üç gerçek arıza ortaya çıkardı.
-İlk ikisi düzeltildi, üçüncüsü karar bekliyor.
+Belgeyi doldurmak bir yazı işi değildi; iki gerçek arıza ve bir eksik test
+ortaya çıkardı. Üçü de kapatıldı.
 
 | # | Bulgu | Durum |
 |---|---|---|
 | 1 | **Hesap silme işi hiç koşmuyordu.** `silmeleriUygula` Faz 2'de yazılmış ve **hiçbir yerden çağrılmıyordu.** Aydınlatma metni *"30 gün sonra geri döndürülemez şekilde silinir"* diyor; fiilen hiçbir hesap silinmiyordu. | ✅ Bakım köprüsüne bağlandı (Ü111), test çiviledi |
 | 2 | **Silme, parola özetini bırakıyordu.** Ad, soyad, telefon ve doğum yılı boşaltılıyor, `password_hash` kalıyordu. Kullanıcı aynı parolayı başka yerlerde de kullanıyor olabilir. | ✅ Düzeltildi (Ü111) |
-| 3 | **Yaş sınırı kontrolü yok.** Doğum yılı alınıp şifreleniyor ama **hiçbir yerde kullanılmıyor** — 13 yaşındaki biri kaydolabilir. | ⚠️ **Karar gerekiyor** (aşağıda §9) |
+| 3 | ~~Yaş sınırı kontrolü yok~~ — **bu bulgu yanlıştı.** 18+ sınırı Ü2'den beri var ve `lib/validate.ts` içinde uygulanıyor. Gerçek eksik başkaydı: **kuralın hiçbir testi yoktu.** | ✅ Test yazıldı (Ü111) |
 
-Ayrıca aydınlatma metninde **gerçeğe aykırı bir cümle** vardı: *"Soyadın
-hiçbir koşulda gösterilmez."* Liderlik tablosu soyadın baş harfini gösteriyor
-(`Mert Y***`, `domain/liderlik.ts` → `maskele`). Metin düzeltildi.
+### Aydınlatma metninde iki gerçeğe aykırı cümle
+
+Envanterin asıl işi buydu: metnin söylediği ile ürünün yaptığını
+karşılaştırmak. İki yerde ayrışıyorlardı — ikisi de düzeltildi.
+
+1. *"Soyadın hiçbir koşulda gösterilmez."* → Liderlik tablosu soyadın baş
+   harfini gösteriyor (`Mert Y***`, `domain/liderlik.ts` → `maskele`).
+   Metin ayrıca hâlâ kaldırılmış "masa tahtını" anlatıyordu.
+2. *"Düzeltme … hepsini Verilerim ekranından tek başına kullanabilirsin —
+   talep göndermene gerek yok."* → **Ad-soyad düzeltme ekranı yok**, alan
+   yalnızca gösteriliyor. Metin artık düzeltmenin e-posta ile yapıldığını
+   ve 30 gün içinde dönüleceğini söylüyor.
+
+⚠️ İkincisi için doğru çözüm uzun vadede metni değil **ürünü** düzeltmek:
+`/verilerim` ekranına ad-soyad düzeltme eklenmeli (`docs/23` → madde 36).
 
 ---
 
@@ -91,7 +103,7 @@ numarası deseni `[telefon]` ile maskeleniyor.
 | Veri | Amaç | Önerilen dayanak (KVKK md. 5) |
 |---|---|---|
 | Ad, soyad, telefon | Hesap açma, ödülü kişiye bağlama, kasada doğrulama | `[DOLDUR: sözleşmenin ifası]` |
-| Doğum yılı | `[DOLDUR: bugün hiçbir yerde kullanılmıyor — §9]` | `[DOLDUR]` |
+| Doğum yılı | **18 yaş sınırının uygulanması** (Ü2) ve kontrolün yapıldığının ispatı | Hukuki yükümlülük / sözleşmenin ifası `[AVUKAT ONAYI]` |
 | Telefon (SMS) | Kimlik doğrulama (OTP), kupon hatırlatma | Sözleşmenin ifası / meşru menfaat `[DOLDUR]` |
 | Konum mesafesi | Ödülün gerçekten kafede kazanıldığını göstermek (Ü3, K2) | **Açık rıza** — izin tarayıcıdan isteniyor |
 | Oyun/puan/kupon | Hizmetin kendisi, ticari kayıt | Sözleşmenin ifası |
@@ -102,8 +114,10 @@ numarası deseni `[telefon]` ile maskeleniyor.
 alıyor — `privacy_notice`, `explicit_consent`, `commercial_message`. Hizmet
 rızası ticari iletiyi kapsamıyor ve bu, koda değil **şemaya** yazılı (G7).
 
-⚠️ **AB kullanıcısı hedeflenmiyorsa GDPR bölümü yazılmamalı.** `[DOLDUR:
-yalnızca Türkiye mi?]`
+✅ **Kapsam kararı: şimdilik yalnızca Türkiye.** Belge KVKK'ya göre
+yazılıyor, GDPR bölümü **açılmıyor** — tutulmayacak taahhütler vermekten
+ve incelemeyi uzatmaktan başka işe yaramazdı. AB'ye açılırken neyin
+ekleneceği belgenin sonunda not olarak duruyor.
 
 ---
 
@@ -114,14 +128,19 @@ yalnızca Türkiye mi?]`
   (`tests/kiraci-izolasyonu.test.ts`, Ü107).
 - **Saklamada şifreleme:** kişisel alanlar uygulama katmanında AES-256-GCM.
   Veritabanı diskinin kendi şifrelemesi `[DOLDUR: barındırma kararına bağlı]`.
-- **Aktarımda şifreleme:** TLS `[DOLDUR: ters vekil kurulacak — canlıya çıkış listesi]`
+- **Aktarımda şifreleme:** TLS — ters vekil canlıya çıkış listesinde, alan
+  adı hazır. Pilot öncesi kurulacak.
 - **Anahtarlar:** altı ayrı anahtar (`PII_ENC_KEY`, `PHONE_INDEX_KEY`,
   `OTP_PEPPER`, `SESSION_HASH_KEY`, `IDENTIFIER_HASH_KEY`, `BACKUP_ENC_KEY`);
   yedek anahtarı **ayrı yerde** tutulacak.
 - **Erişim kontrolü:** uygulama rolü (`cafeplay_app`) kısıtlı — defterlerde
   UPDATE/DELETE yetkisi **yok**. Denetim izi silinemiyor.
-- **Barındırma bölgesi:** `[DOLDUR: Türkiye mi, Frankfurt mı? KVKK md. 9'u bu belirliyor]`
-- **Yedekler nerede:** `[DOLDUR]`
+- ✅ **Barındırma bölgesi: TÜRKİYE.** KVKK md. 9 (yurt dışına aktarım) hiç
+  devreye girmiyor. Bu, belgenin en riskli bölümünü tamamen kapatan karar.
+- **Sağlayıcı:** `[DOLDUR: Vargonen / Natro / Turkcell bulut / TT bulut …]`
+- **Yedekler nerede:** `[DOLDUR: aynı sağlayıcıda farklı bölge mi?]`
+  ⚠️ Yedek de Türkiye'de kalmalı — yurt dışındaki bir yedek, md. 9'u
+  sunucu Türkiye'de olsa bile geri getirir.
 
 ---
 
@@ -142,21 +161,35 @@ yalnızca Türkiye mi?]`
 ⚠️ `sms_outbox` tablosunda numara **açık tutulmuyor**: yalnızca maskeli hâli
 (`0532 *** ** 67`) ve kör indeks yazılıyor.
 
-⚠️ **Netgsm entegrasyonu henüz bağlanmadı** (`src/sms/index.ts`). Hangisiyle
-sözleşme yapılacağı ve veri işleyen sözleşmesi: `[DOLDUR]`
+⚠️ **SMS sağlayıcısı henüz seçilmedi.** İkisi de Türkiye'de, ikisi de yurt
+dışı aktarım doğurmuyor — yani seçim belgenin yapısını değiştirmiyor, tek
+etkisi tablodaki ad ve yapılacak **veri işleyen sözleşmesi**. Netgsm
+entegrasyonu kodda henüz bağlı değil (`src/sms/index.ts`).
+`[DOLDUR: hangisi + veri işleyen sözleşmesi]`
 
-⚠️ Barındırma sağlayıcısı seçildiğinde **bu tabloya eklenmeli**.
+⚠️ **Gönderici başlığı başvurusu bu karara bağlı** — sağlayıcı üzerinden
+yapılıyor ve operatör onayı birkaç iş günü sürüyor. Canlıya çıkışı
+bekleten maddelerden biri.
+
+⚠️ Barındırma sağlayıcısı seçildiğinde **bu tabloya eklenmeli** (Türkiye).
 
 ---
 
 ## 5 · Uluslararası aktarım
 
-Bugünkü hâliyle **yurt dışına aktarım yok**: tek alt işlemci Türkiye'de,
-tarayıcı üçüncü tarafa istek atmıyor.
+✅ **Yurt dışına aktarım YOK ve olmayacak.**
 
-⚠️ Bu, **barındırma kararı verilene kadar geçerli.** Sunucu Frankfurt'a
-konursa KVKK md. 9 devreye girer.
-`[DOLDUR: barındırma bölgesi + md. 9 mekanizması]`
+- Sunucu **Türkiye**'de (karar verildi)
+- Tek alt işlemci (SMS) **Türkiye**'de
+- Tarayıcı üçüncü tarafa hiç istek atmıyor — yazı tipleri dahil kendi
+  sunucumuzdan
+
+KVKK md. 9 devreye **girmiyor**; açık rıza, taahhütname ya da Kurul kararı
+gerekmiyor. Ürünlerin çoğunda en riskli olan bölüm bizde boş.
+
+⚠️ Bu, üç şartın üçü birden korunduğu sürece geçerli. İleride bir analitik
+aracı, hata izleme (Sentry) ya da yurt dışı CDN eklenirse **md. 9 geri
+gelir** — yeni bir servis eklenmeden önce bu belge güncellenmeli.
 
 ---
 
@@ -168,7 +201,7 @@ konursa KVKK md. 9 devreye girer.
 | Silme talebi sonrası | **30 gün**, sonra geri döndürülemez anonimleştirme (`silmeleriUygula`) |
 | Puan / kupon / bütçe defteri | **Kalıyor**, kişisel bağ kopuyor — ticari kayıt |
 | Denetim izi (`audit_log`) | Kalıyor; kişisel veri **içermiyor** (redaction) |
-| `sms_outbox` | `[DOLDUR: bir temizlik işi yok — süre kararı gerekiyor]` |
+| `sms_outbox` | ⚠️ **Temizlik işi yok — süre kararı gerekiyor.** Numara açık değil (maskeli + kör indeks) ama gönderim kaydı süresiz birikiyor. Öneri: **12 ay** (gönderim ispatı + itiraz penceresi), sonra silinsin. `[ONAY]` |
 | Karekod tarama kayıtları | 1 saat (`qr.temizle`) |
 
 **Anonimleştirmede ne oluyor:** `phone_enc`, `first_name_enc`,
@@ -185,14 +218,15 @@ Talep göndermeye **gerek yok** — hepsi uygulama içinde, `/verilerim`:
 | Hak | Nasıl |
 |---|---|
 | Erişim / taşınabilirlik | "Verilerimi indir" → JSON dosyası |
-| Düzeltme | `[DOLDUR: ad-soyad düzeltme ekranı yok — talep yoluyla]` |
+| Düzeltme | ⚠️ **Ekran yok** — KVKK başvuru adresine e-posta ile. Aydınlatma metni düzeltildi (aşağı bkz.) |
 | Silme | "Hesabımı sil" → 30 günlük pencere, **iptal edilebilir** |
 | İzin geri alma | Pazarlama izni tek dokunuşla açılıp kapanıyor |
 | Görünürlük | Liderlik tablosunda ad gizleme |
 | Hatırlatmayı kapatma | SMS hatırlatmaları kapatılabiliyor |
 
-**Yanıt süresi:** `[DOLDUR: KVKK 30 gün — e-posta kanalı için taahhüt]`
-**Başvuru adresi:** `[DOLDUR: kvkk@looply.com gerçek mi?]`
+**Yanıt süresi:** KVKK gereği **en geç 30 gün**. Aydınlatma metni bunu
+yazıyor.
+**Başvuru adresi:** `[DOLDUR — §9'daki kimlik bloğunda]`
 
 ---
 
@@ -220,30 +254,61 @@ Talep göndermeye **gerek yok** — hepsi uygulama içinde, `/verilerim`:
 
 ## 9 · Özel durumlar
 
-### ⚠️ Yaş sınırı — karar gerekiyor
+### Yaş sınırı — **18+, uygulanıyor**
 
-**Bugün yaş sınırı YOK.** Doğum yılı alınıyor, şifreleniyor ve **hiçbir
-yerde kullanılmıyor** — `domain/player.ts` içinde yalnızca yazılıyor.
+**Ü2:** *"18+ zorunlu. Çocuk verisi hiç işlenmez; KVKK'nın veli onayı
+rejimi devreye girmez."*
 
-Bu iki ayrı sorun doğuruyor:
+Kural `lib/validate.ts` → `dogumYiliSemasi` içinde ve kayıt şemasına bağlı
+(`app/giris/actions.ts`). 18 yaşından küçük **kaydolamıyor**.
 
-1. **Veri minimizasyonu:** kullanılmayan bir kişisel veriyi topluyoruz.
-   Amacı yoksa toplanmamalı.
-2. **Küçüklerin rızası:** ürün ödül dağıtıyor ve şans öğesi içeriyor (S7).
-   13 yaşındaki biri bugün kaydolabilir.
+Doğum yılı kontrolden sonra da saklanıyor; amacı kontrolün yapıldığını
+ispat etmek. Veri minimizasyonu açısından savunulabilir: toplanan alanın
+tanımlı bir amacı var.
 
-Üç seçenek: **(a)** yaş sınırı koy ve doğum yılını onun için kullan ·
-**(b)** doğum yılını hiç toplama · **(c)** sınır koyma, gerekçesini yaz.
+⚠️ **Bilinen sınır: kontrol YIL bazlı, gün hassasiyeti yok.** Yalnızca
+doğum yılı toplanıyor, tam tarih değil; 18'ine o yıl içinde girecek biri
+doğum gününden önce de kaydolabiliyor. Tam tarih istemek bunu kapatırdı
+ama **daha fazla kişisel veri** toplamak demekti — minimizasyon ile
+kesinlik arasında bilinçli tercih. Aydınlatma metninde böyle anlatılmalı.
 
-`[DOLDUR: ürün sahibi + avukat kararı]`
+⚠️ Envanter çıkarılırken bu kuralın **hiçbir testi olmadığı** görüldü ve
+test yazıldı (`tests/hesap-silme.test.ts`). Testsiz bir doğrulama, bir gün
+"şu alan fazla kısıtlıyor" diye sessizce gevşetilebilir; gevşediği an ürün
+veli onayı rejiminin içine düşer.
 
 ### Diğer
 
-- **Hizmet verilen ülke:** Türkiye `[DOLDUR: başka var mı?]`
-- **Veri sorumlusu:** `[DOLDUR: tüzel kişi adı, vergi no, adres]`
-  ⚠️ Aydınlatma metni bugün yalnızca "Looply" diyor.
+- ✅ **Hizmet verilen ülke: Türkiye.** GDPR bölümü açılmıyor (aşağıya bkz.).
+- **Veri sorumlusu:** `[DOLDUR: tüzel kişi tam unvanı]`
+- **Vergi dairesi ve numarası:** `[DOLDUR]`
+- **Kayıtlı adres:** `[DOLDUR]`
+- **MERSİS numarası:** `[DOLDUR — varsa]`
+- **KVKK başvuru e-postası:** `[DOLDUR — kvkk@looply.com gerçek mi?]`
+- **KEP adresi:** `[DOLDUR — varsa]`
+- **Alan adı:** `[DOLDUR — looply.com mu, cafeplay.com.tr mi?]`
+  ⚠️ Belgelerde iki ad birden geçiyor; aydınlatma metninde tek ad olmalı.
+- **VERBİS kaydı:** `[DOLDUR]` — çalışan sayısı ve yıllık ciro eşiklerine
+  bağlı; avukat söyleyecek.
 - **DPO / irtibat kişisi:** `[DOLDUR]`
-- **VERBİS kaydı:** `[DOLDUR: gerekiyor mu?]`
+- **İhlalde sorumlu kişi:** `[DOLDUR: ad + iletişim]` — Kurula **72 saat**
+  içinde bildirimi bu kişi yapacak.
+
+---
+
+## AB'ye açılırsanız ne değişir
+
+Bugün GDPR bölümü **bilerek yok** (kapsam: Türkiye). İleride AB kullanıcısı
+hedeflenirse şunlar eklenir — belgeyi baştan yazmak gerekmez:
+
+1. **Art. 6 hukuki dayanakları** — KVKK md. 5 karşılıkları zaten §2'de
+2. **Veri taşınabilirliği** — `/verilerim` ekranı JSON indirme ile bunu
+   zaten karşılıyor
+3. **AB temsilcisi** (Art. 27) — AB'de yerleşik değilsek atanması gerekebilir
+4. **Saklama sürelerinin açıkça yazılması** — §6'daki `[DOLDUR]`lar kapanmalı
+5. ⚠️ **Sunucu Türkiye'de kalırsa**, AB'den Türkiye'ye aktarım GDPR'ın
+   yeterlilik kararı sorununu doğurur. Bu, kapsam genişletme kararının en
+   pahalı tarafı ve baştan bilinmeli.
 
 ---
 
