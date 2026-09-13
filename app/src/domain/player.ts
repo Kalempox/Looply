@@ -257,6 +257,14 @@ export async function silmeTalebiIptal(playerId: string): Promise<void> {
  * 30 günü dolan hesapların kişisel alanlarını geri döndürülemez şekilde siler.
  * Finansal defter kayıtları `player_id` ile kalır — kişisel bağ kopar,
  * ticari saklama yükümlülüğü korunur (docs/08 §6).
+ *
+ * ⚠️ **`password_hash` de siliniyor (Ü111).** İlk sürüm yalnızca ad, soyad,
+ * telefon ve doğum yılını boşaltıyordu; parola özeti geride kalıyordu.
+ * "Geri döndürülemez şekilde silindi" denen bir hesapta, kullanıcının
+ * **başka yerlerde de kullandığı** bir paroladan türeyen kayıt durmamalı —
+ * scrypt geri çevrilemez ama saklamanın da bir gerekçesi yok ve hesap
+ * zaten girilemez durumda. Veri envanteri çıkarılırken bulundu
+ * (`docs/24-veri-envanteri.md`).
  */
 export async function silmeleriUygula(): Promise<number> {
   return withBypass("silme uygulaması", async (db) => {
@@ -272,7 +280,8 @@ export async function silmeleriUygula(): Promise<number> {
       await db.query(
         `UPDATE players
             SET phone_enc = $2, first_name_enc = $2, last_name_enc = $2, birth_year_enc = $2,
-                phone_index = $3, anonymized_at = now()
+                phone_index = $3, anonymized_at = now(),
+                password_hash = NULL, password_set_at = NULL
           WHERE id = $1`,
         [id, bosluk, Buffer.from(id)], // kör indeks benzersiz olmalı; id yeterli
       );

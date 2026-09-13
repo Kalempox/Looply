@@ -2,6 +2,7 @@ import { bekleyenleriAc, sureDolanlariSupur } from "./kupon";
 import { gonderilecekleriGonder } from "./hatirlatma";
 import { programlariUygula } from "./happy";
 import { sureDolanlariKapat } from "./davet";
+import { silmeleriUygula } from "./player";
 import { log } from "@/lib/log";
 
 /**
@@ -64,12 +65,32 @@ export async function bakim(): Promise<void> {
     // Süresi dolan davet, "sürüyor" sayacını sonsuza kadar şişik tutar
     // (Faz 9). Aynı gerekçe, aynı köprü.
     const davet = await sureDolanlariKapat();
-    if (acilan || dolan || davet || hhPencere || hatirlatma.acilan || hatirlatma.suresiDolan) {
+
+    /**
+     * 🔴 Ü111: hesap silme işi **hiçbir yerden çağrılmıyordu.**
+     *
+     * `silmeleriUygula` Faz 2'de yazıldı ve yazıldığı günden beri ölü
+     * koddu — tıpkı bu köprüyü doğuran `bekleyenleriAc` gibi. Farkı şu:
+     * o bir özellik gecikmesiydi, bu **aydınlatma metninde verilmiş bir
+     * söz**. Metin *"hesabını silmenden 30 gün sonra geri döndürülemez
+     * şekilde silinir"* diyor; iş hiç koşmadığı için silinmiyordu.
+     *
+     * ⚠️ Köprünün bilinen sınırı burada da geçerli: kimse ekran açmazsa
+     * iş gecikir. 30 günlük pencerede birkaç saatlik gecikme önemsiz ve
+     * hiç koşmamaktan kıyaslanamayacak kadar iyi. Gerçek zamanlanmış iş
+     * (Faz 10) geldiğinde hatırlatmalarla birlikte oraya taşınacak.
+     */
+    const silinen = await silmeleriUygula();
+    if (
+      acilan || dolan || davet || hhPencere || silinen ||
+      hatirlatma.acilan || hatirlatma.suresiDolan
+    ) {
       log.info("bakim", {
         hhPencere,
         acilan,
         dolan,
         davet,
+        silinen,
         hatirlatmaAcilan: hatirlatma.acilan,
         hatirlatmaSonGun: hatirlatma.suresiDolan,
       });

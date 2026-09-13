@@ -6,7 +6,7 @@
 > Yan dosyalar: neyin **var** olduğu → `21-looply-kapsam-haritasi.md` ·
 > demoda neyin **yapılabildiği** → `22-demo-yapilabilirlik.md`
 
-**Son güncelleme:** 2026-09-13 · **Kararlar:** Ü76 – Ü110
+**Son güncelleme:** 2026-09-13 · **Kararlar:** Ü76 – Ü111
 
 ---
 
@@ -428,6 +428,16 @@ Bunlar yazılım işi değil; bekleme süreleri haftalarla ölçülüyor.
   Demoyu bloke etmiyor, **canlıyı bloke ediyor.** Şans artık çarkın köşesinde
   değil, ödül motorunun merkezinde (Ü77).
 - [ ] **S20 · Aydınlatma metni hukuk incelemesi** — 1–2 hafta, pilotu bloke eder
+  🟢 **Hazırlık bitti (Ü111):** `docs/24-veri-envanteri.md` — checklist koddan
+  dolduruldu, avukata bu belge gidecek. `[DOLDUR]` kalanlar: barındırma
+  bölgesi · tüzel kişi kimliği · ihlal bildirim süreci · `sms_outbox`
+  saklama süresi · başvuru e-postası · VERBİS.
+- [ ] **S21 · ⚠️ Yaş sınırı kararı** — Ü111'de bulundu
+  Doğum yılı alınıyor, şifreleniyor ve **hiçbir yerde kullanılmıyor.**
+  Kullanılmayan kişisel veri topluyoruz (veri minimizasyonu) ve ödül
+  dağıtan, şans içeren bir ürüne 13 yaşındaki biri kaydolabiliyor.
+  Üç seçenek: (a) sınır koy ve doğum yılını onun için kullan ·
+  (b) doğum yılını hiç toplama · (c) sınır koyma, gerekçeyi yaz.
 - [ ] **SMS gönderici başlığı** — yeni isimle, operatör onayı birkaç iş günü
 - [ ] **S17 · Kalan 7 oyunun listesi** → `18-oyun-adaylari.md`
 - [ ] **S6 / H2** · Ad-soyad-telefon için hukuki sebep

@@ -65,11 +65,15 @@ export default function AydinlatmaSayfasi() {
 
           <Bolum baslik="Diğer oyuncular ne görür">
             <p>
-              Bir masanın tahtına oturduğunda — o masadaki en yüksek skor senin olduğunda
-              — aynı masaya gelen oyuncular <Guclu>yalnızca adını</Guclu> ve skorunu
-              görür. Soyadın, telefonun ve doğum yılın hiçbir koşulda gösterilmez. Bunu
-              istemiyorsan <Guclu>Verilerim</Guclu> ekranından kapatabilirsin; tahtta
-              kalırsın, adın yerine o kafeye özel anonim kodun görünür.
+              Bulunduğun kafenin sıralama tablosunda adın ve soyadının{" "}
+              <Guclu>yalnızca baş harfi</Guclu> görünür — örneğin{" "}
+              <span className="font-data text-[14px] text-yazi">Mert Y***</span>. Yıldız
+              sayısı sabittir, soyadının uzunluğunu ele vermez. Telefonun ve doğum yılın{" "}
+              <Guclu>hiçbir koşulda</Guclu> gösterilmez.
+            </p>
+            <p className="mt-3">
+              Bunu istemiyorsan <Guclu>Verilerim</Guclu> ekranından kapatabilirsin;
+              sıralamada kalırsın, adın yerine o kafeye özel anonim kodun görünür.
             </p>
           </Bolum>
 
