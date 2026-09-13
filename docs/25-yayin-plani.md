@@ -4,7 +4,73 @@
 > biçimde çıkacak. Öncelik sırası: **güvenlik → altyapı → mesajlaşma →
 > hukuk → kalan ürün işleri.**
 
-**Son güncelleme:** 2026-09-14 · **Durum:** A0 ✅ bitti — A1 sırada
+**Son güncelleme:** 2026-09-14 · **Durum:** A0 ✅ · A1 sırada
+
+---
+
+## ⏭️ BURADAN DEVAM ET
+
+> Bu bölüm oturum sıfırlansa bile nerede kalındığını söyler.
+> **Sıradaki iş: A1 — personel/yetkili adlarını şifrele.**
+
+### Son durum
+
+- Son commit: `6318e05` · **570 test, 0 hata** · derleme ve lint temiz
+- Kararlar `docs/02-karar-defteri.md`'de **Ü114**'e kadar işlendi
+- Yapılacaklar listesi: `docs/23-yapilacaklar.md`
+- Veri envanteri (KVKK): `docs/24-veri-envanteri.md`
+
+### ✅ Bu turda bitenler (Ü104–Ü114)
+
+| # | Ne |
+|---|---|
+| Ü104 | Happy Hour haftalık program + kendi bütçesi |
+| Ü105 | Haftalık sezon (liderlik) |
+| Ü106 | Günün görevi — çarpan değil hedef |
+| Ü107 | 🔴 `happy_hour_plans`a RLS (Ü104'te unutulmuş, yazma sızıntısı) |
+| Ü108 | Karekod türleri: masa/kasa/menü/fiş |
+| Ü109 | Kafe oyun yönetimi + günün oyunu kafeye bağlandı |
+| Ü110 | Çark olasılıkları kafenin elinde |
+| Ü111 | 🔴 KVKK envanteri — hesap silme hiç koşmuyordu, parola özeti kalıyordu |
+| Ü112 | 🔴 Aydınlatma metni sürümü ile tarihi ayrışmıştı |
+| Ü113 | 🔴 "Yazıldı ama bağlanmadı" sınıfı kapatıldı (4 iş bağlanmamıştı) |
+| Ü114 | 🔴 Cihaz kaydı çalışmıyordu → **hiçbir kasiyer giremiyordu** |
+
+### 🎯 Kapsam kararı: SMS ve WhatsApp OLMADAN yayına hazır hâle getir
+
+Ürün sahibi: *"şimdi SMS ve WhatsApp API olmadan ürünü gerçek piyasaya
+çıkarma seviyesine getirelim."*
+
+Yani **C bloğu (mesajlaşma) park edildi**; A, B ve E blokları sonuna kadar
+gidiyor. Sağlayıcı bilgisi geldiğinde C tek başına takılacak — arayüz
+(`SmsSaglayici`) zaten hazır.
+
+⚠️ **Bilinen sınır:** ürün SMS olmadan **gerçek kullanıcı alamaz** —
+kayıt OTP'ye bağlı ve `env.ts` canlı ortamda sahte sağlayıcıyı reddediyor
+(Ü81). "Yayına hazır" burada *"SMS bilgisi gelir gelmez çıkılabilir"*
+demek, *"SMS'siz çıkılır"* değil.
+
+### Sıradaki iş: A1
+
+**Personel/yetkili adlarını şifrele.** Denetimde bulunan tutarsızlık:
+
+| Kim | Ad | Telefon |
+|---|---|---|
+| Oyuncu | 🔒 şifreli | 🔒 şifreli |
+| Kafe personeli (`staff.name`) | ⚠️ **düz metin** | 🔒 şifreli |
+| Platform çalışanı (`platform_users.name`) | ⚠️ **düz metin** | 🔒 şifreli |
+| Kafe yetkilisi (`cafes.contact_name`) | ⚠️ **düz metin** | 🔒 şifreli |
+
+Ayrıca `cafes.legal_name` ve `cafes.address` düz metin — şahıs şirketinde
+ikisi de kişisel veri.
+
+Telefonu şifreleyip adı bırakmanın **belgelenmiş bir gerekçesi yok**;
+şemaya ve `docs/08`'e bakıldı, karar bulunamadı.
+
+Dokunulacak yerler: `domain/staff.ts`, `domain/cafe.ts`, kasa PIN girişi,
+personel paneli, denetim izi gösterimi. Şifreleme `lib/crypto.ts`
+`encryptPII`/`decryptPII` ile — oyuncu tarafıyla aynı yol.
+
 
 ---
 
@@ -50,6 +116,7 @@ Bunlar bende iş açmıyor ama yönü belirliyor.
 | K2 | SMS sağlayıcısı: Netgsm mi, İletimerkezi mi? | ⏳ | C1, gönderici başlığı |
 | K3 | Barındırma sağlayıcısı (Türkiye) | ⏳ | B1 |
 | K4 | Tüzel kişi tam unvanı, vergi no, adres | ⏳ | D2 |
+| K5 | **Ödül tutarı: kafe serbest mi girsin?** Bugün 25–50 TL, 5'er basamaklı ve **veritabanı kısıtıyla** kapalı (Ü52). Ürün sahibi *"kafe kendi panelinden belirleyecek"* dedi — bu bugünkü davranış değil. Serbest bırakılırsa E6 kanıt kademeleri, çark üst sınırı, erteleme eşiği ve çark ağırlık formülü birlikte gözden geçirilmeli. | ⏳ | Ü52'nin yeniden açılması |
 | ✅ | WhatsApp Business API kullanılacak | **Verildi** | C2, D3 |
 | ✅ | Barındırma Türkiye | **Verildi** | — |
 | ✅ | Kapsam yalnızca Türkiye (GDPR yok) | **Verildi** | — |
@@ -82,7 +149,16 @@ Bunlar bende iş açmıyor ama yönü belirliyor.
 
 ---
 
-## C · Mesajlaşma
+## C · Mesajlaşma — ⏸️ PARK EDİLDİ
+
+> Ürün sahibinin kararı: önce SMS/WhatsApp olmadan yayına hazır hâle
+> gelinecek. Bu blok, sağlayıcı bilgisi geldiğinde tek başına takılacak —
+> `SmsSaglayici` arayüzü zaten hazır, değişecek tek şey son adım.
+>
+> ⚠️ Patron *"SMS için entegrasyon lazım olursa hazırda var"* dedi.
+> **Hangi sağlayıcı ve onaylı gönderici başlığı var mı** öğrenilirse C1
+> ve başlık başvurusu süresi birden kapanır.
+
 
 | # | İş | Not |
 |---|---|---|
@@ -152,8 +228,7 @@ Hiçbiri canlıya çıkışı bloke etmiyor.
                                  │
 K1 ──────────────► A3 ───────────┤
 K3 ──────► B1,B2,B3,B4,B6 ───────┤
-K2 ──────► C1 ───────────────────┤
-           C2,C3 ────────────────┤
+K2 ──────► C1,C2,C3 (⏸️ park) ───┤
                                  ▼
                             F1 ──► F3 ──► F4 ──► F5
                                           ▲
