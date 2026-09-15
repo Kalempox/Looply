@@ -43,9 +43,11 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# ortam — hiçbir gerçek değer depoya girmez
+# ortam — hiçbir gerçek değer depoya girmez.
+# Yalnızca ŞABLONLAR depoda durur; ikisi de sadece değişken adı taşır.
 .env*
 !.env.example
+!.env.demo.ornek
 
 # yerel yedekler ve log çıktısı
 /yedekler

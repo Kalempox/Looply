@@ -3,6 +3,7 @@
 import * as oturum from "@/domain/session";
 import * as masaOturumu from "@/domain/masa";
 import * as cark from "@/domain/cark";
+import * as carkHakki from "@/domain/cark-hakki";
 import { carkOduluVer } from "@/domain/kupon";
 import { log } from "@/lib/log";
 
@@ -27,25 +28,86 @@ export async function carkiCevir(): Promise<
   const o = await oturum.oku();
   if (!o || o.rol !== "oyuncu") return { ok: false, hata: "Oturumun kapanmış. Tekrar gir." };
 
+  /*
+    ── İki yol, iki kanıt (Ü137) ─────────────────────────────
+
+    **Kafe:** masa oturumu. Oyuncu karekodu okuttu (K1), konumu
+    doğrulandı (K2), masada kaldı (K3).
+
+    **Butik:** kasiyerin verdiği hak. Orada oyun yok; kanıt oyuncunun
+    telefonundan değil **kasadaki insandan** geliyor.
+
+    ⚠️ Sıra önemli: önce masa oturumu aranıyor. Butik hakkı olan biri
+    aynı anda bir kafede oturuyorsa kafe yolu işliyor ve o doğru — masa
+    oturumu daha dar bir bağlam.
+  */
   const masa = await masaOturumu.aktif(o.ozneId);
-  if (!masa) {
-    return { ok: false, hata: "Çark kafede çevriliyor. Masadaki karekodu okut." };
+  const hak = masa ? null : await carkHakki.acikHak(o.ozneId);
+
+  if (!masa && !hak) {
+    return {
+      ok: false,
+      hata: "Çark hakkın yok. Kafede masadaki karekodu okut, butikte kasadan çark hakkı iste.",
+    };
   }
 
-  const durum = await cark.durum({ playerId: o.ozneId, cafeId: masa.cafeId });
+  const cafeId = masa ? masa.cafeId : hak!.cafeId;
+
+  /*
+    ⚠️ **Butikte kanıt seviyesi 3.** E6 ödül değerine göre kanıt istiyor
+    (40–50 TL → K3) ve butikte K1/K2/K3 zinciri hiç kurulmuyor: karekod
+    yok, konum yok, masada bekleme yok.
+
+    Yerine geçen şey daha güçlü: **kasiyer müşteriyi gördü ve alışverişi
+    kendi eliyle onayladı.** GPS "bu telefon şu yakınlıkta" diyor;
+    kasiyer "bu insan karşımda durdu ve 3.000 TL harcadı" diyor. İkincisi
+    taklit edilmesi çok daha zor bir kanıt.
+
+    4 verilmiyor: K4 fiş/adisyon kodu ve o gerçekten yok. Aralık dışı bir
+    ödül (51 TL+) butikte de çıkmamalı.
+  */
+  const kanitSeviyesi = masa ? masa.kanitSeviyesi : 3;
+
+  const durum = await cark.durum({ playerId: o.ozneId, cafeId });
   if (!durum.acik) {
     return { ok: false, hata: cark.durumMetni(durum) };
   }
 
   const secim = cark.sec(durum.dilimler);
-  if (!secim) return { ok: false, hata: "Bu kafede şu an dağıtılan ödül yok." };
+  if (!secim) return { ok: false, hata: "Burada şu an dağıtılan ödül yok." };
+
+  /*
+    ⚠️ Hak **kupondan ÖNCE** harcanıyor. Sonra harcasaydık iki eşzamanlı
+    istek ikisi de kuponu üretir, sonra biri hakkı harcayamaz ve ortada
+    sahipsiz bir kupon kalırdı. Koşullu `UPDATE` yarışı burada kapatıyor:
+    `false` dönerse kupon hiç üretilmiyor.
+
+    Bunun bedeli: kupon üretimi düşerse hak yanmış oluyor. Aşağıda geri
+    açılıyor.
+  */
+  if (hak) {
+    const kilit = await carkHakki.harca(hak.hakId, o.ozneId, "");
+    if (!kilit.ok) {
+      return { ok: false, hata: "Bu çark hakkı az önce kullanıldı." };
+    }
+  }
 
   const kupon = await carkOduluVer({
     playerId: o.ozneId,
-    cafeId: masa.cafeId,
+    cafeId,
     odulId: secim.dilim.odulId,
-    kanitSeviyesi: masa.kanitSeviyesi,
+    kanitSeviyesi,
   });
+
+  if (hak && kupon.ok) {
+    // Kuponu hakka bağla — "bu alışveriş hangi kuponu doğurdu" izi.
+    await carkHakki.kuponuBagla(hak.hakId, kupon.kuponId);
+  }
+  if (hak && !kupon.ok) {
+    // Kupon çıkmadıysa hak yanmamalı: bütçe dolduğu için çıkmamış
+    // olabilir ve müşteri alışverişini yapmış durumda.
+    await carkHakki.geriAc(hak.hakId);
+  }
 
   if (!kupon.ok) {
     // Kupon üretilemediyse çark dönmüş sayılmıyor: 24 saatlik kilit

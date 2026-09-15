@@ -3,7 +3,7 @@ import { withBypass } from "@/db/context";
 import { hashSessionToken, identifierHash, randomToken } from "@/lib/crypto";
 import { newId } from "@/lib/ids";
 import { log } from "@/lib/log";
-import { isProduction } from "@/lib/env";
+import { cerezGuvenli } from "@/lib/env";
 import { omurSaniye, type Rol } from "./oturum-omru";
 
 /**
@@ -90,7 +90,7 @@ export async function olustur(opts: {
   const c = await cookies();
   c.set(COOKIE_ADI, jeton, {
     httpOnly: true,
-    secure: isProduction(),
+    secure: cerezGuvenli(),
     sameSite: "lax",
     path: "/",
     expires: sonGecerlilik,

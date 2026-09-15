@@ -3,7 +3,13 @@
 import { useActionState, useState, useTransition } from "react";
 import { olusturEylemi, durumEylemi, type KampanyaDurumu } from "./actions";
 import type { KampanyaDurumu as Durum } from "@/domain/kampanya";
-import { IsletmeDugme, IsletmeAlan, isletmeGirdi, IsletmeUyari } from "@/components/isletme";
+import {
+  IsletmeDugme,
+  IsletmeAlan,
+  isletmeGirdi,
+  isletmeMiniDugme,
+  IsletmeUyari,
+} from "@/components/isletme";
 
 const BOS: KampanyaDurumu = {};
 
@@ -175,25 +181,27 @@ export function DurumDugmeleri({ kampanyaId, durum }: { kampanyaId: string; duru
       setHata(c.hata ?? null);
     });
 
+  // Bitmiş kampanyada eylem yok; boşluk da bırakılmıyor, satır
+  // hizası bozulmasın diye sessiz bir etiket duruyor.
   if (durum === "ended") {
- return <span className="etiket-caps text-yazi-sonuk">bitti</span>;
+    return <span className="text-[12px] text-yazi-sonuk">Bitti</span>;
   }
 
   return (
     <span className="flex flex-col items-end gap-1.5">
       {hata && <span className="text-[12px] text-tehlike">{hata}</span>}
-      <span className="flex gap-3">
+      <span className="flex flex-wrap justify-end gap-1.5">
         {durum === "active" ? (
           <Kucuk onBas={() => cevir("paused")} bekliyor={bekliyor}>
-            duraklat
+            Duraklat
           </Kucuk>
         ) : (
           <Kucuk onBas={() => cevir("active")} bekliyor={bekliyor}>
-            yayına al
+            Yayına al
           </Kucuk>
         )}
         <Kucuk onBas={() => cevir("ended")} bekliyor={bekliyor}>
-          bitir
+          Bitir
         </Kucuk>
       </span>
     </span>
@@ -214,7 +222,7 @@ function Kucuk({
       type="button"
       onClick={onBas}
       disabled={bekliyor}
-      className="etiket-caps text-yazi-sonuk underline disabled:opacity-50"
+      className={isletmeMiniDugme}
     >
       {bekliyor ? "…" : children}
     </button>

@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 import { subeDegistir } from "./sube-actions";
 import type { PanelDurumu, Uyari } from "@/domain/panel-durum";
 import { gunYaz, gunKaydir } from "@/lib/tarih";
+import { GunSecici } from "./gun-secici";
 
 /**
  * Panelin başlık kabuğu (Ü101).
@@ -73,9 +74,14 @@ function GunGezinme({ gun, bugun }: { gun: string; bugun: string }) {
       >
         ‹
       </Link>
-      <span className="min-w-[104px] text-center font-data text-[12px] tabular">
-        {gun === bugun ? "Bugün" : gunYaz(gun)}
-      </span>
+      {/* Ortadaki etiket artık düğme: tıklayınca takvim açılıyor ve
+          geçmiş bir güne tek hamlede gidilebiliyor (Ü123). Önceden
+          yalnızca ok tuşları vardı — bir ay öncesine otuz tık. */}
+      <GunSecici
+        gun={gun}
+        bugun={bugun}
+        etiket={gun === bugun ? "Bugün" : gunYaz(gun)}
+      />
       {ileriAcik ? (
         <Link
           href={`/kafe/panel?gun=${gunKaydir(gun, 1)}`}
@@ -260,7 +266,7 @@ function UyariSatiri({ uyari, onGit }: { uyari: Uyari; onGit: () => void }) {
 }
 
 /**
- * Bugünkü durum ve öneri kartları (Ü101).
+ * Kurulum durumu ve öneri kartları (Ü101).
  *
  * ⚠️ Öneri **yoksa kart da yok**. Görselde her zaman dolu duruyor ama
  * dayanağı olmayan bir öneri yazmak, panelin güvenilirliğini bir kerede
@@ -276,7 +282,12 @@ export function DurumKartlari({ durum }: { durum: PanelDurumu }) {
           durum.iyiMi ? "border-vurgu/50 bg-cukur" : "border-tehlike/50 bg-yuzey"
         }`}
       >
-        <div className="etiket-caps text-yazi-sonuk">Bugünkü durum</div>
+        {/* ⚠️ "Bugünkü" değil "Kurulum": kart günün sayılarını değil
+            **kurulumun sağlığını** anlatıyor (ödül var mı, konum girili
+            mi, bütçe açık mı) ve o geçmiş bir güne bakarken de bugünün
+            durumu. Takvim eklenince (Ü123) yanlışlığı görünür oldu —
+            11 Eylül'e bakarken "bugünkü durum" yazıyordu. */}
+        <div className="etiket-caps text-yazi-sonuk">Kurulum durumu</div>
         <div
           className={`mt-1 font-display text-[19px] leading-tight font-bold ${
             durum.iyiMi ? "text-vurgu" : "text-tehlike"

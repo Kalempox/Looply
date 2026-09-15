@@ -258,13 +258,10 @@ export default async function KafePaneli({
 
       <section className="mb-9 grid gap-3 sm:grid-cols-2">
         <ButceKarti butce={butce} />
-        <div className="grid grid-cols-3 gap-3">
-          <KucukKart
-            etiket="Masa"
-            deger={veri.masa}
-            yol="/kafe/panel/masalar"
-            eksik={veri.masa === 0}
-          />
+        {/* Ü127: "Masa" sayacı kalktı — masa kavramı yok, kafenin tek
+            karekodu var ve bir sayıya indirgenecek bir şey kalmadı.
+            Kurulum eksikse ana ekrandaki uyarı zaten çıkıyor. */}
+        <div className="grid grid-cols-2 gap-3">
           <KucukKart
             etiket="Personel"
             deger={veri.personel}
@@ -296,12 +293,27 @@ export default async function KafePaneli({
             ikon="butce"
             alan="para"
           />
+          {/*
+            İki ayrı kart, tek kart değil. Bir süre "Ödüller ve kampanyalar"
+            diye birleşiklerdi ve kafe sahibi hangisinin ne olduğunu
+            karıştırıyordu — ayrı tablolar, ayrı mekanizmalar (Ü26).
+            Açıklamalar mekanizmayı söylüyor: biri puan istiyor, öbürü
+            istemiyor. Farkın uzun hâli iki sayfanın da başında
+            (`fark-notu.tsx`).
+          */}
           <Kart
-            baslik="Ödüller ve kampanyalar"
-            aciklama="Oyuncunun kazandığı ödüller ve herkese açık yüzde indirimleri"
+            baslik="Ödüller"
+            aciklama="Oyun sonunda ve şans çarkında oyuncunun kazandığı şey"
             yol="/kafe/panel/oduller"
             ikon="odul"
             alan="odul"
+          />
+          <Kart
+            baslik="Kampanyalar"
+            aciklama="Öne çıkarmak istediğin ürüne bağlı yüzde indirimi — puan istemez"
+            yol="/kafe/panel/kampanyalar"
+            ikon="kampanya"
+            alan="kampanya"
           />
           <Kart
             baslik="Ürünler"
@@ -311,10 +323,9 @@ export default async function KafePaneli({
             alan="urun"
           />
           <Kart
-            baslik="Masa karekodları"
-            aciklama="Ekle, yazdır, masaya yapıştır"
-            yol="/kafe/panel/masalar"
-            eksik={veri.masa === 0}
+            baslik="Karekod"
+            aciklama="Kafenin tek karekodu — bastır, görünür bir yere as"
+            yol="/kafe/panel/karekod"
             ikon="karekod"
             alan="masa"
           />
@@ -697,6 +708,14 @@ const IKONLAR = {
     <svg {...cizgi} aria-hidden>
       <path d="M4 9h16v11a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V9Z" />
       <path d="M3 5.5h18V9H3zM12 5.5V21" />
+    </svg>
+  ),
+  /** Kampanya — yüzde işareti; ödülün hediye kutusundan bakışta ayrılsın. */
+  kampanya: (
+    <svg {...cizgi} aria-hidden>
+      <path d="M18.5 5.5 5.5 18.5" />
+      <circle cx="8" cy="8" r="2.3" />
+      <circle cx="16" cy="16" r="2.3" />
     </svg>
   ),
   urun: (

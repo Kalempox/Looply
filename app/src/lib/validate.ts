@@ -64,6 +64,24 @@ export const telefonSemasi = z
   .refine(cepNumarasiMi, "Geçerli bir cep telefonu numarası girin")
   .transform(normalizePhone);
 
+/**
+ * İşletmenin aranacak telefonu — Ü126.
+ *
+ * ⚠️ `telefonSemasi`den ayrı ve **cep şartı yok**: kafenin numarası çoğu
+ * zaman sabit hat ve `normalizePhone` sabit hattı reddediyor. Aynı şemayı
+ * kullansaydık işletme kendi numarasını yazamazdı.
+ *
+ * E.164'e de çevrilmiyor. Çeviren tek yer giriş kimliğini üreten yol
+ * olmalı (`phone_index` ondan türüyor); bu numara aranmak için duruyor,
+ * hiçbir şeyin anahtarı değil.
+ */
+export const isletmeTelefonSemasi = z
+  .string()
+  .trim()
+  .min(10, "Telefon numarası eksik")
+  .max(20, "Telefon numarası çok uzun")
+  .regex(/^[0-9+\s().-]+$/, "Telefon numarası yalnızca rakam içerebilir");
+
 export const isimSemasi = z
   .string()
   .trim()

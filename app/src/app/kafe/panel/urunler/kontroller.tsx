@@ -9,7 +9,13 @@ import {
   type UrunDurumu,
   type KategoriDurumu,
 } from "./actions";
-import { IsletmeDugme, IsletmeAlan, isletmeGirdi, IsletmeUyari } from "@/components/isletme";
+import {
+  IsletmeDugme,
+  IsletmeAlan,
+  isletmeGirdi,
+  isletmeMiniDugme,
+  IsletmeUyari,
+} from "@/components/isletme";
 import { TURLER, TUR_ETIKETI, type Kategori } from "@/domain/kategori-tur";
 
 const BOS: UrunDurumu = {};
@@ -129,9 +135,13 @@ export function KategoriDurumDugmesi({
       type="button"
       disabled={bekliyor}
       onClick={() => basla(async () => void (await kategoriDurumEylemi(kategoriId, !aktif)))}
-      className="etiket-caps text-yazi-sonuk underline disabled:opacity-50"
+      className={
+        aktif
+          ? isletmeMiniDugme
+          : `${isletmeMiniDugme} border-vurgu/40 text-vurgu hover:border-vurgu hover:text-vurgu`
+      }
     >
-      {bekliyor ? "…" : aktif ? "kaldır" : "geri aç"}
+      {bekliyor ? "…" : aktif ? "Kaldır" : "Geri aç"}
     </button>
   );
 }
@@ -150,9 +160,13 @@ export function DurumDugmesi({ urunId, aktif }: { urunId: string; aktif: boolean
       type="button"
       disabled={bekliyor}
       onClick={() => basla(async () => void (await durumEylemi(urunId, !aktif)))}
-      className="etiket-caps text-yazi-sonuk underline disabled:opacity-50"
+      className={
+        aktif
+          ? isletmeMiniDugme
+          : `${isletmeMiniDugme} border-vurgu/40 text-vurgu hover:border-vurgu hover:text-vurgu`
+      }
     >
-      {bekliyor ? "…" : aktif ? "kaldır" : "geri aç"}
+      {bekliyor ? "…" : aktif ? "Kaldır" : "Geri aç"}
     </button>
   );
 }

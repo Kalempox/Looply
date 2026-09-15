@@ -22,7 +22,20 @@ export type Sablon =
   | "account_deleted"
   | "incident"
   | "coupon_active"
-  | "coupon_expiring";
+  | "coupon_expiring"
+  /**
+   * Ü130: pazarlama mesajı — **tek serbest metinli şablon.**
+   *
+   * ⚠️ Diğer şablonların metni burada sabit ve bu bilinçli: OTP'nin
+   * ya da güvenlik uyarısının metnini kimse anlık yazmamalı. Pazarlama
+   * ise doğası gereği her seferinde farklı — "bu hafta tiramisuda %20".
+   *
+   * 🔴 **Çıkma cümlesi metne ZORLA ekleniyor** (`SABLONLAR.campaign`),
+   * yazan kişinin insafına bırakılmıyor. Ticari elektronik iletide
+   * reddetme hakkının bildirilmesi yasal zorunluluk; unutulabilecek bir
+   * yere koymak, er geç unutulması demek.
+   */
+  | "campaign";
 
 export type Mesaj = {
   telefon: string; // E.164
@@ -63,6 +76,11 @@ const SABLONLAR: Record<Sablon, (d: Record<string, string>) => string> = {
   new_device: () => `Looply hesabiniza yeni bir cihazdan giris yapildi. Siz degilseniz bize ulasin.`,
   account_deleted: () => `Looply hesabiniz silinme talebiniz alindi. 30 gun icinde vazgecebilirsiniz.`,
   incident: (d) => `Looply guvenlik bildirimi: ${d.mesaj ?? ""}`,
+  // Ü130: gövde çağıranın, kuyruk bizim. Çıkma cümlesi burada ve
+  // kaldırılamaz — şablonun dışından metin eklenemiyor.
+  campaign: (d) => `${d.mesaj ?? ""}
+
+Cikmak icin: looplybusiness.com/verilerim`,
 
   // ── Kupon hatırlatmaları ────────────────────────────────────
   //
@@ -194,7 +212,12 @@ export async function tavanDurumu(): Promise<TavanDurumu> {
  * durur ama mevcut kullanıcının girişi devam eder. Saldırının hedefi kayıt
  * akışıdır; mevcut kullanıcıyı sistemden atmak saldırganın işini görür.
  */
-export type Amac = "kayit" | "giris" | "bildirim" | "hatirlatma";
+/**
+ * ⚠️ `pazarlama` en düşük öncelik ve ayrı bir amaç olmak zorunda:
+ * günlük SMS tavanını yiyip **girişleri kilitlememeli**. Kampanya bir
+ * gün sonra da gidebilir, kapıda bekleyen insanın giriş kodu gidemez.
+ */
+export type Amac = "kayit" | "giris" | "bildirim" | "hatirlatma" | "pazarlama";
 
 export async function gonder(
   mesaj: Mesaj,
@@ -209,7 +232,7 @@ export async function gonder(
   // seviyesinde kalsaydı, günlük tavanı yiyip **girişleri kilitleyebilirlerdi**;
   // yani rahatlık uğruna hizmetin kendisi durabilirdi.
   const engelli =
-    (amac === "kayit" || amac === "hatirlatma"
+    (amac === "kayit" || amac === "hatirlatma" || amac === "pazarlama"
       ? !durum.kayitAcik
       : !durum.girisAcik);
 

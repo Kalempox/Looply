@@ -5,6 +5,7 @@ import { kuponDetayi } from "@/domain/odul";
 import { OyuncuSayfa, SayfaBasi } from "@/components/oyuncu";
 import { gorselSec, GORSEL_RENGI } from "@/components/oyuncu-gorsel";
 import { Karekod } from "@/components/karekod";
+import { DurumYoklayicisi } from "./yoklayici";
 
 export const dynamic = "force-dynamic";
 
@@ -51,6 +52,18 @@ export default async function KuponSayfasi({
         renk={GORSEL_RENGI[gorselSec(kupon.baslik, kupon.tur, kupon.kategoriTuru)]}
         gorsel={gorselSec(kupon.baslik, kupon.tur, kupon.kategoriTuru)}
       />
+
+      {/*
+        Ü136: durum yoklayıcısı. Kasiyer onayladığında müşterinin AÇIK
+        duran ekranı değişmiyordu — `force-dynamic` "her istekte yeniden
+        üret" demek, açık sayfayı güncellemek demek değil. Müşteri
+        ekranına bakıp "oldu mu?" diye soruyordu.
+
+        ⚠️ E9 bozulmuyor: ekran hâlâ geçerlilik iddia etmiyor, yalnızca
+        kullanıldığını SONRADAN bildiriyor. Kasiyerin telefona bakıp ürün
+        vermesi hâlâ imkânsız.
+      */}
+      <DurumYoklayicisi kuponId={kupon.id} baslangic={kupon.durum} />
 
       {kullanilabilir ? (
         <>

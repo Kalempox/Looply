@@ -95,9 +95,34 @@ hukuk vermeli. `[AVUKAT ONAYI]`
 
 ### 1.2 İşletme tarafı
 
-Ad-soyad ve telefon (`staff`), kasiyer PIN'i (hash), vergi levhası belgesi
-(`cafe_documents`), kafe konumu (`cafes.lat/lng`).
-⚠️ **Kafe konumu kişisel veri değil** — işletmenin adresi.
+| Veri | Nerede | Nasıl saklanıyor |
+|---|---|---|
+| Personel adı | `staff.name_enc` | **AES-256-GCM şifreli** (Ü115) |
+| Personel telefonu (yalnızca yönetici) | `staff.phone_enc` + `phone_index` | Şifreli + kör indeks |
+| Kasiyer PIN'i | `staff.pin_hash` | **scrypt** (N=32768), rastgele tuzla |
+| Platform çalışanının adı ve telefonu | `platform_users.name_enc`, `phone_enc` | **İkisi de şifreli** (Ü115) |
+| Kafe yetkilisinin adı ve telefonu | `cafes.contact_name_enc`, `contact_phone_enc` | **İkisi de şifreli** (Ü115) |
+| Ticari unvan | `cafes.legal_name_enc` | **Şifreli** (Ü115) |
+| Kayıtlı adres | `cafes.address_enc` | **Şifreli** (Ü115) |
+| Vergi numarası | `cafes.tax_no_enc` | Şifreli |
+| Vergi levhası / işletme belgesi | `cafe_documents` + disk | Dosyanın kendisi şifreli, erişim denetim izine düşer |
+| İşletme adı, şehir | `cafes.name`, `cafes.city` | **Düz metin — bilerek** |
+| Kafe konumu | `cafes.lat/lng` | **Düz metin — bilerek** |
+
+⚠️ **Ticari unvan ve adres neden şifreli:** şahıs şirketinde unvan
+kişinin kendi adıdır ("Ayşe Yılmaz İşletmecilik") ve kayıtlı adres ev
+adresi olabilir. Başvuranın tüzel mi şahıs mı olduğunu sistem bilmiyor;
+ayırmaya çalışmak, yanlış tahminde kişisel veriyi açıkta bırakmak olurdu.
+
+⚠️ **İşletme adı ve kafe konumu kişisel veri değil** — vitrindeki tabela
+ve işletmenin adresi. Oyuncu ekranlarında, liderlikte ve karekodda
+görünüyor; şifrelemek hiçbir şeyi korumaz.
+
+⚠️ **Şifreleme neyi koruyor:** anahtar (`PII_ENC_KEY`) veritabanında
+değil, sunucunun sır kasasında. Çalınmış bir veritabanı dökümü, yedek
+dosyası veya disk bu adları **okuyamaz**. Uygulama sunucusunun kendisi
+ele geçerse anahtar da oradadır — şifreleme o senaryoyu kapsamıyor ve
+kapsadığı iddia edilmemeli.
 
 ### 1.3 Çerezler
 

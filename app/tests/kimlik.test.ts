@@ -18,7 +18,15 @@ import {
 import { omurSaniye } from "@/domain/oturum-omru";
 import { tavanDurumu, GUNLUK_TAVAN } from "@/sms";
 import { basvuruOlustur, basvurulariListele, telefonuAc, onayla, yoneticiBul } from "@/domain/cafe";
-import { phoneIndex, normalizePhone, hashOtp } from "@/lib/crypto";
+import {
+  cihazKaydet,
+  personelEkle,
+  personelListele,
+  pinGiris,
+  platformKullanicisiBul,
+  platformKullanicisiEkle,
+} from "@/domain/staff";
+import { phoneIndex, normalizePhone, hashOtp, identifierHash } from "@/lib/crypto";
 import { yoneticiSorgu } from "./_yardim";
 
 /**
@@ -467,11 +475,9 @@ describe("kafe başvurusu ve onayı", () => {
     const telefon = yeniTelefon();
     const olusan = await basvuruOlustur({
       ad: "Test Kafe",
-      yasalAd: "Test Kafe Ltd.",
-      vergiNo: "1234567890",
       sehir: "Ankara",
-      adres: "Test adresi, no 1",
       yetkiliAdi: "Test Yetkili",
+      isletmeTelefonu: "0212 123 45 67",
       yetkiliTelefon: telefon,
     });
     assert.ok("cafeId" in olusan, "başvuru oluşmalıydı");
@@ -491,11 +497,9 @@ describe("kafe başvurusu ve onayı", () => {
     const telefon = yeniTelefon();
     const olusan = await basvuruOlustur({
       ad: "Denetim Kafe",
-      yasalAd: "Denetim Ltd.",
-      vergiNo: "9876543210",
       sehir: "İzmir",
-      adres: "Denetim adresi, no 2",
       yetkiliAdi: "Denetim Yetkili",
+      isletmeTelefonu: "0212 123 45 67",
       yetkiliTelefon: telefon,
     });
     assert.ok("cafeId" in olusan);
@@ -516,11 +520,9 @@ describe("kafe başvurusu ve onayı", () => {
   test("aynı telefonla ikinci başvuru reddediliyor", async () => {
     const telefon = yeniTelefon();
     const ortak = {
-      yasalAd: "Çakışma Ltd.",
-      vergiNo: "1112223334",
       sehir: "Bursa",
-      adres: "Çakışma adresi, no 3",
       yetkiliAdi: "Çakışma Yetkili",
+      isletmeTelefonu: "0212 123 45 67",
       yetkiliTelefon: telefon,
     };
 
@@ -539,11 +541,9 @@ describe("kafe başvurusu ve onayı", () => {
     const telefon = yeniTelefon();
     const olusan = await basvuruOlustur({
       ad: "Onaysız Kafe",
-      yasalAd: "Onaysız Ltd.",
-      vergiNo: "5556667778",
       sehir: "Antalya",
-      adres: "Onaysız adresi, no 4",
       yetkiliAdi: "Onaysız Yetkili",
+      isletmeTelefonu: "0212 123 45 67",
       yetkiliTelefon: telefon,
     });
     assert.ok("cafeId" in olusan);
@@ -804,6 +804,257 @@ describe("beni hatırla (Ü36)", () => {
     // kullanıcı tercihi değil — kutu işaretlenmese de kısalmaz.
     for (const rol of ["kasiyer", "kafe_yoneticisi", "platform_admin"] as const) {
       assert.equal(omurSaniye(rol, false), omurSaniye(rol, true), `${rol} tercihe göre değişmemeli`);
+    }
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════
+   İşletme tarafında ad şifreleme (Ü115 · A1)
+   ═══════════════════════════════════════════════════════════
+
+   Oyuncunun adı baştan beri şifreliydi (`docs/08` §2: "Ad, soyad →
+   Şifreli"). İşletme tarafında aynı kural uygulanmamıştı ve tutarsızlık
+   tek bir satırın içindeydi: personelin TELEFONU şifreli, ADI düz metin.
+
+   Aşağıdaki testler üç somut kaydı sınıyor; sonuncusu **sınıfı** sınıyor
+   — yeni bir göç düz metin bir ad kolonu geri getirirse orada kırılır. */
+
+describe("ad şifreleme — işletme tarafı (Ü115)", () => {
+  const olusturulanPersonel: string[] = [];
+  const olusturulanPlatform: string[] = [];
+  const olusturulanCihazlar: string[] = [];
+
+  after(async () => {
+    // Cihaz önce: `cafe_devices.registered_by` personele bağlı (FK).
+    for (const cihazId of olusturulanCihazlar) {
+      await yoneticiSorgu(`DELETE FROM cafe_devices WHERE device_id_hash = $1`, [
+        identifierHash(cihazId),
+      ]);
+    }
+    for (const id of olusturulanPersonel) {
+      await yoneticiSorgu(`DELETE FROM audit_log WHERE target_id = $1`, [id]);
+      await yoneticiSorgu(`DELETE FROM staff WHERE id = $1`, [id]);
+    }
+    for (const id of olusturulanPlatform) {
+      await yoneticiSorgu(`DELETE FROM platform_users WHERE id = $1`, [id]);
+    }
+  });
+
+  test("🔴 personelin adı veritabanında düz metin durmuyor", async () => {
+    const ad = `TEST Kasiyer ${randomInt(100000)}`;
+    const staffId = await personelEkle({
+      cafeId: kafeA,
+      ad,
+      pin: "4321",
+      ekleyenId: "stf_test_u115",
+    });
+    olusturulanPersonel.push(staffId);
+
+    const ham = await withBypass("test: ham personel satırı", (db) =>
+      db.one<Record<string, unknown>>(
+        `SELECT id, name_enc::text AS a FROM staff WHERE id = $1`,
+        [staffId],
+      ),
+    );
+    assert.ok(!JSON.stringify(ham).includes(ad), "personel adı düz metin görünüyor");
+
+    // Şifrelemek işe yaramazsa panel de boşalır: okuma yolu da sınanıyor.
+    const liste = await personelListele(kafeA);
+    assert.ok(
+      liste.some((p) => p.id === staffId && p.ad === ad),
+      "panel listesi adı geri veremedi",
+    );
+  });
+
+  /**
+   * 🔴 Kasa girişi — Ü115'te değişen tek "sıcak yol".
+   *
+   * `pinGiris` artık adı çözüyor ve bu fonksiyonun **hiç testi yoktu**.
+   * Ü114 tam burada yaşandı: cihaz kaydı bozulmuştu, hiçbir kasiyer
+   * giremiyordu ve kimse fark etmedi. Aynı yolu ikinci kez testsiz
+   * bırakmıyoruz.
+   */
+  test("🔴 kasiyer PIN'le girebiliyor ve adı doğru çözülüyor", async () => {
+    const ad = `TEST Kasa ${randomInt(100000)}`;
+    const pin = "8642"; // tohumdaki 1234/9999 ile çakışmasın
+    const cihazId = `test-kasa-cihazi-${randomInt(1_000_000)}`;
+
+    const staffId = await personelEkle({
+      cafeId: kafeA,
+      ad,
+      pin,
+      ekleyenId: "stf_test_u115",
+    });
+    olusturulanPersonel.push(staffId);
+
+    await cihazKaydet({
+      cafeId: kafeA,
+      etiket: "TEST tablet",
+      cihazId,
+      kaydedenId: staffId,
+    });
+    olusturulanCihazlar.push(cihazId);
+
+    const sonuc = await pinGiris({ cafeId: kafeA, cihazId, pin });
+    assert.equal(sonuc.durum, "gecerli", "doğru PIN ve kayıtlı cihazla giriş reddedildi");
+    assert.equal(sonuc.durum === "gecerli" && sonuc.ad, ad, "kasa ekranına yanlış ad gitti");
+
+    // Kayıtsız cihazda PIN hiç denenmiyor (G11) — şifreleme bu kapıyı açmadı.
+    const kayitsiz = await pinGiris({ cafeId: kafeA, cihazId: "kayitli-olmayan-cihaz", pin });
+    assert.equal(kayitsiz.durum, "cihaz_kayitsiz");
+  });
+
+  test("platform çalışanının adı da şifreli", async () => {
+    // G9 platform ekibini ikiye ayırıyor ama ikisi de gerçek kişi.
+    const ad = `TEST Platformcu ${randomInt(100000)}`;
+    const telefon = yeniTelefon();
+    const id = await platformKullanicisiEkle({ ad, telefon, rol: "platform_destek" });
+    olusturulanPlatform.push(id);
+
+    const ham = await withBypass("test: ham platform satırı", (db) =>
+      db.one<Record<string, unknown>>(
+        `SELECT id, name_enc::text AS a FROM platform_users WHERE phone_index = $1`,
+        [phoneIndex(telefon)],
+      ),
+    );
+    assert.ok(!JSON.stringify(ham).includes(ad), "platform kullanıcısının adı düz metin");
+
+    const bulunan = await platformKullanicisiBul(telefon);
+    assert.equal(bulunan?.ad, ad, "giriş akışı adı geri veremedi");
+  });
+
+  test("🔴 yetkili adı ve iki telefon şifreli", async () => {
+    // Şahıs şirketinde yetkilinin adı ve işletmenin numarası aynı kişiye
+    // ait olabilir; başvuranın tüzel mi şahıs mı olduğunu sistem bilemez.
+    //
+    // ⚠️ Ü126: ticari unvan ve adres artık başvuruda sorulmuyor, bu yüzden
+    // burada da sınanmıyorlar. Kolonlar duruyor (eski kayıtlarda dolu) ve
+    // okuyan taraf `null` kaldırıyor.
+    const yetkili = `TEST Yetkili ${randomInt(100000)}`;
+    const isletmeTel = `0212 ${randomInt(100, 999)} ${randomInt(10, 99)} ${randomInt(10, 99)}`;
+    const cep = yeniTelefon();
+
+    const olusan = await basvuruOlustur({
+      ad: "Şifreli Başvuru",
+      sehir: "Ankara",
+      yetkiliAdi: yetkili,
+      isletmeTelefonu: isletmeTel,
+      yetkiliTelefon: cep,
+    });
+    assert.ok("cafeId" in olusan, "başvuru oluşmalıydı");
+    olusturulanKafeler.push(olusan.cafeId);
+
+    const ham = await withBypass("test: ham kafe satırı", (db) =>
+      db.one<Record<string, unknown>>(
+        `SELECT id, name, city, contact_name_enc::text AS y,
+                contact_phone_enc::text AS c, business_phone_enc::text AS i
+           FROM cafes WHERE id = $1`,
+        [olusan.cafeId],
+      ),
+    );
+    assert.ok(ham, "kafe satırı okunamadı");
+    const govde = JSON.stringify(ham);
+    assert.ok(!govde.includes(yetkili), "yetkili adı düz metin görünüyor");
+    assert.ok(!govde.includes(isletmeTel), "işletme telefonu düz metin görünüyor");
+    assert.ok(!govde.includes(cep), "yetkili cebi düz metin görünüyor");
+
+    // ⚠️ İşletme adı ve şehir BİLEREK düz: vitrindeki tabela ve oyuncunun
+    // gördüğü kafe. Şifrelemek hiçbir şeyi korumaz, ekranları yavaşlatırdı.
+    assert.equal(ham.name, "Şifreli Başvuru", "işletme adı şifrelenmemeliydi");
+    assert.equal(ham.city, "Ankara", "şehir şifrelenmemeliydi");
+
+    const kayit = (await basvurulariListele("pending")).find((b) => b.id === olusan.cafeId);
+    assert.equal(kayit?.yetkiliAdi, yetkili, "inceleme ekranı yetkili adını veremedi");
+
+    // ⚠️ İşletme telefonu MASKESİZ dönüyor (Ü126): müşteriye zaten duyurulan
+    // numara. Yetkilinin cebi ise maskeli — tam hâli `telefonuAc` ile ve
+    // denetim izine düşerek açılıyor.
+    assert.equal(kayit?.isletmeTelefonu, isletmeTel, "işletme telefonu maskesiz dönmeli");
+    assert.ok(
+      kayit?.yetkiliTelefonMaskeli?.includes("*"),
+      "yetkilinin cebi listede maskeli dönmeli",
+    );
+  });
+
+  test("onay, yetkilinin adını yöneticiye şifreli taşıyor", async () => {
+    // Kafe onaylanınca yönetici personel kaydı doğuyor; adı `cafes`'ten
+    // geliyor. Blob kopyalanmıyor, çözülüp yeniden şifreleniyor —
+    // kopyalansaydı A2'de (anahtar rotasyonu) sessizce eski sürümde kalırdı.
+    const yetkili = `TEST Onay Yetkili ${randomInt(100000)}`;
+    const telefon = yeniTelefon();
+
+    const olusan = await basvuruOlustur({
+      ad: "Onay Şifre",
+      sehir: "Bursa",
+      yetkiliAdi: yetkili,
+      isletmeTelefonu: "0212 123 45 67",
+      yetkiliTelefon: telefon,
+    });
+    assert.ok("cafeId" in olusan);
+    olusturulanKafeler.push(olusan.cafeId);
+
+    await onayla(olusan.cafeId, "pu_test");
+
+    const yonetici = await yoneticiBul(telefon);
+    assert.equal(yonetici?.ad, yetkili, "yönetici kaydına ad taşınmadı");
+
+    const ham = await withBypass("test: ham yönetici satırı", (db) =>
+      db.one<Record<string, unknown>>(
+        `SELECT id, name_enc::text AS a FROM staff WHERE cafe_id = $1`,
+        [olusan.cafeId],
+      ),
+    );
+    assert.ok(!JSON.stringify(ham).includes(yetkili), "yönetici adı düz metin görünüyor");
+  });
+
+  /**
+   * 🔴 ASIL GÜVENCE — tek tek kayıtları değil SINIFI sınıyor.
+   *
+   * Ü107'de aynı şey RLS için yapılmıştı: "cafe_id taşıyan her tabloda
+   * RLS" testi, o günün açığını değil, açığın **türünü** kapattı ve sonra
+   * eklenen tabloları kendiliğinden kapsadı.
+   *
+   * Buradaki karşılığı: kimlik taşıyan dört tabloda ada/adrese benzeyen
+   * hiçbir metin kolonu olamaz. Yarın bir göç `staff.display_name text`
+   * eklerse bu test kırılır — kimsenin hatırlamasına gerek kalmadan.
+   *
+   * Muafiyet listesi kısa kalmalı; her satır bir iddiadır ve gerekçesiyle
+   * birlikte durur.
+   */
+  const AD_BENZERI = /(^|_)(name|ad|adi|soyad|surname|fullname|address|adres)(_|$)/i;
+
+  const DUZ_KALABILIR: Record<string, string> = {
+    "cafes.name": "işletme adı — vitrindeki tabela. Oyuncu ekranlarında, liderlikte ve karekodda görünüyor; kişisel veri değil (docs/24 §1.2)",
+  };
+
+  test("🔴 kimlik tablolarında düz metin ad kolonu yok", async () => {
+    const kolonlar = await withBypass("test: şema taraması", (db) =>
+      db.all<{ table_name: string; column_name: string }>(
+        `SELECT table_name, column_name
+           FROM information_schema.columns
+          WHERE table_schema = 'public'
+            AND table_name IN ('players','staff','platform_users','cafes')
+            AND data_type IN ('text','character varying','character')`,
+      ),
+    );
+
+    const duzKalanlar = kolonlar
+      .map((k) => `${k.table_name}.${k.column_name}`)
+      .filter((t) => AD_BENZERI.test(t.split(".")[1]))
+      .filter((t) => !DUZ_KALABILIR[t])
+      .sort();
+
+    assert.deepEqual(
+      duzKalanlar,
+      [],
+      "bu kolonlar ad/adres taşıyor ve düz metin duruyor — şifrele (lib/crypto.ts) " +
+        "ya da gerekçesiyle DUZ_KALABILIR listesine ekle (docs/08 §2)",
+    );
+  });
+
+  test("muafiyet listesindeki her satırın gerekçesi var", () => {
+    for (const [kolon, gerekce] of Object.entries(DUZ_KALABILIR)) {
+      assert.ok(gerekce.length > 15, `${kolon}: gerekçe yetersiz`);
     }
   });
 });

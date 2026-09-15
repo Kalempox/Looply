@@ -4,19 +4,93 @@
 > biçimde çıkacak. Öncelik sırası: **güvenlik → altyapı → mesajlaşma →
 > hukuk → kalan ürün işleri.**
 
-**Son güncelleme:** 2026-09-14 · **Durum:** A0 ✅ · A1 sırada
+**Son güncelleme:** 2026-09-15 · **Durum:** A0 ✅ · A1 ✅ · **F3 hazır, sunucu bekleniyor** · ⚠️ **Ü115–Ü124 COMMIT EDİLMEDİ**
 
 ---
 
 ## ⏭️ BURADAN DEVAM ET
 
 > Bu bölüm oturum sıfırlansa bile nerede kalındığını söyler.
-> **Sıradaki iş: A1 — personel/yetkili adlarını şifrele.**
+
+### 🔴 ÖNCE BUNU YAP: 60 dosya commit edilmedi
+
+Son commit **`7bb1930` (Ü114'ten sonra)**. O günden beri çalışma ağacında
+duran ve **hiçbir commit'te olmayan** on karar var:
+
+| Karar | Ne |
+|---|---|
+| Ü115 | A1 — personel/yetkili adları şifrelendi + göçlere veri adımı |
+| Ü116 | F3 demo altyapısı (Dockerfile, compose, Caddy, `docs/26`) + dört arıza |
+| Ü117 | Kapsam genişlemesi: butik işletmeler, vitrin, müşteri görünürlüğü |
+| Ü118–Ü122 | **Vitrin (madde 38)** — altı tasarım turu, gerçek ekran görüntüleri, kaydırmalı sahne |
+| Ü123 | Panel turu: çark kendi sayfasında, geliştirme şeridi kalktı, defter sayfalandı |
+| Ü124 | Katalog + Ürünler tam genişlikte tabloya, çarkta ağırlık → **yüzde** |
+
+```
+43 değişmiş · 17 yeni dosya
+```
+
+⚠️ `docs/02-karar-defteri.md` **Ü124'e kadar yazıldı** ama commit
+edilmedi. Bir `git checkout` ya da elektrik kesintisi hepsini götürür.
+**Bu listedeki başka hiçbir işe başlamadan önce commit at.**
+
+### Sonra: plan sırası
+
+```
+[commit] ──► Dalga 6 ──► K5 ──► A2 ──► A4 ──► A5 ──► E1, E2, E3
+                                  │
+D1 (avukat) ─── paralel, ama onsuz gerçek müşteriye açılamaz
+B + F3 ─────── sunucu + DNS gelince, planın geri kalanından bağımsız
+```
+
+### F3 · sunucu hâlâ tek eksik
+
+**Demo altyapısı bitti ve uçtan uca kapta doğrulandı.** Kurulum belgesi:
+`docs/26-demo-kurulumu.md` (Ü116).
+
+Bekleyen: Türkiye'de bir VPS (Ubuntu 24.04, 2 vCPU / 4 GB) +
+`demo.looplybusiness.com` A kaydı. Sunucu hazır olduğunda kurulum yarım
+saatlik iş.
+
+⚠️ **Cevapsız soru, üç kez soruldu:** sunucudaki komutları **siz mi
+çalıştıracaksınız**, yoksa SSH erişimiyle **ben mi kuracağım**?
+
+### 🔴 D1'in kapsamı Ü124'te bir kez daha genişledi
+
+Şans mevzuatı görüşü zaten canlıya çıkışı tek başına durduruyordu. Ama
+soru artık daha ağır:
+
+| Tur | Şansın yeri |
+|---|---|
+| Ü77 | Şans ödül motorunun merkezine girdi |
+| Ü110 | Kafe **ağırlık** yazarak olasılığı etkiliyor |
+| Ü117 | Butikte oyun yok → ödül **saf tesadüfe** bağlanıyor (ikinci model) |
+| **Ü124** | Kafe artık **doğrudan yüzde** yazıyor: "bu ödül %40 ihtimalle çıksın" |
+
+Yani işletme, kazanma olasılığını açıkça ve sayıyla belirliyor. Avukata
+sorulacak şey artık "üründe şans var mı" değil, **"işletmenin
+belirlediği olasılıkla ödül dağıtmak nedir"**. D1, D2, D3 aynı randevuda.
+
+### Planda olmayan ama biten iki blok
+
+**1 · Vitrin (madde 38) tamamlandı — Ü118–Ü122.** Bu plan yazıldığında
+madde 38 `docs/23` Dalga 6'nın ilk işiydi; bitti ve plana hiç işlenmedi.
+`looply.com` artık işletmeye sesleniyor: kaydırmalı sahne (masadaki
+karekoda yaklaşma → karekodun içine giriş → oyuncu menüsü → ödül
+yağmuru), ürünün **gerçek** ekran görüntüleri, gerçek kafe fotoğrafı.
+⚠️ Kalan eksik: **insan fotoğrafı** (kasada kupon gösterimi, oynayan el).
+Kodla üretilemez, çekilmesi gerekiyor.
+
+**2 · Panel turu — Ü123–Ü124.** Bu plandaki hiçbir bloğa ait değil; ürün
+sahibinin ara istekleriydi. Dokuz iş: geliştirme şeridi kaldırıldı, çark
+kendi menü durağına taşındı, "Bugün" takvim oldu, doğrulama defteri
+sayfalandı, konum menüden çıktı, katalog/ürünler/kampanyalar yeniden
+tasarlandı, logo düzeltildi, çark yüzdeye geçti. Ayrıntısı `docs/02`.
 
 ### Son durum
 
-- Son commit: `6318e05` · **570 test, 0 hata** · derleme ve lint temiz
-- Kararlar `docs/02-karar-defteri.md`'de **Ü114**'e kadar işlendi
+- **590 test, 0 hata** · derleme ve lint temiz
+- Kararlar `docs/02-karar-defteri.md`'de **Ü124**'e kadar işlendi
 - Yapılacaklar listesi: `docs/23-yapilacaklar.md`
 - Veri envanteri (KVKK): `docs/24-veri-envanteri.md`
 
@@ -35,6 +109,8 @@
 | Ü112 | 🔴 Aydınlatma metni sürümü ile tarihi ayrışmıştı |
 | Ü113 | 🔴 "Yazıldı ama bağlanmadı" sınıfı kapatıldı (4 iş bağlanmamıştı) |
 | Ü114 | 🔴 Cihaz kaydı çalışmıyordu → **hiçbir kasiyer giremiyordu** |
+| Ü115 | 🔴 A1 — personel/yetkili adları şifrelendi + göçlere veri adımı |
+| Ü116 | 🔴 F3 demo altyapısı + sunucuya çıkarken bulunan **dört arıza** |
 
 ### 🎯 Kapsam kararı: SMS ve WhatsApp OLMADAN yayına hazır hâle getir
 
@@ -50,26 +126,51 @@ kayıt OTP'ye bağlı ve `env.ts` canlı ortamda sahte sağlayıcıyı reddediyo
 (Ü81). "Yayına hazır" burada *"SMS bilgisi gelir gelmez çıkılabilir"*
 demek, *"SMS'siz çıkılır"* değil.
 
-### Sıradaki iş: A1
+### ✅ A1 kapandı — Ü115
 
-**Personel/yetkili adlarını şifrele.** Denetimde bulunan tutarsızlık:
+Bütün adlar artık şifreli:
 
 | Kim | Ad | Telefon |
 |---|---|---|
 | Oyuncu | 🔒 şifreli | 🔒 şifreli |
-| Kafe personeli (`staff.name`) | ⚠️ **düz metin** | 🔒 şifreli |
-| Platform çalışanı (`platform_users.name`) | ⚠️ **düz metin** | 🔒 şifreli |
-| Kafe yetkilisi (`cafes.contact_name`) | ⚠️ **düz metin** | 🔒 şifreli |
+| Kafe personeli (`staff.name_enc`) | 🔒 şifreli | 🔒 şifreli |
+| Platform çalışanı (`platform_users.name_enc`) | 🔒 şifreli | 🔒 şifreli |
+| Kafe yetkilisi (`cafes.contact_name_enc`) | 🔒 şifreli | 🔒 şifreli |
 
-Ayrıca `cafes.legal_name` ve `cafes.address` düz metin — şahıs şirketinde
-ikisi de kişisel veri.
+`cafes.legal_name_enc` ve `cafes.address_enc` de şifreli. Düz kalanlar
+**bilerek** düz: `cafes.name` (vitrindeki tabela), `slug`, `city`,
+`lat/lng` — işletme verisi, kişisel veri değil.
 
-Telefonu şifreleyip adı bırakmanın **belgelenmiş bir gerekçesi yok**;
-şemaya ve `docs/08`'e bakıldı, karar bulunamadı.
+⚠️ **Göç çalıştırıcı yeni bir yetenek kazandı ve A2 onu kullanacak.**
+`PII_ENC_KEY` veritabanının dışında olduğu için şifreleme SQL'den
+yapılamıyor. `db/migrate.ts` artık `.sql`'in yanındaki aynı adlı `.ts`
+dosyasını, `-- @veri-adimi` satırının yerinde ve aynı işlemin içinde
+çalıştırıyor.
 
-Dokunulacak yerler: `domain/staff.ts`, `domain/cafe.ts`, kasa PIN girişi,
-personel paneli, denetim izi gösterimi. Şifreleme `lib/crypto.ts`
-`encryptPII`/`decryptPII` ile — oyuncu tarafıyla aynı yol.
+### Sıradaki iş: A2
+
+**Anahtar rotasyonu.** `docs/08` §5.3 rotasyonu anlatıyor, kodda yok:
+`lib/crypto.ts` içinde `KEY_VERSION = 1` sabit ve farklı sürümle
+karşılaşınca **hata fırlatıyor**. Bugün bir anahtar sızarsa döndürme
+yolumuz yok.
+
+Gereken üç parça:
+
+1. **Birden çok anahtarı aynı anda tanıma** — yeni kayıtlar yeni sürümle
+   yazılır, eskiler eski sürümle okunmaya devam eder. Bugün `decryptPII`
+   sürüm eşleşmezse atıyor; okuma tarafı sürüm başına anahtar seçmeli.
+2. **Yeniden şifreleme geçişi** — satırları eski anahtarla çözüp yeni
+   anahtarla yazan bir göç. Ü115'in `-- @veri-adimi` mekanizması tam
+   bunun için hazır.
+3. **Kör indeks ayrı ele alınır** — `PHONE_INDEX_KEY` rotasyonu bütün
+   numaraların çözülmesini gerektiriyor (`docs/08` §5.3), yani ayrı ve
+   yalnızca sızıntı şüphesinde koşan bir iş.
+
+⚠️ Karar gerekiyor: **sürüm nerede duracak?** `encryptPII` blob'un ilk
+baytına yazıyor; `players` tablosunda ayrı bir `key_version` kolonu da
+var ve `docs/08` §5.3 *"şifreli her alanın yanında key_version kolonu
+durur"* diyor. İkisi birden fazla — A2 birini seçmeli. Ü115'te yeni
+kolon **açılmadı**, karar A2'ye bırakıldı.
 
 
 ---
@@ -112,14 +213,78 @@ Bunlar bende iş açmıyor ama yönü belirliyor.
 
 | # | Karar | Durum | Neyi bekletiyor |
 |---|---|---|---|
-| K1 | Uygulama ve veritabanı **aynı sunucuda mı**, ayrı mı? | ⏳ | A3 (DB bağlantı TLS) |
 | K2 | SMS sağlayıcısı: Netgsm mi, İletimerkezi mi? | ⏳ | C1, gönderici başlığı |
 | K3 | Barındırma sağlayıcısı (Türkiye) | ⏳ | B1 |
 | K4 | Tüzel kişi tam unvanı, vergi no, adres | ⏳ | D2 |
-| K5 | **Ödül tutarı: kafe serbest mi girsin?** Bugün 25–50 TL, 5'er basamaklı ve **veritabanı kısıtıyla** kapalı (Ü52). Ürün sahibi *"kafe kendi panelinden belirleyecek"* dedi — bu bugünkü davranış değil. Serbest bırakılırsa E6 kanıt kademeleri, çark üst sınırı, erteleme eşiği ve çark ağırlık formülü birlikte gözden geçirilmeli. | ⏳ | Ü52'nin yeniden açılması |
+| ✅ **K1** | **Uygulama ve veritabanı AYNI sunucuda.** Postgres yalnızca `localhost`'u dinleyecek, dışarı hiç açılmayacak. | **Verildi** | A3 küçüldü — aşağı bkz. |
+| ✅ **K5** | **Ödül aralığını kafe belirleyecek.** Kapsam aşağıda. | **Verildi** | Yeni faz — demodan sonra |
 | ✅ | WhatsApp Business API kullanılacak | **Verildi** | C2, D3 |
 | ✅ | Barındırma Türkiye | **Verildi** | — |
 | ✅ | Kapsam yalnızca Türkiye (GDPR yok) | **Verildi** | — |
+
+### K1'in sonucu — A3 küçüldü
+
+Ayrı sunucu tartışmasının **asıl karşı argümanı düştü**: uygulama zaten hem
+veritabanı parolasını hem şifreleme anahtarını taşıyor, yani uygulama
+sunucusu ele geçerse veritabanı nerede olursa olsun her şey açılır. Ayırmak
+koruma sağlamıyor, yalnızca yönetilecek parça sayısını artırıyordu.
+
+Aynı sunucuda ve `listen_addresses = 'localhost'` ile veritabanı
+**internetten erişilebilir bir hedef olmaktan tamamen çıkıyor** — açık port
+yok, kırılacak parola yok, taranacak yüzey yok.
+
+A3 artık "DB'ye TLS kur" değil, **"veritabanının gerçekten dışarıyı
+dinlemediğini doğrula"** işi. Kurulumun parçası.
+
+### K5'in kapsamı — ürün sahibinin sözleriyle
+
+> *"Kafe kendi panelinden ödül çıkacak aralığı TL olarak belirleyebilmeli,
+> kaç kaç artacağını da belirlemeli. Cafe ağırlık da belirleyebilmeli;
+> böylece o ürünün fiyatı ucuz da olsa daha çok gider. 200 TL'lik ödül
+> girip 'bu günde sadece 1 defa çıksın' ya da 'ağırlığı çok düşük olsun'
+> diyebilmeli; daha yüksek ihtimalle su veya 20 TL'lik ödül çıksın."*
+
+**Yazılacak olan:**
+
+1. **Ödül değer aralığı ve basamağı kafenin ayarı.** Bugün `katalog.ts`
+   sabitleri (`ODUL_EN_AZ` 25 TL, `ODUL_EN_COK` 50 TL, `ODUL_ADIM` 5 TL)
+   **ve** göç 0021'in `CHECK` kısıtı kapalı tutuyor. İkisi birden açılacak.
+2. **🔴 Ağırlık her yerde geçerli olacak.** Bugün Ü110'un ağırlıkları
+   **yalnızca çarkta** çalışıyor; oyun sonu ödülleri `odul-motoru.ts`'in
+   kendi sıra tabanlı formülünden geçiyor ve kafenin ağırlığına hiç
+   bakmıyor. Kafe "cheesecake daha çok çıksın" dediğinde çarkta çıkıyor,
+   oyunda hiçbir şey değişmiyor — **panel de bunu söylemiyor.** Bu, bu
+   depoda dört kez çıkan "yazıldı ama yarısına bağlandı" sınıfının
+   akrabası ve K5'in içinde kapanacak.
+
+**Zaten var, yeniden yazılmayacak:**
+
+- Ödül başına **günlük adet limiti** + gün/saat penceresi (Ü103) — *"günde
+  sadece 1 defa çıksın"* bugün çalışıyor
+- Ürün bazında **yüzde kampanyası** (Ü8/Ü17)
+- **Günlük bütçe** (taban 1.500 TL/gün, üst sınır yok) ve gün içi tempo
+  (Ü87) — oyun ödülleri de bu bütçeden düşüyor
+
+**Yeniden bakılacaklar:**
+
+- **E6 kanıt kademesi** mutlak TL bantlarından (25–35 → K2, 40–50 → K3)
+  **kafenin kendi aralığına oransal** hesaba geçecek ve **K3'te
+  tavanlanacak.** Sebep: K4 (fiş kodu) bilerek hiçbir yerden verilmiyor
+  (Ü108); mutlak bant korunsaydı pahalı ödül **hiç kimseye düşmezdi.**
+  ⚠️ Kademeyi gevşetmenin bedeli küçük çünkü iki güçlü koruma daha var:
+  günlük adet limiti kaybı tavanlıyor, ve kuponu **yalnızca kasiyer**
+  kapatabiliyor (A4/E9, veritabanı kısıtı) — uzaktan kazanılan kupon
+  kafeye gelmeden kullanılamıyor.
+- **Çark üst sınırı** (`cark_ust_sinir_kurus`) varsayılanı dar aralığa göre
+- **Erteleme eşiği** — pahalı ödül daha uzun mu bekletilecek
+- **Ağırlık formülü**: Ü49/Ü77'nin sıra tabanlı ağırlığı tam da aralık dar
+  olduğu için seçilmişti (`1/değer²` iki kat farkta ayrım kuramıyordu).
+  20–200 TL aralığında davranışı **ölçülerek** doğrulanacak (Ü110'daki
+  8.000 çevirmelik ölçümün aynısı).
+
+⚠️ **Zamanlama: demodan SONRA.** Patron bir hafta ürünü test edecek; ödül
+ekonomisinin merkezini testin hemen öncesinde değiştirmek, onun gördüğü
+şeyin hiç oturmamış bir sürüm olması demek.
 
 ---
 
@@ -128,9 +293,9 @@ Bunlar bende iş açmıyor ama yönü belirliyor.
 | # | İş | Neden | Boyut |
 |---|---|---|---|
 | **A0** ✅ | **"Yazıldı ama bağlanmadı" sınıfını kapat** — Ü113 | Dört kez oldu. Arka plan işlerinin bir kaydı olacak ve her birinin çağıranı olduğu sınanacak. Alarm da bu turda köprüye bağlanacak. | S |
-| **A1** | **Personel / yetkili adlarını şifrele** | Oyuncunun adı şifreli, personelinki **düz metin** — belgelenmiş gerekçesi yok. `staff.name`, `platform_users.name`, `cafes.contact_name`, `cafes.legal_name`, `cafes.address`. Şahıs şirketinde `legal_name` bir kişi adı, adres ev adresi. | M |
+| **A1** ✅ | **Personel / yetkili adlarını şifrele** — Ü115 | Oyuncunun adı şifreliydi, personelinki **düz metin**. Beşi de şifrelendi. Yan kazanç: göçler artık uygulama anahtarını gerektiren veri adımı taşıyabiliyor — A2 buna dayanacak. | M |
 | **A2** | **Anahtar rotasyonu** | `docs/08` §5.3 rotasyonu anlatıyor, kodda yok: `KEY_VERSION = 1` sabit ve farklı sürüm **hata fırlatıyor**. Anahtar sızarsa döndüremiyoruz. | M |
-| **A3** | **DB bağlantısında TLS** | `db/pool.ts` içinde `ssl` ayarı yok. Ayrı sunucudaysa ad-soyad ve telefon **ağdan şifresiz** geçer. → K1'e bağlı | S |
+| **A3** | ~~DB bağlantısında TLS~~ → **veritabanı dışarıyı dinlemiyor mu, doğrula** | K1 verildi: aynı sunucu, `listen_addresses = 'localhost'`. Trafik ağa çıkmadığı için TLS'e gerek kalmadı; iş, Postgres'in gerçekten dışarı kapalı olduğunu doğrulamaya indi. Kurulumun parçası. | XS |
 | **A4** | **CSP nonce'a geçiş** | Bugün `script-src` içinde `'unsafe-inline' 'unsafe-eval'` var; bu hâliyle CSP XSS'e karşı neredeyse hiçbir şey yapmıyor. Kodun kendi yorumu zaten "Faz 4'te nonce'a geçilecek" diyor. | M |
 | **A5** | **G32 · Platform girişinde TOTP** | Platform yöneticisi **bütün kafelerin** verisine erişiyor ve tek koruma SMS. Oyuncu tarafında SIM swap'e karşı koruma yazdık (G16), platform tarafında yazmadık. | M |
 
@@ -186,7 +351,7 @@ avukata md. 9 mekanizması sorulacak (D3).
 
 | # | İş | Not |
 |---|---|---|
-| **D1** | **S7 · Şans mevzuatı görüşü** | 🔴 **Tek başına canlıya çıkışı durduruyor.** Şans, Ü77'den beri ödül motorunun merkezinde; Ü110 ile kafe **kendi olasılıklarını** da yazıyor |
+| **D1** | **S7 · Şans mevzuatı görüşü** | 🔴 **Tek başına canlıya çıkışı durduruyor.** Şans, Ü77'den beri ödül motorunun merkezinde. Ü110 ile kafe ağırlık yazıyordu; **Ü124 ile doğrudan yüzde yazıyor** ("bu ödül %40 ihtimalle çıksın"). Ü117 ile butik modelinde beceri payı tamamen kalkıyor. Soru artık "üründe şans var mı" değil, **"işletmenin belirlediği olasılıkla ödül dağıtmak nedir"** |
 | **D2** | **S20 · Aydınlatma metni incelemesi** | Hazırlık bitti: `docs/24-veri-envanteri.md`. Tüzel kişi tam unvanı eksik (K4) |
 | **D3** | WhatsApp → md. 9 mekanizması | Açık rıza mı, taahhütname mi? D2 ile aynı görüşmede |
 | **D4** | S6/H2 · Ad-soyad-telefon hukuki sebebi | D2 ile birlikte |
@@ -206,6 +371,7 @@ Hiçbiri canlıya çıkışı bloke etmiyor.
 | **E2** | 36 · `/verilerim`e ad-soyad düzeltme | Aydınlatma metni şimdilik "e-posta ile" diyor; doğrusu ürünü düzeltmek |
 | **E3** | 37 · `sms_outbox` saklama süresi | Temizlik işi yok, süresiz birikiyor. Öneri **12 ay** |
 | **E4** | 7b · Blok/Düşen ödül bloğu | İsteğe bağlı |
+| **K5** | **Ödül aralığı + basamak kafenin · ağırlık her yerde** | Karar verildi, kapsam §0'da. 🔴 İçinde bir arıza düzeltmesi var: kafenin ağırlıkları bugün yalnızca çarkta işliyor. **Demodan sonra** — ödül ekonomisinin merkezi, test sırasında değişmemeli | L |
 
 ---
 
@@ -215,7 +381,7 @@ Hiçbiri canlıya çıkışı bloke etmiyor.
 |---|---|---|
 | **F1** | Saldırı denemesi — ben | Yetki sınırları, kiracı izolasyonu, para yolu, oturum. ⚠️ Yapısal sınırı var: bu kodu ben yazdım, kör noktalarını da paylaşıyorum |
 | **F2** | **Bağımsız sızma testi** | F1'in yerine geçmez, tamamlar |
-| **F3** | `APP_ENV=staging` ile sunucuya çıkış | SMS beklemeden yapılabilir |
+| **F3** 🟡 | `APP_ENV=staging` ile sunucuya çıkış — Ü116 | **Altyapı hazır ve kapta uçtan uca doğrulandı.** Dockerfile, compose, Caddy (otomatik TLS), ortam şablonu, kurulum belgesi (`docs/26`). Bekleyen tek şey **sunucu + DNS**. 🔴 HTTPS zorunlu: konum doğrulaması güvenli bağlam istiyor, HTTP'de hiç ödül çıkmaz |
 | **F4** | Pilot kafe | Tohum verisi silinir, panel Ü80'in kuralına döner |
 | **F5** | Yayın | — |
 
@@ -224,20 +390,33 @@ Hiçbiri canlıya çıkışı bloke etmiyor.
 ## Sıra
 
 ```
-ŞİMDİ ──► A0 ──► A1 ──► A2 ──► A4 ──► A5 ──► E1,E2,E3
-                                 │
-K1 ──────────────► A3 ───────────┤
-K3 ──────► B1,B2,B3,B4,B6 ───────┤
-K2 ──────► C1,C2,C3 (⏸️ park) ───┤
-                                 ▼
-                            F1 ──► F3 ──► F4 ──► F5
-                                          ▲
-D1,D2,D3 (paralel, sizde) ────────────────┘
+A0 ✅ ─► A1 ✅ ─► madde 38 ✅ ─► panel turu ✅ ─► 🔴 COMMIT ─► Dalga 6 ─► K5 ─► A2 ─► A4 ─► A5 ─► E1,E2,E3
+                 (Ü118–Ü122)    (Ü123–Ü124)      (60 dosya)                                      │
+K1 ✅ ──► A3 (kurulumun parçası) ─────────────────────────────────────────────────────────────────┤
+K3 ──────► B1,B2,B3,B4,B6 ─────────────────────────────────────────────┤
+K2 ──────► C1,C2,C3 (⏸️ park) ─────────────────────────────────────────┤
+                                                                       ▼
+                                                             F1 ──► F4 ──► F5
+                                                                     ▲
+D1,D2,D3 (⏸️ ertelendi, sizde) ─────────────────────────────────────┘
 ```
 
-**A0–A2, A4, A5 ve E hiçbir karara bağlı değil — bugün başlayabilirim.**
-A3, B ve C blokları K1–K3 kararlarını bekliyor. D bloğu sizde ve paralel
-ilerliyor; **D1 olmadan F5 olmaz.**
+⚠️ **Sıra değişti — 2026-09-14.** Ürün sahibi: *"şimdilik canlı gibi demoya
+geçelim, hemen satmayacağız, patronum 1 hafta test edecek."* Hukuk bloğu
+(D) ertelendi, **F3 (staging çıkışı) öne alındı.**
+
+Demo `APP_ENV=staging` + `SMS_PROVIDER=console` ile koşacak: doğrulama kodu
+ekranda görünüyor, gerçek SMS beklenmiyor. Alan adı
+**`demo.looplybusiness.com`**, tohum verisi duruyor ve patron ayrıca kendi
+kafesini sıfırdan kuruyor.
+
+🔴 **HTTPS zorunlu, tercih değil:** konum doğrulaması `navigator.geolocation`
+ile yapılıyor ve tarayıcılar bunu yalnızca güvenli bağlamda çalıştırıyor.
+HTTP üzerinde hiç kimse ödül kazanamaz — çekirdek döngü kapalı bir demo olur.
+
+**A2, A4, A5, E ve K5 hiçbir karara bağlı değil.** B ve C blokları K2–K3
+kararlarını bekliyor. **D1 olmadan F5 olmaz** — ertelenmesi yalnızca demoyu
+serbest bırakıyor, yayını değil.
 
 ---
 

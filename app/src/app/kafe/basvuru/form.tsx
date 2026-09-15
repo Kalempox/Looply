@@ -28,7 +28,7 @@ export function BasvuruFormu() {
               listeni kuruyorsun.
             </li>
             <li>
-              <strong className="text-yazi">4.</strong> Masa karekodların üretiliyor.
+              <strong className="text-yazi">4.</strong> Karekodun üretiliyor — bastırıp asıyorsun.
             </li>
           </ol>
           <p className="mt-4 border-t border-cizgi pt-4 text-[13px] text-yazi-sonuk">
@@ -49,27 +49,26 @@ export function BasvuruFormu() {
         <input name="ad" defaultValue={d.ad} className={isletmeGirdi} required />
       </IsletmeAlan>
 
-      <IsletmeAlan etiket="Ticari unvan" hata={durum.hatalar?.yasalAd} ipucu="Vergi levhasındaki tam unvan">
-        <input name="yasalAd" defaultValue={d.yasalAd} className={isletmeGirdi} required />
+      {/* Ü126: ticari unvan, vergi numarası ve açık adres kalktı.
+          Kafenin yeri onay sonrası konum ekranında koordinatla
+          belirleniyor — K2'yi doğrulayan o, serbest metin adres değil. */}
+      <IsletmeAlan etiket="Şehir" hata={durum.hatalar?.sehir}>
+        <input name="sehir" defaultValue={d.sehir} className={isletmeGirdi} required />
       </IsletmeAlan>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <IsletmeAlan etiket="Vergi numarası" hata={durum.hatalar?.vergiNo}>
-          <input
-            name="vergiNo"
-            inputMode="numeric"
-            defaultValue={d.vergiNo}
-            className={isletmeGirdi}
-            required
-          />
-        </IsletmeAlan>
-        <IsletmeAlan etiket="Şehir" hata={durum.hatalar?.sehir}>
-          <input name="sehir" defaultValue={d.sehir} className={isletmeGirdi} required />
-        </IsletmeAlan>
-      </div>
-
-      <IsletmeAlan etiket="Açık adres" hata={durum.hatalar?.adres}>
-        <textarea name="adres" defaultValue={d.adres} rows={3} className={isletmeGirdi} required />
+      <IsletmeAlan
+        etiket="İşletme telefonu"
+        hata={durum.hatalar?.isletmeTelefonu}
+        ipucu="Sabit hat olabilir — işletmeyi aramak için"
+      >
+        <input
+          name="isletmeTelefonu"
+          type="tel"
+          defaultValue={d.isletmeTelefonu}
+          placeholder="0212 123 45 67"
+          className={isletmeGirdi}
+          required
+        />
       </IsletmeAlan>
 
       <div className="grid gap-4 sm:grid-cols-2">
@@ -92,19 +91,11 @@ export function BasvuruFormu() {
         </IsletmeAlan>
       </div>
 
-      <IsletmeAlan
-        etiket="Vergi levhası veya işletme belgesi"
-        hata={durum.hatalar?.belge}
-        ipucu="PDF, JPG veya PNG · en fazla 8 MB · şifreli saklanır"
-      >
-        <input
-          name="belge"
-          type="file"
-          accept="application/pdf,image/jpeg,image/png"
-          className={`${isletmeGirdi} file:mr-3 file:border-0 file:bg-yazi file:px-3 file:py-1.5 file:text-[13px] file:text-white`}
-          required
-        />
-      </IsletmeAlan>
+      {/* 🔴 Belge alanı KALDIRILDI — ürün sahibinin kararı.
+          Belge yükleme altyapısı (`belgeYukle`, `cafe_documents`,
+          `belgeOku`) duruyor ve durmalı: onaylı kafelerin dosyaları orada.
+          Başvuruda istenmiyor, o kadar. G5'in elle onayı yerinde —
+          değişen şey onaycının önündeki kanıt. */}
 
       <div className="border-t border-cizgi pt-5">
         <IsletmeDugme type="submit" disabled={bekliyor}>

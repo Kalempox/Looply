@@ -88,8 +88,22 @@ export type Envanter = {
   yeniAcilan: EnvanterKuponu[];
   /** Beklemede olanlar — henüz aktifleşmemiş (A5). */
   bekleyen: EnvanterKuponu[];
-  /** Kullanılmış, süresi dolmuş veya geri alınmışlar. */
-  gecmis: EnvanterKuponu[];
+  /**
+   * Ü128: geçmiş **ikiye ayrıldı** — kullanılan ve kaçırılan.
+   *
+   * Önce tek bir `gecmis` listesiydi ve ikisi aynı sönük yığında
+   * duruyordu. Oyuncunun bu iki satırdan çıkardığı anlam taban tabana
+   * zıt: biri *"bunu yaşadım"*, öbürü *"bunu kaçırdım"*. Aynı başlık
+   * altında ikisi de bir şey ifade etmiyordu.
+   *
+   * ⚠️ Geri alınan kupon (`geri_alindi`, kasiyerin işlemi bozması)
+   * **kaçırılanlarla** duruyor, kullanılanlarla değil: oyuncu o ödülü
+   * fiilen almadı. Kartın kendi etiketi "Geri alındı" diyor, yani hangi
+   * sebeple olduğu kaybolmuyor.
+   */
+  kullanilan: EnvanterKuponu[];
+  /** Süresi dolmuş ya da geri alınmışlar — oyuncunun eline geçmeyenler. */
+  kacirilan: EnvanterKuponu[];
 };
 
 type Satir = {
@@ -193,7 +207,13 @@ export async function envanter(playerId: string): Promise<Envanter> {
   );
 
   const simdi = Date.now();
-  const sonuc: Envanter = { kullanilabilir: [], yeniAcilan: [], bekleyen: [], gecmis: [] };
+  const sonuc: Envanter = {
+    kullanilabilir: [],
+    yeniAcilan: [],
+    bekleyen: [],
+    kullanilan: [],
+    kacirilan: [],
+  };
 
   for (const r of satirlar) {
     const durum = durumBelirle(r, simdi);
@@ -227,7 +247,8 @@ export async function envanter(playerId: string): Promise<Envanter> {
       }
     }
     else if (durum === "beklemede") sonuc.bekleyen.push(kupon);
-    else sonuc.gecmis.push(kupon);
+    else if (durum === "kullanildi") sonuc.kullanilan.push(kupon);
+    else sonuc.kacirilan.push(kupon);
   }
 
   return sonuc;

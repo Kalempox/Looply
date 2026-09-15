@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { IsletmeAlan, IsletmeUyari, isletmeGirdi } from "@/components/isletme";
+import { IsletmeAlan, IsletmeUyari, isletmeGirdi, isletmeMiniDugme } from "@/components/isletme";
 import { sinirEylemi, type OdulDurumu } from "./actions";
 
 /**
@@ -76,16 +76,27 @@ export function SinirKutusu({
         <button
           type="button"
           onClick={() => setAcilisSirasi(durum.sira ?? 0)}
-          className="etiket-caps text-yazi-sonuk underline"
+          /* Sınır **varsa** düğme altın çerçeveli: on altı ödüllük bir
+             listede "hangisinin limiti var" sorusu, kartı okumadan
+             cevaplanabilmeli. */
+          className={
+            ozet
+              ? `${isletmeMiniDugme} border-odul text-odul-koyu hover:border-odul-koyu hover:text-odul-koyu`
+              : isletmeMiniDugme
+          }
+          /* Bugünkü sayaç ipucunda: "günde 5" yazan bir düğmenin
+             yanında "bugün 2" ayrı bir satır hak etmiyor ama kafe
+             sahibinin sorduğu ilk şey o. */
+          title={
+            ozet
+              ? gunlukLimit != null
+                ? `${ozet} · bugün ${bugunVerilen} verildi`
+                : ozet
+              : "Günlük adet ve kullanım saati sınırı yok"
+          }
         >
-          sınırlar
+          {ozet ? "Sınırlı" : "Sınırlar"}
         </button>
-        {ozet && (
-          <span className="text-[11px] leading-tight text-odul-koyu">
-            {ozet}
-            {gunlukLimit != null && ` · bugün ${bugunVerilen}`}
-          </span>
-        )}
         {durum.bilgi && (
           <span className="text-[11px] leading-tight text-yazi-sonuk">{durum.bilgi}</span>
         )}
@@ -179,9 +190,9 @@ export function SinirKutusu({
         <button
           type="button"
           onClick={() => setAcilisSirasi(null)}
-          className="etiket-caps text-yazi-sonuk underline"
+          className={isletmeMiniDugme}
         >
-          vazgeç
+          Vazgeç
         </button>
       </div>
     </form>

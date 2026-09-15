@@ -5,7 +5,7 @@ import { z } from "zod";
 import { biletCoz, MASA_COOKIE } from "@/domain/qr";
 import * as misafir from "@/domain/misafir";
 import * as cark from "@/domain/cark";
-import { isProduction } from "@/lib/env";
+import { cerezGuvenli } from "@/lib/env";
 import { kodEkrandaGosterilir } from "@/sms";
 import { withBypass } from "@/db/context";
 import { dogrula } from "@/lib/validate";
@@ -21,13 +21,26 @@ import { dogrula } from "@/lib/validate";
  * olmuyor. Tek istisna `konumBildir`'in kafe koordinatını **okuması**.
  */
 
-const CEREZ_AYARI = {
-  httpOnly: true,
-  secure: isProduction(),
-  sameSite: "lax",
-  path: "/",
-  maxAge: misafir.TALEP_OMRU_SN,
-} as const;
+/**
+ * ⚠️ Sabit değil fonksiyon — bilerek.
+ *
+ * Önce modül seviyesinde bir `const` idi ve bu, `env()`i **içe aktarma
+ * anında** çağırmak demekti: ortam değişkenleri okunmadan modül yüklenirse
+ * uygulama açılışta patlıyordu. Kapta derleme (F3) tam o koşulda koşuyor —
+ * `.env.local` yok, değerler çalışma zamanında geliyor.
+ *
+ * Fonksiyon olunca değer istek anında hesaplanıyor; `env()` zaten kendi
+ * içinde önbellekli, maliyeti yok.
+ */
+function cerezAyari() {
+  return {
+    httpOnly: true,
+    secure: cerezGuvenli(),
+    sameSite: "lax",
+    path: "/",
+    maxAge: misafir.TALEP_OMRU_SN,
+  } as const;
+}
 
 async function masaBileti() {
   const bilet = (await cookies()).get(MASA_COOKIE)?.value;
@@ -47,7 +60,7 @@ export async function misafirBasla(oyunId: string): Promise<BaslaCevabi> {
   });
   if (!sonuc.ok) return sonuc;
 
-  (await cookies()).set(misafir.OYUN_COOKIE, sonuc.cerez, CEREZ_AYARI);
+  (await cookies()).set(misafir.OYUN_COOKIE, sonuc.cerez, cerezAyari());
   return { ok: true, tohum: sonuc.tohum };
 }
 
@@ -74,7 +87,7 @@ export async function misafirBitir(
 
   if (!sonuc.ok) return sonuc;
 
-  c.set(misafir.TALEP_COOKIE, sonuc.cerez, CEREZ_AYARI);
+  c.set(misafir.TALEP_COOKIE, sonuc.cerez, cerezAyari());
   return { ok: true, skor: sonuc.skor, basarili: sonuc.basarili, k2: sonuc.k2 };
 }
 
@@ -115,7 +128,7 @@ export async function konumBildir(lat: number, lng: number): Promise<KonumCevabi
 
   if (sonuc.durum === "kafe_konumu_yok") return { durum: "kafe_konumu_yok" };
 
-  (await cookies()).set(misafir.KONUM_COOKIE, sonuc.cerez, CEREZ_AYARI);
+  (await cookies()).set(misafir.KONUM_COOKIE, sonuc.cerez, cerezAyari());
   return { durum: sonuc.durum, mesafeM: sonuc.mesafeM };
 }
 
@@ -149,7 +162,7 @@ export async function demoKafedeSay(): Promise<KonumCevabi> {
   });
   if (sonuc.durum === "kafe_konumu_yok") return { durum: "kafe_konumu_yok" };
 
-  (await cookies()).set(misafir.KONUM_COOKIE, sonuc.cerez, CEREZ_AYARI);
+  (await cookies()).set(misafir.KONUM_COOKIE, sonuc.cerez, cerezAyari());
   return { durum: sonuc.durum, mesafeM: sonuc.mesafeM };
 }
 
@@ -185,7 +198,7 @@ export async function carkiCevir(): Promise<
   if (!sonuc.ok) return sonuc;
 
   c.set(cark.TALEP_COOKIE, sonuc.cerez, {
-    ...CEREZ_AYARI,
+    ...cerezAyari(),
     maxAge: cark.TALEP_OMRU_SN,
   });
 

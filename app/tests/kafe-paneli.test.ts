@@ -13,7 +13,7 @@ import * as masa from "@/domain/masa";
 import * as masaYonetim from "@/domain/masa-yonetim";
 import * as qr from "@/domain/qr";
 import { kaydet } from "@/domain/player";
-import { normalizePhone, decryptPII } from "@/lib/crypto";
+import { normalizePhone, decryptPII, encryptPII } from "@/lib/crypto";
 import { randomInt } from "node:crypto";
 import { pazartesi, isGunu } from "@/lib/tarih";
 import { yoneticiSorgu } from "./_yardim";
@@ -637,9 +637,16 @@ describe("çok şube (Ü101)", () => {
       ikinciStaff = `stf_test_sube_${randomInt(100000)}`;
       bizimEklediğimiz = true;
       await yoneticiSorgu(
-        `INSERT INTO staff (id, cafe_id, name, pin_hash, role, phone_index, phone_enc)
-         VALUES ($1, $2, 'TEST Sube Yoneticisi', $3, 'manager', $4, $5)`,
-        [ikinciStaff, kafeB, a.pin_hash, a.phone_index, a.phone_enc],
+        `INSERT INTO staff (id, cafe_id, name_enc, pin_hash, role, phone_index, phone_enc)
+         VALUES ($1, $2, $3, $4, 'manager', $5, $6)`,
+        [
+          ikinciStaff,
+          kafeB,
+          encryptPII("TEST Sube Yoneticisi"),
+          a.pin_hash,
+          a.phone_index,
+          a.phone_enc,
+        ],
       );
     }
   });
@@ -662,10 +669,10 @@ describe("çok şube (Ü101)", () => {
     // Tekillik gevşedi ama kaybolmadı.
     await assert.rejects(
       yoneticiSorgu(
-        `INSERT INTO staff (id, cafe_id, name, pin_hash, role, phone_index, phone_enc)
-         SELECT $1, cafe_id, 'TEST Kopya', pin_hash, 'manager', phone_index, phone_enc
+        `INSERT INTO staff (id, cafe_id, name_enc, pin_hash, role, phone_index, phone_enc)
+         SELECT $1, cafe_id, $3, pin_hash, 'manager', phone_index, phone_enc
            FROM staff WHERE id = $2`,
-        [`stf_test_kopya_${randomInt(100000)}`, ikinciStaff],
+        [`stf_test_kopya_${randomInt(100000)}`, ikinciStaff, encryptPII("TEST Kopya")],
       ),
       "aynı kafede ikinci kez eklenebildi",
     );
@@ -1190,109 +1197,49 @@ describe("kafe konumu", () => {
    yapıştıracak karekodu da yok ve ürünün giriş kapısı hiç açılmıyordu.
    ═══════════════════════════════════════════════════════════ */
 
-describe("masa karekodları (D11)", () => {
-  test("masa eklenebiliyor ve karekodu çözülüyor", async () => {
-    const ad = `TEST Masa ${randomInt(100000)}`;
-    const s = await masaYonetim.ekle({ cafeId: kafeA, ad, aktorId: yoneticiA });
-    assert.ok(s.ok, s.ok === false ? s.hata : "");
+describe("kafe karekodu (Ü127)", () => {
+  /**
+   * D11'in masa testleri BURADAN KALDIRILDI — masa kavramı Ü127 ile
+   * kalktı. Ekleme, adlandırma, tür ve "aynı ad" çakışması diye bir şey
+   * yok: kafenin tek karekodu var ve kafe onu adlandırmıyor.
+   *
+   * D11'in asıl derdi duruyor ve aşağıda sınanıyor: **onaylanan kafenin
+   * yapıştıracak bir karekodu olmalı.** O zaman masalar yalnızca tohum
+   * betiğiyle üretiliyordu ve gerçek bir başvuru onaylandığında kafenin
+   * hiç karekodu olmuyordu — ürünün giriş kapısı hiç açılmıyordu.
+   */
+  test("🔴 karekodu olmayan kafe kendiliğinden karekod alıyor", async () => {
+    // Göç 0038'den önce onaylanmış ve hiç karekod eklememiş kafeler var;
+    // panel "önce karekod ekle" dememeli, üretmeli.
+    await yoneticiSorgu(`UPDATE cafe_tables SET active = false WHERE cafe_id = $1`, [kafeA]);
 
-    const liste = await masaYonetim.listele(kafeA);
-    const yeni = liste.find((m) => m.ad === ad);
-    assert.ok(yeni, "eklenen masa listede yok");
-    assert.match(yeni.kod, /^[0-9a-f]{16}$/, "basılı kod beklenen biçimde değil");
+    const k = await masaYonetim.kafeKarekodu(kafeA);
+    assert.match(k.kod, /^[0-9a-f]{16}$/, "basılı kod beklenen biçimde değil");
 
-    const cozum = await qr.masaCoz(yeni.kod);
-    assert.equal(cozum?.tableId, yeni.id, "basılı kod masaya çözülmedi");
-
-    await yoneticiSorgu(`DELETE FROM cafe_tables WHERE id = $1`, [yeni.id]);
+    const cozum = await qr.masaCoz(k.kod);
+    assert.equal(cozum?.tableId, k.id, "üretilen karekod çözülemiyor");
+    assert.equal(cozum?.cafeId, kafeA, "karekod başka kafeye çözülüyor");
   });
 
-  test("iki masanın karekodu farklı", async () => {
-    const a = `TEST A ${randomInt(100000)}`;
-    const b = `TEST B ${randomInt(100000)}`;
-    await masaYonetim.ekle({ cafeId: kafeA, ad: a, aktorId: yoneticiA });
-    await masaYonetim.ekle({ cafeId: kafeA, ad: b, aktorId: yoneticiA });
+  test("karekod okutulunca kafeye çözülüyor ve tarama kaydı düşüyor", async () => {
+    const k = await masaYonetim.kafeKarekodu(kafeA);
+    const cozum = await qr.masaCoz(k.kod);
+    assert.ok(cozum, "kafe karekodu çözülemedi");
 
-    const liste = await masaYonetim.listele(kafeA);
-    const ma = liste.find((m) => m.ad === a)!;
-    const mb = liste.find((m) => m.ad === b)!;
-    assert.notEqual(ma.kod, mb.kod, "iki masa aynı karekodu taşıyor");
-
-    await yoneticiSorgu(`DELETE FROM cafe_tables WHERE id IN ($1,$2)`, [ma.id, mb.id]);
-  });
-
-  test("aynı adda ikinci masa reddediliyor", async () => {
-    const ad = `TEST Tek ${randomInt(100000)}`;
-    await masaYonetim.ekle({ cafeId: kafeA, ad, aktorId: yoneticiA });
-    const ikinci = await masaYonetim.ekle({ cafeId: kafeA, ad, aktorId: yoneticiA });
-    assert.equal(ikinci.ok, false, "aynı ad iki kez kabul edildi");
-
-    await yoneticiSorgu(`DELETE FROM cafe_tables WHERE cafe_id = $1 AND label = $2`, [kafeA, ad]);
-  });
-
-  test("boş ad reddediliyor", async () => {
-    const s = await masaYonetim.ekle({ cafeId: kafeA, ad: "   ", aktorId: yoneticiA });
-    assert.equal(s.ok, false);
-  });
-
-  test("kapatılan masanın karekodu çalışmıyor ama satırı duruyor", async () => {
-    // Silmek yerine kapatmak: silinen masanın geçmiş oturumları ve raporları
-    // sahipsiz kalırdı.
-    const ad = `TEST Kapali ${randomInt(100000)}`;
-    const s = await masaYonetim.ekle({ cafeId: kafeA, ad, aktorId: yoneticiA });
-    assert.ok(s.ok);
-    const kod = (await masaYonetim.listele(kafeA)).find((m) => m.ad === ad)!.kod;
-
-    assert.ok(await qr.masaCoz(kod), "test kurulumu: kod açıkken çözülmüyor");
-
-    await masaYonetim.durumDegistir({
-      cafeId: kafeA,
-      tableId: s.ok ? s.id : "",
-      aktif: false,
-      aktorId: yoneticiA,
-    });
-
-    assert.equal(await qr.masaCoz(kod), null, "kapalı masanın kodu hâlâ çözülüyor");
-    const liste = await masaYonetim.listele(kafeA);
-    assert.ok(liste.find((m) => m.ad === ad), "kapatılan masa listeden silindi");
-
-    await yoneticiSorgu(`DELETE FROM cafe_tables WHERE cafe_id = $1 AND label = $2`, [kafeA, ad]);
-  });
-
-  test("başka kafenin masası kapatılamıyor (G12)", async () => {
-    const masaB = await withBypass("test: kafe b masası", (db) =>
-      db.one<{ id: string }>(
-        `SELECT id FROM cafe_tables WHERE cafe_id = $1 ORDER BY sort_order LIMIT 1`,
-        [kafeB],
+    await qr.taramaKaydet(cozum.cafeId, cozum.tableId);
+    const kayit = await withBypass("test: tarama kaydı", (db) =>
+      db.one<{ n: string }>(
+        `SELECT count(*) AS n FROM qr_tokens WHERE cafe_id = $1 AND table_id = $2`,
+        [kafeA, cozum.tableId],
       ),
     );
-
-    const s = await masaYonetim.durumDegistir({
-      cafeId: kafeA,
-      tableId: masaB!.id,
-      aktif: false,
-      aktorId: yoneticiA,
-    });
-    assert.equal(s.ok, false, "başka kafenin masası kapatıldı");
-
-    const hala = await withBypass("test: kontrol", (db) =>
-      db.one<{ active: boolean }>(`SELECT active FROM cafe_tables WHERE id = $1`, [masaB!.id]),
-    );
-    assert.equal(hala?.active, true, "başka kafenin masası kapandı");
+    assert.ok(Number(kayit!.n) > 0, "tarama defterine yazılmadı");
   });
 
-  test("masa ekleme denetim izine düşüyor", async () => {
-    const ad = `TEST Iz ${randomInt(100000)}`;
-    const s = await masaYonetim.ekle({ cafeId: kafeA, ad, aktorId: yoneticiA });
-    assert.ok(s.ok);
-
-    const iz = await withCafe(kafeA, (db) =>
-      db.all(`SELECT 1 FROM audit_log WHERE action = 'table.create' AND target_id = $1`, [
-        s.ok ? s.id : "",
-      ]),
-    );
-    assert.equal(iz.length, 1, "masa ekleme kayda geçmedi");
-
-    await yoneticiSorgu(`DELETE FROM cafe_tables WHERE cafe_id = $1 AND label = $2`, [kafeA, ad]);
+  test("🔴 başka kafenin karekodu bu kafeye çözülmüyor (G12)", async () => {
+    const bKarekod = await masaYonetim.kafeKarekodu(kafeB);
+    const cozum = await qr.masaCoz(bKarekod.kod);
+    assert.equal(cozum?.cafeId, kafeB, "B'nin karekodu B'ye çözülmeli");
+    assert.notEqual(cozum?.cafeId, kafeA, "kafeler arası karekod sızıntısı");
   });
 });

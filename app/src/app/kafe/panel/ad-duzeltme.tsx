@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { IsletmeAlan, IsletmeUyari, isletmeGirdi } from "@/components/isletme";
+import { IsletmeAlan, IsletmeUyari, isletmeGirdi, isletmeMiniDugme } from "@/components/isletme";
 
 /**
  * Ad düzeltme kutusu — ödül ve ürün panelleri ortak kullanıyor (Ü94).
@@ -77,9 +77,9 @@ export function AdDuzeltme({
         <button
           type="button"
           onClick={() => setAcilisSirasi(durum.sira ?? 0)}
-          className="etiket-caps text-yazi-sonuk underline"
+          className={isletmeMiniDugme}
         >
-          adı düzelt
+          Adı düzelt
         </button>
         {durum.bilgi && (
           <span className="text-[11px] leading-tight text-yazi-sonuk">{durum.bilgi}</span>

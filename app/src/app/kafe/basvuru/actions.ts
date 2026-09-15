@@ -1,8 +1,8 @@
 "use server";
 
 import { z } from "zod";
-import { basvuruOlustur, belgeYukle } from "@/domain/cafe";
-import { telefonSemasi, isimSemasi, dogrula } from "@/lib/validate";
+import { basvuruOlustur } from "@/domain/cafe";
+import { telefonSemasi, isletmeTelefonSemasi, isimSemasi, dogrula } from "@/lib/validate";
 import { normalizePhone } from "@/lib/crypto";
 import { tuket } from "@/lib/ratelimit";
 import { identifierHash } from "@/lib/crypto";
@@ -23,16 +23,18 @@ export type BasvuruDurumu = {
   degerler?: Record<string, string>;
 };
 
+/**
+ * Ü126: dört alan + şehir.
+ *
+ * Kalkanlar: ticari unvan, vergi numarası, açık adres, vergi levhası.
+ * Kafenin yeri onay sonrası konum ekranında koordinatla belirleniyor —
+ * K2'yi doğrulayan o, serbest metin adres değil.
+ */
 const semasi = z.object({
   ad: z.string().trim().min(2, "En az 2 harf").max(80, "En fazla 80 harf"),
-  yasalAd: z.string().trim().min(2, "Ticari unvanı yaz").max(120),
-  vergiNo: z
-    .string()
-    .trim()
-    .regex(/^\d{10,11}$/, "Vergi numarası 10 veya 11 rakamdır"),
   sehir: z.string().trim().min(2, "Şehir yaz").max(40),
-  adres: z.string().trim().min(10, "Açık adres yaz").max(300),
   yetkiliAdi: isimSemasi,
+  isletmeTelefonu: isletmeTelefonSemasi,
   yetkiliTelefon: telefonSemasi,
 });
 
@@ -41,7 +43,7 @@ export async function basvuruGonder(
   form: FormData,
 ): Promise<BasvuruDurumu> {
   const degerler = Object.fromEntries(
-    ["ad", "yasalAd", "vergiNo", "sehir", "adres", "yetkiliAdi", "yetkiliTelefon"].map((k) => [
+    ["ad", "sehir", "yetkiliAdi", "isletmeTelefonu", "yetkiliTelefon"].map((k) => [
       k,
       String(form.get(k) ?? ""),
     ]),
@@ -58,24 +60,13 @@ export async function basvuruGonder(
     return { asama: "form", genelHata: "Çok fazla deneme. Biraz sonra tekrar dene.", degerler };
   }
 
-  const belge = form.get("belge");
-  if (!(belge instanceof File) || belge.size === 0) {
-    return {
-      asama: "form",
-      hatalar: { belge: "Vergi levhası veya işletme belgesi yüklemen gerekiyor" },
-      degerler,
-    };
-  }
-
   const telefon = normalizePhone(sonuc.veri.yetkiliTelefon);
 
   const olusan = await basvuruOlustur({
     ad: sonuc.veri.ad,
-    yasalAd: sonuc.veri.yasalAd,
-    vergiNo: sonuc.veri.vergiNo,
     sehir: sonuc.veri.sehir,
-    adres: sonuc.veri.adres,
     yetkiliAdi: sonuc.veri.yetkiliAdi,
+    isletmeTelefonu: sonuc.veri.isletmeTelefonu,
     yetkiliTelefon: telefon,
   });
 
@@ -88,11 +79,6 @@ export async function basvuruGonder(
           : "Başvuru oluşturulamadı. Biraz sonra tekrar dene.",
       degerler,
     };
-  }
-
-  const yukleme = await belgeYukle(olusan.cafeId, "tax_certificate", belge);
-  if (!yukleme.ok) {
-    return { asama: "form", hatalar: { belge: yukleme.hata }, degerler };
   }
 
   return { asama: "alindi" };

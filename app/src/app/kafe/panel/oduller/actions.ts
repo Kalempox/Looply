@@ -101,21 +101,34 @@ export async function esikEylemi(_onceki: EsikDurumu, form: FormData): Promise<E
   const o = await kafeYoneticisiGerekli();
 
   const tl = sayi(form, "esik");
-  const sonuc = await ayar.sayiYaz({
+  const saat = sayi(form, "saat");
+
+  const esikSonucu = await ayar.sayiYaz({
     cafeId: o.cafeId,
     anahtar: ayar.ANAHTARLAR.ertelemeEsigi,
     deger: tl * 100,
     aktorId: o.ozneId,
   });
+  if (!esikSonucu.ok) return { hata: esikSonucu.hata };
 
-  if (!sonuc.ok) return { hata: sonuc.hata };
+  // Ü129: aktivasyon saati de kafenin ayarı. İki alan **tek formda ve tek
+  // eylemde**: ayrı kaydedilselerdi kafe eşiği değiştirip saati eski
+  // bırakabilir ve panelde gördüğü cümle ("35 TL üstü 12 saat sonra")
+  // yarısı yeni yarısı eski bir kural anlatırdı.
+  const saatSonucu = await ayar.sayiYaz({
+    cafeId: o.cafeId,
+    anahtar: ayar.ANAHTARLAR.ertelemeSaati,
+    deger: saat,
+    aktorId: o.ozneId,
+  });
+  if (!saatSonucu.ok) return { hata: saatSonucu.hata };
 
   revalidatePath("/kafe/panel/oduller");
   return {
     bilgi:
       tl === 0
-        ? "Artık her ödül 12 saat sonra açılıyor."
-        : `${tl.toLocaleString("tr-TR")} TL üstündeki ödüller 12 saat sonra açılacak.`,
+        ? `Artık her ödül ${saat} saat sonra açılıyor.`
+        : `${tl.toLocaleString("tr-TR")} TL üstündeki ödüller ${saat} saat sonra açılacak.`,
   };
 }
 
@@ -184,11 +197,15 @@ export async function sinirEylemi(onceki: OdulDurumu, form: FormData): Promise<O
 export type AgirlikDurumu = { hata?: string };
 
 /**
- * Bir ödülün çarkta çıkma ağırlığını yazar.
+ * Bir ödülün çarkta çıkma **yüzdesini** yazar (Ü124).
  *
- * `cafeId` **oturumdan** (değişmez kural #3). Ağırlık istemciden geliyor
+ * `cafeId` **oturumdan** (değişmez kural #3). Yüzde istemciden geliyor
  * ve gelmeli — para değeri taşımıyor, yalnızca dağılımı belirliyor ve
  * aralık dışı değer domain tarafından reddediliyor.
+ *
+ * ⚠️ Yolu iki sayfa kullanıyor: ayar `/kafe/panel/cark`ta ama ödül
+ * listesi `/kafe/panel/oduller`daki sayacı da besliyor — ikisi birden
+ * tazeleniyor.
  */
 export async function agirlikEylemi(
   _onceki: AgirlikDurumu,
@@ -197,27 +214,29 @@ export async function agirlikEylemi(
   const o = await kafeYoneticisiGerekli();
 
   const ham = String(form.get("agirlik") ?? "").replace(/[^\d]/g, "");
-  if (ham === "") return { hata: "Bir ağırlık yaz — 0 yazarsan bu ödül çarkta çıkmaz." };
+  if (ham === "") return { hata: "Bir yüzde yaz — 0 yazarsan bu ödül çarkta çıkmaz." };
 
   const sonuc = await carkAgirlik.yaz({
     cafeId: o.cafeId,
     odulId: String(form.get("odulId") ?? ""),
-    agirlik: Number(ham),
+    yuzde: Number(ham),
     aktorId: o.ozneId,
   });
 
   if (!sonuc.ok) return { hata: sonuc.hata };
 
+  revalidatePath("/kafe/panel/cark");
   revalidatePath("/kafe/panel/oduller");
   return {};
 }
 
-/** Bütün ağırlıkları otomatiğe döndürür. */
+/** Bütün yüzdeleri otomatiğe döndürür. */
 export async function otomatikEylemi(): Promise<AgirlikDurumu> {
   const o = await kafeYoneticisiGerekli();
   const sonuc = await carkAgirlik.otomatigeDon({ cafeId: o.cafeId, aktorId: o.ozneId });
   if (!sonuc.ok) return { hata: sonuc.hata };
 
+  revalidatePath("/kafe/panel/cark");
   revalidatePath("/kafe/panel/oduller");
   return {};
 }

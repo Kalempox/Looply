@@ -13,6 +13,7 @@ import {
   IsletmeDugme,
   IsletmeAlan,
   isletmeGirdi,
+  isletmeMiniDugme,
   IsletmeUyari,
 } from "@/components/isletme";
 
@@ -299,9 +300,13 @@ export function DurumDugmesi({
       onClick={() =>
         basla(async () => void (await durumEylemi(odulId, !aktif)))
       }
-      className="etiket-caps text-yazi-sonuk underline disabled:opacity-50"
+      className={
+        aktif
+          ? isletmeMiniDugme
+          : `${isletmeMiniDugme} border-vurgu/40 text-vurgu hover:border-vurgu hover:text-vurgu`
+      }
     >
-      {bekliyor ? "…" : aktif ? "yayından kaldır" : "yayına al"}
+      {bekliyor ? "…" : aktif ? "Yayından kaldır" : "Yayına al"}
     </button>
   );
 }
@@ -316,7 +321,7 @@ export function DurumDugmesi({
  * Sıfır yazmak her ödülü erteler; üst sınır 500 TL. İkisi de kafenin hakkı,
  * ama sınırsız bırakmak ertelemeyi fiilen kapatmanın yolu olurdu.
  */
-export function EsikAyari({ mevcutTl }: { mevcutTl: number }) {
+export function EsikAyari({ mevcutTl, mevcutSaat }: { mevcutTl: number; mevcutSaat: number }) {
   const [durum, action, bekliyor] = useActionState(
     esikEylemi,
     {} as EsikDurumu,
@@ -329,7 +334,7 @@ export function EsikAyari({ mevcutTl }: { mevcutTl: number }) {
 
       <IsletmeAlan
         etiket="Gecikmeli açılma eşiği (TL)"
-        ipucu="Bu tutarın üstündeki ödül 12 saat sonra açılır; altındakiler kasada hemen kullanılabilir. Sıfır yazarsan her ödül gecikir."
+        ipucu="Bu tutarın üstündeki ödül gecikmeli açılır; altındakiler kasada hemen kullanılabilir."
       >
         <input
           name="esik"
@@ -337,12 +342,32 @@ export function EsikAyari({ mevcutTl }: { mevcutTl: number }) {
           inputMode="numeric"
           defaultValue={String(mevcutTl)}
           className={isletmeGirdi}
-          placeholder="50"
+          placeholder="35"
+        />
+      </IsletmeAlan>
+
+      {/* Ü129: aktivasyon saati. Önce `kupon.ts`te sabit yazılıydı ve iki
+          kez kod değiştirilerek ayarlanmıştı (Ü28: 24, Ü97: 12). Artık
+          kafenin kararı — çark ödülü de oyun ödülü de aynı yoldan geçtiği
+          için ikisi için de geçerli. */}
+      <IsletmeAlan
+        etiket="Aktivasyon saati"
+        ipucu="Eşiğin üstündeki ödül kaç saat sonra açılsın. Çark ödülü ve oyun ödülü için aynı — ikisi de aynı kupon yolundan geçiyor. 1 ile 48 arası."
+      >
+        <input
+          name="saat"
+          type="number"
+          inputMode="numeric"
+          min={1}
+          max={48}
+          defaultValue={String(mevcutSaat)}
+          className={isletmeGirdi}
+          placeholder="12"
         />
       </IsletmeAlan>
 
       <IsletmeDugme type="submit" disabled={bekliyor}>
-        {bekliyor ? "Kaydediliyor…" : "Eşiği kaydet"}
+        {bekliyor ? "Kaydediliyor…" : "Kaydet"}
       </IsletmeDugme>
     </form>
   );

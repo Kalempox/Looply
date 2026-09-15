@@ -255,95 +255,46 @@ describe("günün oyunu kafeye göre (Ü109)", () => {
   });
 });
 
-/* ── Karekod türleri ───────────────────────────────────────── */
+/* ── Kafe karekodu ─────────────────────────────────────────── */
 
-describe("karekod türleri (Ü108)", () => {
-  test("dört tür de eklenebiliyor ve listede türüyle dönüyor", async () => {
-    const damga = Date.now().toString(36).slice(-5);
-
-    for (const t of masaYonetim.TURLER) {
-      const s = await masaYonetim.ekle({
-        cafeId: kafeA,
-        ad: `${masaYonetim.TUR_ADI[t].tekil} ${damga}`,
-        tur: t,
-        aktorId: yoneticiA,
-      });
-      assert.ok(s.ok, s.ok === false ? s.hata : "");
-      // Test sonunda silinebilmesi için kimliği işaretle.
-      if (s.ok) {
-        await yoneticiSorgu(`UPDATE cafe_tables SET id = $2 WHERE id = $1`, [
-          s.id,
-          `tbl_tur_${t}_${damga}`,
-        ]);
-      }
-    }
-
-    const liste = await masaYonetim.listele(kafeA);
-    for (const t of masaYonetim.TURLER) {
-      assert.ok(
-        liste.some((m) => m.tur === t && m.ad.endsWith(damga)),
-        `${t} türü listede yok`,
-      );
-    }
-  });
-
+describe("kafe karekodu (Ü127)", () => {
   /**
-   * Göç 0033 `kind`i `DEFAULT 'masa'` ile ekledi: göçten önce yazılmış
-   * bütün satırlar masa sayılıyor ve tür belirtmeyen her yeni satır da
-   * öyle. Varsayılan başka bir şey olsaydı (ya da NULL kalsaydı) mevcut
-   * masalar panelde yanlış grupta belirir, kafe onları kaybolmuş sanardı.
+   * Ü108'in dört tür testi (masa/kasa/menü/fiş) BURADAN KALDIRILDI.
+   * Ü127 ile tür kavramı da masa kavramı da kalktı: kafenin tek karekodu
+   * var, adlandırılmıyor ve türlere ayrılmıyor.
    *
-   * ⚠️ Sınanan şey **şemanın varsayılanı**, mevcut satırların hâli değil:
-   * "veritabanındaki her eski satır masa" diye yazılsaydı, panelden
-   * eklenen tek bir kasa karekodu testi kırardı.
+   * ⚠️ Fişin K4 vermediğini sınayan iddia yukarıdaki testte duruyor ve
+   * durmalı — K4 hâlâ hiçbir yerden verilmemeli.
    */
-  test("tür yazılmayan satır masa sayılıyor — şemanın varsayılanı", async () => {
-    const id = `tbl_tur_vars_${newId("x").slice(-6)}`;
-    await yoneticiSorgu(
-      `INSERT INTO cafe_tables (id, cafe_id, label, sort_order, qr_secret)
-       VALUES ($1,$2,$3,999,decode(md5($1),'hex'))`,
-      [id, kafeA, `Varsayılan ${id.slice(-6)}`],
-    );
+  test("kafenin tek karekodu var ve ikincisi açılamıyor", async () => {
+    const k = await masaYonetim.kafeKarekodu(kafeA);
+    assert.match(k.kod, /^[0-9a-f]{16}$/, "basılı kod 16 hex hane olmalı");
 
-    const r = await withBypass("test: varsayılan tür", (db) =>
-      db.one<{ kind: string }>(`SELECT kind FROM cafe_tables WHERE id = $1`, [id]),
-    );
-    assert.equal(r?.kind, "masa", "tür verilmeyen satır masa sayılmadı");
-
-    const liste = await masaYonetim.listele(kafeA);
-    assert.equal(liste.find((m) => m.id === id)?.tur, "masa");
-  });
-
-  /**
-   * 🔴 Fiş karekodu bir SATIN ALMA KANITI DEĞİL.
-   *
-   * E6'nın K4 kademesi (×2 çarpan, 51 TL+ ödül) sabit bir karekodla
-   * verilemez: kodun fotoğrafı paylaşılabilir ve hiçbir satın almayı
-   * kanıtlamaz. Bu test, ileride biri "fiş türüne K4 verelim" derse
-   * gerekçeyi hatırlatıyor.
-   */
-  test("🔴 hiçbir karekod türü K4 (satın alma kanıtı) vermiyor", async () => {
-    const maskeler = await withBypass("test: kanıt maskeleri", (db) =>
-      db.all<{ proof_mask: number }>(
-        `SELECT DISTINCT proof_mask FROM table_sessions
-          WHERE proof_mask & 8 <> 0`,
+    const aktifler = await withBypass("test: aktif karekod sayısı", (db) =>
+      db.one<{ n: string }>(
+        `SELECT count(*) AS n FROM cafe_tables WHERE cafe_id = $1 AND active`,
+        [kafeA],
       ),
     );
-    assert.deepEqual(maskeler, [], "bir yerden K4 veriliyor — fiş karekodu kanıt sanılmış olabilir");
+    assert.equal(Number(aktifler!.n), 1, "kafede tam olarak bir aktif karekod olmalı");
+
+    // 🔴 Kural veritabanında: arayüz kalksa bile ikinci karekod açılamaz.
+    await assert.rejects(
+      () =>
+        yoneticiSorgu(
+          `INSERT INTO cafe_tables (id, cafe_id, label, sort_order, qr_secret, active)
+           VALUES ($1,$2,'İkinci',5,decode(md5($1),'hex'),true)`,
+          [`tbl_ikinci_${newId("x").slice(-6)}`, kafeA],
+        ),
+      /cafe_tables_tek_aktif/,
+      "ikinci aktif karekod veritabanı düzeyinde reddedilmeli",
+    );
   });
 
-  test("aynı adda ikinci karekod reddediliyor", async () => {
-    const ad = `Çakışma ${newId("x").slice(-6)}`;
-    const ilk = await masaYonetim.ekle({ cafeId: kafeA, ad, tur: "kasa", aktorId: yoneticiA });
-    assert.ok(ilk.ok);
-    if (ilk.ok) {
-      await yoneticiSorgu(`UPDATE cafe_tables SET id = $2 WHERE id = $1`, [
-        ilk.id,
-        `tbl_tur_cakisma_${newId("x").slice(-6)}`,
-      ]);
-    }
-
-    const ikinci = await masaYonetim.ekle({ cafeId: kafeA, ad, tur: "menu", aktorId: yoneticiA });
-    assert.equal(ikinci.ok, false, "aynı ad ikinci kez kabul edildi");
+  test("karekod iki kez okunduğunda aynı satırı veriyor — değişmiyor", async () => {
+    const bir = await masaYonetim.kafeKarekodu(kafeA);
+    const iki = await masaYonetim.kafeKarekodu(kafeA);
+    assert.equal(bir.id, iki.id, "karekod her açılışta yeniden üretilmemeli");
+    assert.equal(bir.kod, iki.kod, "basılı kod değişmemeli — asılan etiket ölürdü");
   });
 });

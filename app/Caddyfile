@@ -1,0 +1,26 @@
+# Looply demo — ters vekil ve TLS
+#
+# Caddy sertifikayı Let's Encrypt'ten kendisi alıyor ve yeniliyor.
+# 🔴 Ön koşul: ALAN_ADI'nın A kaydı bu sunucuya yayılmış olmalı ve 80/443
+# portları dışarıdan erişilebilir olmalı. Değilse sertifika alınamaz ve
+# Caddy yeniden dener — Let's Encrypt'in hız sınırına takılmamak için
+# DNS'i önce doğrulayın.
+
+{
+	email {$ACME_EPOSTA}
+}
+
+{$ALAN_ADI} {
+	encode zstd gzip
+
+	# Sunucu sürümü bilgisi dışarı sızmasın (next.config.ts'teki
+	# `poweredByHeader: false` ile aynı gerekçe).
+	header -Server
+
+	# ⚠️ Güvenlik başlıkları BURADA TEKRARLANMIYOR.
+	# CSP, HSTS, X-Frame-Options ve Permissions-Policy `next.config.ts`
+	# içinde tek yerde duruyor. İki yerde tanımlansaydı biri güncellenip
+	# diğeri geride kalırdı ve hangisinin geçerli olduğu belirsizleşirdi.
+
+	reverse_proxy uygulama:3000
+}

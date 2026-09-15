@@ -1,8 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Outfit, JetBrains_Mono } from "next/font/google";
-import Link from "next/link";
 import "./globals.css";
-import { kodEkrandaGosterilir } from "@/sms";
 
 /**
  * İki aile, altı stil (Ü31).
@@ -43,6 +41,19 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
+/*
+ * ── Köşedeki geliştirme rozeti KALDIRILDI (Ü123) ────────────
+ *
+ * Her ekranın sağ alt köşesinde "Başlangıç · Kodlar · Çıkış" şeridi
+ * duruyordu. Ürün sahibi kaldırılmasını istedi ve kimseyi ortada
+ * bırakmıyor: doğrulama kodu zaten giriş formunun içinde görünüyor
+ * (`components/otp-giris.tsx`), kod defterinin kendisi `/gelistirme`
+ * adresinde duruyor ve çıkış her panelde kendi yerinde.
+ *
+ * Şerit geliştirirken kolaylıktı ama ürünü değerlendiren birinin
+ * ekranında iskele gibi duruyordu — üstelik panelin alt gezinme
+ * şeridiyle sürekli yer kavgası ediyordu.
+ */
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     // Font değişkenleri `<html>`de: Tailwind'in `@theme` bloğu `--font-body`yi
@@ -52,49 +63,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="tr" className={`${outfit.variable} ${mono.variable}`}>
       <body>
         {children}
-        <GelistirmeRozeti />
       </body>
     </html>
-  );
-}
-
-/**
- * Geliştirme rozeti — her ekranın köşesinde, doğrulama kodlarına kısayol.
- *
- * Canlıda hiç render edilmez: `kodEkrandaGosterilir()` iki şart birden arıyor
- * (APP_ENV canlı değil **ve** sahte SMS sağlayıcısı) ve canlıda ikisi
- * birlikte sağlanamıyor. Bilerek ürün paletinin biraz dışında duruyor —
- * kimse onu arayüzün parçası sanmasın.
- */
-function GelistirmeRozeti() {
-  if (!kodEkrandaGosterilir()) return null;
-
-  return (
-    <nav
-      aria-label="Geliştirme araçları"
-      /* Alt gezinme şeridinin ÜSTÜNDE duruyor. Oyuncu ve işletme
-         taraflarının ikisinde de sabit bir şerit var (`bottom-0`,
-         yaklaşık 64px) ve rozet `bottom-3` iken onları kapatıyordu. */
-      className="fixed right-3 bottom-20 z-50 flex gap-1.5 etiket-caps"
-    >
-      <Link
-        href="/"
-        className="rounded border border-vurgu/40 bg-yuzey/95 px-2.5 py-1.5 text-vurgu backdrop-blur"
-      >
-        Başlangıç
-      </Link>
-      <Link
-        href="/gelistirme"
-        className="rounded border border-odul/50 bg-yuzey/95 px-2.5 py-1.5 text-odul-koyu backdrop-blur"
-      >
-        Kodlar
-      </Link>
-      <a
-        href="/cikis"
-        className="rounded border border-cizgi bg-yuzey/95 px-2.5 py-1.5 text-yazi-sonuk backdrop-blur"
-      >
-        Çıkış
-      </a>
-    </nav>
   );
 }

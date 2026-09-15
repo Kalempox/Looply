@@ -90,6 +90,20 @@ export const isProduction = () => env().APP_ENV === "production";
 export const isDevelopment = () => env().APP_ENV === "development";
 
 /**
+ * Çerezlere `Secure` bayrağı konsun mu?
+ *
+ * ⚠️ Bu kapı önce `isProduction()` idi ve staging çıkışında (F3) yanlış
+ * çıktı: demo sunucusu `APP_ENV=staging` ile ama **gerçek HTTPS üzerinde**
+ * koşuyor. Bayrak konmasaydı oturum çerezi düz HTTP isteğinde de
+ * gönderilebilir hâlde kalırdı — sertifika varken bundan vazgeçmenin
+ * sebebi yok.
+ *
+ * `development` dışarıda: yerel geliştirme `http://localhost` üzerinde
+ * çalışıyor ve `Secure` çerez orada hiç yazılmaz — giriş tamamen kırılırdı.
+ */
+export const cerezGuvenli = () => env().APP_ENV !== "development";
+
+/**
  * Demo/test ortamında mıyız?
  *
  * İki şart birden aranıyor ve ikisi de canlıda sağlanamaz:

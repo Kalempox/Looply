@@ -8,7 +8,7 @@ import {
   Rozet,
   IkiKolon,
 } from "@/components/isletme";
-import { OdulSekmeleri } from "../odul-sekmeleri";
+import { FarkNotu } from "../fark-notu";
 import { KampanyaOlusturma, DurumDugmeleri } from "./kontroller";
 
 export const dynamic = "force-dynamic";
@@ -17,9 +17,9 @@ export const metadata = { title: "Kampanyalar · Looply" };
 /**
  * Ürün bazlı yüzde kampanyaları — Ö4.
  *
- * Katalogdaki yüzdeli ödülden farkı: bu **puan istemez** ve kafenin itmek
- * istediği ürüne bağlıdır. *"Kafede tiramisu satılmıyor — tiramisuda %10,
- * günde en fazla 20 adet, bir hafta."*
+ * Katalogdaki yüzdeli ödülden farkı: bu **kazanılmıyor** — kafenin itmek
+ * istediği ürüne bağlı ve oynamak yetiyor. *"Kafede tiramisu satılmıyor —
+ * tiramisuda %10, günde en fazla 20 adet, bir hafta."*
  *
  * Canlı sayaç her satırda: kampanyanın ne kadarının kullanıldığı görünmeden
  * limit koymanın anlamı olmaz.
@@ -35,12 +35,12 @@ export default async function KampanyalarSayfasi() {
     <IsletmeSayfa genis>
       <IsletmeBaslik
         ust="İşletme paneli"
-        alt="Müşteriye ne veriyorsun — kazanılan ödüller ve herkese açık indirimler."
+        alt="Öne çıkarmak istediğin ürüne bağlı yüzde indirimi — puan istemez."
       >
-        Ödüller ve kampanyalar
+        Kampanyalar
       </IsletmeBaslik>
 
-      <OdulSekmeleri aktif="kampanya" />
+      <FarkNotu taraf="kampanya" />
 
       <IkiKolon
         sol={
@@ -84,19 +84,38 @@ export default async function KampanyalarSayfasi() {
                             <DurumRozeti durum={k.durum} />
                           </span>
 
-                          <span className="mt-1 block font-data text-[12px] text-yazi-sonuk tabular">
-                            en fazla{" "}
-                            {(k.tavanKurus / 100).toLocaleString("tr-TR")} TL ·
-                            günde {k.gunlukLimit} adet
-                            {k.toplamLimit
-                              ? ` · toplam ${k.toplamLimit}`
-                              : ""}{" "}
-                            ·{" "}
-                            {k.bitis.toLocaleDateString("tr-TR", {
-                              day: "numeric",
-                              month: "long",
-                            })}{" "}
-                            tarihine kadar
+                          {/*
+                            🔴 Tek satırlık monospace dizi yerine etiketli
+                            rozetler (Ü123).
+
+                            Eskiden "en fazla 25 TL · günde 50 adet ·
+                            15 Eylül tarihine kadar" tek bir gri şerit
+                            hâlinde yazıyordu: hangi sayının ne olduğunu
+                            anlamak için cümleyi okumak gerekiyordu.
+                            Rozetlerde sayı önde, ne olduğu altında.
+                          */}
+                          <span className="mt-2 flex flex-wrap gap-1.5">
+                            <Kunye
+                              deger={`${(k.tavanKurus / 100).toLocaleString("tr-TR")} TL`}
+                              etiket="en fazla"
+                            />
+                            <Kunye
+                              deger={`${k.gunlukLimit}`}
+                              etiket="günde"
+                            />
+                            {k.toplamLimit != null && (
+                              <Kunye
+                                deger={`${k.toplamLimit}`}
+                                etiket="toplam"
+                              />
+                            )}
+                            <Kunye
+                              deger={k.bitis.toLocaleDateString("tr-TR", {
+                                day: "numeric",
+                                month: "short",
+                              })}
+                              etiket="bitiş"
+                            />
                           </span>
 
                           {/* Canlı sayaç */}
@@ -127,6 +146,25 @@ export default async function KampanyalarSayfasi() {
         }
       />
     </IsletmeSayfa>
+  );
+}
+
+/**
+ * Sayı + etiketi olan küçük künye — Ü123.
+ *
+ * Sayıyı `font-data` ile büyütüp ne olduğunu altına küçük yazmak,
+ * "günde 50 adet" cümlesinden hızlı okunuyor: göz önce rakamı buluyor.
+ */
+function Kunye({ deger, etiket }: { deger: string; etiket: string }) {
+  return (
+    <span className="rounded-lg bg-cukur px-2.5 py-1 text-center">
+      <span className="block font-data text-[13px] leading-none font-bold tabular">
+        {deger}
+      </span>
+      <span className="etiket-caps mt-0.5 block text-[9px] text-yazi-sonuk">
+        {etiket}
+      </span>
+    </span>
   );
 }
 

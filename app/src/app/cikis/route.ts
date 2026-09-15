@@ -15,7 +15,40 @@ import { demoOrtami } from "@/lib/env";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+/**
+ * 🔴 Ön getirme (prefetch) isteği mi?
+ *
+ * ── Yaşanan arıza ───────────────────────────────────────────
+ *
+ * Panelin menüsünde ve oyuncunun ana ekranında `<Link href="/cikis">`
+ * duruyordu. Next, `<Link>` hedeflerini **üretim derlemesinde** görünür
+ * olur olmaz önceden getiriyor — ve bu adres bir GET route'u, yani
+ * getirilmesi doğrudan oturumu kapatıyordu. Kullanıcı paneli açıyor,
+ * yarım saniye sonra giriş ekranına düşüyordu.
+ *
+ * ⚠️ **`npm run dev` bunu göstermiyor**: geliştirme sunucusu `<Link>`
+ * hedeflerini önceden getirmiyor. Arıza yalnızca derlenmiş sürümde,
+ * yani ilk sunucuya çıkışta ortaya çıkıyor. Kapta bulundu (F3).
+ *
+ * İki taraf birden düzeltildi: bağlantılar sade `<a>` oldu (çıkış zaten
+ * istemci içi bir geçiş değil) ve burada bu kapı eklendi. Yalnızca biri
+ * yapılsaydı, ileride yazılacak ilk `<Link href="/cikis">` aynı arızayı
+ * geri getirirdi.
+ *
+ * Yalnızca **açık ön getirme işaretlerine** bakıyor. `RSC` başlığına
+ * BAKMIYOR: o başlık istemci içi her geçişte var ve gerçek bir tıklamayı
+ * da engellerdi.
+ */
+function onGetirme(h: Headers): boolean {
+  if (h.get("next-router-prefetch")) return true;
+  const amac = `${h.get("purpose") ?? ""} ${h.get("sec-purpose") ?? ""}`;
+  return amac.includes("prefetch");
+}
+
+export async function GET(istek: Request) {
+  // Ön getirme oturuma dokunmuyor ve hiçbir yere yönlendirmiyor.
+  if (onGetirme(istek.headers)) return new Response(null, { status: 204 });
+
   const o = await oturum.oku();
   const rol = o?.rol;
 

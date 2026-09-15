@@ -44,7 +44,14 @@ export default async function OdullerSayfasi() {
   await bakim();
 
   const e = await envanter(o.ozneId);
-  const bosMu = !e.kullanilabilir.length && !e.bekleyen.length && !e.gecmis.length;
+  const bosMu =
+    !e.kullanilabilir.length &&
+    !e.bekleyen.length &&
+    !e.kullanilan.length &&
+    !e.kacirilan.length;
+
+  // Ü128: kullanılabilir kuponlar kafeye göre gruplanıyor.
+  const kafeler = kafeyeGore(e.kullanilabilir);
 
   return (
     <OyuncuSayfa aktif="/oduller">
@@ -123,23 +130,51 @@ export default async function OdullerSayfasi() {
             </div>
           )}
 
+          {/*
+            Ü128: kupon listesi **kafeye göre gruplanıyor.**
+
+            Oyuncu farklı kafelerde oynuyor ve kuponları tek bir listede
+            karışıyordu; her kartın altında kafe adı yazsa da "bugün bu
+            kafeye gidiyorum, elimde ne var" sorusu ancak satır satır
+            okuyarak cevaplanıyordu. Kasada sıra beklerken yapılacak iş
+            bu değil.
+
+            ⚠️ Kafe başlığı **tek kafede de** çiziliyor. Gizleseydik iki
+            kafeli oyuncunun ekranı bir anda başka bir düzene geçerdi;
+            aynı ekranın iki hâli olmasındansa tek kafede de aynı
+            iskelet duruyor.
+          */}
           <OyuncuBolum
             baslik="Kullanılabilir"
             renk="kahve"
             not={e.kullanilabilir.length > 0 ? "kasada göster" : undefined}
           >
-            {e.kullanilabilir.length === 0 ? (
+            {kafeler.length === 0 ? (
               <p className="rounded-2xl border border-cizgi bg-yuzey px-5 py-5 text-[14px] text-yazi-sonuk">
                 Şu an kullanabileceğin kupon yok.
               </p>
             ) : (
-              <ul className="flex flex-col gap-3">
-                {e.kullanilabilir.map((k) => (
-                  <li key={k.id}>
-                    <BiletKarti kupon={k} />
-                  </li>
+              <div className="flex flex-col gap-6">
+                {kafeler.map((g) => (
+                  <section key={g.cafeId}>
+                    <div className="mb-2.5 flex items-baseline justify-between gap-3">
+                      <h3 className="font-display text-[16px] leading-tight font-bold">
+                        {g.cafeAdi}
+                      </h3>
+                      <span className="shrink-0 text-[12px] text-yazi-sonuk">
+                        {g.kuponlar.length} kupon
+                      </span>
+                    </div>
+                    <ul className="flex flex-col gap-3">
+                      {g.kuponlar.map((k) => (
+                        <li key={k.id}>
+                          <BiletKarti kupon={k} />
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
                 ))}
-              </ul>
+              </div>
             )}
           </OyuncuBolum>
 
@@ -155,10 +190,27 @@ export default async function OdullerSayfasi() {
             </OyuncuBolum>
           )}
 
-          {e.gecmis.length > 0 && (
-            <OyuncuBolum baslik="Geçmiş">
-              <ul className="flex flex-col gap-2.5 opacity-70">
-                {e.gecmis.map((k) => (
+          {/*
+            Ü128: geçmiş ikiye ayrıldı. Tek yığındayken "bunu yaşadım" ile
+            "bunu kaçırdım" aynı sönük listede duruyordu ve ikisi de bir
+            şey ifade etmiyordu.
+          */}
+          {e.kullanilan.length > 0 && (
+            <OyuncuBolum baslik="Kullandıkların" not={`${e.kullanilan.length} kupon`}>
+              <ul className="flex flex-col gap-2.5 opacity-80">
+                {e.kullanilan.map((k) => (
+                  <li key={k.id}>
+                    <SakinKart kupon={k} />
+                  </li>
+                ))}
+              </ul>
+            </OyuncuBolum>
+          )}
+
+          {e.kacirilan.length > 0 && (
+            <OyuncuBolum baslik="Süresi geçenler">
+              <ul className="flex flex-col gap-2.5 opacity-60">
+                {e.kacirilan.map((k) => (
                   <li key={k.id}>
                     <SakinKart kupon={k} />
                   </li>
@@ -173,6 +225,32 @@ export default async function OdullerSayfasi() {
 }
 
 /* ── Parçalar ──────────────────────────────────────────── */
+
+/**
+ * Kuponları kafeye göre gruplar — Ü128.
+ *
+ * ⚠️ Sıra **envanterin sırasından** türüyor, kafe adına göre değil:
+ * `envanter()` kuponları en yeniden eskiye diziyor, yani en son kupon
+ * kazandığın kafe üstte çıkıyor. Alfabetik sıralasaydık "Akkahve" adlı
+ * kafe, oyuncunun beş dakika önce oynadığı kafenin üstünde durur ve
+ * kasada aranan kupon aşağıda kalırdı.
+ */
+function kafeyeGore(
+  kuponlar: EnvanterKuponu[],
+): { cafeId: string; cafeAdi: string; kuponlar: EnvanterKuponu[] }[] {
+  const harita = new Map<string, { cafeId: string; cafeAdi: string; kuponlar: EnvanterKuponu[] }>();
+
+  for (const k of kuponlar) {
+    let g = harita.get(k.cafeId);
+    if (!g) {
+      g = { cafeId: k.cafeId, cafeAdi: k.cafeAdi, kuponlar: [] };
+      harita.set(k.cafeId, g);
+    }
+    g.kuponlar.push(k);
+  }
+
+  return [...harita.values()];
+}
 
 const DURUM_ETIKETI: Record<EnvanterKuponu["durum"], string> = {
   kullanilabilir: "Kasada göster",

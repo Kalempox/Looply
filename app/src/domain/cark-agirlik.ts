@@ -157,62 +157,105 @@ export function sebepMetni(s: DisSebep, ustSinirKurus: number): string {
 export type Sonuc = { ok: true } | { ok: false; hata: string };
 
 /**
- * Bir ödülün ağırlığını yazar.
+ * Bir ödülün **yüzdesini** yazar ve kalanı diğerlerine dağıtır.
  *
- * ── ⚠️ İlk yazımda kalanlar da SABİTLENİYOR ─────────────────
+ * ── 🔴 Ağırlıktan yüzdeye (Ü124) ────────────────────────────
  *
- * Kafe ilk ağırlığı yazdığında diğer ödüllerin ağırlıkları o anki
- * otomatik dağılımdan dolduruluyor. Yarısı otomatik yarısı elle bir
- * liste, panelde gösterilen yüzdeyi açıklanamaz yapardı: kafe 90 yazıp
- * %47 görürdü. Sabitlemeden sonra aritmetik görünür — 90 yazan 90/toplam
- * görüyor.
+ * Ü110'da kafe **ağırlık** yazıyordu, yüzde panelde türetiliyordu.
+ * Gerekçe şuydu: yüzde girilseydi toplamın 100 olması gerekirdi ve her
+ * ekleme/çıkarma bütün satırların elle yeniden hesaplanması demek
+ * olurdu.
  *
- * Sabitleme o anki dağılımı birebir koruyor, yani ilk yazımın kendisi
- * diğer ödüllerin olasılığını değiştirmiyor.
+ * Gerekçe doğruydu ama çözümü yanlış yerden aldı: kafe sahibine
+ * "ağırlık" diye soyut bir sayı soruldu ve yanındaki yüzde okunurken
+ * ikisi arasındaki ilişkiyi kurmak zorunda kaldı. Ürün sahibi:
+ * *"Çarktaki ödüller ve yüzde kaç ihtimalle çıkacağı panelden
+ * ayarlanmalı."*
+ *
+ * Şimdi kafe **yüzde** yazıyor ve kalan pay **oransal olarak**
+ * diğerlerine dağıtılıyor — yani toplam her zaman 100. Elle yeniden
+ * hesaplama sorunu ortadan kalkıyor çünkü hesabı biz yapıyoruz:
+ *
+ *   · Bir ödüle %40 yazıldı → kalan %60, diğerlerinin o anki
+ *     oranları korunarak aralarında bölüşülüyor.
+ *   · Yuvarlama kayması en büyük paya yazılıyor; toplam tam 100.
+ *
+ * ── ⚠️ Sıfır = çarkta çıkmaz ────────────────────────────────
+ *
+ * Ayrı bir "çarkta mı" anahtarı yok ve olmamalı: iki ayrı işaretleyici
+ * (anahtar + yüzde) bir gün ayrışır ve "açık ama %0" diye anlamsız bir
+ * durum üretirdi. Sıfır yazmak ödülü çarktan çıkarıyor, ekranda da
+ * böyle yazıyor.
  *
  * ── ⚠️ Hepsi sıfır olamaz ───────────────────────────────────
  *
  * "Çarkta hiçbir ödül çıkmasın" geçerli bir yapılandırma değil: çark
- * dönecek bir şey bulamaz ve oyuncuya boş ekran kalır. Kafe çarkı
- * kapatmak istiyorsa ödülleri kapatır ya da üst sınırı indirir — ikisi de
- * ekranda ne olduğunu söyleyen kararlar.
+ * dönecek bir şey bulamaz ve oyuncuya boş ekran kalır.
  */
 export async function yaz(opts: {
   cafeId: string;
   odulId: string;
-  agirlik: number;
+  /** Bu ödülün çıkma yüzdesi, 0–100. Sıfır = çarkta çıkmaz. */
+  yuzde: number;
   aktorId: string;
 }): Promise<Sonuc> {
   if (
-    !Number.isInteger(opts.agirlik) ||
-    opts.agirlik < 0 ||
-    opts.agirlik > EN_COK_AGIRLIK
+    !Number.isInteger(opts.yuzde) ||
+    opts.yuzde < 0 ||
+    opts.yuzde > EN_COK_AGIRLIK
   ) {
-    return { ok: false, hata: `Ağırlık 0 ile ${EN_COK_AGIRLIK} arasında bir tam sayı olmalı.` };
+    return { ok: false, hata: `Yüzde 0 ile ${EN_COK_AGIRLIK} arasında bir tam sayı olmalı.` };
   }
 
   const d = await durum(opts.cafeId);
   const hedef = d.satirlar.find((s) => s.odulId === opts.odulId);
   if (!hedef) {
-    return { ok: false, hata: "Bu ödül şu an çarkta değil; ağırlığı da çarkı etkilemez." };
+    return { ok: false, hata: "Bu ödül şu an çarkta değil; yüzdesi de çarkı etkilemez." };
   }
 
-  const sonrasi = d.satirlar.map((s) =>
-    s.odulId === opts.odulId ? opts.agirlik : s.etkin,
-  );
-  if (sonrasi.every((a) => a === 0)) {
+  const digerler = d.satirlar.filter((s) => s.odulId !== opts.odulId);
+
+  if (opts.yuzde === 0 && digerler.every((s) => s.etkin === 0)) {
     return {
       ok: false,
-      hata: "En az bir ödülün ağırlığı sıfırdan büyük olmalı — yoksa çark dönecek bir şey bulamaz.",
+      hata: "En az bir ödülün yüzdesi sıfırdan büyük olmalı — yoksa çark dönecek bir şey bulamaz.",
     };
   }
 
+  // ── Kalanı oransal böl ────────────────────────────────────
+  const kalan = EN_COK_AGIRLIK - opts.yuzde;
+  const digerToplam = digerler.reduce((t, s) => t + s.etkin, 0);
+
+  const paylar = digerler.map((s) =>
+    digerToplam > 0
+      ? Math.round((s.etkin / digerToplam) * kalan)
+      : // Hepsi sıfırdıysa oran yok; kalan eşit bölünüyor.
+        Math.floor(kalan / digerler.length),
+  );
+
+  // Yuvarlama kayması en büyük paya yazılıyor: küçük paylara yazmak
+  // yüzde 1'lik bir ödülü yüzde 2 yapıp oranı belirgin biçimde bozardı.
+  const toplam = opts.yuzde + paylar.reduce((a, b) => a + b, 0);
+  if (paylar.length > 0 && toplam !== EN_COK_AGIRLIK) {
+    let enBuyuk = 0;
+    for (let i = 1; i < paylar.length; i++) {
+      if (paylar[i] > paylar[enBuyuk]) enBuyuk = i;
+    }
+    paylar[enBuyuk] = Math.max(0, paylar[enBuyuk] + (EN_COK_AGIRLIK - toplam));
+  }
+
   await withCafe(opts.cafeId, async (db) => {
-    // Sabitleme ve yazım aynı işlemde: ayrı olsaydı arada dönen bir çark
-    // yarı sabitlenmiş bir listeyle karşılaşabilirdi.
-    for (const s of d.satirlar) {
-      const deger = s.odulId === opts.odulId ? opts.agirlik : s.etkin;
-      await db.query(`UPDATE rewards SET wheel_weight = $2 WHERE id = $1`, [s.odulId, deger]);
+    // Hedef ve kalanlar aynı işlemde: ayrı olsaydı arada dönen bir çark
+    // toplamı 100 olmayan bir listeyle karşılaşabilirdi.
+    await db.query(`UPDATE rewards SET wheel_weight = $2 WHERE id = $1`, [
+      opts.odulId,
+      opts.yuzde,
+    ]);
+    for (let i = 0; i < digerler.length; i++) {
+      await db.query(`UPDATE rewards SET wheel_weight = $2 WHERE id = $1`, [
+        digerler[i].odulId,
+        paylar[i],
+      ]);
     }
 
     await audit(db, {
@@ -222,7 +265,7 @@ export async function yaz(opts: {
       action: "reward.update",
       targetType: "reward",
       targetId: opts.odulId,
-      detail: { carkAgirligi: opts.agirlik, oncekiEtkin: hedef.etkin },
+      detail: { carkYuzdesi: opts.yuzde, oncekiYuzde: hedef.yuzde },
     });
   });
 

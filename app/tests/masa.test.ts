@@ -7,6 +7,7 @@ import { closePools } from "@/db/pool";
 import { kaydet } from "@/domain/player";
 import { normalizePhone } from "@/lib/crypto";
 import * as masa from "@/domain/masa";
+import * as ayar from "@/domain/ayar";
 import { yoneticiSorgu } from "./_yardim";
 
 /**
@@ -22,6 +23,7 @@ const KAFE_LNG = 28.9838;
 
 let kafeA = "";
 let masaA = "";
+let yoneticiA = "";
 let oyuncuId = "";
 
 const TABAN = 3_000_000 + randomInt(5_000_000);
@@ -35,11 +37,16 @@ before(async () => {
       "SELECT id FROM cafe_tables WHERE cafe_id = $1 ORDER BY sort_order LIMIT 1",
       [c!.id],
     );
-    return { c: c?.id, t: t?.id };
+    const y = await db.one<{ id: string }>(
+      "SELECT id FROM staff WHERE cafe_id = $1 AND role = 'manager' LIMIT 1",
+      [c!.id],
+    );
+    return { c: c?.id, t: t?.id, y: y?.id };
   });
-  assert.ok(v.c && v.t, "Tohum verisi yok — önce: npm run db:seed");
+  assert.ok(v.c && v.t && v.y, "Tohum verisi yok — önce: npm run db:seed");
   kafeA = v.c;
   masaA = v.t;
+  yoneticiA = v.y;
 
   // Kafenin koordinatı olmalı; yoksa konum doğrulaması hiç çalışmaz
   await yoneticiSorgu(`UPDATE cafes SET lat = $2, lng = $3 WHERE id = $1`, [
@@ -166,6 +173,49 @@ describe("konum doğrulaması (K2)", () => {
     assert.equal(o!.kanitMaskesi & masa.K2, 0, "uzaktayken K2 verilmemeli");
     assert.equal(o!.kanitSeviyesi, 1);
     assert.ok(o!.mesafeM! > masa.GEOFENCE_METRE, "mesafe yine de kaydedilmeli");
+  });
+
+  test("🔴 yarıçap kafenin ayarı — dar çember uzağı reddediyor (Ü131)", async () => {
+    // `GEOFENCE_METRE = 150` sabitken her kafeye aynı çember uygulanıyordu;
+    // 150 metre, yan binadaki birinin de "kafedeyim" sayılması demekti.
+    // Ürün sahibi yarıçapı kafeye verdi. Bu test ayarın gerçekten K2'ye
+    // geçtiğini çiviliyor — panelde yazan sayı ile kabul edilen mesafe
+    // ayrışırsa kafe "40 yazdım, hâlâ 150 metreden kazanıyorlar" der.
+    const sifirla = () =>
+      yoneticiSorgu(
+        `UPDATE table_sessions SET proof_mask = 1, proof_level = 1, geo_distance_m = NULL
+          WHERE player_id = $1`,
+        [oyuncuId],
+      );
+
+    // ~80 metre kuzey: varsayılan 150'nin içinde, ayarlanacak 40'ın dışında.
+    const SEKSEN_METRE = KAFE_LAT + 0.00072;
+
+    await ayar.sayiYaz({
+      cafeId: kafeA,
+      anahtar: ayar.ANAHTARLAR.konumYaricapi,
+      deger: 40,
+      aktorId: yoneticiA,
+    });
+
+    await sifirla();
+    const dar = await masa.konumDogrula(oyuncuId, SEKSEN_METRE, KAFE_LNG);
+    assert.equal(dar.durum, "uzak", "40 metre yarıçapta 80 metre kabul edildi");
+
+    // Aynı nokta, geniş çemberde kabul edilmeli — reddin sebebi mesafe
+    // değil de başka bir şey olsaydı bu da başarısız olurdu.
+    await ayar.sayiYaz({
+      cafeId: kafeA,
+      anahtar: ayar.ANAHTARLAR.konumYaricapi,
+      deger: 150,
+      aktorId: yoneticiA,
+    });
+
+    await sifirla();
+    const genis = await masa.konumDogrula(oyuncuId, SEKSEN_METRE, KAFE_LNG);
+    assert.equal(genis.durum, "dogrulandi", "150 metre yarıçapta 80 metre reddedildi");
+
+    await sifirla();
   });
 
   test("konum reddi bir hata değil, kayıtlı bir durum", async () => {

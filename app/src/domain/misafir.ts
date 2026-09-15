@@ -2,7 +2,8 @@ import { randomToken, imzala, imzaGecerliMi } from "@/lib/crypto";
 import { oyunBul, tekrarOyna, saatTutarliMi } from "@/oyunlar";
 import { log } from "@/lib/log";
 import * as acil from "./acil";
-import { GEOFENCE_METRE, mesafeMetre } from "./masa";
+import { mesafeMetre } from "./masa";
+import * as ayar from "./ayar";
 import { withBypass } from "@/db/context";
 import { basariliMi } from "./puan";
 
@@ -127,8 +128,12 @@ export async function konumDogrula(opts: {
     return { durum: "kafe_konumu_yok" };
   }
 
+  // Ü131: yarıçap kafenin ayarı — kayıtlı oyuncuyla misafir aynı çemberi
+  // görmeli. Ayrı sabitler kalsaydı aynı kapıda duran iki kişiden biri
+  // kabul edilir, öbürü reddedilirdi.
+  const yaricap = await ayar.sayiOku(opts.cafeId, ayar.ANAHTARLAR.konumYaricapi);
   const mesafe = mesafeMetre(opts.lat, opts.lng, kafe.lat, kafe.lng);
-  const yakin = mesafe <= GEOFENCE_METRE;
+  const yakin = mesafe <= yaricap;
 
   const veri: MisafirKonum = {
     cafeId: opts.cafeId,

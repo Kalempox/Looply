@@ -66,18 +66,41 @@ before(async () => {
       [a!.id],
     );
     const t = await db.all<{ id: string; label: string }>(
-      "SELECT id, label FROM cafe_tables WHERE cafe_id = $1 ORDER BY sort_order DESC LIMIT 2",
+      "SELECT id, label FROM cafe_tables WHERE cafe_id = $1 ORDER BY sort_order DESC LIMIT 1",
       [a!.id],
     );
     return { a: a?.id, b: b?.id, y: y?.id, t };
   });
-  assert.ok(v.a && v.b && v.y && v.t.length === 2, "Tohum verisi eksik");
+  assert.ok(v.a && v.b && v.y && v.t.length === 1, "Tohum verisi eksik");
   kafeA = v.a;
   kafeB = v.b;
   yoneticiA = v.y;
-  azMasa = v.t[0].id;
-  cokMasa = v.t[1].id;
-  azMasaAdi = v.t[0].label;
+  cokMasa = v.t[0].id;
+
+  /**
+   * "Eşiğin altındaki masa" için tohumdan bir masa ödünç almak yerine
+   * **kendi masamızı** açıyoruz.
+   *
+   * Ödünç alınan masada testin varsayımı şuydu: "bu hafta bu masada
+   * yalnızca benim üç oyuncum var." Veritabanında gerçek trafik olduğu
+   * anda (`npm run db:simule`, ya da elle yapılan bir tur) varsayım
+   * çöküyor, masa eşiğin üstüne çıkıyor ve test ürün doğru çalışırken
+   * kırmızı yanıyor — nitekim öyle oldu. Gerçek bir kafenin masasında
+   * her zaman başka trafik olur; kırılgan olan test, ürün değil.
+   *
+   * Yalnız bu masa yalıtılıyor; `cokMasa` hâlâ tohumdan geliyor çünkü
+   * oradaki iddia "eşiğin ÜSTÜNDE" ve fazladan trafik onu bozmuyor.
+   */
+  azMasaAdi = `Rapor testi ${TABAN}`;
+  azMasa = `msa_rapor_${TABAN}`;
+  await yoneticiSorgu(
+    // Ü127: `active = false`. Kafe başına tek aktif karekod kuralı var
+    // (`cafe_tables_tek_aktif`) ve bu satır yalnızca oturumlara bir
+    // `table_id` vermek için duruyor — okutulmuyor.
+    `INSERT INTO cafe_tables (id, cafe_id, label, sort_order, qr_secret, active)
+     VALUES ($1, $2, $3, 999, decode(md5($1), 'hex'), false)`,
+    [azMasa, kafeA, azMasaAdi],
+  );
 
   // Önceki koşudan kalan test satırları bu haftanın sayılarını bozmasın.
   await yoneticiSorgu(`DELETE FROM play_sessions WHERE id LIKE 'oyn_rapor_%'`);
@@ -115,6 +138,8 @@ after(async () => {
     `DELETE FROM audit_log WHERE cafe_id = $1 AND action IN ('report.view','report.export')`,
     [kafeA],
   );
+  // Testin kendi açtığı masa — oturumlar zaten yukarıda silindi.
+  await yoneticiSorgu(`DELETE FROM cafe_tables WHERE id = $1`, [azMasa]);
   await closePools();
 });
 

@@ -1,0 +1,111 @@
+# ═══════════════════════════════════════════════════════════
+# Looply — demo sunucusu (F3)
+# ═══════════════════════════════════════════════════════════
+#
+#   docker compose --env-file .env.demo -f docker-compose.demo.yml up -d --build
+#
+# Kurulum adımları: docs/26-demo-kurulumu.md
+#
+# ── 🔴 `name` neden burada ──────────────────────────────────
+#
+# Bu dosya `docker-compose.yml` ile aynı dizinde duruyor ve ikisinde de `db`
+# adında bir servis var. Compose proje adını dizinden türetiyor, yani ikisi
+# de "app" projesine düşüyordu: demo yığınını açmak **geliştirme
+# veritabanının kabını değiştiriyordu.** Bir kez yaşandı; hacim durduğu
+# için veri kaybı olmadı ama kap gitti.
+#
+# Ayrı proje adı bunu kesin olarak kapatıyor. Sunucuda bu dosya tek başına
+# duracak ve çakışma zaten olmayacak — ama geliştirme makinesinde ikisi yan
+# yana ve orada koruma gerekiyor.
+name: looply-demo
+#
+# ── 🔴 Veritabanı dışarı AÇILMIYOR — K1'in karşılığı ────────
+#
+# `db` servisinde `ports:` bilerek YOK. Yalnızca kapların paylaştığı iç ağda
+# görünüyor; sunucunun dışından erişilebilecek bir port yok, taranacak bir
+# yüzey yok, kırılacak bir parola yok.
+#
+# `ports: - "5432:5432"` eklemek bu kararı sessizce geri alır. Eklemeyin.
+
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: looply-demo-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: cafeplay_admin
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD tanımlı değil}
+      POSTGRES_DB: cafeplay
+      LANG: tr_TR.utf8
+    volumes:
+      - db_verisi:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cafeplay_admin -d cafeplay"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks: [ic]
+
+  uygulama:
+    build:
+      context: .
+      target: uygulama
+    container_name: looply-demo-app
+    restart: unless-stopped
+    env_file: .env.demo
+    # ⚠️ Uygulama KISITLI rolle bağlanıyor (`cafeplay_app`). Yönetici rolüyle
+    # bağlansaydı satır düzeyi güvenliği (RLS) devre dışı kalırdı ve kiracı
+    # izolasyonunun ikinci katmanı yok olurdu — demo gerçeği göstermezdi.
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      # Kafe belgeleri (şifreli). Kap yenilenince kaybolmasın.
+      - belgeler:/app/belgeler
+    networks: [ic]
+
+  # Ters vekil + otomatik TLS. Let's Encrypt sertifikasını kendisi alıp
+  # yeniliyor; nginx'te aynı iş elle sertifika yönetimi demekti.
+  caddy:
+    image: caddy:2-alpine
+    container_name: looply-demo-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      ALAN_ADI: ${ALAN_ADI:?ALAN_ADI tanımlı değil}
+      ACME_EPOSTA: ${ACME_EPOSTA:?ACME_EPOSTA tanımlı değil}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_veri:/data       # sertifikalar — silinirse yeniden alınır, hız sınırına takılır
+      - caddy_ayar:/config
+    depends_on: [uygulama]
+    networks: [ic]
+
+  # Göç ve tohum için. Sürekli çalışmıyor:
+  #   docker compose -f docker-compose.demo.yml run --rm araclar npm run db:migrate
+  araclar:
+    build:
+      context: .
+      target: araclar
+    env_file: .env.demo
+    environment:
+      # Betikler `.env.local` arıyor; sunucuda o dosya yok, değerler
+      # compose'dan geliyor. dotenv var olan değişkeni EZMİYOR.
+      NODE_ENV: production
+    depends_on:
+      db:
+        condition: service_healthy
+    networks: [ic]
+    profiles: [araclar]   # `up` ile kendiliğinden başlamasın
+
+volumes:
+  db_verisi:
+  belgeler:
+  caddy_veri:
+  caddy_ayar:
+
+networks:
+  ic:
+    driver: bridge

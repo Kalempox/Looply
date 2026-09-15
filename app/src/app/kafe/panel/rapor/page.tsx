@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { kafeYoneticisiGerekli } from "@/domain/yetki";
 import * as rapor from "@/domain/rapor";
 import { tekrarZiyaret, type TekrarZiyaret } from "@/domain/tekrar-ziyaret";
@@ -53,7 +54,7 @@ export const metadata = { title: "Rapor · Looply" };
 export default async function RaporSayfasi({
   searchParams,
 }: {
-  searchParams: Promise<{ on?: string; bas?: string; bit?: string }>;
+  searchParams: Promise<{ on?: string; bas?: string; bit?: string; s?: string }>;
 }) {
   const o = await kafeYoneticisiGerekli();
   await bakim();
@@ -109,6 +110,26 @@ export default async function RaporSayfasi({
   const gizliSaatVar = saatler.some((s) => s.oyuncu === null);
 
   const sonGun = rapor.HAZIR_ARALIKLAR.some((h) => h.ad === secim.hazir);
+
+  /**
+   * Doğrulama defteri sayfalanıyor — Ü123.
+   *
+   * 🔴 Defter bütün dönemi tek listede basıyordu. On dört günlük gerçek
+   * trafikte bu **yüzlerce satır** demek ve ürün sahibinin cümlesi tam
+   * olarak şuydu: *"Yoksa aşağı kaydır kaydır bitmez."* Daha kötüsü,
+   * defterin altındaki "Dışa aktar" bölümü listenin dibinde kalıyor ve
+   * pratikte bulunamıyordu.
+   *
+   * ⚠️ Kesme **sunucuda değil burada**: `rapor.ziyaretler` bütün dönemi
+   * döndürmeye devam ediyor çünkü aynı veri dışa aktarmada da kullanılıyor
+   * ve orada kesilmiş liste yanlış olurdu. Sayfalama bir **sunum**
+   * kararı, veri kararı değil.
+   */
+  const SAYFA_BOYU = 10;
+  const sayfaSayisi = Math.max(1, Math.ceil(ziyaretler.length / SAYFA_BOYU));
+  // Adres çubuğuna elle yazılan saçma değer sayfayı boş bırakmasın.
+  const sayfa = Math.min(sayfaSayisi, Math.max(1, Number(sp.s) || 1));
+  const gorunen = ziyaretler.slice((sayfa - 1) * SAYFA_BOYU, sayfa * SAYFA_BOYU);
 
   return (
     <IsletmeSayfa genis>
@@ -513,7 +534,11 @@ export default async function RaporSayfasi({
 
       {/* ── Doğrulama defteri ──────────────────────────── */}
       <Bolum
-        baslik="Doğrulama defteri"
+        baslik={
+          ziyaretler.length > 0
+            ? `Doğrulama defteri · ${ziyaretler.length} kayıt`
+            : "Doğrulama defteri"
+        }
         alt="Sayımızı satır satır denetleyebilirsin. Denetlenemeyen bir sayı, iddiadan ibarettir."
       >
         {ziyaretler.length === 0 ? (
@@ -531,7 +556,7 @@ export default async function RaporSayfasi({
                 </tr>
               </thead>
               <tbody className="divide-y divide-cizgi">
-                {ziyaretler.map((z, i) => (
+                {gorunen.map((z, i) => (
                   <tr key={`${z.kod}-${i}`}>
                     <td className="py-2 pr-4 font-data">{z.kod}</td>
                     <td className="py-2 pr-4 text-yazi-sonuk tabular">
@@ -560,6 +585,10 @@ export default async function RaporSayfasi({
               </tbody>
             </table>
           </div>
+        )}
+
+        {sayfaSayisi > 1 && (
+          <Sayfalama sorgu={sp} sayfa={sayfa} sayfaSayisi={sayfaSayisi} />
         )}
 
         <p className="mt-4 text-[12px] leading-relaxed text-yazi-sonuk">
@@ -811,5 +840,108 @@ function DonusBolumu({ donus }: { donus: TekrarZiyaret }) {
         </p>
       </div>
     </div>
+  );
+}
+
+/**
+ * Defterin sayfa şeridi — Ü123.
+ *
+ * ── Neden düğme değil bağlantı ──────────────────────────────
+ *
+ * Sayfa numarası adreste (`?s=3`) duruyor ve bağlantılarla geziliyor:
+ * kafe sahibi üçüncü sayfayı yeni sekmede açabiliyor, geri tuşu
+ * çalışıyor, adres paylaşılabiliyor. İstemci durumunda tutulsaydı
+ * bunların üçü de kaybolurdu — ve sayfa zaten sunucuda render ediliyor.
+ *
+ * ⚠️ Dönem parametreleri (`on`, `bas`, `bit`) olduğu gibi taşınıyor.
+ * Taşınmasaydı üçüncü sayfaya geçmek dönemi "son 7 gün"e döndürür,
+ * kafe sahibi de baktığı raporu kaybederdi.
+ *
+ * ── Neden bütün numaralar basılmıyor ────────────────────────
+ *
+ * 40 sayfalık bir defterde 40 numara, çözmeye çalıştığımız kaydırma
+ * problemini şeridin içine taşımaktan başka bir şey yapmaz. Şerit
+ * bulunulan sayfanın etrafındaki pencereyi gösteriyor; uçlara gitmek
+ * için ilk ve son numara her zaman duruyor.
+ */
+function Sayfalama({
+  sorgu,
+  sayfa,
+  sayfaSayisi,
+}: {
+  sorgu: { on?: string; bas?: string; bit?: string };
+  sayfa: number;
+  sayfaSayisi: number;
+}) {
+  const adres = (n: number) => {
+    const p = new URLSearchParams();
+    if (sorgu.on) p.set("on", sorgu.on);
+    if (sorgu.bas) p.set("bas", sorgu.bas);
+    if (sorgu.bit) p.set("bit", sorgu.bit);
+    if (n > 1) p.set("s", String(n));
+    const q = p.toString();
+    return q ? `/kafe/panel/rapor?${q}` : "/kafe/panel/rapor";
+  };
+
+  // Bulunulan sayfanın iki yanı + iki uç. Tekrarlar eleniyor.
+  const pencere = [1, sayfa - 1, sayfa, sayfa + 1, sayfaSayisi]
+    .filter((n) => n >= 1 && n <= sayfaSayisi)
+    .filter((n, i, d) => d.indexOf(n) === i)
+    .sort((a, b) => a - b);
+
+  return (
+    <nav
+      aria-label="Doğrulama defteri sayfaları"
+      className="mt-5 flex flex-wrap items-center gap-2 border-t border-cizgi pt-4"
+    >
+      <Link
+        href={adres(sayfa - 1)}
+        aria-disabled={sayfa === 1}
+        className={`rounded-lg border border-cizgi px-3 py-2 etiket-caps ${
+          sayfa === 1
+            ? "pointer-events-none opacity-40"
+            : "hover:border-yazi-sonuk"
+        }`}
+      >
+        ← Önceki
+      </Link>
+
+      <ul className="flex flex-wrap items-center gap-1.5">
+        {pencere.map((n, i) => (
+          <li key={n} className="flex items-center gap-1.5">
+            {/* Atlanan aralık üç nokta ile gösteriliyor: "2'den sonra 7
+                geliyor" görsel olarak anlaşılmazsa şerit yalan söyler. */}
+            {i > 0 && pencere[i - 1] !== n - 1 && (
+              <span aria-hidden className="px-1 text-yazi-sonuk">
+                …
+              </span>
+            )}
+            <Link
+              href={adres(n)}
+              aria-current={n === sayfa ? "page" : undefined}
+              className={`min-w-[2.25rem] rounded-lg px-2.5 py-2 text-center font-data text-[13px] font-bold tabular ${
+                n === sayfa
+                  ? "bg-vurgu text-yuzey"
+                  : "border border-cizgi text-yazi-sonuk hover:text-yazi"
+              }`}
+            >
+              {n}
+            </Link>
+          </li>
+        ))}
+      </ul>
+
+      <Link
+        href={adres(sayfa + 1)}
+        aria-disabled={sayfa === sayfaSayisi}
+        className={`rounded-lg border border-cizgi px-3 py-2 etiket-caps ${
+          sayfa === sayfaSayisi
+            ? "pointer-events-none opacity-40"
+            : "hover:border-yazi-sonuk"
+        }`}
+      >
+        Sonraki →
+      </Link>
+    </nav>
   );
 }

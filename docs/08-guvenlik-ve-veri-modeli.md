@@ -363,21 +363,22 @@ PostgreSQL. Tutarlar `bigint` **kuruş**; zamanlar `timestamptz`; kimlikler öne
 
 ```sql
 CREATE TABLE cafes (
-  id            text PRIMARY KEY,          -- 'cafe_...'
-  slug          text NOT NULL UNIQUE,
-  name          text NOT NULL,
-  legal_name    text,
-  tax_no_enc    bytea,                     -- şifreli
-  address       text,
-  city          text,
-  lat           double precision,
-  lng           double precision,
-  status        text NOT NULL DEFAULT 'pending'
-                CHECK (status IN ('pending','approved','suspended','rejected')),
-  approved_at   timestamptz,
-  approved_by   text,                      -- platform kullanıcısı
-  reject_reason text,
-  created_at    timestamptz NOT NULL DEFAULT now()
+  id             text PRIMARY KEY,         -- 'cafe_...'
+  slug           text NOT NULL UNIQUE,
+  name           text NOT NULL,            -- işletme adı — DÜZ, oyuncu bunu görüyor
+  legal_name_enc bytea,                    -- şifreli (Ü115) — şahıs şirketinde kişi adı
+  tax_no_enc     bytea,                    -- şifreli
+  address_enc    bytea,                    -- şifreli (Ü115) — şahıs şirketinde ev adresi
+  city           text,                     -- DÜZ — ilçe kırılımı yok, tek başına kimseyi göstermiyor
+  lat            double precision,         -- DÜZ — işletmenin konumu, kişisel veri değil
+  lng            double precision,
+  status         text NOT NULL DEFAULT 'pending'
+                 CHECK (status IN ('pending','approved','suspended','rejected')),
+  approved_at    timestamptz,
+  approved_by    text,                     -- platform kullanıcısı
+  reject_reason  text,
+  created_at     timestamptz NOT NULL DEFAULT now()
+  -- 0006 ayrıca ekliyor: contact_name_enc, contact_phone_enc, applied_at
 );
 
 -- G5: onaysız kafe hiçbir şey yapamaz. Karekod, kupon ve bütçe
@@ -410,13 +411,18 @@ CREATE TABLE cafe_tables (
 CREATE TABLE staff (
   id          text PRIMARY KEY,
   cafe_id     text NOT NULL REFERENCES cafes(id),
-  name        text NOT NULL,
-  pin_hash    text NOT NULL,               -- argon2id
+  name_enc    bytea NOT NULL,              -- şifreli (Ü115) — §2'nin "Ad, soyad → Şifreli" kuralı
+  pin_hash    text NOT NULL,               -- scrypt (G28 — §5.4)
   role        text NOT NULL CHECK (role IN ('cashier','manager')),
   active      boolean NOT NULL DEFAULT true,
   disabled_at timestamptz,
   created_at  timestamptz NOT NULL DEFAULT now()
+  -- 0006/0007 ayrıca ekliyor: pin_changed_at, phone_index, phone_enc
 );
+
+-- ⚠️ Ada göre sıralama SQL'de YAPILAMAZ: şifreli baytlar rastgele
+-- nonce'a göre dizilir ve her yazmada sıra değişir. Sıralama, ad
+-- çözüldükten sonra uygulamada yapılır (`domain/staff.ts`).
 
 CREATE TABLE cafe_devices (              -- kasiyer PIN'i yalnızca kayıtlı cihazda çalışır
   id             text PRIMARY KEY,

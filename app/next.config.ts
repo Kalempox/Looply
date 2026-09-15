@@ -42,6 +42,19 @@ const guvenlikBasliklari = [
 ];
 
 const nextConfig: NextConfig = {
+  /**
+   * Sunucuya tek parça çıkmak için (F3).
+   *
+   * `.next/standalone` altında, çalışması için gereken node_modules
+   * dosyalarıyla birlikte küçük bir sunucu üretiliyor. Kapta `npm install`
+   * koşmuyoruz — yani kapta duran bağımlılık, derlemede sınananın aynısı.
+   *
+   * ⚠️ `public` ve `.next/static` bu klasöre KENDİLİĞİNDEN kopyalanmıyor;
+   * Dockerfile ikisini de elle kopyalıyor. Kopyalanmazsa sayfa açılır ama
+   * CSS ve görseller 404 döner.
+   */
+  output: "standalone",
+
   // pg yerel bağlantı kullanır; bundler'a değil Node'a bırakılmalı
   serverExternalPackages: ["pg"],
 

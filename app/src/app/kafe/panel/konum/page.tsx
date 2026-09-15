@@ -1,6 +1,6 @@
 import { kafeYoneticisiGerekli } from "@/domain/yetki";
 import { konumVarMi } from "@/domain/cafe";
-import { GEOFENCE_METRE } from "@/domain/masa";
+import * as ayar from "@/domain/ayar";
 import {
   IsletmeSayfa,
   IsletmeBaslik,
@@ -8,7 +8,7 @@ import {
   IsletmeUyari,
 } from "@/components/isletme";
 import { SayiKarti, IKON } from "@/components/gosterge";
-import { KonumOkuyucu } from "./kontroller";
+import { KonumOkuyucu, YaricapAyari } from "./kontroller";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Kafe konumu · Looply" };
@@ -29,7 +29,11 @@ export const metadata = { title: "Kafe konumu · Looply" };
  */
 export default async function KonumSayfasi() {
   const o = await kafeYoneticisiGerekli();
-  const konum = await konumVarMi(o.cafeId);
+  const [konum, yaricap] = await Promise.all([
+    konumVarMi(o.cafeId),
+    // Ü131: yarıçap artık kafenin ayarı, `masa.ts`teki sabit değil.
+    ayar.sayiOku(o.cafeId, ayar.ANAHTARLAR.konumYaricapi),
+  ]);
 
   return (
     <IsletmeSayfa>
@@ -71,7 +75,7 @@ export default async function KonumSayfasi() {
             />
             <SayiKarti
               etiket="Yarıçap"
-              deger={`${GEOFENCE_METRE} m`}
+              deger={`${yaricap} m`}
               alt="bu mesafede doğrulanır"
               ikon={IKON.onay}
               alan="genel"
@@ -83,12 +87,27 @@ export default async function KonumSayfasi() {
           </p>
           <p className="mt-2 text-[13px] leading-relaxed text-yazi-sonuk">
             Oyuncu bu noktanın{" "}
-            <strong className="text-yazi">{GEOFENCE_METRE} metre</strong>{" "}
+            <strong className="text-yazi">{yaricap} metre</strong>{" "}
             yakınındaysa konumu doğrulanmış sayılır. Kafe taşındıysa buradan
             güncelle.
           </p>
         </Bolum>
       )}
+
+      {/*
+        Ü131: yarıçap ayarı. `masa.ts`te `GEOFENCE_METRE = 150` diye sabit
+        yazılıydı ve her kafeye aynı çemberi uyguluyordu — AVM katındaki
+        kafeyle sokak arası kafenin ihtiyacı aynı değil. 150 metre, yan
+        binadaki birinin de "kafedeyim" sayılması demekti.
+      */}
+      <Bolum
+        baslik="Doğrulama yarıçapı"
+        alt="Kafenin kaç metre yakınındaki oyuncu 'kafede' sayılsın."
+      >
+        <div className="rounded-2xl border border-cizgi bg-yuzey px-5 py-5">
+          <YaricapAyari mevcut={yaricap} />
+        </div>
+      </Bolum>
 
       <Bolum baslik="Ne saklanıyor">
         <p className="text-[14px] leading-relaxed text-yazi-sonuk">

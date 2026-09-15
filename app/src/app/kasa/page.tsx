@@ -1,5 +1,7 @@
+import Link from "next/link";
 import { kasiyerGerekli } from "@/domain/yetki";
 import { bugunkuOzet } from "@/domain/kupon";
+import { isletmeTuru } from "@/domain/cark-kosul";
 import { KasaTarayici } from "./tarayici";
 import { cikisEylemi } from "./actions";
 
@@ -18,7 +20,7 @@ export const metadata = { title: "Kasa · Looply" };
  */
 export default async function KasaSayfasi() {
   const o = await kasiyerGerekli();
-  const ozet = await bugunkuOzet(o.cafeId);
+  const [ozet, turu] = await Promise.all([bugunkuOzet(o.cafeId), isletmeTuru(o.cafeId)]);
 
   return (
     <main className="flex min-h-dvh flex-col items-center bg-zemin px-5 py-8 text-yazi">
@@ -32,6 +34,30 @@ export default async function KasaSayfasi() {
       </div>
 
       <KasaTarayici />
+
+      {/*
+        ── Ü137: butikte ikinci iş ─────────────────────
+
+        Kafede kasiyerin tek işi var: kupon onaylamak. Butikte ikinci bir
+        iş daha var — alışverişe çark hakkı vermek.
+
+        ⚠️ Bağlantı **yalnızca butikte** çiziliyor. Kafede de dursaydı
+        kasiyer tutar girer, hiçbir koşul tutmaz ve sistemin bozuk
+        olduğunu sanırdı: kafede kasa tutar girmiyor.
+
+        ⚠️ Dosyanın kendi kuralı "ekranda başka hiçbir şey yok" diyor ve
+        haklı — bu yüzden ikinci iş büyük bir düğme değil, tarayıcının
+        altında duran tek satırlık bir bağlantı. Kasiyer kupon onaylamaya
+        geldiğinde gözü takılmıyor.
+      */}
+      {turu === "butik" && (
+        <Link
+          href="/kasa/cark"
+          className="mt-5 w-full max-w-md rounded-lg border border-cizgi py-3.5 text-center text-[15px] font-semibold text-yazi-sonuk transition-colors hover:border-vurgu hover:text-vurgu"
+        >
+          Alışverişe çark hakkı ver →
+        </Link>
+      )}
 
       {/* ── Günün özeti ────────────────────────────────── */}
       <section className="mt-12 w-full max-w-md border-t border-cizgi pt-6">

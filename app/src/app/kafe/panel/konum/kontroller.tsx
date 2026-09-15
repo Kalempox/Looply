@@ -1,8 +1,13 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { konumKaydet } from "./actions";
-import { IsletmeDugme, IsletmeUyari } from "@/components/isletme";
+import { useState, useTransition, useActionState } from "react";
+import { konumKaydet, yaricapKaydet, type YaricapDurumu } from "./actions";
+import {
+  IsletmeDugme,
+  IsletmeUyari,
+  IsletmeAlan,
+  isletmeGirdi,
+} from "@/components/isletme";
 
 /**
  * Konumu tarayıcıdan okuyup kaydeder.
@@ -71,5 +76,44 @@ export function KonumOkuyucu({ kayitli }: { kayitli: boolean }) {
               : "Kafenin konumunu işaretle"}
       </IsletmeDugme>
     </div>
+  );
+}
+
+/**
+ * Yarıçap ayarı — Ü131.
+ *
+ * ── Neden hazır seçenekler de var ───────────────────────────
+ *
+ * Kafe sahibi "kaç metre" sorusuna sayı üretmekte zorlanıyor: 40 mı, 80
+ * mi, 200 mü? Üç hazır seçenek bir ölçek veriyor ("içerisi" / "bahçe
+ * dahil" / "geniş"), serbest alan yine duruyor. Yalnızca serbest alan
+ * olsaydı çoğu kafe varsayılana dokunmazdı.
+ */
+export function YaricapAyari({ mevcut }: { mevcut: number }) {
+  const [durum, action, bekliyor] = useActionState(yaricapKaydet, {} as YaricapDurumu);
+
+  return (
+    <form action={action} className="space-y-4">
+      {durum.hata && <IsletmeUyari>{durum.hata}</IsletmeUyari>}
+      {durum.bilgi && <IsletmeUyari tur="bilgi">{durum.bilgi}</IsletmeUyari>}
+
+      <IsletmeAlan
+        etiket="Yarıçap (metre)"
+        ipucu="Bu mesafedeki oyuncu kafede sayılır. 20 ile 500 arası — altı GPS hatasına takılır, üstü doğrulamayı anlamsızlaştırır."
+      >
+        <input
+          name="yaricap"
+          type="number"
+          min={20}
+          max={500}
+          defaultValue={String(mevcut)}
+          className={isletmeGirdi}
+        />
+      </IsletmeAlan>
+
+      <IsletmeDugme type="submit" disabled={bekliyor}>
+        {bekliyor ? "Kaydediliyor…" : "Yarıçapı kaydet"}
+      </IsletmeDugme>
+    </form>
   );
 }

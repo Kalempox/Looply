@@ -3,6 +3,7 @@ dist/
 build/
 .env
 .env.local
+.env.demo
 *.log
 .DS_Store
 Thumbs.db
@@ -11,3 +12,7 @@ Thumbs.db
 
 # Yerel makineye ait araç ayarları — kişiye özel, ortak depoya girmez
 .claude/settings.local.json
+
+# Tarayıcı otomasyonunun ekran görüntüleri — hata ayıklama çıktısı,
+# depoda durmasının bir sebebi yok (25 MB).
+.playwright-mcp/

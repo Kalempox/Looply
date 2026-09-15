@@ -357,7 +357,7 @@ describe("kampanya kuponu envanterde", () => {
     assert.ok(sonuc?.ok, "kupon üretilemedi");
 
     const env = await odul.envanter(oyuncu1);
-    const hepsi = [...env.kullanilabilir, ...env.bekleyen, ...env.gecmis];
+    const hepsi = [...env.kullanilabilir, ...env.bekleyen, ...env.kullanilan, ...env.kacirilan];
     const kupon = hepsi.find((k) => k.id === sonuc.kuponId);
 
     assert.ok(kupon, "kampanya kuponu envanterde görünmüyor");

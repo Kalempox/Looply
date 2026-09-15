@@ -3,20 +3,17 @@ import { kafeYoneticisiGerekli } from "@/domain/yetki";
 import * as katalog from "@/domain/katalog";
 import * as urun from "@/domain/urun";
 import * as ayar from "@/domain/ayar";
-import * as carkAgirlik from "@/domain/cark-agirlik";
 import {
   IsletmeSayfa,
   IsletmeBaslik,
   Bolum,
-  Rozet,
   IsletmeUyari,
 } from "@/components/isletme";
-import { OdulEkleme, DurumDugmesi, EsikAyari, CarkSiniri } from "./kontroller";
+import { OdulEkleme, DurumDugmesi, EsikAyari } from "./kontroller";
 import { AdDuzeltme } from "../ad-duzeltme";
 import { SinirKutusu } from "./sinir-kutusu";
-import { CarkAgirlikKutusu } from "./cark-agirlik-kutusu";
 import { adEylemi } from "./actions";
-import { OdulSekmeleri } from "../odul-sekmeleri";
+import { FarkNotu } from "../fark-notu";
 import { SayiKarti, IKON } from "@/components/gosterge";
 
 export const dynamic = "force-dynamic";
@@ -35,15 +32,15 @@ export const metadata = { title: "Ödül kataloğu · Looply" };
  */
 export default async function OdullerSayfasi() {
   const o = await kafeYoneticisiGerekli();
-  const [oduller, urunler, esikKurus, carkSinirKurus, agirlik] = await Promise.all([
+  const [oduller, urunler, esikKurus, carkSinirKurus, ertelemeSaat] = await Promise.all([
     katalog.listele(o.cafeId),
     urun.listele(o.cafeId, false),
     ayar.sayiOku(o.cafeId, ayar.ANAHTARLAR.ertelemeEsigi),
+    // Çarkın ayarları `/kafe/panel/cark`ta; buradaki tek ihtiyaç "kaç ödül
+    // çarka giriyor" sayısı ve o da sınırı bilmeyi gerektiriyor.
     ayar.sayiOku(o.cafeId, ayar.ANAHTARLAR.carkUstSinir),
-    // Ü110: çarkın olasılık tablosu. Liste çekilişin kullandığı aynı
-    // fonksiyonlardan geliyor — panel kendi listesini kursaydı ekrandaki
-    // yüzdelerle gerçek olasılıklar sessizce ayrışırdı.
-    carkAgirlik.durum(o.cafeId),
+    // Ü129: aktivasyon saati artık kafenin ayarı, `kupon.ts`teki sabit değil.
+    ayar.sayiOku(o.cafeId, ayar.ANAHTARLAR.ertelemeSaati),
   ]);
 
   // Çarkın dönebilmesi için sınırın altında en az bir anlık ödül gerekiyor;
@@ -75,12 +72,12 @@ export default async function OdullerSayfasi() {
     <IsletmeSayfa genis>
       <IsletmeBaslik
         ust="İşletme paneli"
-        alt="Müşteriye ne veriyorsun — kazanılan ödüller ve herkese açık indirimler."
+        alt="Oyun sonunda ve şans çarkında düşen ödüller — kişiye özel, tek kullanımlık."
       >
-        Ödüller ve kampanyalar
+        Ödüller
       </IsletmeBaslik>
 
-      <OdulSekmeleri aktif="odul" />
+      <FarkNotu taraf="odul" />
 
       <section className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <SayiKarti
@@ -108,7 +105,7 @@ export default async function OdullerSayfasi() {
         <SayiKarti
           etiket="Hemen açılan"
           deger={String(hemenAcilan)}
-          alt={`üstü 12 saat bekliyor`}
+          alt={`üstü ${ertelemeSaat} saat bekliyor`}
           ikon={IKON.saat}
           alan="genel"
         />
@@ -127,151 +124,271 @@ export default async function OdullerSayfasi() {
       )}
 
       {/*
-        Bilgisayarda iki kolon (Ü58).
+        🔴 İki kolon KALDIRILDI (Ü124).
 
-        Bu sayfa tek sütundu ve telefonda doğru çalışıyordu: form, ayar,
-        ayar, liste — hepsi alt alta. Bilgisayarda aynı dizilim, ekranın
-        yarısı boşken kullanıcıyı üç ekran boyu kaydırtıyordu.
-        Sol kolon **yazma** işleri (yeni ödül, ayarlar), sağ kolon
-        **okuma** işi (mevcut liste). Kafe sahibi ödül eklerken listeyi
-        görebiliyor — eklediği şeyin zaten var olup olmadığını anlamak
-        için kaydırmak gerekmiyor.
+        Ü58'de sol kolon "yazma", sağ kolon "okuma" olsun diye ikiye
+        bölünmüştü. Doğru fikirdi ama sonucu şuydu: on altı satırlık,
+        her satırında üç eylem olan bir liste **550 piksellik** bir
+        sütuna sıkıştı. Ad, değer ve üç düğme aynı satıra sığmayınca
+        satırlar iki üç kata çıktı; sol kolon ise formun bitiminden
+        sonra bomboş kaldı. Ürün sahibi iki kez "çok kullanışsız ve
+        karmaşık" dedi ve haklıydı — sorun renk ya da yazı tipi değil,
+        **yer** idi.
+
+        Şimdi: ayarlar üstte tek sıra, katalog **tam genişlikte**.
+        Liste 1150 piksele yayılınca satır gerçekten tek satır oluyor
+        ve sütunlar hizalanabiliyor.
       */}
-      <div className="grid items-start gap-x-8 lg:grid-cols-2">
-        <div>
-          <Bolum baslik="Yeni ödül">
-            <OdulEkleme
-              urunler={urunler.map((u) => ({ id: u.id, ad: u.ad }))}
-            />
-          </Bolum>
+      <div className="mb-8 grid items-start gap-4 lg:grid-cols-3">
+        {/*
+          Form artık açılır kapanır. Kafe sahibi bu sayfaya günde birkaç
+          kez "ne var" diye bakıyor, ödül eklemek ise haftada bir iş;
+          sürekli açık duran bir form ekranın üçte birini o nadir iş için
+          harcıyordu. Katalog boşken açık geliyor — o zaman yapılacak tek
+          şey zaten ödül eklemek.
+        */}
+        <details
+          open={oduller.length === 0}
+          className="group rounded-2xl border border-cizgi bg-yuzey"
+        >
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4">
+            <span>
+              <span className="block text-[15px] font-semibold">Yeni ödül</span>
+              <span className="mt-0.5 block text-[12px] text-yazi-sonuk">
+                Oyun sonunda ve çarkta çıkacak
+              </span>
+            </span>
+            <span
+              aria-hidden
+              className="text-yazi-sonuk transition-transform group-open:rotate-45"
+            >
+              +
+            </span>
+          </summary>
+          <div className="border-t border-cizgi px-5 py-5">
+            <OdulEkleme urunler={urunler.map((u) => ({ id: u.id, ad: u.ad }))} />
+          </div>
+        </details>
 
-          <Bolum baslik="Gecikmeli açılma">
-            <EsikAyari mevcutTl={Math.round(esikKurus / 100)} />
-          </Bolum>
-
-          <Bolum baslik="Şans çarkı">
-            <CarkSiniri
-              mevcutTl={Math.round(carkSinirKurus / 100)}
-              uygunSayisi={carkaUygun}
-            />
-          </Bolum>
-
-          {/* Ü110: hangi ödül yüzde kaç ihtimalle çıkacak. Üst sınırın
-              hemen altında duruyor çünkü ikisi aynı soruyu bölüşüyor —
-              biri çarka NE girecek, öbürü hangi sıklıkla çıkacak. */}
-          <Bolum
-            baslik="Çark olasılıkları"
-            alt="Ağırlığı sen yazıyorsun, yüzde toplamdan hesaplanıyor."
-          >
-            <CarkAgirlikKutusu
-              satirlar={agirlik.satirlar.map((r) => ({
-                odulId: r.odulId,
-                baslik: r.baslik,
-                agirlik: r.agirlik,
-                etkin: r.etkin,
-                yuzde: r.yuzde,
-              }))}
-              disarida={agirlik.disarida.map((d) => ({
-                odulId: d.odulId,
-                baslik: d.baslik,
-                aciklama: carkAgirlik.sebepMetni(d.sebep, agirlik.ustSinirKurus),
-              }))}
-              toplam={agirlik.toplam}
-              otomatikMi={agirlik.otomatikMi}
-            />
-          </Bolum>
+        <div className="rounded-2xl border border-cizgi bg-yuzey px-5 py-5">
+          <div className="text-[15px] font-semibold">Gecikmeli açılma</div>
+          <p className="mt-0.5 mb-4 text-[12px] leading-relaxed text-yazi-sonuk">
+            Bu tutarın üstündeki ödül {ertelemeSaat} saat sonra açılır —
+            müşteriyi ertesi gün geri getiren mekanik bu. Çark ödülü ve oyun
+            ödülü aynı kuralı paylaşıyor.
+          </p>
+          <EsikAyari mevcutTl={Math.round(esikKurus / 100)} mevcutSaat={ertelemeSaat} />
         </div>
 
-        <div>
-          <Bolum
-            baslik={`Katalog · ${oduller.filter((x) => x.aktif).length} yayında`}
-          >
-            {oduller.length === 0 ? (
-              <p className="text-[14px] text-yazi-sonuk">
-                Katalog boş. Oyuncular puan biriktiriyor ama harcayacakları bir
-                şey yok.
-              </p>
-            ) : (
-              <ul className="grid gap-2.5">
-                {oduller.map((od) => (
-                  <li key={od.id}>
-                    <OdulKarti odul={od} />
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Bolum>
-        </div>
+        <Link
+          href="/kafe/panel/cark"
+          className="flex h-full flex-col justify-between gap-4 rounded-2xl border border-cizgi bg-yuzey px-5 py-5 transition-colors hover:border-vurgu"
+        >
+          <span>
+            <span className="block text-[15px] font-semibold">Şans çarkı</span>
+            <span className="mt-0.5 block text-[12px] leading-relaxed text-yazi-sonuk">
+              Hangi ödül çarkta olacak ve yüzde kaç ihtimalle çıkacak —
+              hepsi çarkın kendi sayfasında.
+            </span>
+          </span>
+          <span className="flex items-center justify-between gap-3">
+            <span className="font-data text-[13px] font-bold tabular">
+              {carkaUygun} ödül çarkta
+            </span>
+            <span aria-hidden className="text-yazi-sonuk">
+              →
+            </span>
+          </span>
+        </Link>
       </div>
+
+      {/*
+        🔴 Katalog tam genişlikte ve **sütunlu** (Ü124).
+
+        Önceki hâli kart yığınıydı, sonra satır listesine çevrildi ama
+        yarım sütunda kaldığı için hâlâ okunmuyordu. Şimdi başlık satırı
+        olan bir tablo düzeni: göz aşağı inerken değer değerin, koşul
+        koşulun altında. On altı ödülü karşılaştırmanın tek yolu bu.
+      */}
+      <Bolum baslik="Katalog">
+        {oduller.length === 0 ? (
+          <p className="text-[14px] text-yazi-sonuk">
+            Katalog boş. Oyuncu oyunu bitiriyor ama kazanacağı bir şey yok —
+            yukarıdaki formdan ilk ödülünü ekle.
+          </p>
+        ) : (
+          <div className="space-y-7">
+            <OdulGrubu
+              baslik="Yayında"
+              bos="Yayında hiç ödül yok — oyuncular şu an hiçbir şey kazanamıyor."
+              oduller={yayinda}
+              esikKurus={esikKurus}
+            />
+            <OdulGrubu
+              baslik="Yayında değil"
+              bos="Yayından kaldırılmış ödülün yok."
+              oduller={oduller.filter((x) => !x.aktif)}
+              esikKurus={esikKurus}
+              sonuk
+            />
+          </div>
+        )}
+      </Bolum>
+
     </IsletmeSayfa>
   );
 }
 
 /**
- * Katalogdaki tek ödül — Ü63.
+ * Duruma göre ödül grubu — Ü123, Ü124'te sütunlandı.
  *
- * ── Neden satır değil kart ──────────────────────────────────
- *
- * Liste düz satırlardı: emoji + başlık + tek satır gri metin. Ürün
- * sahibinin deyimiyle "çok çirkin" ve daha önemlisi **okunmuyordu** —
- * tip, değer, kanıt ve durum aynı gri cümlenin içinde eriyordu.
- *
- * Şimdi her bilgi kendi yerinde: solda tipin renkli ikonu, üstte ad ve
- * durum, altta değer ile kanıt ayrı rozetlerde. Emoji yok (Ü31).
- *
- * ── Renk tipten geliyor ─────────────────────────────────────
- *
- * Ürün turuncu, yüzde mor, tutar yeşil (Ü63). Kafe sahibi listeyi
- * okumadan da hangi tipten kaç tane olduğunu görüyor.
+ * ⚠️ Boş grup **gizlenmiyor**, cümlesiyle duruyor. "Yayında hiç ödül
+ * yok" görünmezse kafe sahibi listeyi boş sanır ve asıl sorunu —
+ * oyuncuların hiçbir şey kazanamadığını — hiç okumaz.
  */
-function OdulKarti({ odul }: { odul: katalog.Odul }) {
-  const t = TIP_GORUNUM[odul.tip];
+function OdulGrubu({
+  baslik,
+  bos,
+  oduller,
+  esikKurus,
+  sonuk = false,
+}: {
+  baslik: string;
+  bos: string;
+  oduller: katalog.Odul[];
+  /** Gecikme eşiği — satırda "hemen mi açılıyor" bunu gerektiriyor. */
+  esikKurus: number;
+  /** Yayında olmayanlar soluk: göz önce yayındakine gitmeli. */
+  sonuk?: boolean;
+}) {
+  if (oduller.length === 0) {
+    return (
+      <section>
+        <GrupBasligi baslik={baslik} sayi={0} />
+        <p className="rounded-xl border border-dashed border-cizgi px-4 py-3.5 text-[13px] text-yazi-sonuk">
+          {bos}
+        </p>
+      </section>
+    );
+  }
 
   return (
-    <div
-      className={`flex flex-wrap items-start gap-3.5 rounded-2xl border bg-yuzey p-4 transition-all hover:-translate-y-0.5 hover:shadow-md ${
-        odul.aktif ? `${t.kenar} border-cizgi` : "border-cizgi opacity-55"
-      }`}
-    >
-      <span
-        className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${t.kutu}`}
-        aria-hidden
-      >
-        {t.ikon}
-      </span>
+    <section>
+      <GrupBasligi baslik={baslik} sayi={oduller.length} />
 
-      <span className="min-w-0 flex-1">
-        <span className="flex flex-wrap items-center gap-2">
-          <span className="text-[15px] leading-tight font-semibold">
+      <div
+        className={`overflow-hidden rounded-2xl border border-cizgi bg-yuzey ${
+          sonuk ? "opacity-70" : ""
+        }`}
+      >
+        {/*
+          Başlık satırı yalnızca geniş ekranda. Dar ekranda sütun yok —
+          satırlar kendi içinde alt alta diziliyor ve başlık orada
+          karşılıksız kalırdı.
+        */}
+        <div className="hidden border-b border-cizgi bg-cukur px-4 py-2 lg:grid lg:grid-cols-[1fr_120px_190px_auto] lg:items-center lg:gap-4">
+          <span className="etiket-caps text-[9px] text-yazi-sonuk">Ödül</span>
+          <span className="etiket-caps text-[9px] text-yazi-sonuk">Değer</span>
+          <span className="etiket-caps text-[9px] text-yazi-sonuk">Koşul</span>
+          <span className="etiket-caps text-[9px] text-yazi-sonuk">İşlem</span>
+        </div>
+
+        <ul className="divide-y divide-cizgi">
+          {oduller.map((od) => (
+            <li key={od.id}>
+              <OdulSatiri odul={od} esikKurus={esikKurus} />
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
+  );
+}
+
+function GrupBasligi({ baslik, sayi }: { baslik: string; sayi: number }) {
+  return (
+    <div className="mb-3 flex items-baseline gap-2">
+      <h3 className="etiket-caps text-yazi-sonuk">{baslik}</h3>
+      <span className="font-data text-[12px] font-bold text-yazi-sonuk tabular">
+        {sayi}
+      </span>
+    </div>
+  );
+}
+
+/**
+ * Katalogdaki tek ödül — Ü63 kart, Ü123 satır, Ü124 sütun.
+ *
+ * ── Neden sütun ─────────────────────────────────────────────
+ *
+ * Satır düzeni yarım sütunda çalışmıyordu: ad, değer ve üç düğme aynı
+ * hizaya sığmayınca her satır kendi iç düzenini kuruyor ve on altı
+ * satır on altı farklı biçim alıyordu. Karşılaştırma imkânsızdı —
+ * "hangisi daha pahalı" sorusu için tek tek okumak gerekiyordu.
+ *
+ * Sütunlu düzende değer değerin, koşul koşulun altında. Göz aşağı
+ * inerken tek bir hat izliyor.
+ *
+ * ⚠️ `lg` altında ızgara **kapanıyor**: telefonda dört sütun 90 piksere
+ * düşer ve hiçbiri okunmaz. Orada satır kendi içinde alt alta diziliyor.
+ */
+function OdulSatiri({
+  odul,
+  esikKurus,
+}: {
+  odul: katalog.Odul;
+  esikKurus: number;
+}) {
+  const t = TIP_GORUNUM[odul.tip];
+  const kanit = kanitCumlesi(odul.kanitSeviyesi);
+  const gecikiyor = odul.maliyetKurus > esikKurus;
+
+  return (
+    <div className="px-4 py-3.5 lg:grid lg:grid-cols-[1fr_120px_190px_auto] lg:items-center lg:gap-4">
+      {/* ── Ödül ── */}
+      <div className="flex min-w-0 items-center gap-3">
+        <span
+          className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${t.kutu}`}
+          aria-hidden
+        >
+          {t.ikon}
+        </span>
+        <span className="min-w-0">
+          <span className="block truncate text-[15px] leading-tight font-semibold">
             {odul.baslik}
           </span>
-          {!odul.aktif && <Rozet tur="pasif">yayında değil</Rozet>}
-        </span>
-
-        <span className="mt-2 flex flex-wrap items-center gap-1.5">
-          <span
-            className={`rounded-full px-2 py-0.5 font-data text-[11px] font-bold tabular ${t.kutu}`}
-          >
-            {odul.tip === "percent"
-              ? `%${odul.yuzde} · en fazla ${tlYaz(odul.maliyetKurus)} TL`
-              : `${tlYaz(odul.maliyetKurus)} TL`}
-          </span>
-          <span className="rounded-full bg-cukur px-2 py-0.5 text-[11px] text-yazi-sonuk">
-            {kanitCumlesi(odul.kanitSeviyesi)}
-          </span>
           {odul.urunAdi && (
-            <span className="rounded-full bg-cukur px-2 py-0.5 text-[11px] text-yazi-sonuk">
+            <span className="mt-0.5 block truncate text-[12px] text-yazi-sonuk">
               {odul.urunAdi}
             </span>
           )}
         </span>
-      </span>
+      </div>
 
-      {/* Ü94: ad düzeltmesi durum düğmesinin yanında. Bugüne kadar yazım
-          hatasının tek çaresi ödülü kaldırıp yenisini eklemekti — yani
-          geçmişini kaybetmek ("ize amreicano", Ü75). */}
-      <span className="flex shrink-0 flex-col items-end gap-1.5">
-        <DurumDugmesi odulId={odul.id} aktif={odul.aktif} />
+      {/* ── Değer ── */}
+      <div className="mt-3 lg:mt-0">
+        <span
+          className={`inline-block rounded-full px-2.5 py-0.5 font-data text-[12px] font-bold tabular ${t.kutu}`}
+        >
+          {odul.tip === "percent"
+            ? `%${odul.yuzde} · ↑${tlYaz(odul.maliyetKurus)} TL`
+            : `${tlYaz(odul.maliyetKurus)} TL`}
+        </span>
+      </div>
+
+      {/* ── Koşul ── */}
+      <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[12px] text-yazi-sonuk lg:mt-0">
+        {/*
+          Gecikme her ödülde geçerli bir bilgi ve eşikten türüyor —
+          kafe sahibinin "bu ödül hemen mi kullanılır" sorusu, ödül
+          eklerken değil listeye bakarken aklına geliyor.
+        */}
+        <span>{gecikiyor ? "12 saat sonra açılır" : "Hemen kullanılır"}</span>
+        {kanit && <span className="text-odul-koyu">{kanit}</span>}
+      </div>
+
+      {/* ── İşlem ── */}
+      <div className="mt-3 flex flex-wrap items-start justify-start gap-1.5 lg:mt-0 lg:justify-end">
         <SinirKutusu
           odulId={odul.id}
           gunlukLimit={odul.gunlukLimit}
@@ -282,6 +399,9 @@ function OdulKarti({ odul }: { odul: katalog.Odul }) {
           pencereMetni={odul.pencereMetni}
           acikKupon={odul.acikKupon}
         />
+        {/* Ü94: ad düzeltmesi. Bugüne kadar yazım hatasının tek çaresi
+            ödülü kaldırıp yenisini eklemekti — yani geçmişini kaybetmek
+            ("ize amreicano", Ü75). */}
         <AdDuzeltme
           eylem={adEylemi}
           kimlikAlani="odulId"
@@ -293,7 +413,8 @@ function OdulKarti({ odul }: { odul: katalog.Odul }) {
           acikKupon={odul.acikKupon}
           etiket="Ödül adı"
         />
-      </span>
+        <DurumDugmesi odulId={odul.id} aktif={odul.aktif} />
+      </div>
     </div>
   );
 }
@@ -367,9 +488,19 @@ function tlYaz(kurus: number): string {
   return (kurus / 100).toLocaleString("tr-TR", { maximumFractionDigits: 0 });
 }
 
-/** E6'yı kafenin diliyle anlatır — "K3" hiçbir kafe sahibine bir şey söylemez. */
+/**
+ * E6'yı kafenin diliyle anlatır — "K3" hiçbir kafe sahibine bir şey
+ * söylemez.
+ *
+ * ⚠️ Taban seviyede **boş** dönüyor (Ü123). "Konumu doğrulanmış
+ * oyunculara verilir" ödüllerin çoğu için geçerli; her satırda
+ * tekrarlandığında bilgi değil gürültü oluyordu. Bir istisna
+ * olduğunda — masada beklemek ya da fiş kodu — o zaman yazıyor.
+ */
 function kanitCumlesi(seviye: number): string {
-  if (seviye >= 4) return "Fiş kodu girilmiş oyunculara verilir";
-  if (seviye === 3) return "Masada en az beş dakika kalmış oyunculara verilir";
-  return "Konumu doğrulanmış oyunculara verilir";
+  // Kısa tutuluyor: satırın ikinci kolonunda duruyor ve uzun cümle iki
+  // satıra taşıp bütün listeyi yükseltiyordu.
+  if (seviye >= 4) return "Fiş kodu gerekiyor";
+  if (seviye === 3) return "Masada 5 dakika gerekiyor";
+  return "";
 }

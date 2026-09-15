@@ -4,29 +4,28 @@ import { BasvuruFormu } from "./form";
 
 export const metadata = { title: "İşletme başvurusu · Looply" };
 
+/**
+ * 🔴 "Katılım şartı" bloğu KALDIRILDI — ürün sahibinin kararı.
+ *
+ * Blok *"Günde en az 1.500 TL değerinde indirim bütçesi ayırman gerekiyor"*
+ * diyordu ve sayıyı `domain/butce.ts`'ten okuyordu (Ü45'te haftalıktan güne
+ * çevrilmişti; metin sabit yazılmış olsaydı yedi kat ayrışırdı).
+ *
+ * ⚠️ **Şart kalkmadı, yalnızca bu sayfadaki duyurusu kalktı.**
+ * `GUNLUK_TABAN_KURUS` ve `budget_periods` kısıtı yerinde: kafe paneli
+ * açtığında tabanın altına hâlâ inemiyor. Yani başvuran kişi sayıyı ilk
+ * kez panelde görecek — Ü45'te tam olarak bu ayrışma sorun olmuştu.
+ * Bütçe taban kuralı da kalkacaksa ayrı bir iş (`domain/butce.ts`).
+ */
 export default function BasvuruSayfasi() {
   return (
     <IsletmeSayfa>
       <IsletmeBaslik
         ust="Looply"
-        alt="Masalarına karekod koy, müşterin oynasın, kazandığı indirimi kasanda kullansın. Katılım ücretsiz."
+        alt="Karekodunu as, müşterin oynasın, kazandığı indirimi kasanda kullansın."
       >
         İşletme başvurusu
       </IsletmeBaslik>
-
-      <div className="mb-8 rounded-2xl border border-cizgi bg-yuzey p-5">
-        <h2 className="mb-3 etiket-caps text-yazi-sonuk">
-          Katılım şartı
-        </h2>
-        <p className="text-[15px] leading-relaxed">
-          Haftada <strong>en az 1.500 TL</strong> değerinde indirim bütçesi ayırman gerekiyor.
-        </p>
-        <p className="mt-2.5 text-[14px] leading-relaxed text-yazi-sonuk">
-          Bu bir ödeme değil, bir üst sınır: bütçeden yalnızca{" "}
-          <strong className="text-yazi">kasada onaylanan</strong> kuponlar düşer. Dağıtılıp
-          kullanılmayan kuponun sana maliyeti yoktur.
-        </p>
-      </div>
 
       <BasvuruFormu />
 

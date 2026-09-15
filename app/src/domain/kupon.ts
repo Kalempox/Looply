@@ -47,11 +47,10 @@ import { idIleBul, odulKilidiBitis, takmaAdIle } from "./player";
  * oyuncuya on beş kat farklı davranıyordu. Sabit süre herkese aynı pencereyi
  * veriyor.
  *
- * ⚠️ **Süre Ü97'de 24 → 12 saate indi.** Bir tur 12 saat denenmiş, ürün
- * belgesindeki *"aktifleşme süresi: 24 saat"* cümlesiyle çeliştiği için geri
- * alınmıştı. Ürün sahibi şimdi doğrudan söyledi: *"sistemde hep 12 saat."*
- * Belge ile sahibi çelişiyorsa sahibi kazanır — belge o cümleyi bir örnek
- * olarak yazmıştı, kural olarak değil.
+ * ⚠️ **Süre Ü97'de 24 → 12 saate indi**, Ü129'da ise **kafenin ayarı
+ * oldu** (`ayar.ANAHTARLAR.ertelemeSaati`). Buradaki sabit artık yalnızca
+ * varsayılan; paneli hiç açmayan kafede 12 saat işliyor. İki kez kod
+ * değiştirerek ayarlanan bir sayı, kafenin kendi kararı olmalıydı.
  *
  * ⚠️ Süre artık **oyuncuya söylenmiyor** (Ü97): oyuncu ödülünü biliyor,
  * saatini bilmiyor ve bekleme ekranında bunun yerine bir mizah cümlesi
@@ -68,6 +67,7 @@ import { idIleBul, odulKilidiBitis, takmaAdIle } from "./player";
  * E6'nın kanıt kademesi bu ayardan **etkilenmiyor** — o platform kuralı ve
  * `katalog.kanitSeviyesi` içinde duruyor.
  */
+/** Ü129: kafe panelden değiştirmediyse geçerli olan süre. */
 export const ERTELEME_SAAT = 12;
 
 /** Kupon kaç gün geçerli (docs/06 §10). */
@@ -219,6 +219,7 @@ async function kuponUret(
    */
   const simdi = Date.now();
   let ertelendi = false;
+  let ertelemeSaat = ERTELEME_SAAT;
   let sonKullanim: Date;
 
   if (opts.hemen) {
@@ -226,12 +227,17 @@ async function kuponUret(
   } else {
     const esik = await ayar.sayiOku(opts.cafeId, ayar.ANAHTARLAR.ertelemeEsigi);
     ertelendi = tutar > esik;
+    // Ü129: süre de kafenin ayarı. Yalnızca ertelenen kupon için okunuyor —
+    // eşiğin altındaki ödül zaten anında açılıyor ve bu sayı ona dokunmuyor.
+    if (ertelendi) {
+      ertelemeSaat = await ayar.sayiOku(opts.cafeId, ayar.ANAHTARLAR.ertelemeSaati);
+    }
     sonKullanim = new Date(
-      simdi + (ertelendi ? ERTELEME_SAAT * 3_600_000 : 0) + GECERLILIK_GUN * 86_400_000,
+      simdi + (ertelendi ? ertelemeSaat * 3_600_000 : 0) + GECERLILIK_GUN * 86_400_000,
     );
   }
 
-  const aktiflesme = new Date(simdi + (ertelendi ? ERTELEME_SAAT * 3_600_000 : 0));
+  const aktiflesme = new Date(simdi + (ertelendi ? ertelemeSaat * 3_600_000 : 0));
 
   const kuponId = newId("kpn");
   const kod = couponCode();

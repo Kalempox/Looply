@@ -382,7 +382,7 @@ describe("rozetler yalnızca statü (Ü16)", () => {
 describe("ödül envanteri TL değeri taşımaz (E9)", () => {
   test("envanter kaydında para alanı bulunmuyor", async () => {
     const e = await envanter(oyuncuId);
-    const hepsi = [...e.kullanilabilir, ...e.bekleyen, ...e.gecmis];
+    const hepsi = [...e.kullanilabilir, ...e.bekleyen, ...e.kullanilan, ...e.kacirilan];
 
     // Oyuncusu olmayan bir ortamda liste boş olabilir; iddia yine de
     // anlamlı: dönen her kayıt için alan adları denetleniyor.
@@ -398,7 +398,7 @@ describe("ödül envanteri TL değeri taşımaz (E9)", () => {
 
   test("başka oyuncunun kuponu envanterde görünmez", async () => {
     const e = await envanter(digerOyuncuId);
-    const kimlikler = [...e.kullanilabilir, ...e.bekleyen, ...e.gecmis].map((k) => k.id);
+    const kimlikler = [...e.kullanilabilir, ...e.bekleyen, ...e.kullanilan, ...e.kacirilan].map((k) => k.id);
 
     const benimkiler = await withBypass("test: kupon sahipliği", (db) =>
       db.all<{ id: string }>(`SELECT id FROM coupons WHERE player_id = $1`, [oyuncuId]),

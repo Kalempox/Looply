@@ -1,8 +1,10 @@
 import "./_env";
 import { adminPool, closePools } from "@/db/pool";
 import { newId, aliasCode, couponCode } from "@/lib/ids";
-import { encryptPII, phoneIndex, normalizePhone, identifierHash } from "@/lib/crypto";
+import { encryptPII, phoneIndex, normalizePhone, identifierHash, randomToken } from "@/lib/crypto";
 import { platformKullanicisiEkle, pinHashle } from "@/domain/staff";
+import { donemAraligi, tabanKurus } from "@/domain/butce";
+import { isGunu } from "@/lib/tarih";
 import { randomBytes } from "node:crypto";
 
 /**
@@ -28,20 +30,39 @@ import { randomBytes } from "node:crypto";
  */
 const pinHash = pinHashle;
 
-function haftaBasi(): { start: string; end: string } {
-  const now = new Date();
-  const gun = now.getUTCDay() || 7; // pazar = 7
-  const pazartesi = new Date(now);
-  pazartesi.setUTCDate(now.getUTCDate() - gun + 1);
-  const pazar = new Date(pazartesi);
-  pazar.setUTCDate(pazartesi.getUTCDate() + 7);
-  return { start: pazartesi.toISOString().slice(0, 10), end: pazar.toISOString().slice(0, 10) };
+/**
+ * Bugünün bütçe dönemi.
+ *
+ * ── 🔴 Burada haftalık bir dönem yazılıyordu ve tohum SIFIRDAN bir
+ * veritabanında hiç çalışmıyordu ──────────────────────────────
+ *
+ * Göç 0020 (Ü45) dönemi haftalıktan **güne** çevirdi ve tabanı da güne
+ * bağladı: `committed_kurus >= 150000 * (period_end - period_start)`.
+ * Tohum ise 7 günlük bir aralığa 1.500 TL yazmaya devam ediyordu — yani
+ * 10.500 TL gereken yere. `butce_tabani_gunluk` kısıtı reddediyordu.
+ *
+ * Görünmemesinin sebebi: eldeki geliştirme veritabanı 0020'den ÖNCE
+ * tohumlanmıştı ve bir daha sıfırdan kurulmadı. Demo sunucusu (F3) ilk kez
+ * boş bir veritabanına tohum atınca ortaya çıktı.
+ *
+ * Aralık artık `domain/butce.ts`'ten geliyor. Kendi kopyasını yazmıyoruz:
+ * bu dosyadaki `pinHash` da bir zamanlar kopyaydı, biçimi doğrulayıcıdan
+ * ayrıldı ve tohumdaki kasiyer hiç giriş yapamadı.
+ */
+function bugununDonemi(): { start: string; end: string; tabanKurus: number } {
+  const aralik = donemAraligi(isGunu());
+  return {
+    start: aralik.baslangic,
+    end: aralik.bitis,
+    tabanKurus: tabanKurus(aralik.gunSayisi),
+  };
 }
 
 type KafeTohum = {
   slug: string;
   name: string;
   city: string;
+  /** GÜNLÜK taahhüt (Ü45). Taban 1.500 TL; altına inen satır şemadan döner. */
   butceKurus: number;
   yoneticiTelefon: string;
   /** Konum doğrulaması (K2) için gerekli — koordinatsız kafede geofence çalışmaz */
@@ -57,7 +78,7 @@ const KAFELER: KafeTohum[] = [
 async function kafeKur(t: KafeTohum, playerId: string) {
   const db = adminPool();
   const cafeId = newId("cafe");
-  const hafta = haftaBasi();
+  const donem = bugununDonemi();
 
   await db.query(
     `INSERT INTO cafes (id, slug, name, city, lat, lng, status, approved_at, approved_by)
@@ -84,19 +105,19 @@ async function kafeKur(t: KafeTohum, playerId: string) {
 
   const staffId = newId("stf");
   await db.query(
-    `INSERT INTO staff (id, cafe_id, name, pin_hash, role) VALUES ($1,$2,$3,$4,'cashier')`,
-    [staffId, cafeId, `${t.name} kasiyeri`, await pinHash("1234")],
+    `INSERT INTO staff (id, cafe_id, name_enc, pin_hash, role) VALUES ($1,$2,$3,$4,'cashier')`,
+    [staffId, cafeId, encryptPII(`${t.name} kasiyeri`), await pinHash("1234")],
   );
   // Yönetici telefonla girer (docs/08 §4.6); kasiyer kayıtlı cihazda PIN'le.
   const managerId = newId("stf");
   const yoneticiTelefon = normalizePhone(t.yoneticiTelefon);
   await db.query(
-    `INSERT INTO staff (id, cafe_id, name, pin_hash, role, phone_index, phone_enc)
+    `INSERT INTO staff (id, cafe_id, name_enc, pin_hash, role, phone_index, phone_enc)
      VALUES ($1,$2,$3,$4,'manager',$5,$6)`,
     [
       managerId,
       cafeId,
-      `${t.name} işletmecisi`,
+      encryptPII(`${t.name} işletmecisi`),
       await pinHash("9999"),
       phoneIndex(yoneticiTelefon),
       encryptPII(yoneticiTelefon),
@@ -109,11 +130,14 @@ async function kafeKur(t: KafeTohum, playerId: string) {
     [newId("dev"), cafeId, identifierHash(`kasa-cihazi-${t.slug}`), managerId],
   );
 
+  // Taban altına düşen bir tohum değeri şemadan geri döner; sessizce
+  // yükseltmek yerine burada yükseltiyoruz ki tohum her zaman geçerli olsun.
+  const taahhut = Math.max(t.butceKurus, donem.tabanKurus);
   const periodId = newId("bgt");
   await db.query(
     `INSERT INTO budget_periods (id, cafe_id, period_start, period_end, committed_kurus)
      VALUES ($1,$2,$3,$4,$5)`,
-    [periodId, cafeId, hafta.start, hafta.end, t.butceKurus],
+    [periodId, cafeId, donem.start, donem.end, taahhut],
   );
 
   const productId = newId("prd");
@@ -124,20 +148,20 @@ async function kafeKur(t: KafeTohum, playerId: string) {
 
   const rewardId = newId("rwd");
   await db.query(
-    `INSERT INTO rewards (id, cafe_id, kind, title, points_price, cost_kurus, min_proof_level)
-     VALUES ($1,$2,'catalog','Ücretsiz filtre kahve',6000,4500,3)`,
+    `INSERT INTO rewards (id, cafe_id, kind, reward_type, title, points_price, cost_kurus, min_proof_level)
+     VALUES ($1,$2,'instant','product','Ücretsiz filtre kahve',0,4500,3)`,
     [rewardId, cafeId],
   );
   await db.query(
-    `INSERT INTO rewards (id, cafe_id, kind, title, points_price, cost_kurus, min_proof_level)
-     VALUES ($1,$2,'instant','+1 shot espresso',0,1500,2)`,
+    `INSERT INTO rewards (id, cafe_id, kind, reward_type, title, points_price, cost_kurus, min_proof_level)
+     VALUES ($1,$2,'instant','product','+1 shot espresso',0,2500,2)`,
     [newId("rwd"), cafeId],
   );
   // Soğuk içecek örneği (Ü74): kupon kartının dört kategorisinden
   // biri soğuk ve tohumda karşılığı olmadan ekranda hiç görünmüyordu.
   await db.query(
-    `INSERT INTO rewards (id, cafe_id, kind, title, points_price, cost_kurus, min_proof_level)
-     VALUES ($1,$2,'instant','Ice Americano',0,3000,2)`,
+    `INSERT INTO rewards (id, cafe_id, kind, reward_type, title, points_price, cost_kurus, min_proof_level)
+     VALUES ($1,$2,'instant','product','Ice Americano',0,3000,2)`,
     [newId("rwd"), cafeId],
   );
 
@@ -174,10 +198,10 @@ async function kafeKur(t: KafeTohum, playerId: string) {
   const couponId = newId("cpn");
   await db.query(
     `INSERT INTO coupons
-       (id, cafe_id, player_id, reward_id, code, status, activates_at, expires_at,
+       (id, cafe_id, player_id, reward_id, code, qr_token, status, activates_at, expires_at,
         budget_period_id, reserved_kurus, proof_level)
-     VALUES ($1,$2,$3,$4,$5,'active', now(), now() + interval '7 days', $6, 4500, 3)`,
-    [couponId, cafeId, playerId, rewardId, couponCode(), periodId],
+     VALUES ($1,$2,$3,$4,$5,$6,'active', now(), now() + interval '7 days', $7, 4500, 3)`,
+    [couponId, cafeId, playerId, rewardId, couponCode(), randomToken(24), periodId],
   );
   await db.query(
     `INSERT INTO budget_ledger (id, cafe_id, budget_period_id, kind, amount_kurus, coupon_id)

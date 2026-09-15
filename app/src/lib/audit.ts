@@ -45,6 +45,14 @@ export type Islem =
   // sorusunun cevabı burada olabilir.
   | "game.enable"
   | "game.disable"
+  // Ü137: butik çarkı. Koşul değişikliği para dağıtımını değiştiriyor —
+  // "bu hafta neden bu kadar çok kupon çıktı" sorusunun cevabı burada.
+  // Hak verme ayrı bir işlem çünkü farklı el: koşulu yönetici koyuyor,
+  // hakkı kasiyer veriyor.
+  | "cark.kosul_ekle"
+  | "cark.kosul_ac"
+  | "cark.kosul_kapat"
+  | "cark.hak_ver"
   // Mahremiyet
   | "pii.view"
   | "report.view"
@@ -53,6 +61,11 @@ export type Islem =
   | "cafe.location"
   | "cafe.approve"
   | "cafe.reject"
+  // Ü125: sahibin panelden açtığı şube başvurusu. `cafe.approve`ten ayrı
+  // bir işlem çünkü farklı el: bunu işletme sahibi yapıyor, onayı platform.
+  // Tek işleme sıkıştırılsaydı "şubeyi kim istedi, kim açtı" ayrımı kayıtta
+  // kaybolurdu — ikisi arasındaki sınır G5'in kendisi.
+  | "cafe.branch_apply"
   | "staff.create"
   | "staff.disable"
   | "staff.pin_reset"

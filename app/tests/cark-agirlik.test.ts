@@ -157,7 +157,7 @@ describe("kafe kendi olasılığını yazıyor", () => {
     const s = await carkAgirlik.yaz({
       cafeId: kafeId,
       odulId: odulIdler[3],
-      agirlik: 70,
+      yuzde: 70,
       aktorId: yoneticiId,
     });
     assert.ok(s.ok, s.ok === false ? s.hata : "");
@@ -216,7 +216,7 @@ describe("kafe kendi olasılığını yazıyor", () => {
     await carkAgirlik.yaz({
       cafeId: kafeId,
       odulId: hedef.odulId,
-      agirlik: hedef.etkin,
+      yuzde: hedef.etkin,
       aktorId: yoneticiId,
     });
 
@@ -238,7 +238,7 @@ describe("kafe kendi olasılığını yazıyor", () => {
     await carkAgirlik.yaz({
       cafeId: kafeId,
       odulId: odulIdler[0],
-      agirlik: 0,
+      yuzde: 0,
       aktorId: yoneticiId,
     });
 
@@ -266,7 +266,7 @@ describe("kafe kendi olasılığını yazıyor", () => {
       const s = await carkAgirlik.yaz({
         cafeId: kafeId,
         odulId: id,
-        agirlik: 0,
+        yuzde: 0,
         aktorId: yoneticiId,
       });
       assert.ok(s.ok, s.ok === false ? s.hata : "");
@@ -275,7 +275,7 @@ describe("kafe kendi olasılığını yazıyor", () => {
     const son = await carkAgirlik.yaz({
       cafeId: kafeId,
       odulId: odulIdler[odulIdler.length - 1],
-      agirlik: 0,
+      yuzde: 0,
       aktorId: yoneticiId,
     });
     assert.equal(son.ok, false, "bütün ödüllerin ağırlığı sıfırlanabildi");
@@ -296,23 +296,79 @@ describe("kafe kendi olasılığını yazıyor", () => {
     await otomatige();
   });
 
-  test("aralık dışı ağırlık reddediliyor", async () => {
+  /**
+   * Ü124: girilen sayı artık doğrudan yüzde.
+   *
+   * Eskiden "ağırlık"tı ve yüzde toplam üzerinden türetiliyordu: kafe 70
+   * yazıp %41 görebiliyordu. Artık 70 yazan %70 görüyor ve kalan pay
+   * diğerlerinin oranı korunarak bölüşülüyor.
+   */
+  test("🔴 yazılan sayı doğrudan yüzde — toplam tam 100", async () => {
+    await otomatige();
+    const once = await carkAgirlik.durum(kafeId);
+    const hedef = once.satirlar[1];
+
+    const s = await carkAgirlik.yaz({
+      cafeId: kafeId,
+      odulId: hedef.odulId,
+      yuzde: 40,
+      aktorId: yoneticiId,
+    });
+    assert.equal(s.ok, true, s.ok ? "" : s.hata);
+
+    const sonra = await carkAgirlik.durum(kafeId);
+    const yeni = sonra.satirlar.find((r) => r.odulId === hedef.odulId);
+    assert.equal(yeni?.etkin, 40, "yazılan sayı yüzde olarak uygulanmadı");
+    assert.equal(sonra.toplam, 100, `toplam 100 değil: ${sonra.toplam}`);
+    assert.equal(yeni?.yuzde, 40, "ekranda yazan yüzde girilenden farklı");
+  });
+
+  test("kalan pay diğerlerinin ORANI korunarak bölüşülüyor", async () => {
+    await otomatige();
+    const once = await carkAgirlik.durum(kafeId);
+    const hedef = once.satirlar[0];
+    const digerOnce = once.satirlar.filter((r) => r.odulId !== hedef.odulId);
+    // İki diğer ödül arasındaki oran, yazımdan sonra da korunmalı.
+    const oranOnce = digerOnce[0].etkin / digerOnce[1].etkin;
+
+    await carkAgirlik.yaz({
+      cafeId: kafeId,
+      odulId: hedef.odulId,
+      yuzde: 20,
+      aktorId: yoneticiId,
+    });
+
+    const sonra = await carkAgirlik.durum(kafeId);
+    const digerSonra = digerOnce.map(
+      (d) => sonra.satirlar.find((r) => r.odulId === d.odulId)!,
+    );
+    const oranSonra = digerSonra[0].etkin / digerSonra[1].etkin;
+
+    // Yuvarlama payı bırakılıyor: tam sayıya yuvarlanan paylarda oran
+    // birebir korunamaz, ama belirgin biçimde kaymamalı.
+    assert.ok(
+      Math.abs(oranSonra - oranOnce) < 0.35,
+      `oran bozuldu: önce ${oranOnce.toFixed(2)}, sonra ${oranSonra.toFixed(2)}`,
+    );
+  });
+
+  test("aralık dışı yüzde reddediliyor", async () => {
     for (const deger of [-1, 101, 1.5]) {
       const s = await carkAgirlik.yaz({
         cafeId: kafeId,
         odulId: odulIdler[0],
-        agirlik: deger,
+        yuzde: deger,
         aktorId: yoneticiId,
       });
       assert.equal(s.ok, false, `${deger} kabul edildi`);
     }
   });
 
-  test("çarkta olmayan ödüle ağırlık yazılamıyor", async () => {
+  test("çarkta olmayan ödüle yüzde yazılamıyor", async () => {
     const s = await carkAgirlik.yaz({
       cafeId: kafeId,
       odulId: newId("rwd"),
-      agirlik: 10,
+      yuzde: 10,
       aktorId: yoneticiId,
     });
     assert.equal(s.ok, false);
@@ -322,7 +378,7 @@ describe("kafe kendi olasılığını yazıyor", () => {
     await carkAgirlik.yaz({
       cafeId: kafeId,
       odulId: odulIdler[0],
-      agirlik: 10,
+      yuzde: 10,
       aktorId: yoneticiId,
     });
     await otomatige();

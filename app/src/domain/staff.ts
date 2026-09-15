@@ -62,32 +62,43 @@ export type Personel = {
   telefonMaskeli: string | null;
 };
 
+/**
+ * ⚠️ Sıralama SQL'de değil burada (Ü115).
+ *
+ * `ORDER BY role, name` idi; `name` şifrelendikten sonra o sıralama
+ * anlamını yitirdi — şifreli baytlar ada göre değil nonce'a göre dizilir
+ * ve her yazmada rastgele nonce üretildiği için sonuç her seferinde
+ * **farklı** çıkardı. Ad çözüldükten sonra sıralanıyor; `localeCompare`
+ * Türkçe alfabeyi de doğru veriyor (Ç, Ğ, İ, Ö, Ş, Ü).
+ */
 export async function personelListele(cafeId: string): Promise<Personel[]> {
   const satirlar = await withBypass("personel listesi", (db) =>
     db.all<{
       id: string;
-      name: string;
+      name_enc: Buffer;
       role: "cashier" | "manager";
       active: boolean;
       pin_changed_at: Date;
       phone_enc: Buffer | null;
     }>(
-      `SELECT id, name, role, active, pin_changed_at, phone_enc
-         FROM staff WHERE cafe_id = $1 ORDER BY role, name`,
+      `SELECT id, name_enc, role, active, pin_changed_at, phone_enc
+         FROM staff WHERE cafe_id = $1`,
       [cafeId],
     ),
   );
 
   const sinir = Date.now() - PIN_ROTASYON_GUNU * 86_400_000;
-  return satirlar.map((s) => ({
-    id: s.id,
-    ad: s.name,
-    rol: s.role,
-    aktif: s.active,
-    pinDegisti: s.pin_changed_at,
-    pinEskiMi: s.role === "cashier" && s.pin_changed_at.getTime() < sinir,
-    telefonMaskeli: s.phone_enc ? maskeliTelefon(decryptPII(s.phone_enc)) : null,
-  }));
+  return satirlar
+    .map((s) => ({
+      id: s.id,
+      ad: decryptPII(s.name_enc),
+      rol: s.role,
+      aktif: s.active,
+      pinDegisti: s.pin_changed_at,
+      pinEskiMi: s.role === "cashier" && s.pin_changed_at.getTime() < sinir,
+      telefonMaskeli: s.phone_enc ? maskeliTelefon(decryptPII(s.phone_enc)) : null,
+    }))
+    .sort((a, b) => a.rol.localeCompare(b.rol) || a.ad.localeCompare(b.ad, "tr"));
 }
 
 function maskeliTelefon(e164: string): string {
@@ -106,8 +117,8 @@ export async function personelEkle(opts: {
 
   await withBypass("personel ekleme", async (db) => {
     await db.query(
-      `INSERT INTO staff (id, cafe_id, name, pin_hash, role) VALUES ($1,$2,$3,$4,'cashier')`,
-      [id, opts.cafeId, opts.ad, hash],
+      `INSERT INTO staff (id, cafe_id, name_enc, pin_hash, role) VALUES ($1,$2,$3,$4,'cashier')`,
+      [id, opts.cafeId, encryptPII(opts.ad), hash],
     );
     await audit(db, {
       actorType: "staff",
@@ -224,16 +235,18 @@ export async function pinGiris(opts: {
   }
 
   const personeller = await withBypass("pin girişi", (db) =>
-    db.all<{ id: string; name: string; pin_hash: string }>(
-      `SELECT id, name, pin_hash FROM staff
+    db.all<{ id: string; name_enc: Buffer; pin_hash: string }>(
+      `SELECT id, name_enc, pin_hash FROM staff
         WHERE cafe_id = $1 AND role = 'cashier' AND active = true`,
       [opts.cafeId],
     ),
   );
 
   for (const p of personeller) {
+    // Ad yalnızca EŞLEŞEN satır için çözülüyor: yanlış PIN denemesi,
+    // kafedeki bütün kasiyerlerin adını belleğe açmanın bahanesi olmasın.
     if (await pinEslesiyorMu(opts.pin, p.pin_hash)) {
-      return { durum: "gecerli", staffId: p.id, ad: p.name };
+      return { durum: "gecerli", staffId: p.id, ad: decryptPII(p.name_enc) };
     }
   }
 
@@ -250,12 +263,12 @@ export type PlatformKullanicisi = {
 
 export async function platformKullanicisiBul(telefon: string): Promise<PlatformKullanicisi | null> {
   const r = await withBypass("platform kullanıcısı arama", (db) =>
-    db.one<{ id: string; name: string; role: PlatformKullanicisi["rol"] }>(
-      `SELECT id, name, role FROM platform_users WHERE phone_index = $1 AND active = true`,
+    db.one<{ id: string; name_enc: Buffer; role: PlatformKullanicisi["rol"] }>(
+      `SELECT id, name_enc, role FROM platform_users WHERE phone_index = $1 AND active = true`,
       [phoneIndex(telefon)],
     ),
   );
-  return r ? { id: r.id, ad: r.name, rol: r.role } : null;
+  return r ? { id: r.id, ad: decryptPII(r.name_enc), rol: r.role } : null;
 }
 
 export async function platformKullanicisiEkle(opts: {
@@ -266,10 +279,10 @@ export async function platformKullanicisiEkle(opts: {
   const id = newId("pu");
   await withBypass("platform kullanıcısı ekleme", (db) =>
     db.query(
-      `INSERT INTO platform_users (id, name, phone_index, phone_enc, role)
+      `INSERT INTO platform_users (id, name_enc, phone_index, phone_enc, role)
        VALUES ($1,$2,$3,$4,$5)
        ON CONFLICT (phone_index) DO UPDATE SET active = true, role = excluded.role`,
-      [id, opts.ad, phoneIndex(opts.telefon), encryptPII(opts.telefon), opts.rol],
+      [id, encryptPII(opts.ad), phoneIndex(opts.telefon), encryptPII(opts.telefon), opts.rol],
     ),
   );
   return id;

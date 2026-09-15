@@ -342,6 +342,62 @@ describe("kupon üretimi", () => {
     });
   });
 
+  test("🔴 aktivasyon saati kafenin ayarı — kupona geçiyor (Ü129)", async () => {
+    // Süre `kupon.ts`te `ERTELEME_SAAT = 12` diye SABİT yazılıydı ve iki kez
+    // kod değiştirilerek ayarlanmıştı (Ü28: 24, Ü97: 12). Ü129 onu kafeye
+    // verdi; bu test ayarın gerçekten kupona geçtiğini çiviliyor — panelde
+    // yazan sayı ile kuponun açılma anı ayrışırsa kafe "6 yazdım, hâlâ 12
+    // saat sonra açılıyor" der ve sayıya bir daha güvenmez.
+    const AYARLANAN = 6;
+
+    await ayar.sayiYaz({
+      cafeId: kafeA,
+      anahtar: ayar.ANAHTARLAR.ertelemeEsigi,
+      deger: 25_00,
+      aktorId: kasiyerA,
+    });
+    await ayar.sayiYaz({
+      cafeId: kafeA,
+      anahtar: ayar.ANAHTARLAR.ertelemeSaati,
+      deger: AYARLANAN,
+      aktorId: kasiyerA,
+    });
+
+    const s = await kuponAl(buyukOdulId);
+    assert.equal(s.ertelendi, true, "büyük ödül hemen aktif oldu");
+
+    const detay = await kuponDetayi(oyuncuId, s.kuponId);
+    const saat = (detay!.aktiflesme.getTime() - Date.now()) / 3_600_000;
+    assert.ok(
+      saat > AYARLANAN - 0.5 && saat <= AYARLANAN,
+      `açılma ${AYARLANAN} saat sonra olmalıydı (${saat.toFixed(1)} sa)`,
+    );
+    assert.ok(
+      saat < kupon.ERTELEME_SAAT - 0.5,
+      "ayar yok sayılıp sabit süre kullanılmış",
+    );
+
+    // ⚠️ Son kullanma da kaymalı: kupon 7 gün geçerli ve sayaç AÇILMA
+    // anından değil veriliş anından işliyor. Kaymasaydı erteleme süresi
+    // kadar kısa ömürlü bir kupon doğardı.
+    const omur = (detay!.sonKullanim.getTime() - detay!.aktiflesme.getTime()) / 86_400_000;
+    assert.ok(omur > kupon.GECERLILIK_GUN - 0.5, "ertelenen kuponun ömrü kısalmış");
+
+    // Kurulum değerlerine geri dön — sonraki testler bunlara güveniyor.
+    await ayar.sayiYaz({
+      cafeId: kafeA,
+      anahtar: ayar.ANAHTARLAR.ertelemeSaati,
+      deger: kupon.ERTELEME_SAAT,
+      aktorId: kasiyerA,
+    });
+    await ayar.sayiYaz({
+      cafeId: kafeA,
+      anahtar: ayar.ANAHTARLAR.ertelemeEsigi,
+      deger: 50_00,
+      aktorId: kasiyerA,
+    });
+  });
+
   test("eşiğin altındaki ödül hemen aktif olur", async () => {
     const s = await kuponAl(katalogOdulId);
     assert.equal(s.ertelendi, false);

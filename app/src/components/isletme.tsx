@@ -91,6 +91,23 @@ export function IsletmeAlan({
   );
 }
 
+/**
+ * Satır içi küçük eylem düğmesi — Ü123.
+ *
+ * ── Neden altı çizili BÜYÜK HARF değil ──────────────────────
+ *
+ * Katalogdaki her ödülün sağında üç eylem vardı ve üçü de
+ * `etiket-caps ... underline` ile yazılıyordu: YAYINDAN KALDIR ·
+ * SINIRLAR · ADI DÜZELT. Sonuç, kartın **bilgiden çok eylemden**
+ * oluşmasıydı — on altı ödülün listesinde kırk sekiz tane bağıran
+ * bağlantı. Ürün sahibinin "çok karışık" dediği şeyin büyük kısmı buydu.
+ *
+ * Şimdi küçük, çerçeveli, normal harfli düğmeler: göz önce ödülün adını
+ * ve değerini okuyor, eylemler kenarda sessizce duruyor.
+ */
+export const isletmeMiniDugme =
+  "rounded-lg border border-cizgi px-2.5 py-1.5 text-[12px] font-semibold text-yazi-sonuk transition-colors hover:border-yazi-sonuk hover:text-yazi disabled:opacity-50";
+
 export const isletmeGirdi =
   "w-full rounded-lg border border-cizgi bg-yuzey px-3.5 py-3 text-[16px] text-yazi " +
   "placeholder:text-yazi-sonuk/60 focus:border-vurgu focus:outline-none";

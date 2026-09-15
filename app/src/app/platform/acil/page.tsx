@@ -1,6 +1,7 @@
 import { platformGerekli } from "@/domain/yetki";
 import { durum, kafeler, ANAHTARLAR } from "@/domain/acil";
 import { IsletmeSayfa, IsletmeBaslik, IsletmeUyari, Bolum } from "@/components/isletme";
+import { PlatformGezinme } from "../gezinme";
 import { AnahtarDugmesi, KafeKontrolu, OturumKontrolu } from "./kontroller";
 
 export const dynamic = "force-dynamic";
@@ -31,6 +32,8 @@ export default async function AcilDurdurma() {
       >
         Hasarı durdur
       </IsletmeBaslik>
+
+      <PlatformGezinme />
 
       {!admin && (
         <div className="mb-7">

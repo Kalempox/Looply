@@ -6,7 +6,73 @@
 > Yan dosyalar: neyin **var** olduğu → `21-looply-kapsam-haritasi.md` ·
 > demoda neyin **yapılabildiği** → `22-demo-yapilabilirlik.md`
 
-**Son güncelleme:** 2026-09-14 · **Kararlar:** Ü76 – Ü114
+**Son güncelleme:** 2026-09-16 · **Kararlar:** Ü76 – Ü139
+
+> 🚀 **Yayına çıkış işleri ayrı bir listede:** `docs/25-yayin-plani.md`
+> (güvenlik → altyapı → mesajlaşma → hukuk). Orası **sırayı** tutuyor,
+> burası ürün işlerini. Şu an orada: A0 ✅ · A1 ✅ · **sıradaki A2**.
+
+---
+
+# DALGA 7 · ✅ TAMAMLANDI — 2026-09-16
+
+> Tek oturumda on üç iş. Ayrıntı karar defterinde (`02`), Ü125–Ü139.
+> 🔴 **Hiçbiri commit edilmedi** — yığın 120+ dosya.
+
+- [x] **Ödül ve kampanya ayrıldı** ✅ — Ü138
+  Sekmeler kaldırıldı, sol menüde ayrı duraklar, farkı anlatan not.
+  🔴 İki bayat metin bulundu: sekme bileşeni kampanya için *"oyun oynamayı
+  gerektirmiyor"* diyordu (yanlış — oynamak şart, kazanmak değil) ve
+  Ü52'den kalma *"puanla satın alınır"* cümlesi yeni metinlere kopyalanmıştı.
+- [x] **Takvim arızası** ✅ — Ü139
+  *"Bugün"e basınca hiçbir şey olmuyordu.* Chrome'da `<input type="date">`
+  gövdesine tıklamak takvimi açmıyor; `showPicker()` eklendi, takvim
+  simgesi ve odak halkası geldi.
+- [x] **Şube başvurusu panelden** ✅ — Ü125 · göç 0036
+  0026 şemayı açmış ama yolu yazmamıştı: `subeler.length > 1` hiç
+  gerçekleşemiyordu. G5 kapısı duruyor, şube `pending` doğuyor.
+- [x] **Başvuru dört alana indi** ✅ — Ü126 · göç 0037
+  Ticari unvan, vergi no, adres ve **vergi levhası** kalktı.
+  ⚠️ G5'in kanıt tabanı bilerek gevşedi.
+- [x] **Kafe başına tek karekod** ✅ — Ü127 · göç 0038
+  Masa kavramı, dört karekod türü ve masa raporu kalktı. Tablo duruyor.
+- [x] **Kuponlarım kafeye göre** ✅ — Ü128
+  Gruplama + geçmiş ikiye ayrıldı (kullandıkların / süresi geçenler).
+- [x] **Aktivasyon saati ayar oldu** ✅ — Ü129
+  `ERTELEME_SAAT = 12` sabitti; artık kafenin ve platformun ayarı.
+- [x] **Platform paneli** ✅ — Ü130
+  Kafeler · künye · oyuncular · ticari ileti. ⚠️ **WhatsApp YAPILMADI** —
+  Meta hesabı ve şablon onayı gerekiyor. ⚠️ İYS kaydı da kapsam dışında.
+- [x] **Konum geri geldi + yarıçap ayarı** ✅ — Ü131
+  `GEOFENCE_METRE = 150` sabitti; artık 20–500 m arası kafenin ayarı.
+- [x] **Karekod zinciri uçtan uca test** ✅ — Ü132
+  İki ucu bağlayan hiçbir test yoktu. Beş test.
+- [x] **Vitrin turu** ✅ — Ü133
+  Slogan `Geri gel.`, "katılım ücretsiz" kalktı, kayan şerit düzeldi,
+  ödüller 6→14, reklam karşılaştırması, mobil hareket.
+- [x] **Çift yönlü değer simülasyonu** ✅ — Ü134
+  🔴 Gelen tasarım ürünün veremeyeceği bir kupon değeri (5 TL) kullanıyordu
+  ve gerçek aralıkta (25 TL) **negatife** dönüyordu. Dördüncü oran
+  (artım) eklendi, başa baş noktası öne alındı.
+- [x] **Kupon simülasyonu** ✅ — Ü135 · `/gelistirme`
+  Kamerasız test: kullanılabilir kuponlar kodlarıyla listeli.
+- [x] **Kupon durumu yoklayıcısı** ✅ — Ü136
+  Kasiyer onaylayınca müşterinin açık ekranı değişmiyordu. 3 sn yoklama.
+- [x] **Butik kipi** ✅ — Ü137 · göç 0039 + 0040
+  Oyun yok; çark hakkını kasiyer alışverişe bakarak veriyor. Dört koşul
+  türü, VEYA ile bağlı. 🔴 İlk göç **RLS'yi unuttu** — kiracı izolasyonu
+  testi yakaladı, 0040 ile kapatıldı. Mock butik: `npm run db:butik`.
+
+## Bu dalgadan kalan açık işler
+
+- [ ] **WhatsApp gönderimi** — Meta Business hesabı + sağlayıcı + şablon
+  onayı. Kod tarafı yazılabilir, hesap tarafı işletmede.
+- [ ] **Takvimin alt sınırı** — 2019 seçilirse panel sıfırlarla dolu bir
+  gün gösteriyor. Kafenin açılış tarihinden öncesi kapatılmalı.
+- [ ] **Butik akışı sahada denenmedi** — uçtan uca testler geçiyor ama
+  gerçek telefonla kasa→QR→çark yolculuğu henüz yapılmadı.
+- [ ] **Vitrindeki 2.000 TL sistem maliyeti** bir fiyat açıklaması ve
+  ürünün fiyatlandırması hâlâ karara bağlanmadı (Ü41'in açık bıraktığı).
 
 ---
 
@@ -374,6 +440,186 @@ ChatGPT analiz bağlantısı.
 - [ ] **35 · Landing page'ler** *(kod dışı, ayrı proje)*
   `looplybusiness.com/tekrar-musteri` · `/ikinci-siparis` · `/musteri-sadakati`
   · `/yeni-musteri` · `/kampanya` · `/ek-satis`. Her biri ayrı ölçülür.
+
+---
+
+# DALGA 6 · YENİ — butik işletmeler + vitrin (Ü117) ⬅️
+
+> Ürün sahibinin 2026-09-14 kararı. **Kapsamı genişletiyor ve yayın
+> takvimini uzatıyor** — `docs/25`'teki A/B/C/E listesinden ayrı, ek iş.
+
+- [x] **38 · Yeni giriş ekranı (vitrin)** ✅ **BİTTİ** — Ü118 + Ü119 + **Ü120**, 2026-09-15
+  Ana sayfa artık bir vitrin: yalnızca **işletmeye** sesleniyor, iki kapı
+  (**Giriş yap** · **Kayıt ol**) yapışkan üst şeritte. Geliştirme
+  kısayolları `/gelistirme` altına taşındı.
+  **Slogan kahraman:** `Oyna. Kazan. Eğlen.`
+  ⚠️ **Beş tur sürdü**, her turun dersi karar defterinde:
+  çark kondu → çıkarıldı (müşterinin ekranı, işletmenin sayfası değil) ·
+  mekanik anlatım kondu → çıkarıldı (ikna aşamasının işi değil) ·
+  mor gradyan + ışınlar kondu → çıkarıldı (örnek sitelerin hepsinde
+  **düz zemin** var) · çizilmiş sahte ekranlar kondu → **ürünün gerçek
+  ekran görüntüleriyle** değiştirildi.
+  🔴 **Vitrin paleti:** beyaz · fildişi · mavi tonları · altın.
+  **Siyah yok** — koyu bölümler lacivert. Jetonlar `globals.css`te ve
+  yalnızca vitrinde kullanılıyor.
+  🔴 **Logo** kuruldu (`components/logo.tsx`): `oo` → sonsuzluk ilmeği +
+  oyun kolu tuşları + hediye. SVG; koyu zemin için beyaz sürümü var,
+  hediye 30 pikselin altında kendiliğinden kapanıyor.
+  ⚠️ **Lenis eklenmedi.** Ink Games'in akıcı kaydırması ondan geliyor ama
+  tarayıcının kaydırmasını devralıyor; kazancın büyük kısmı kaydırmaya
+  bağlı dönüşümlerden geliyor ve onlar bağımlılıksız yazıldı.
+  🔴 **Kaydırmalı sahne** (`vitrin-yaklasma.tsx`) — ürün sahibinin tarifi:
+  *"yavaş yavaş zoom, sonra QR'ın içine girer gibi, ardından oyuncu
+  menüsüne girecek ve orada havadan ödüller yağacak."*
+  Beş ekranlık bölüm, beş evre: **kafe karesi yaklaşır → karekodun yakın
+  karesine geçer → perde kapanır (içeri giriş) → oyuncu menüsü açılır →
+  ödüller yağar.** Taşıyıcı teknik Tinker'ınkiyle aynı (uzun bölüm +
+  `sticky top-0 h-screen` + ilerleme 0→1), bağımlılık yok.
+  ⚠️ **Yağmur artık yaklaşma sırasında değil, oyuncu ekranına girdikten
+  sonra** — sıra anlam taşıyor: ödül karekodun ötesinde.
+  🔴 **Üç boyutlu ürün kartları** (`Egik`): görseller `perspective`
+  altında eğik duruyor, kaydırdıkça doğruluyor **ve fareyi takip
+  ediyor** — Ink Games'in tekniği.
+  ⚠️ İlk yazılışta yalnızca kaydırmaya bağlıydı; ürün sahibi düzeltti:
+  *"görseller mouse hover efektiyle oynak olmalı."* Haklı ayrım —
+  kaydırmaya bağlı giriş bir **animasyon**, fareyle eğilme bir
+  **etkileşim**; istenen ikincisiydi.
+  ⚠️ Yumuşatma (lerp) şart: açı doğrudan imlece yazılsaydı kart farenin
+  her sıçramasını taklit eder, sinirli dururdu.
+  ⚠️ Dokunmatikte dinleyici hiç kurulmuyor (`hover: none`) — telefonda
+  hover yok, kurulsaydı kart ilk dokunuşta eğik kalırdı.
+  ⚠️ Her görsel **kendi** kutusunda: iki telefon tek kutudayken birinin
+  üstüne gelince ikisi birden eğiliyor, "oynama" hissi kayboluyordu.
+  ⚠️ Lacivert bölümdeki telefon çerçevesi zemine karışıyordu (çerçeve de
+  gölge de lacivert); koyu zeminde bir ton açılıyor + ışık halkası.
+  ⚠️ **Tinker'ın yaklaşan telefonu CSS değil, bir Rive animasyonu**
+  (`<canvas data-component-name="rive">`). Kalite farkı kodda değil
+  **varlıkta** — sayfa bir daha zayıf bulunursa cevap kod değil, varlık.
+  🔴 **Altı ekran görüntüsü gerçek** (`public/vitrin/`): işletme raporu ·
+  çark · Yılan · oyuncu paneli · ödüller · kazanma anı. Playwright ile
+  çalışan uygulamadan çekildi, geliştirme şeridi gizlenerek.
+  ⚠️ **Sayılar da gerçek:** boş veritabanında çekilen ilk kare baştan
+  sona sıfır gösteriyordu ve vitrinin tam tersini söylüyordu.
+  `npm run db:simule` ile on dört günlük trafik ürünün kendi akışından
+  geçirildi (bütçe rezervi, günlük tavan, kasada onay) — rapordaki
+  tutarlar ürünün gerçekten üretebileceği tutarlar.
+  ⚠️ **Dar ekran ayrı ele alındı:** kenar yazıları önce yalnızca `lg`
+  üstünde vardı, telefondan giren ziyaretçi dört ekran boyunca tek
+  kelime okumadan kaydırıyordu. Artık telefonun üstünde, fildişi
+  zeminli (yağan kuponlar tam oradan geçiyor) ve teker teker.
+  🔴 **Kafe fotoğrafları geldi** — `kafe-genis.jpg` (masadaki karekod
+  görünen geniş kare) ve `kafe-karekod.jpg` (karekodun yakın çekimi).
+  `vitrinKaresi()` dosyayı sistemden sorguluyor; yoksa sahne çizime
+  düşüyor, yani dosya silinse de sayfa ayakta kalır.
+  ⚠️ **1024 pikseldi, 2400'e çıkarıldı** (`sharp`, lanczos3 + hafif
+  keskinleştirme): kare ekranı kaplıyor ve üstüne ~3 kat yakınlaşılıyor,
+  1024 piksel sonda dağılıyordu. **Bu gerçek detay eklemez** — kareler
+  daha büyük üretilebilirse sonuç belirgin biçimde daha iyi olur.
+  ⚠️ Odak noktaları `ODAK_GENIS` / `ODAK_YAKIN` sabitlerinde, elimizdeki
+  iki kareden ölçüldü — fotoğraf değişirse birlikte ayarlanmalı, yoksa
+  kadraj karekodu ıskalıyor.
+  ⚠️ **İki kare arası geçiş odak kaymasıyla:** uzun çapraz geçişte iki
+  farklı kadraj üst üste binip çift pozlama gibi duruyordu. Pencere
+  kısaldı, çıkan kare bulanıklaşarak gidiyor, giren kare netleşerek
+  geliyor — "kamera odağı karekoda kaydı" gibi okunuyor.
+
+- [x] **38b · 🔴 Başvuru sayfası yanlış şart vaat ediyordu** ✅ **BİTTİ** — Ü118
+  Sayfa *"Haftada en az 1.500 TL"* diyordu; göç 0020 (Ü45) dönemi güne
+  çevirmiş ve tabanı da güne bağlamıştı — **yedi kat fark.** İşletme
+  başvururken haftada 1.500 TL'ye söz veriyor, paneli açınca günde
+  1.500 TL'nin altına inemediğini görüyordu. Tam da ikna anında.
+  Sayı artık `domain/butce.ts`'ten okunuyor; bir daha ayrışamaz.
+
+- [x] **38c · 🔴 Kısayollar kod defterini öldürüyordu** ✅ **BİTTİ** — Ü118
+  Kısayollar `/gelistirme`ye taşınırken sorgu sayfa gövdesine kondu ve
+  sayfa veritabanına bağımlı hâle geldi. Veritabanı kapalıyken **defter
+  de dahil sayfanın tamamı** boş geliyordu — yani "kod nereye gitti"
+  sorusunun tek cevap yeri, tam da bir şeyler ters gittiğinde ölüyordu.
+  Sorgu artık hata yutuyor: kaybedilen bir kolaylık, korunan teşhis aracı.
+  (Elektrik kesintisinden sonra veritabanı gelmeyince ortaya çıktı.)
+
+- [x] **38d · 🔴 Kırılgan test: gerçek trafik varken kırmızı yanıyordu** ✅ **BİTTİ** — Ü120
+  `rapor.test.ts` → *"beş kişiden az içeren masa gizlenir"*. Test tohumdan
+  bir masa **ödünç alıyor** ve "bu hafta bu masada yalnızca benim üç
+  oyuncum var" varsayıyordu. Vitrin görselleri için `npm run db:simule`
+  koşturulunca masa eşiğin üstüne çıktı: **ürün doğru çalışırken test
+  düştü.** ⚠️ Testin kendi yorumu bir alt satırda zaten *"belirli bir
+  satırı sınamak kırılgan"* diyordu — bilinen bir kırılganlıktı.
+  Test artık **kendi masasını açıyor** ve sonunda siliyor. Gerçek bir
+  kafenin masasında her zaman başka trafik olur; yalıtım testin işi.
+
+- [ ] **39 · İşletme tipi: kafe | butik** — M
+  Kiracıya tip kolonu, panelin tipe göre farklılaşması, terminoloji
+  ("masa" butikte ne demek), tohum verisinde bir butik örneği.
+
+- [ ] **40 · Butik akışı: oyun yok, doğrudan çark** — M
+  🔴 **D1'i etkiliyor.** Kafede ödül kısmen beceriye bağlı (kupon eşiği
+  500 puan); butikte beceri payı **tamamen kalkıyor**, ödül saf tesadüfe
+  bağlanıyor. Şans mevzuatı görüşü **iki ayrı model** için sorulmalı.
+  ⚠️ Çarkın misafir akışı (`cark.misafirCevir`) zaten var — temel duruyor.
+
+- [ ] **41 · 🔴 İşletme müşterinin adını ve telefonunu görecek** — L
+  **G1 kalkıyor.** Bugün işletmenin gördüğü tek kimlik kafe bazında
+  farklı bir anonim kod; bundan sonra ad ve telefon da görünecek.
+  ⚠️ **Aydınlatma metni ilk gerçek kullanıcıdan ÖNCE yeniden yazılmalı** —
+  bugünkü metin "işletme göremez" diyor. Henüz gerçek kullanıcı yok, yani
+  şimdi yapmak bedava.
+  ⚠️ İşletme ayrı bir **veri sorumlusu** oluyor: sözleşme eki, kendi
+  hukuki sebebi. `docs/08` §9.4 genişleyecek.
+  ⚠️ `player_aliases` silinmiyor — kaldırmak geçmiş defter satırlarını
+  bozar; anlamı değişiyor.
+
+- [ ] **42 · Sipariş tutarı kasada girilecek** — M
+  Kazanılan ödül girilen tutarla ilişkilenecek.
+  ⚠️ Madde 32 bunu bir kez reddetmişti (*"ödül değeri katalogda tanımlı"*)
+  ve o gerekçe **ödül tarafı için hâlâ geçerli**; yeniden açılan şey
+  **ölçüm** tarafı.
+  ⚠️ Tutar kasiyerin **beyanı**, ölçüm değil — raporda ayrı güven
+  seviyesinde gösterilmeli (Ü100'ün "kullanıldı, satıldı değil" ayrımı).
+
+---
+
+# PANEL TURU · ✅ TAMAMLANDI — 2026-09-15
+
+> Ürün sahibinin ara istekleri. Dalga 6'ya ait değil; panelin günlük
+> kullanımdaki pürüzleri. Ayrıntısı karar defterinde **Ü123** ve **Ü124**.
+
+- [x] **P1 · Geliştirme şeridi kaldırıldı** ✅ Ü123
+  Köşedeki "Başlangıç · Kodlar · Çıkış". Kod zaten giriş formunun içinde,
+  defter `/gelistirme`de, çıkış her panelde kendi yerinde.
+- [x] **P2 · Çark kendi sayfasında** ✅ Ü123 — `/kafe/panel/cark`
+  Ödüller sayfası **üç ayrı soruyu** aynı anda soruyordu: hangi ödüller
+  var, ne zaman açılıyorlar, çarkta hangi sıklıkla çıkıyorlar.
+- [x] **P3 · "Bugün" takvim oldu** ✅ Ü123
+  Yerleşik `<input type="date">`, saydam biçimde düğmenin üstünde.
+  Kütüphane yok: klavye, ekran okuyucu ve telefon seçicisi bedava geliyor.
+- [x] **P4 · Doğrulama defteri sayfalandı** ✅ Ü123 — 10'ar kayıt
+  200 kayıtta liste bitmiyordu. Yan kazanç: altındaki "Dışa aktar"
+  bölümü artık bulunabiliyor. Sayfa numarası adreste (`?s=3`).
+- [x] **P5 · Çark ödülleri günlük bütçeye dahil** ✅ Ü123
+  Zaten doğruydu — kupon üreten tek bir yol var (`kuponUret`) ve bütçe
+  rezervasyonu orada. **İki testle çivilendi**: biri yarın çark için
+  ikinci bir INSERT yolu açarsa kırmızı yanar.
+- [x] **P6 · Konum menüden çıktı** ✅ Ü123
+  ⚠️ **Sayfa duruyor ve durmalı** — kafenin koordinatını yazan tek yer
+  orası; koordinat yoksa o kafede **hiç kimse hiçbir şey kazanamıyor**.
+  Panelin ana ekranı eksikse zaten uyarıyor ve kurulum listesinde satırı
+  var.
+- [x] **P7 · Katalog + kampanyalar + ürünler yeniden tasarlandı** ✅ Ü123 + Ü124
+  🔴 **İki tur sürdü.** İlk turda renk ve düğme stiline dokunuldu, oysa
+  sorun **düzendeydi**: 16 satırlık, her satırında üç eylem olan bir liste
+  550 piksellik sütuna sıkışıyordu. İki kolon kaldırıldı, ayarlar üstte
+  tek sıraya alındı, liste tam genişlikte **sütunlu tabloya** geçti.
+  ⚠️ Yol boyunca: `lg:grid-cols-[minmax(0,1fr)_...]` sınıfı Tailwind
+  tarafından üretilmiyordu (virgül) — tablo sessizce tek sütuna çöküyordu.
+- [x] **P8 · Logo düzeltildi** ✅ Ü123
+  Halkaların merkezleri 28 birim ayrık ama yarıçapları 19'du: birbirinin
+  içine gömülüyorlardı. Tam teğet + `items-baseline`. Panelde de gerçek
+  işaret var ve **ana panele dönüyor**.
+- [x] **P9 · Çarkta ağırlık → yüzde** ✅ Ü124
+  Kafe artık doğrudan yüzde yazıyor; kalan pay diğerlerinin oranı
+  korunarak bölüşülüyor, **toplam her zaman 100**. Sıfır = çarkta çıkmaz.
+  ⚠️ Bu D1'in (şans mevzuatı) kapsamını genişletiyor — bkz. `docs/25`.
 
 ---
 

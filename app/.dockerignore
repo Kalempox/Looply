@@ -1,0 +1,22 @@
+# Kap imajına girmeyecekler.
+#
+# 🔴 En önemlisi `.env.local`: geliştirme anahtarları imaja gömülmemeli.
+# Sunucudaki değerler compose'un `env_file`'ından, çalışma zamanında geliyor.
+
+.env
+.env.local
+.env.*.local
+.env.demo
+
+node_modules
+.next
+.git
+.gitignore
+
+# Geliştirme veritabanı ve yedekler
+yedekler
+belgeler
+
+# Derlemeye girmeyen yerel çıktılar
+tsconfig.tsbuildinfo
+*.log

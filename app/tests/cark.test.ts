@@ -147,6 +147,109 @@ describe("çark · günlük sınır", () => {
   });
 });
 
+/* ═══════════════════════════════════════════════════════════
+   Çark ve günlük bütçe — Ü123
+   ═══════════════════════════════════════════════════════════ */
+
+/**
+ * Çarkın ayrı bir havuzu olup olmadığı sorusu.
+ *
+ * Ürün sahibi: *"Bütçede çarktan çıkan ödüller günlük bütçeye dahil
+ * olacak, onu da unutma."* Kod bunu zaten yapıyor — çünkü kupon üreten
+ * **tek bir yol** var (`kuponUret`) ve bütçe rezervasyonu orada. Ama
+ * "zaten yapıyor" bir test değil: birisi yarın çark için ikinci bir
+ * INSERT yolu açarsa bu dosya kırmızı yanmalı.
+ *
+ * Ölçülen şey iddianın kendisi: çevirmeden önce ve sonra defterdeki
+ * rezerve toplamı, kuponun tutarı kadar artmalı.
+ */
+describe("çark · günlük bütçeye dahil (Ü123)", () => {
+  async function rezerveToplam(id: string): Promise<number> {
+    return withBypass("test: bütçe defteri", async (db) => {
+      const r = await db.one<{ toplam: string | null }>(
+        `SELECT sum(amount_kurus) AS toplam
+           FROM budget_ledger
+          WHERE cafe_id = $1 AND kind = 'reserve'`,
+        [id],
+      );
+      return Number(r?.toplam ?? 0);
+    });
+  }
+
+  test("çark kuponu bütçe defterine rezerve yazıyor", async () => {
+    const kafe = await kafeKur("CarkButce", true);
+    const oyuncuId = (
+      await kaydet({
+        telefon: yeniTelefon(),
+        ad: "Selin",
+        soyad: "Koç",
+        dogumYili: 1994,
+        pazarlamaIzni: false,
+      })
+    ).oyuncu.id;
+
+    const once = await rezerveToplam(kafe);
+    const odul = await ilkOdul(kafe);
+
+    const s = await carkOduluVer({
+      playerId: oyuncuId,
+      cafeId: kafe,
+      odulId: odul.id,
+      kanitSeviyesi: 2,
+      an: KAFE_ACIK,
+    });
+    assert.equal(s.ok, true, s.ok ? "" : s.hata);
+
+    const sonra = await rezerveToplam(kafe);
+    assert.equal(
+      sonra - once,
+      odul.cost_kurus,
+      "çark ödülü bütçeden düşmedi — çarkın ayrı bir havuzu oluşmuş",
+    );
+  });
+
+  /**
+   * Tersi de sınanıyor: bütçe dolduğunda çark **susuyor**.
+   *
+   * Taban 1.500 TL (şema kısıtı) ve tempo gün içinde kademeli açılıyor;
+   * bu yüzden bütçeyi "doldurmak" için defterin kendisine rezerve
+   * yazılıyor. Ödül üreterek doldurmaya çalışmak 24 saat kilidine takılır.
+   */
+  test("bütçe dolduğunda çark ödül veremiyor", async () => {
+    const kafe = await kafeKur("CarkButceDolu", true);
+    const oyuncuId = (
+      await kaydet({
+        telefon: yeniTelefon(),
+        ad: "Emre",
+        soyad: "Tan",
+        dogumYili: 1991,
+        pazarlamaIzni: false,
+      })
+    ).oyuncu.id;
+
+    await withBypass("test: bütçeyi doldur", async (db) => {
+      const d = await db.one<{ id: string; committed_kurus: string }>(
+        `SELECT id, committed_kurus FROM budget_periods WHERE cafe_id = $1`,
+        [kafe],
+      );
+      await db.query(
+        `INSERT INTO budget_ledger (id, cafe_id, budget_period_id, kind, amount_kurus, note)
+         VALUES ($1,$2,$3,'reserve',$4,'test: bütçeyi doldur')`,
+        [newId("bl"), kafe, d!.id, Number(d!.committed_kurus)],
+      );
+    });
+
+    const s = await carkOduluVer({
+      playerId: oyuncuId,
+      cafeId: kafe,
+      odulId: (await ilkOdul(kafe)).id,
+      kanitSeviyesi: 2,
+      an: KAFE_ACIK,
+    });
+    assert.equal(s.ok, false, "bütçe doluyken çark ödül verdi — E10 delindi");
+  });
+});
+
 describe("çark · üst sınır", () => {
   /**
    * Ürün sahibinin şartı: *"küçük ödüller dağıtacak."* Havuz (E10) tek bir
@@ -313,15 +416,16 @@ describe("çark · misafir talebi", () => {
   });
 });
 
-async function ilkOdul(id: string): Promise<{ id: string }> {
+/** Kafenin en ucuz anlık ödülü. Tutar da dönüyor: bütçe testi onu ölçüyor. */
+async function ilkOdul(id: string): Promise<{ id: string; cost_kurus: number }> {
   const r = await withBypass("test odul", (db) =>
-    db.one<{ id: string }>(
-      `SELECT id FROM rewards WHERE cafe_id = $1 AND kind = 'instant' ORDER BY cost_kurus LIMIT 1`,
+    db.one<{ id: string; cost_kurus: string }>(
+      `SELECT id, cost_kurus FROM rewards WHERE cafe_id = $1 AND kind = 'instant' ORDER BY cost_kurus LIMIT 1`,
       [id],
     ),
   );
   assert.ok(r);
-  return r;
+  return { id: r.id, cost_kurus: Number(r.cost_kurus) };
 }
 
 async function carkKuponSayisi(id: string): Promise<number> {

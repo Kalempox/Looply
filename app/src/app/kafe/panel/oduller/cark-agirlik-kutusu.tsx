@@ -5,14 +5,15 @@ import { agirlikEylemi, otomatikEylemi, type AgirlikDurumu } from "./actions";
 import { IsletmeUyari, isletmeGirdi } from "@/components/isletme";
 
 /**
- * Çark olasılıkları tablosu — Ü110.
+ * Çark olasılıkları tablosu — Ü110, Ü124'te yüzdeye geçti.
  *
- * ── Neden ağırlık yazılıyor, yüzde okunuyor ─────────────────
+ * ── 🔴 Ağırlık değil, yüzde ─────────────────────────────────
  *
- * Kafe **ağırlık** giriyor; yüzde onun yanında, o anki toplamdan
- * türetilmiş hâlde duruyor. Yüzde girilseydi toplamın 100 olması
- * gerekirdi ve her ödül ekleme/çıkarma bütün satırları elle yeniden
- * hesaplamak demek olurdu.
+ * Kafe **ağırlık** giriyordu ve yüzde yanında türetilmiş hâlde
+ * duruyordu. Ürün sahibi: *"Çarktaki ödüller ve yüzde kaç ihtimalle
+ * çıkacağı panelden ayarlanmalı."* Artık girilen sayı doğrudan yüzde;
+ * kalan pay diğerlerinin oranı korunarak dağıtılıyor ve toplam her
+ * zaman 100 (`domain/cark-agirlik.ts`).
  *
  * ── Her satır kendi formu ───────────────────────────────────
  *
@@ -47,8 +48,8 @@ export function CarkAgirlikKutusu({
   if (satirlar.length === 0) {
     return (
       <p className="text-[14px] text-yazi-sonuk">
-        Çarkta şu an hiç ödül yok. Önce çark üst sınırının altında bir anlık ödül
-        ekle.
+        Çarkta şu an hiç ödül yok. Önce çark üst sınırının altında bir anlık
+        ödül ekle — yoksa çark dönecek bir şey bulamıyor.
       </p>
     );
   }
@@ -59,21 +60,22 @@ export function CarkAgirlikKutusu({
         {otomatikMi ? (
           <>
             Şu an <strong className="text-yazi">otomatik</strong>: ucuz ödül daha
-            sık çıkıyor, her basamakta olasılık yarıya iniyor. Bir ağırlık
+            sık çıkıyor, her basamakta olasılık yarıya iniyor. Bir yüzde
             yazarsan hepsi bu değerlerden sabitlenir ve kontrol sana geçer.
           </>
         ) : (
           <>
-            Ağırlıkları <strong className="text-yazi">sen belirledin</strong>.
-            Yüzde, toplam ağırlıktan hesaplanıyor — bir ödül çarktan düşerse
-            kalanların yüzdesi kendiliğinden yeniden dağılır.
+            Yüzdeleri <strong className="text-yazi">sen belirledin</strong>. Bir
+            ödülün yüzdesini değiştirdiğinde kalan pay, diğerlerinin oranı
+            korunarak aralarında yeniden bölüşülüyor —{" "}
+            <strong className="text-yazi">toplam her zaman 100</strong>.
           </>
         )}
       </p>
 
       <div className="flex items-baseline justify-between gap-3 border-y border-cizgi py-2">
-        <span className="etiket-caps text-yazi-sonuk">Toplam ağırlık</span>
-        <span className="font-data text-[15px] font-bold tabular">{toplam}</span>
+        <span className="etiket-caps text-yazi-sonuk">Toplam</span>
+        <span className="font-data text-[15px] font-bold tabular">%{toplam}</span>
       </div>
 
       <ul className="divide-y divide-cizgi">
@@ -139,20 +141,30 @@ function AgirlikSatiri({ satir }: { satir: Satir }) {
         <span className="min-w-0 flex-1">
           <span className="block text-[15px] font-semibold">{satir.baslik}</span>
           <span className="mt-0.5 block font-data text-[11px] text-yazi-sonuk">
-            {satir.etkin === 0 ? "çarkta çıkmaz" : `≈%${satir.yuzde}`}
+            {satir.etkin === 0 ? "çarkta çıkmaz" : `${satir.yuzde} kez / 100`}
             {satir.agirlik == null && " · otomatik"}
           </span>
         </span>
 
-        <input
-          name="agirlik"
-          type="text"
-          inputMode="numeric"
-          defaultValue={String(satir.etkin)}
-          onInput={() => setDuzeltiliyor(true)}
-          aria-label={`${satir.baslik} çıkma ağırlığı`}
-          className={`${isletmeGirdi} w-[5rem]`}
-        />
+        {/* Yüzde işareti girdinin içinde: ayrı bir etiket satır yüksekliğini
+            artırıyor, ipucu metni ise on satırda on kez tekrarlanıyordu. */}
+        <span className="relative">
+          <input
+            name="agirlik"
+            type="text"
+            inputMode="numeric"
+            defaultValue={String(satir.etkin)}
+            onInput={() => setDuzeltiliyor(true)}
+            aria-label={`${satir.baslik} çıkma yüzdesi`}
+            className={`${isletmeGirdi} w-[5.5rem] pr-7`}
+          />
+          <span
+            aria-hidden
+            className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 font-data text-[13px] text-yazi-sonuk"
+          >
+            %
+          </span>
+        </span>
 
         <button
           type="submit"

@@ -86,6 +86,26 @@
      `#D93025` metin çukur zeminde 4.26'da kalıyordu; renk değil **zemin**
      değişti — tehlike kutuları artık `bg-yuzey` üstünde (4.77). */
 
+  /* ── Vitrin paleti (Ü120) ────────────────────────────────────
+     YALNIZCA `app/page.tsx` ve yardımcılarında kullanılıyor.
+
+     Vitrin ürünün içi değil **dışı**: ikna etmeye çalışan bir sayfa ve
+     yukarıdaki dokuz renk oraya yetmiyordu. Ürün sahibinin tarifi net:
+     *"beyaz, fildişi ve mavi tonlarda olsun, bir de buna uyacak bir renk
+     daha — siyah olmasın."*
+
+     Siyah çıktı, yerine **lacivert** geldi: koyu bölümler hâlâ güçlü
+     kontrast veriyor ama sayfa tek bir renk ailesinde kalıyor. Dördüncü
+     renk **altın** — zaten ürünün ödül rengi (`--color-odul`), yani yeni
+     bir renk değil, var olanın vitrindeki karşılığı.
+
+     ⚠️ Uygulamanın içinde kullanılmıyor. Panelin alan renkleri
+     (para/masa/ürün/kişi/kampanya) da buraya girmiyor. */
+  --color-vitrin-fildisi: #f7f2e8; /* sıcak kırık beyaz — bölüm zemini */
+  --color-vitrin-lacivert: #10204d; /* koyu bölüm — siyahın yerine */
+  --color-vitrin-lacivert-acik: #1b3272; /* lacivert üstünde kutu */
+  --color-vitrin-mavi-sis: #dbe9ff; /* açık mavi — görsel kutusu */
+
   /* İki aile: Outfit her şeyde, JetBrains Mono yalnızca sayıda.
      `font-display` ve `font-body` aynı aileye bakıyor — ayrım artık
      ailede değil ağırlıkta: başlık sıkı ve ağır, gövde gevşek ve hafif. */
@@ -437,3 +457,159 @@ body {
   to   { transform: rotate(360deg); }
 }
 .sahne-isik { animation: sahne-isik 24s linear infinite; }
+
+/* ── Vitrin: uçuşan kuponlar ────────────────────────────────
+   Hero'daki kupon kartları yavaşça süzülüyor — Marble'ın katmanlı
+   sahnesindeki derinlik hissi, bizim kendi nesnelerimizle.
+
+   ⚠️ `transform` KULLANILMIYOR: kartların kendi eğimi ve ölçeği zaten
+   satır içi `transform` ile veriliyor ve animasyon onu ezerdi. Bunun
+   yerine `translate` — ayrı bir özellik, çakışmıyor.
+
+   Hareketi kapatan kullanıcıda süre ve gecikme yukarıdaki
+   `prefers-reduced-motion` bloğunda sıfırlanıyor. */
+@keyframes kart-suzul {
+  0%, 100% { translate: 0 0; }
+  50%      { translate: 0 -12px; }
+}
+.kart-suzul { animation: kart-suzul 7s ease-in-out infinite; }
+
+/* ── Vitrin: yaklaşan sahne, hareket kapalıyken ─────────────
+   `vitrin-yaklasma.tsx` kaydırma ilerlemesini satır içi `transform`,
+   `opacity` ve `filter` ile sürüyor. Hareketi kapatan kullanıcıda o
+   dinleyici hiç kurulmuyor — ilerleme sıfırda donuyor.
+
+   ⚠️ Kural JS'te değil BURADA: efektin gövdesinde `setState` çağırmak
+   zincirleme render tetikliyor (`react-hooks/set-state-in-effect`).
+   Durdurulmuş hâli CSS toparlıyor; `!important` satır içi stili geçiyor.
+
+   Sonuç: beş ekranlık bölüm **tek ekrana** iniyor ve geriye anlamlı bir
+   kare kalıyor — masada karekodu duran kafe fotoğrafı. Yaklaşma, bulanık
+   zemin ve kupon yağmuru yok; yan kutular da yok çünkü dördü sırayla
+   geçsin diye üst üste konumlandırılmışlar ve ilerleme donunca hepsi
+   aynı yerde birikirdi. Söyledikleri zaten alttaki "Neden Looply" ve
+   "Bir kere gelen müşteri" bölümlerinde yazılı — kaybolan bilgi yok. */
+@media (prefers-reduced-motion: reduce) {
+  .yaklasma-bolum {
+    height: 100dvh !important;
+  }
+  .yaklasma-sahne {
+    transform: none !important;
+  }
+  .yaklasma-sahne img {
+    filter: none !important;
+  }
+  .yaklasma-yagmur,
+  .yaklasma-yazi {
+    display: none !important;
+  }
+  .yaklasma-serit {
+    transform: none !important;
+  }
+  /* Kendiliğinden akan şerit de duruyor — hareketi kapatan kullanıcı
+     için "sürekli hareket eden bir şey" en rahatsız edici olanı. */
+  .serit-akis {
+    animation: none !important;
+  }
+}
+
+/* ── Kesintisiz akan şerit (Ü133) ────────────────────────────
+   İki kopya yan yana; birincisi tam kendi genişliği kadar sola
+   kayınca ikincisi onun yerine oturuyor ve dikiş görünmüyor.
+   Kaydırmaya bağlı hız buna EKLENİYOR (`yaklasma-serit`), yani
+   sayfa dururken bile şerit yaşıyor. */
+@keyframes serit-kay {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-100%);
+  }
+}
+
+.serit-akis {
+  animation: serit-kay 26s linear infinite;
+}
+
+/* ── Mobil canlılık (Ü133) ───────────────────────────────────
+   Ürün sahibi: *"mobil görünümde çok zayıf kaldık."* Haklıydı —
+   dar ekranda sahne tamamen hareketsizdi.
+
+   🔴 **Kaydırmaya bağlı efekt kullanılmıyor ve kullanılamaz.** Dosya
+   başındaki kural: dokunmatikte `sticky` + scroll dinleyicisi sayfayı
+   yapışkan gösteriyor ve parmağın beklediği gibi davranmıyor. Buradaki
+   hareketin tamamı CSS anahtar karesi: tarayıcının derleyici katmanında
+   koşuyor, ana iş parçacığına hiç dokunmuyor, ucuz telefonda da akıyor.
+
+   Üç hareket var ve üçü de küçük — mobilde büyük hareket "bozuk"
+   okunuyor, dikkat dağıtıyor ve pil yiyor. */
+
+@keyframes suzul {
+  0% {
+    transform: translateY(-14vh) rotate(var(--egim, 0deg));
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  88% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(96vh) rotate(calc(var(--egim, 0deg) + var(--donus, 10deg)));
+    opacity: 0;
+  }
+}
+
+.mobil-yagmur > * {
+  animation: suzul var(--sure, 9s) linear infinite;
+  animation-delay: var(--gecikme, 0s);
+}
+
+/* Telefon hafifçe nefes alıyor — duran bir ekran görüntüsü ile
+   "çalışan bir ürün" arasındaki fark bu kadar küçük bir hareket. */
+@keyframes salin {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-9px);
+  }
+}
+
+.salinan {
+  animation: salin 4.5s ease-in-out infinite;
+}
+
+/* Çağrı düğmesi bir kez nabız atıyor, sonra duruyor: sürekli atan bir
+   düğme reklam bandı gibi okunuyor ve tıklanmıyor. */
+@keyframes nabiz {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0);
+  }
+  30% {
+    box-shadow: 0 0 0 10px rgba(37, 99, 235, 0.18);
+  }
+  60% {
+    box-shadow: 0 0 0 18px rgba(37, 99, 235, 0);
+  }
+}
+
+.nabiz-bir-kez {
+  animation: nabiz 2.2s ease-out 1.2s 3;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mobil-yagmur > *,
+  .salinan,
+  .nabiz-bir-kez {
+    animation: none !important;
+  }
+  /* Hareket kapalıyken yağmur hiç görünmemeli: son karede ekranın
+     altında donmuş kuponlar kalırdı. */
+  .mobil-yagmur {
+    display: none !important;
+  }
+}

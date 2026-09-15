@@ -10,6 +10,26 @@ import { closePools } from "@/db/pool";
  * güvenliği devre dışı kalırdı.
  */
 
+/**
+ * Hatayı okunabilir hâle getirir.
+ *
+ * ⚠️ Sadece `err.message` yazılıyordu ve bu bir tuzaktı: `pg`, bağlantı
+ * kurulamadığında **mesajı boş** bir `AggregateError` fırlatıyor
+ * (ECONNREFUSED her adres için ayrı ayrı toplanıyor). Sonuç, veritabanı
+ * kapalıyken `npm run db:migrate`in hiçbir şey yazmadan 1 ile çıkmasıydı —
+ * "komut çalıştı mı, çalışmadı mı" belli değildi.
+ */
+function okunabilir(err: unknown): string {
+  if (!(err instanceof Error)) return String(err);
+  if (err.message) return err.message;
+
+  const alt = (err as AggregateError).errors;
+  if (Array.isArray(alt) && alt.length) {
+    return `${err.name}: ${alt.map((e) => e?.message || e?.code || String(e)).join(", ")}`;
+  }
+  return err.stack ?? err.name;
+}
+
 migrate()
   .then(async ({ applied, skipped }) => {
     if (applied.length === 0) console.log(`Şema güncel (${skipped} göç uygulanmış).`);
@@ -17,7 +37,7 @@ migrate()
     await closePools();
   })
   .catch(async (err) => {
-    console.error("\n" + (err instanceof Error ? err.message : String(err)));
+    console.error("\n" + okunabilir(err));
     await closePools();
     process.exit(1);
   });

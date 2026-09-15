@@ -96,9 +96,9 @@ export async function panelDurumu(cafeId: string, an: Date = new Date()): Promis
   if (temel.masa === 0) {
     uyarilar.push({
       onem: "engel",
-      baslik: "Hiç masa yok",
+      baslik: "Karekodun yok",
       aciklama: "Karekod olmadan oyuncu kafeye giremiyor.",
-      yol: "/kafe/panel/masalar",
+      yol: "/kafe/panel/karekod",
     });
   }
 
@@ -175,8 +175,8 @@ export async function panelDurumu(cafeId: string, an: Date = new Date()): Promis
     const saat = Math.floor(istanbulDakikasi(an) / 60);
     if (kalan > 0 && saat >= 16) {
       oneriler.push({
-        metin: `Bugün ${kalan} müşteri daha bekleniyor. Akşam saatlerinde masa karekodlarının görünür olduğundan emin ol.`,
-        yol: "/kafe/panel/masalar",
+        metin: `Bugün ${kalan} müşteri daha bekleniyor. Akşam saatlerinde karekodunun görünür olduğundan emin ol.`,
+        yol: "/kafe/panel/karekod",
       });
     }
   }

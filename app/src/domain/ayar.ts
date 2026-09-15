@@ -71,6 +71,52 @@ export const ANAHTARLAR = {
   acilisSaati: "acilis_saat",
   /** Kafenin kapanış saati (Ü90, 1–23, İstanbul). */
   kapanisSaati: "kapanis_saat",
+  /**
+   * Ertelenen ödülün kaç saat sonra açılacağı (Ü129, saat).
+   *
+   * ── Neden ayar oldu ─────────────────────────────────────────
+   *
+   * `kupon.ts`te `ERTELEME_SAAT = 12` diye **sabit** yazılıydı. Sayı
+   * Ü28'de 24, Ü97'de 12 olmuştu; ikisi de ürün sahibinin tercihiydi ve
+   * her değişiklikte kod değişiyordu. Ürün sahibi şimdi kafeye verdi —
+   * *"ödül aktivasyon saatini de panelden ayarlayabilmeli."*
+   *
+   * ⚠️ **Çark ve oyun ödülü aynı ayarı kullanıyor** ve kullanmalı: ikisi
+   * de `kuponUret` yolundan geçiyor, yani kuponun aktifleşme anı tek bir
+   * yerde hesaplanıyor. Ayrı ayarlar olsaydı aynı ödül, çarktan mı oyundan
+   * mı çıktığına göre farklı saatte açılırdı — oyuncuya açıklaması olmayan
+   * bir fark.
+   *
+   * ⚠️ Yalnızca **eşiğin üstündeki** ödülü ilgilendiriyor (`ertelemeEsigi`).
+   * Eşiğin altındaki ödül zaten anında açılıyor ve bu ayar ona hiç
+   * dokunmuyor.
+   */
+  ertelemeSaati: "erteleme_saat",
+  /**
+   * K2'nin yarıçapı — kafeye kaç metre yakınlık "kafedeyim" sayılıyor
+   * (Ü131, metre).
+   *
+   * ── Neden ayar oldu ─────────────────────────────────────────
+   *
+   * `masa.ts`te `GEOFENCE_METRE = 150` diye **sabit** yazılıydı ve her
+   * kafeye aynı çember uyguluyordu. Ürün sahibi: *"konumdan kaç metre
+   * uzakta olduğunu tanımlamak için yarıçap belirlesin kafe sahibi, 40
+   * metre diyince 40 metre yarıçaptaki alanda doğru kabul etsin."*
+   *
+   * Mantıklı: bir AVM katındaki kafeyle sokak arası kafenin ihtiyacı
+   * aynı değil. 150 metre, yan binadaki birinin de "kafedeyim" sayılması
+   * demekti.
+   *
+   * ⚠️ **Alt sınır 20 metre.** GPS'in kendi hata payı şehir içinde
+   * 10–30 metre; 5 metre yazan kafe kendi masasındaki müşteriyi bile
+   * reddeder ve sebebini anlamaz. Dar çember, kafenin kendi ayağına
+   * sıkması.
+   *
+   * ⚠️ **Üst sınır 500 metre.** Üstü K2'yi fiilen kapatır: çember
+   * mahalleyi kapsarsa "kafede olmak" bir kanıt olmaktan çıkar ve ödül
+   * ekonomisinin tek fiziksel dayanağı düşer.
+   */
+  konumYaricapi: "konum_yaricap_metre",
 } as const;
 
 export type Anahtar = (typeof ANAHTARLAR)[keyof typeof ANAHTARLAR];
@@ -104,6 +150,23 @@ export const SINIRLAR: Record<Anahtar, { en_az: number; en_cok: number; varsayil
   // olmaktan çıktılar.
   [ANAHTARLAR.acilisSaati]: { en_az: 0, en_cok: 22, varsayilan: 9 },
   [ANAHTARLAR.kapanisSaati]: { en_az: 1, en_cok: 23, varsayilan: 23 },
+  // Ü129: varsayılan 12 — Ü97'de sabit olarak seçilen değer, ayar olunca
+  // varsayılan oldu. Paneli hiç açmayan kafede hiçbir şey değişmiyor.
+  //
+  // ⚠️ Alt sınır 1, sıfır DEĞİL: sıfır "erteleme yok" demek olurdu ve o
+  // kararın zaten bir yeri var — eşiği 50 TL'ye çekmek (Ü52 ile en pahalı
+  // ödül 50 TL). İki ayrı yerden aynı şeyi kapatmak, kafenin "neden hâlâ
+  // erteleniyor" sorusunu iki yere birden baktırırdı.
+  //
+  // ⚠️ Üst sınır 48: kupon `GECERLILIK_GUN` kadar geçerli ve erteleme
+  // ondan uzun olursa kupon **açılmadan** ölürdü. 48 saat, geçerlilik
+  // süresinin altında kalan güvenli bir tavan.
+  [ANAHTARLAR.ertelemeSaati]: { en_az: 1, en_cok: 48, varsayilan: 12 },
+  // Ü131: varsayılan 150 — sabitken kullanılan değer, ayar olunca
+  // varsayılan oldu. Paneli hiç açmayan kafede hiçbir şey değişmiyor.
+  // Sınırların gerekçesi `konumYaricapi`nin kendi notunda: altı GPS hata
+  // payının içinde kalır, üstü K2'yi anlamsızlaştırır.
+  [ANAHTARLAR.konumYaricapi]: { en_az: 20, en_cok: 500, varsayilan: 150 },
 };
 
 export async function sayiOku(cafeId: string, anahtar: Anahtar): Promise<number> {

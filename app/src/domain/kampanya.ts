@@ -7,9 +7,16 @@ import { isGunu } from "@/lib/tarih";
 /**
  * Ürün bazlı yüzde kampanyası — Ö4, Ü17, Ü26.
  *
- * Katalogdaki yüzdeli ödülden farkı: bu **puan istemez**, kafenin itmek
- * istediği ürüne bağlıdır ve otomatik düşer. Katalogdaki ise oyuncunun
- * puanıyla satın aldığı bir hedeftir. İki farklı ihtiyaç, iki tablo (Ü26).
+ * Katalogdaki yüzdeli ödülden farkı: bu **kazanılmıyor**. Kafenin itmek
+ * istediği ürüne bağlı ve oyun sonunda kendiliğinden düşüyor — oyuncunun
+ * oyunu bitirmesi bile gerekmiyor (`oyun.ts`). Ödül ise oyunda ya da çarkta
+ * kazanılan şey. İki farklı ihtiyaç, iki tablo (Ü26).
+ *
+ * ⚠️ Ü138: bu yorum Ü52'ye kadar farkı *"bu puan istemez, katalogdaki ise
+ * oyuncunun puanıyla satın aldığı bir hedeftir"* diye anlatıyordu. Ü52
+ * puanla satın almayı kaldırdı ve o cümle yıllarca yanlış yol gösterdi:
+ * puan artık hiçbir şey satın almıyor, yalnızca sıralama ve seviye için
+ * birikiyor.
  *
  * ── Üç sınır da zorunlu ─────────────────────────────────────
  *

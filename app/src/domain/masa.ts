@@ -2,6 +2,7 @@ import { withBypass } from "@/db/context";
 import { identifierHash } from "@/lib/crypto";
 import { newId } from "@/lib/ids";
 import { log } from "@/lib/log";
+import * as ayar from "./ayar";
 
 /**
  * Masa oturumu — oyuncunun "şu an şu kafede, şu masada" hâli.
@@ -17,6 +18,15 @@ import { log } from "@/lib/log";
  */
 
 export const OTURUM_SAAT = 3;
+/**
+ * Ü131: kafe panelden değiştirmediyse geçerli olan yarıçap.
+ *
+ * ⚠️ Artık **varsayılan**, kural değil. Gerçek değer kafenin ayarı
+ * (`ayar.ANAHTARLAR.konumYaricapi`) ve okuyan her yer oradan alıyor:
+ * `konumDogrula` (kayıtlı oyuncu) ve `misafir.konumDogrula` (misafir).
+ * Buradaki sayıyı doğrudan kullanan bir yol kalmamalı — biri kalsaydı
+ * aynı kafe iki farklı çemberle ölçülürdü.
+ */
 export const GEOFENCE_METRE = 150;
 export const K3_DAKIKA = 5;
 
@@ -254,8 +264,14 @@ export async function konumDogrula(
   lng: number,
 ): Promise<KonumSonucu> {
   return withBypass("konum doğrulama", async (db) => {
-    const r = await db.one<{ id: string; c_lat: number | null; c_lng: number | null; proof_mask: number }>(
-      `SELECT ts.id, c.lat AS c_lat, c.lng AS c_lng, ts.proof_mask
+    const r = await db.one<{
+      id: string;
+      cafe_id: string;
+      c_lat: number | null;
+      c_lng: number | null;
+      proof_mask: number;
+    }>(
+      `SELECT ts.id, ts.cafe_id, c.lat AS c_lat, c.lng AS c_lng, ts.proof_mask
          FROM table_sessions ts JOIN cafes c ON c.id = ts.cafe_id
         WHERE ts.player_id = $1 AND ts.expires_at > now()
         ORDER BY ts.started_at DESC LIMIT 1`,
@@ -265,8 +281,11 @@ export async function konumDogrula(
     if (!r) return { durum: "oturum_yok" as const };
     if (r.c_lat == null || r.c_lng == null) return { durum: "kafe_konumu_yok" as const };
 
+    // Ü131: yarıçap kafenin ayarı. Oturumdan gelen `cafe_id` kullanılıyor —
+    // istemciden gelen bir değer değil.
+    const yaricap = await ayar.sayiOku(r.cafe_id, ayar.ANAHTARLAR.konumYaricapi);
     const mesafe = mesafeMetre(lat, lng, r.c_lat, r.c_lng);
-    const yakin = mesafe <= GEOFENCE_METRE;
+    const yakin = mesafe <= yaricap;
     const maske = yakin ? r.proof_mask | K2 : r.proof_mask;
 
     await db.query(

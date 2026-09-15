@@ -3,6 +3,7 @@ import { platformGerekli } from "@/domain/yetki";
 import { basvurulariListele, type Basvuru } from "@/domain/cafe";
 import * as oturum from "@/domain/session";
 import { IsletmeSayfa, IsletmeBaslik, Rozet, IsletmeUyari } from "@/components/isletme";
+import { PlatformGezinme } from "../gezinme";
 import { KararKontrolleri, TelefonAcma } from "./kontroller";
 
 export const dynamic = "force-dynamic";
@@ -35,6 +36,8 @@ export default async function Basvurular({
       >
         İşletme başvuruları
       </IsletmeBaslik>
+
+      <PlatformGezinme />
 
       {!admin && (
         <div className="mb-7">
@@ -102,6 +105,14 @@ function BasvuruKarti({ basvuru, admin }: { basvuru: Basvuru; admin: boolean }) 
           <p className="text-[13px] text-yazi-sonuk">
             {basvuru.yasalAd} · {basvuru.sehir}
           </p>
+          {/* Ü125: şube başvurusu sıfırdan bir işletme değil — onaylanmış
+              bir işletmenin ikinci adresi. Tüzel kişi ve vergi numarası
+              zaten incelenmiş; onaycının bakacağı şey adres. */}
+          {basvuru.anaSubeAdi && (
+            <p className="mt-1.5 text-[13px] font-semibold text-kampanya">
+              {basvuru.anaSubeAdi} işletmesinin şubesi
+            </p>
+          )}
         </div>
         <Rozet tur={rozet}>
           {basvuru.durum === "approved" ? "onaylı" : basvuru.durum === "rejected" ? "reddedildi" : "bekliyor"}
@@ -129,7 +140,11 @@ function BasvuruKarti({ basvuru, admin }: { basvuru: Basvuru; admin: boolean }) 
             )}
           </dd>
         </div>
-        <Satir k="Adres" v={basvuru.adres ?? "—"} />
+        {/* Ü126: işletme telefonu maskesiz — müşteriye zaten duyurulan
+            numara. Yetkilinin cebi yukarıda ve o ayrı bir işlemle açılıyor. */}
+        <Satir k="İşletme telefonu" v={basvuru.isletmeTelefonu ?? "—"} />
+        {/* Ü126 ile başvuruda sorulmuyor; eski kayıtlarda dolu olabilir. */}
+        {basvuru.adres && <Satir k="Adres" v={basvuru.adres} />}
         <Satir
           k="Başvuru"
           v={
@@ -143,6 +158,9 @@ function BasvuruKarti({ basvuru, admin }: { basvuru: Basvuru; admin: boolean }) 
               : "—"
           }
         />
+        {/* ⚠️ Şubede belge YOK ve olmaması doğru: vergi levhası ana
+            işletmenin dosyasında ve aynı tüzel kişiye ait. Burada
+            "yüklenmemiş" yazsaydı onaycı eksik evrak sanıp reddederdi. */}
         <Satir
           k="Belge"
           v={
@@ -150,9 +168,15 @@ function BasvuruKarti({ basvuru, admin }: { basvuru: Basvuru; admin: boolean }) 
               ? basvuru.belgeler
                   .map((b) => `${b.ad ?? b.tur} (${Math.round((b.boyut ?? 0) / 1024)} KB)`)
                   .join(", ")
-              : "yüklenmemiş"
+              : basvuru.anaSubeAdi
+                ? `${basvuru.anaSubeAdi} dosyasında`
+                : "yüklenmemiş"
           }
-          not="şifreli saklanır"
+          not={
+            basvuru.anaSubeAdi && !basvuru.belgeler.length
+              ? "şube ayrı belge vermez — tüzel kişi aynı"
+              : "şifreli saklanır"
+          }
         />
         {basvuru.redSebebi && <Satir k="Ret gerekçesi" v={basvuru.redSebebi} />}
       </dl>
