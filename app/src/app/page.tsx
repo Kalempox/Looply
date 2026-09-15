@@ -114,6 +114,35 @@ function vitrinKaresi(ad: string): string | null {
   return null;
 }
 
+/**
+ * Yan yana iki telefon — dar ekranda parmakla kaydırılan sıra.
+ *
+ * ── 🔴 Mobilde ürünün yarısı görünmüyordu (Dalga 8) ─────────
+ *
+ * Her satırda iki ekran görüntüsü var ve ikincisi `hidden sm:block` ile
+ * kapalıydı: 640 pikselin altında, yani **telefonların çoğunda**, dört
+ * üründen yalnızca ikisi görünüyordu. Sebebi anlaşılır — 210 piksellik
+ * iki telefon yan yana dar ekrana sığmıyor ve sığdırılırsa ikisi de
+ * okunmaz hâle geliyor.
+ *
+ * Çözüm küçültmek değil, **kaydırılabilir yapmak**: telefonlar tam
+ * boyutta kalıyor, ikincisi kenardan görünüyor ve parmakla çekiliyor.
+ * Ürün sahibinin "görsellerle desteklensin" isteği burada kendiliğinden
+ * karşılanıyor: mobilde bir *etkileşim* doğuyor ve gösterilen ürün
+ * ikiye katlanıyor.
+ *
+ * ⚠️ `-mx-5 px-5`: sıra sayfanın yan boşluğunun dışına taşıyor ama ilk
+ * telefon metinle aynı hizada başlıyor. Kenara yapışan bir kaydırma
+ * sırası "devamı var" der; kutunun içinde duran bir sıra demez.
+ *
+ * ⚠️ `sm:overflow-visible`: geniş ekranda kaydırma kutusu kapanmalı,
+ * yoksa `Egik`in büyüyen ve eğilen kartı kutu kenarında kesilir.
+ */
+const TELEFON_SIRASI =
+  "-mx-5 flex snap-x snap-mandatory gap-5 overflow-x-auto px-5 pb-3 " +
+  "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden " +
+  "sm:mx-0 sm:justify-center sm:overflow-visible sm:px-0 sm:pb-0";
+
 export default async function Vitrin() {
   const o = await oturum.oku();
 
@@ -213,26 +242,10 @@ export default async function Vitrin() {
         }
       />
 
-      {/*
-        ═══ Çift yönlü değer simülasyonu ═════════════
-
-        Ürün sahibinin tasarımı. Yeri de onun seçimi: "Neden Looply"nin
-        **hemen üstü** — işletmeci önce kendi rakamlarıyla oynuyor, sonra
-        "müşterini elinde tutmak indirim yapmaktan ucuz" cümlesini
-        okuyor. Cümle o sırada bir iddia değil, az önce kendi gördüğü
-        tablonun özeti oluyor.
-
-        ⚠️ Karanlık bölümün ÜSTÜNDE ve açık zeminde: simülasyon
-        okunacak ve dokunulacak bir şey, atmosfer değil.
-      */}
-      <section className="mx-auto w-full max-w-6xl px-5 py-20 sm:py-24">
-        <CiftYonluSimulasyon />
-      </section>
-
       {/* ═══ Ne sağlıyoruz — gerçek ekranlar ══════ */}
       <section className="bg-vitrin-lacivert py-20 text-yuzey sm:py-28">
         <div className="mx-auto w-full max-w-6xl px-5">
-          <Beliren>
+          <Beliren yon="olcek">
             <p className="etiket-caps text-white/45">Neden Looply</p>
             <h2 className="mt-4 max-w-3xl font-display text-[clamp(30px,5vw,54px)] leading-[1.02] font-extrabold tracking-[-0.03em]">
               Müşterini elinde tutmak
@@ -258,7 +271,7 @@ export default async function Vitrin() {
             `vitrinKaresi`) — eksik dosya sayfayı bozmuyor.
           */}
           {oyunKaresi && (
-            <Beliren className="mt-14">
+            <Beliren yon="yakin" className="mt-14">
               <Egik yon="sag">
                 <figure className="overflow-hidden rounded-3xl border border-white/10 shadow-[0_45px_90px_-30px_rgba(0,0,0,0.8)]">
                   <Image
@@ -284,7 +297,7 @@ export default async function Vitrin() {
             Sayılar `npm run db:simule` ile üretildi: ham INSERT değil,
             ürünün kendi akışından geçen on dört günlük trafik.
           */}
-          <Beliren className="mt-16">
+          <Beliren yon="sag" className="mt-16">
             <div className="grid items-center gap-10 lg:grid-cols-[1fr_1.25fr] lg:gap-14">
               <div>
                 <h3 className="font-display text-2xl font-bold tracking-tight">
@@ -314,13 +327,18 @@ export default async function Vitrin() {
           </Beliren>
 
           {/* Çark ve oyun — müşterinin göreceği ekranlar */}
-          <Beliren className="mt-20">
+          {/* ⚠️ Bu iki blok yatay YÖN ALMIYOR (`sol`/`sag` değil): içlerinde
+              `-mx-5` ile sayfanın yan boşluğunu aşan telefon sırası var.
+              Tam genişlikteki bir ögeyi 16 piksel yana kaydırmak sağ
+              kenarı ekranın dışına taşırıyor ve mobilde yatay kaydırma
+              çubuğu doğuyor — ölçülerek görüldü (390 → 406 piksel). */}
+          <Beliren yon="yakin" className="mt-20">
             <div className="grid items-center gap-10 lg:grid-cols-[1.25fr_1fr] lg:gap-14">
               {/* ⚠️ Her telefon KENDİ `Egik` kutusunda: ikisi tek kutuda
                   olsaydı birinin üstüne gelince ikisi birden eğilirdi ve
                   "görselle oynama" hissi kaybolurdu. */}
-              <div className="order-2 flex justify-center gap-5 lg:order-1">
-                <Egik yon="sag">
+              <div className={TELEFON_SIRASI + " order-2 lg:order-1"}>
+                <Egik yon="sag" className="shrink-0 snap-center">
                   <TelefonCercevesi
                     kaynak="/vitrin/cark.png"
                     alt="Müşterinin telefonunda şans çarkı"
@@ -328,7 +346,7 @@ export default async function Vitrin() {
                     koyuZemin
                   />
                 </Egik>
-                <Egik yon="sag" className="hidden pt-12 sm:block">
+                <Egik yon="sag" className="shrink-0 snap-center sm:pt-12">
                   <TelefonCercevesi
                     kaynak="/vitrin/oyun-yilan.png"
                     alt="Müşterinin telefonunda Yılan oyunu"
@@ -352,7 +370,7 @@ export default async function Vitrin() {
           </Beliren>
 
           {/* Oyuncu tarafı — geri dönüşü sağlayan iki ekran */}
-          <Beliren className="mt-20">
+          <Beliren yon="olcek" className="mt-20">
             <div className="grid items-center gap-10 lg:grid-cols-[1fr_1.25fr] lg:gap-14">
               <div>
                 <h3 className="font-display text-2xl font-bold tracking-tight">
@@ -365,8 +383,8 @@ export default async function Vitrin() {
                   <Madde>Süresi dolan kupon kendiliğinden kapanır</Madde>
                 </ul>
               </div>
-              <div className="flex justify-center gap-5">
-                <Egik yon="sol">
+              <div className={TELEFON_SIRASI}>
+                <Egik yon="sol" className="shrink-0 snap-center">
                   <TelefonCercevesi
                     kaynak="/vitrin/oyuncu-panel.png"
                     alt="Oyuncunun paneli: puanı, seviyesi ve günün görevi"
@@ -374,7 +392,7 @@ export default async function Vitrin() {
                     koyuZemin
                   />
                 </Egik>
-                <Egik yon="sol" className="hidden pt-12 sm:block">
+                <Egik yon="sol" className="shrink-0 snap-center sm:pt-12">
                   <TelefonCercevesi
                     kaynak="/vitrin/oduller.png"
                     alt="Oyuncunun ödülleri: kasada gösterilecek kupon"
@@ -391,7 +409,7 @@ export default async function Vitrin() {
       {/* ═══ Ne kazandırıyor — düz krem ═════════════ */}
       <section className="bg-vitrin-fildisi py-20 sm:py-28">
         <div className="mx-auto w-full max-w-6xl px-5">
-          <Beliren>
+          <Beliren yon="olcek">
             <h2 className="mx-auto max-w-3xl text-center font-display text-[clamp(30px,5vw,52px)] leading-[1.02] font-extrabold tracking-[-0.03em]">
               Bir kere gelen müşteri,
               <br />
@@ -409,7 +427,7 @@ export default async function Vitrin() {
             geniş duruyor.
           */}
           {kasaKaresi && (
-            <Beliren className="mt-12">
+            <Beliren yon="yakin" className="mt-12">
               <Egik yon="sol" guc={0.7}>
                 <figure className="overflow-hidden rounded-3xl shadow-[0_45px_90px_-35px_rgba(16,32,77,0.55)]">
                   <Image
@@ -426,19 +444,19 @@ export default async function Vitrin() {
           )}
 
           <div className="mt-14 grid gap-4 sm:grid-cols-3">
-            <Beliren gecikme={0}>
+            <Beliren yon="sol" gecikme={0}>
               <Kart
                 baslik="Müşterin geri gelir"
                 metin="Kazandığı indirimi kullanmak için ikinci kez kapından girer. Sadakat, hatırlatmayla değil, elinde duran bir ödülle kurulur."
               />
             </Beliren>
-            <Beliren gecikme={110}>
+            <Beliren yon="alt" gecikme={110}>
               <Kart
                 baslik="Bekleme keyfe dönüşür"
                 metin="Sipariş beklerken telefonuna bakan müşteri, senin kafende oyun oynar. O dakikalar artık şikâyet değil."
               />
             </Beliren>
-            <Beliren gecikme={220}>
+            <Beliren yon="sag" gecikme={220}>
               <Kart
                 baslik="Kontrol sende"
                 metin="Hangi ödül, ne sıklıkla, ne kadar — hepsini kendi panelinden sen belirlersin."
@@ -451,7 +469,7 @@ export default async function Vitrin() {
       {/* ═══ Kimler için — düz beyaz ════════════════ */}
       <section className="py-20 sm:py-28">
         <div className="mx-auto w-full max-w-6xl px-5">
-          <Beliren>
+          <Beliren yon="olcek">
             <h2 className="text-center etiket-caps text-yazi-sonuk">
               Kimler için
             </h2>
@@ -507,7 +525,7 @@ export default async function Vitrin() {
         okumaya devam ediyor.
       */}
       <section className="mx-auto w-full max-w-6xl px-5 pb-4">
-        <Beliren>
+        <Beliren yon="yakin">
           <div className="flex flex-col items-center justify-between gap-5 rounded-3xl border border-cizgi bg-cukur px-6 py-7 text-center sm:flex-row sm:px-9 sm:text-left">
             <div>
               <p className="font-display text-[19px] leading-tight font-extrabold tracking-tight sm:text-[22px]">
@@ -526,6 +544,33 @@ export default async function Vitrin() {
           </div>
         </Beliren>
       </section>
+
+      {/*
+        ═══ Çift yönlü değer simülasyonu ═════════════
+
+        Ürün sahibinin tasarımı.
+
+        ── 🔴 Yeri Dalga 8'de değişti ───────────────
+
+        Simülasyon "Neden Looply"nin **üstünde** duruyordu; gerekçesi
+        şuydu: işletmeci önce kendi rakamlarıyla oynasın, sonra
+        "müşterini elinde tutmak indirim yapmaktan ucuz" cümlesini az
+        önce kendi gördüğü tablonun özeti olarak okusun.
+
+        Ürün sahibi 2026-09-16'da bölüm sırasını baştan verdi ve
+        generatörü **"nasıl yapıyoruz + avantajlarımız"ın altına** koydu.
+        Sıra tersine döndü ama gerekçe bozulmadı, yön değiştirdi:
+        işletmeci önce ürünün ne olduğunu görüyor, sonra aynı iddiayı
+        kendi rakamlarıyla **sınıyor**. İddia önce geliyor, kanıt sonra.
+
+        ⚠️ Açık zeminde ve karanlık bölümlerin dışında: simülasyon
+        okunacak ve dokunulacak bir şey, atmosfer değil.
+      */}
+      <section className="mx-auto w-full max-w-6xl px-5 py-20 sm:py-24">
+        <CiftYonluSimulasyon />
+      </section>
+
+      <SosyalKanit />
 
       {/*
         ═══ Reklamla karşılaştırma ═══════════════════
@@ -548,7 +593,7 @@ export default async function Vitrin() {
         gösterimi sayıyor, kapıdan gireni saymıyor.
       */}
       <section className="mx-auto w-full max-w-6xl px-5 py-20 sm:py-28">
-        <Beliren>
+        <Beliren yon="olcek">
           <p className="etiket-caps text-yazi-sonuk">Nereye para veriyorsun</p>
           <h2 className="mt-4 max-w-3xl font-display text-[clamp(30px,5vw,54px)] leading-[1.02] font-extrabold tracking-[-0.03em]">
             Reklam gösterimi sayar.
@@ -563,7 +608,7 @@ export default async function Vitrin() {
         </Beliren>
 
         <div className="mt-12 grid gap-4 lg:grid-cols-2">
-          <Beliren gecikme={80}>
+          <Beliren yon="sol" gecikme={80}>
             <div className="h-full rounded-3xl border border-cizgi bg-cukur px-7 py-8">
               <p className="etiket-caps text-yazi-sonuk">Reklama verdiğinde</p>
               <ul className="mt-5 space-y-3.5 text-[15px] leading-relaxed text-yazi-sonuk">
@@ -575,7 +620,7 @@ export default async function Vitrin() {
             </div>
           </Beliren>
 
-          <Beliren gecikme={160}>
+          <Beliren yon="sag" gecikme={160}>
             <div className="h-full rounded-3xl border-2 border-vurgu/40 bg-yuzey px-7 py-8 shadow-[0_24px_60px_-30px_rgba(16,32,77,0.45)]">
               <p className="etiket-caps text-vurgu">Looply kullandığında</p>
               <ul className="mt-5 space-y-3.5 text-[15px] leading-relaxed">
@@ -591,45 +636,76 @@ export default async function Vitrin() {
           </Beliren>
         </div>
 
-        {/*
-          "Ne kaybedersiniz" — ürün sahibinin istediği kapanış.
+        {/* ⚠️ "Denemezsen ne kaybedersin?" kutusu buradan ÇIKTI — Dalga 8.
+            Ürün sahibinin sırasında o soru sayfanın **en altında**; bu
+            bölümün içindeyken sondan bir önceki bölümde kalıyordu. */}
+      </section>
 
-          ⚠️ Cümle bir **soru** ve öyle kalmalı: cevabı okuyan veriyor.
-          "Hiçbir şey kaybetmezsiniz" diye yazsaydık bir satış vaadi
-          olurdu ve vaat, sorunun kendisinden zayıf.
-        */}
-        <Beliren gecikme={240}>
-          <div className="mt-6 rounded-3xl bg-vitrin-lacivert px-7 py-10 text-center text-yuzey sm:px-10 sm:py-12">
+      {/*
+        ═══ Kapanış — "kullanmazsan ne kaybedersin" ══
+
+        Ürün sahibinin Dalga 8'de verdiği sıranın **son maddesi**:
+        *"en altta kullanmazsan ne kaybedersin."*
+
+        ── İki soru, bilerek yan yana ───────────────
+
+        Ürün sahibinin ilk cümlesi *"bizi kullanmazsanız ne
+        kaybedersiniz"* idi — yani **hareketsizliğin** bedeli. Sayfada
+        ise yalnızca ikinci soru duruyordu: "denemezsen ne kaybedersin",
+        yani **denemenin** bedeli. İkisi farklı sorular ve yalnızca
+        ikincisi yazıldığı sürece birincisi hiç sorulmuyordu.
+
+        Şimdi ikisi arka arkaya: önce kullanmamanın devam eden maliyeti,
+        sonra denemenin sıfır maliyeti. Aradaki fark çağrının kendisi.
+
+        ⚠️ Üç kayıp maddesi de **sayfanın kendi iddialarının özeti**;
+        yeni bir vaat eklenmiyor. Fiyat cümlesi bilerek yok: ürünün
+        fiyatlandırması hâlâ karara bağlanmadı (Ü41).
+
+        ⚠️ Cümleler **soru** ve öyle kalmalı: cevabı okuyan veriyor.
+        "Hiçbir şey kaybetmezsiniz" bir satış vaadi olurdu ve vaat,
+        sorunun kendisinden zayıf.
+      */}
+      <section className="bg-vitrin-lacivert py-20 text-yuzey sm:py-28">
+        <div className="mx-auto w-full max-w-6xl px-5 text-center">
+          <Beliren yon="olcek">
+            <h2 className="mx-auto max-w-2xl font-display text-[clamp(32px,5.5vw,60px)] leading-[1.02] font-extrabold tracking-[-0.035em]">
+              Kullanmazsan
+              <br />
+              ne kaybedersin?
+            </h2>
+          </Beliren>
+
+          {/* Üç kayıp — hareketsizliğin devam eden bedeli. */}
+          <div className="mx-auto mt-12 grid max-w-3xl gap-3 text-left sm:grid-cols-3">
+            <Beliren yon="sag" gecikme={0}>
+              <Kayip
+                baslik="Bugün gelen müşteriyi"
+                metin="Hesabı ödeyip çıkan müşterinin elinde, yarın geri gelmek için bir sebep kalmıyor."
+              />
+            </Beliren>
+            <Beliren yon="alt" gecikme={110}>
+              <Kayip
+                baslik="Kimin geldiğini"
+                metin="Kaç kişi geldi, kaçı ikinci kez geldi, hangi saat boş kaldı — ölçmediğin şeyi düzeltemiyorsun."
+              />
+            </Beliren>
+            <Beliren yon="sol" gecikme={220}>
+              <Kayip
+                baslik="Reklama verdiğin parayı"
+                metin="Gösterim satın alıyorsun, ziyaret değil. Durduğun gün etkisi de duruyor."
+              />
+            </Beliren>
+          </div>
+
+          <Beliren yon="olcek" gecikme={120} className="mt-16">
             <p className="mx-auto max-w-2xl font-display text-[clamp(22px,3.4vw,34px)] leading-[1.15] font-extrabold tracking-[-0.02em]">
-              Denemezsen ne kaybedersin?
+              Peki denersen ne kaybedersin?
             </p>
-            <p className="mx-auto mt-4 max-w-lg text-[15px] leading-relaxed text-white/60">
+            <p className="mx-auto mt-5 max-w-lg text-[15px] leading-relaxed text-white/60">
               Dağıtılıp kullanılmayan kuponun maliyeti yok. Kasada onaylanmayan
               indirim bütçenden düşmüyor. Kaybedeceğin tek şey, masaya bir
               karekod koymak için geçen beş dakika.
-            </p>
-            <Link
-              href="/kafe/basvuru"
-              className="mt-8 inline-block rounded-full bg-yuzey px-8 py-4 text-[16px] font-semibold text-yazi transition-opacity hover:opacity-85"
-            >
-              Hemen dene
-            </Link>
-          </div>
-        </Beliren>
-      </section>
-
-      {/* ═══ Çağrı — düz siyah ══════════════════════ */}
-      <section className="bg-vitrin-lacivert py-20 text-yuzey sm:py-28">
-        <div className="mx-auto w-full max-w-6xl px-5 text-center">
-          <Beliren>
-            <h2 className="mx-auto max-w-2xl font-display text-[clamp(32px,5.5vw,60px)] leading-[1.02] font-extrabold tracking-[-0.035em]">
-              Karekodu bu hafta
-              <br />
-              masaya koy.
-            </h2>
-            <p className="mx-auto mt-5 max-w-md text-[15px] leading-relaxed text-white/55">
-              Kayıt birkaç dakika sürüyor. Onaylandığında panelin açılıyor,
-              karekodunu oradan yazdırıyorsun.
             </p>
             <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
               <Link
@@ -750,6 +826,123 @@ function Kart({ baslik, metin }: { baslik: string; metin: string }) {
   return (
     <div className="h-full rounded-2xl bg-yuzey p-7">
       <h3 className="text-[17px] font-bold">{baslik}</h3>
+      <p className="mt-2.5 text-[14px] leading-relaxed text-yazi-sonuk">
+        {metin}
+      </p>
+    </div>
+  );
+}
+
+/**
+ * Kapanıştaki kayıp maddesi — koyu zeminde.
+ *
+ * `Kart`tan ayrı duruyor çünkü zemini ters: `Kart` krem bölümde beyaz
+ * kutu, bu lacivert bölümde saydam kutu. Tek bileşene sığdırmak için
+ * renk parametresi eklenseydi çağrı yerlerinde renk adı dolaşırdı.
+ */
+function Kayip({ baslik, metin }: { baslik: string; metin: string }) {
+  return (
+    <div className="h-full rounded-2xl bg-white/[0.06] px-6 py-6 ring-1 ring-white/10">
+      <h3 className="text-[16px] font-bold">{baslik}</h3>
+      <p className="mt-2.5 text-[14px] leading-relaxed text-white/55">{metin}</p>
+    </div>
+  );
+}
+
+/**
+ * Sosyal kanıt yuvası — Dalga 8.
+ *
+ * ── 🔴 Burada neden müşteri yorumu yok ──────────────────────
+ *
+ * Ürün sahibinin verdiği sırada dördüncü bölüm "sosyal kanıtlar".
+ * Ama **gerçek müşteri yok**: ürün henüz canlıya çıkmadı. Uydurma bir
+ * referans, sahte bir yıldız ya da "500+ kafe" gibi bir sayı yazmak
+ * teknik olarak beş dakikalık iş ve sonucu şu: sahada ilk konuşmada
+ * işletmeci "hangi kafeler?" diye soruyor ve güven bir kez kırılıyor.
+ * Vitrindeki "katılım ücretsiz" cümlesi de (Ü133) aynı sebeple
+ * kaldırılmıştı.
+ *
+ * Ürün sahibine üç seçenek sunuldu ve **dürüst erken dönem çerçevesi**
+ * seçildi: yuva doluyor, referans uydurulmuyor.
+ *
+ * ── Yerine ne konuyor ───────────────────────────────────────
+ *
+ * Kanıt yerine **kanıtlanabilir olan** konuyor. Üç maddenin üçü de bu
+ * sayfada ya da üründe zaten doğrulanabilir:
+ *
+ *   · ekran görüntüleri gerçekten çalışan uygulamadan (bkz. dosya başı)
+ *   · yukarıdaki hesap ziyaretçinin kendi girdiği sayılarla çalışıyor
+ *   · sayfada anlatılan adımların hepsi üründe var
+ *
+ * ⚠️ **Sayı yok ve olmayacak.** "Kaç kafe başvurdu" gibi canlı bir sayı
+ * ürün sahibine ayrıca soruldu ve seçilmedi: bugün sıfıra yakın olduğu
+ * için ürünü ıssız gösterir, tohum verisiyle şişirilirse yalan olur.
+ *
+ * ⚠️ Bu bölüm **sosyal kanıt değil** ve öyleymiş gibi de durmuyor;
+ * başlık açıkça "burada müşteri yorumu görmeyeceksin" diyor. İlk gerçek
+ * kafeler geldiğinde asıl sosyal kanıt buranın yerine geçecek.
+ */
+function SosyalKanit() {
+  return (
+    <section className="mx-auto w-full max-w-6xl px-5 pb-20 sm:pb-24">
+      <div className="rounded-3xl border border-cizgi bg-cukur px-6 py-12 sm:px-10 sm:py-14">
+        <Beliren yon="olcek">
+          <p className="text-center etiket-caps text-yazi-sonuk">
+            Dürüst olalım
+          </p>
+          <h2 className="mx-auto mt-4 max-w-2xl text-center font-display text-[clamp(26px,4.4vw,44px)] leading-[1.06] font-extrabold tracking-[-0.03em]">
+            Burada müşteri yorumu
+            <br />
+            görmeyeceksin.
+          </h2>
+          <p className="mx-auto mt-6 max-w-xl text-center text-[16px] leading-relaxed text-yazi-sonuk">
+            Daha yeni başlıyoruz ve olmayan bir referansı yazmak, sahada ilk
+            soruda anlaşılır. Onun yerine, bu sayfada söylediğimiz her şeyin
+            neden doğrulanabilir olduğunu yazıyoruz.
+          </p>
+        </Beliren>
+
+        <div className="mt-12 grid gap-4 sm:grid-cols-3">
+          <Beliren yon="sol" gecikme={0}>
+            <Kanit
+              baslik="Ekranların hepsi gerçek"
+              metin="Yukarıdaki panel, çark ve oyun görüntüleri çalışan uygulamadan alındı. Çizim yok, sahte ekran yok."
+            />
+          </Beliren>
+          <Beliren yon="alt" gecikme={110}>
+            <Kanit
+              baslik="Hesabı sen yapıyorsun"
+              metin="Az önceki tablo senin girdiğin sayılarla çalışıyor. Bizim seçtiğimiz güzel bir örnekle değil."
+            />
+          </Beliren>
+          <Beliren yon="sag" gecikme={220}>
+            <Kanit
+              baslik="Sözümüz dar"
+              metin="Dört alanlık başvuru, panelden yazdırılan karekod, kasada onaylanan kupon. Anlattığımız her adım üründe var."
+            />
+          </Beliren>
+        </div>
+
+        <Beliren gecikme={300}>
+          <p className="mt-10 text-center text-[15px] leading-relaxed text-yazi-sonuk">
+            İlk kafelerden biri olursan, buradaki yorumu sen yazacaksın.{" "}
+            <Link
+              href="/kafe/basvuru"
+              className="font-semibold text-vurgu underline underline-offset-4 hover:opacity-80"
+            >
+              Hemen dene
+            </Link>
+          </p>
+        </Beliren>
+      </div>
+    </section>
+  );
+}
+
+function Kanit({ baslik, metin }: { baslik: string; metin: string }) {
+  return (
+    <div className="h-full rounded-2xl border border-cizgi bg-yuzey px-6 py-6">
+      <h3 className="text-[16px] font-bold">{baslik}</h3>
       <p className="mt-2.5 text-[14px] leading-relaxed text-yazi-sonuk">
         {metin}
       </p>

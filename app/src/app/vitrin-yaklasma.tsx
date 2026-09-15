@@ -460,9 +460,30 @@ function KaydirmaSahnesi({
           solda kesik bir kelime, sağda boşluk kalıyordu. Ürün sahibinin
           ekran görüntüsündeki "kaymış" görüntü tam olarak buydu.
 
-          Şimdi iki kopya yan yana ve her biri **%50 genişlikte**: kayma
-          -%50'ye vardığında ikinci kopya birincinin yerine oturuyor,
-          yani dikiş hiçbir zaman görünmüyor. Klasik kesintisiz şerit.
+          Şimdi iki kopya yan yana ve her biri **kendi içeriği kadar
+          geniş**: `.serit-akis` her kopyayı tam kendi genişliği kadar
+          kaydırıyor, ikinci kopya birincinin yerine oturuyor ve dikiş
+          hiçbir zaman görünmüyor. Klasik kesintisiz şerit.
+
+          ── 🔴 Ü133 bunu yarım bırakmıştı (Dalga 8'de ölçüldü) ────
+
+          Kopyalara `w-1/2` verilmişti, yani **kutu genişliği %50** —
+          ama kutu genişliği metnin genişliği değil. 1440 piksellik
+          ekranda ölçüldü: kutu 1440 piksel, metin **3287 piksel**.
+          Metin kutusundan 1847 piksel taşıyor ve doğrudan ikinci
+          kopyanın üstüne biniyordu; üstelik kayma metnin tekrar
+          aralığına (3287) değil kutuya (1440) göre yapıldığı için
+          döngü de dikişsiz değildi.
+
+          `w-max` ikisini birden çözüyor: kutu tam metin kadar, kayma
+          tam bir tekrar. Genişlik artık yazı boyuna göre kendiliğinden
+          değişiyor, `clamp` değiştiğinde elle ayar gerekmiyor.
+
+          ⚠️ Kaydırmaya bağlı kayma **%25'ten %12'ye** indi. Yüzde
+          kutunun kendi genişliğine göre ve kutu artık iki katından
+          fazla geniş; eski çarpan bırakılsaydı şerit sayfa boyunca iki
+          kopyanın toplamından fazla kayar, sağ tarafta boşluk açılırdı.
+          Ekranda görünen hız eskisiyle aynı (~790 piksel).
 
           ── İki kaynaktan hareket ────────────────────
 
@@ -481,13 +502,13 @@ function KaydirmaSahnesi({
           style={{ opacity: donus }}
         >
           <div
-            className="yaklasma-serit flex w-[200%] whitespace-nowrap"
-            style={{ transform: `translateX(${-p * 25}%)` }}
+            className="yaklasma-serit flex w-max whitespace-nowrap"
+            style={{ transform: `translateX(${-p * 12}%)` }}
           >
             {[0, 1].map((i) => (
               <span
                 key={i}
-                className="serit-akis w-1/2 shrink-0 font-display text-[clamp(54px,11vw,150px)] leading-none font-extrabold text-yazi/[0.10]"
+                className="serit-akis w-max shrink-0 font-display text-[clamp(54px,11vw,150px)] leading-none font-extrabold text-yazi/[0.10]"
               >
                 Oyna · Kazan · Geri Gel · Oyna · Kazan · Geri Gel ·{" "}
               </span>
@@ -574,10 +595,18 @@ function DuranSahne({
         )}
 
         {/* Ü133: kartlar sırayla beliriyor. Üçü birden duruyordu ve
-            kaydırırken hiçbir şey olmuyordu. */}
+            kaydırırken hiçbir şey olmuyordu.
+
+            Dalga 8: dördü de aynı yönden geliyordu. Artık dönüşümlü —
+            sıradaki kartın nereden geleceği kestirilemiyor ve liste
+            "tek bir geçişin dört kez tekrarı" gibi okunmuyor. */}
         <ol className="mt-10 space-y-4">
           {KENAR_YAZILARI.map((y, i) => (
-            <Beliren key={y.baslik} gecikme={i * 90}>
+            <Beliren
+              key={y.baslik}
+              gecikme={i * 90}
+              yon={i % 2 === 0 ? "sag" : "sol"}
+            >
               <li className="rounded-2xl bg-yuzey px-6 py-6 shadow-[0_16px_40px_-24px_rgba(16,32,77,0.45)] ring-1 ring-vitrin-lacivert/10">
                 <KutuIcerigi baslik={y.baslik} metin={y.metin} alt={y.alt} />
               </li>
@@ -633,6 +662,43 @@ function DuranSahne({
               genislik="min(248px, 68vw)"
             />
           </div>
+        </div>
+      </div>
+
+      {/*
+        ── Akan şerit — mobilde ilk kez (Dalga 8) ───
+
+        🔴 Şerit vardı ama mobilde **hiç görünmüyordu**: Ü133'te
+        büyütülüp hizalandığı yer bu dosyanın `hidden lg:block` olan
+        geniş ekran bloğunun içi. Yani dar ekranda sayfanın
+        kendiliğinden hareket eden tek ögesi yoktu — kupon yağmuru
+        dışında her şey kaydırmayı bekliyordu.
+
+        Sayfa dururken de yaşayan bir hareket, "bu sayfa çalışıyor"
+        hissinin en ucuz kaynağı: tek CSS anahtar karesi, ana iş
+        parçacığına hiç dokunmuyor.
+
+        ⚠️ `-mx-5` ile yan boşluğun dışına taşıyor — şerit kenardan
+        kenara akmalı, ortada bir kutunun içinde değil. Dıştaki
+        `overflow-hidden` şart: onsuz sayfada yatay kaydırma doğar.
+
+        ⚠️ İki kopya ve her biri **kendi içeriği kadar geniş**
+        (`w-max`): `.serit-akis` her kopyayı kendi genişliği kadar
+        kaydırıyor, yani ikincisi tam birincinin yerine oturuyor ve
+        dikiş hiç görünmüyor. Kutuya sabit bir genişlik verilseydi
+        (örneğin yarı yarıya) metin kutudan taşar ve iki kopya üst üste
+        binerdi.
+      */}
+      <div aria-hidden className="pointer-events-none -mx-5 mt-16 overflow-hidden">
+        <div className="flex w-max">
+          {[0, 1].map((i) => (
+            <span
+              key={i}
+              className="serit-akis w-max shrink-0 font-display text-[clamp(44px,13vw,78px)] leading-none font-extrabold whitespace-nowrap text-yazi/[0.10]"
+            >
+              Oyna · Kazan · Geri Gel ·{" "}
+            </span>
+          ))}
         </div>
       </div>
     </div>

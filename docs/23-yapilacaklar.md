@@ -6,7 +6,11 @@
 > Yan dosyalar: neyin **var** olduğu → `21-looply-kapsam-haritasi.md` ·
 > demoda neyin **yapılabildiği** → `22-demo-yapilabilirlik.md`
 
-**Son güncelleme:** 2026-09-16 · **Kararlar:** Ü76 – Ü139
+**Son güncelleme:** 2026-09-16 · **Kararlar:** Ü76 – Ü140
+
+> ⬅️ **Şu an açık olan iş: DALGA 6 → K5** (ödül aralığı + basamak
+> kafenin eline). Dalga 8 kapandı, açık sorusu kalmadı; Dalga 3'teki
+> ⬅️ işareti daha eski.
 
 > 🚀 **Yayına çıkış işleri ayrı bir listede:** `docs/25-yayin-plani.md`
 > (güvenlik → altyapı → mesajlaşma → hukuk). Orası **sırayı** tutuyor,
@@ -17,7 +21,8 @@
 # DALGA 7 · ✅ TAMAMLANDI — 2026-09-16
 
 > Tek oturumda on üç iş. Ayrıntı karar defterinde (`02`), Ü125–Ü139.
-> 🔴 **Hiçbiri commit edilmedi** — yığın 120+ dosya.
+> ✅ **Commitlendi ve push edildi** — `ecd8543`, 138 dosya.
+> Depo `github.com/Kalempox/Looply` ile senkron.
 
 - [x] **Ödül ve kampanya ayrıldı** ✅ — Ü138
   Sekmeler kaldırıldı, sol menüde ayrı duraklar, farkı anlatan not.
@@ -73,6 +78,126 @@
   gerçek telefonla kasa→QR→çark yolculuğu henüz yapılmadı.
 - [ ] **Vitrindeki 2.000 TL sistem maliyeti** bir fiyat açıklaması ve
   ürünün fiyatlandırması hâlâ karara bağlanmadı (Ü41'in açık bıraktığı).
+
+---
+
+# DALGA 8 · ✅ TAMAMLANDI — 2026-09-16 · Ü140
+
+> Ürün sahibi 2026-09-16'da mobil ana sayfanın **bölüm sırasını** verdi.
+> Bu dalga o sırayı kurmakla ilgiliydi; tek tek efekt eklemekle değil.
+>
+> Tetikleyen cümle: *"mobilimiz berbat kaldı."*
+>
+> ⚠️ **Commit edilmedi** — çalışma ağacında duruyor.
+
+## İstenen sıra (ürün sahibinin kendi ağzından)
+
+1. **Header** — ne iş yaptığımız + bizi açıklayan metin + slogan
+   ✅ *Zaten böyle* — "Kafeler ve butik işletmeler için" / "Oyna. Kazan. Geri Gel."
+2. **Nasıl yapıyoruz + avantajlarımız** — 🔴 **görseller ve animasyonlarla
+   desteklenerek**
+3. **Generatörümüz** — çift yönlü değer simülasyonu
+4. **Sosyal kanıtlar**
+5. **Lead toplama** — "hemen dene / kayıt ol" siteye serpiştirilmiş
+6. **En altta: "kullanmazsan ne kaybedersin"**
+
+## Son sıra (`app/src/app/page.tsx`) — ✅ istenen sıraya oturdu
+
+| # | Bölüm | İstenen sıradaki karşılığı |
+|---|---|---|
+| 1 | `<header>` + Kahraman | 1 · header + slogan |
+| 2 | `YaklasanSahne` — karekod → telefon | 2 · nasıl yapıyoruz |
+| 3 | "Neden Looply" (lacivert) + 4 telefon | 2 · avantajlar |
+| 4 | "Ne kazandırıyor" (krem) | 2 · avantajlar |
+| 5 | "Kimler için" — kafeler / butikler | 2 · avantajlar |
+| 6 | Lead şeridi — "karekod beş dakikada" | 5 · serpiştirilmiş lead |
+| 7 | **Generatör** — çift yönlü simülasyon | 3 · generatör |
+| 8 | **Sosyal kanıt** — "Dürüst olalım" | 4 · sosyal kanıt |
+| 9 | "Nereye para veriyorsun" — reklam | 2 · avantajlar |
+| 10 | **Kapanış** — "Kullanmazsan ne kaybedersin?" | 6 · en alt |
+
+Lead üç noktada: kahraman, 6. bölümdeki şerit, kapanış.
+
+## Aradaki fark — hepsi kapandı
+
+- [x] **Sosyal kanıt bölümü yazıldı** ✅ — dürüst erken dönem çerçevesi.
+  Ürün sahibi üç seçenek arasından bunu seçti. Bölüm açıkça *"burada
+  müşteri yorumu görmeyeceksin"* diyor; yerine kanıtlanabilir üç şey
+  koyuyor. ⚠️ **Canlı sayı elendi** (kaç kafe başvurdu): bugün sıfıra
+  yakın, tohumla şişirilse yalan olur, vitrinin *"sayı göstermiyoruz"*
+  kararıyla da çelişirdi.
+- [x] **"Kullanmazsan ne kaybedersin" en alta indi** ✅
+  🔴 Yol boyunca çıkan asıl bulgu: bunlar **iki ayrı soru.** Ürün
+  sahibinin cümlesi *hareketsizliğin* bedelini soruyordu, sayfadaki tek
+  cümle ise *denemenin* bedelini. Yalnızca ikincisi yazılı olduğu sürece
+  birincisi hiç sorulmuyordu. Artık ikisi arka arkaya.
+- [x] **Generatör "nasıl yapıyoruz"un altına indi** ✅
+- [x] **Mobil görsel desteği geldi** ✅ — aşağıya bak.
+
+## Mobil hareket — düzeltildi
+
+Mobil **hareketsiz değildi, tek düzeydi.** Doğrulanan sayım: `<Beliren`
+18 kullanım (belgedeki eski "38" ham kelime sayımıydı) ve **18'i de
+aynı**: aynı 20 piksel, aynı süre, aynı eğri.
+
+- [x] **`Beliren`e beş yön geldi** ✅ — `alt` · `sol` · `sag` · `olcek` ·
+  `yakin`, her birinin kendi süresi. Varsayılan `alt`, yani eski
+  çağrılar aynı kaldı.
+- [x] **Kayan şerit artık mobilde de var** ✅ — `DuranSahne`'ye kendi
+  kopyası. Sayfa dururken de yaşayan tek hareket.
+- [x] **Telefonlar kaydırmalı sıraya geçti** ✅ — her satırda ikinci
+  ekran görüntüsü `hidden sm:block`'tu; 640 pikselin altında dört
+  üründen ikisi **hiç görünmüyordu**. Küçültmek yerine kaydırılabilir
+  yapıldı: tam boyut, kenardan görünen ikinci telefon, parmakla çekme.
+- [x] **Bölüm girişlerine ritim geldi** ✅
+
+### 🔴 Ölçümle bulunan iki hata
+
+- [x] **Yatay belirme mobilde yatay kaydırma doğuruyordu** ✅
+  *"16 piksel < 20 piksellik yan boşluk, taşma imkânsız"* diye
+  düşünülmüştü. `-mx-5` ile yan boşluğu **aşan** telefon sırası zaten
+  tam ekran genişliğinde: 390 piksellik ekranda belge 406 oldu.
+  **Kural:** tam genişlikteki bloğa `sol`/`sag` verilmez.
+- [x] **Ü133'ün şerit düzeltmesi yarım kalmıştı** ✅
+  Kopyalara `w-1/2` verilmişti — kutu genişliği metnin genişliği değil.
+  Ölçüldü: **kutu 1440, metin 3287 piksel.** İki kopyanın metni üst üste
+  biniyordu ve döngü dikişsiz değildi. `w-max` ikisini de çözdü;
+  kaydırma çarpanı %25 → %12 (kutu genişlediği için, ekrandaki hız aynı).
+
+## Doğrulama
+
+- `npm run ci` — **611 test, 0 hata**; tip ve lint temiz
+- Yatay taşma **390 / 768 / 1440** pikselde ayrı ayrı ölçüldü: belge
+  genişliği = ekran genişliği, üçünde de
+- Şeridin iki kopyası ölçüldü: bitişik, üst üste binme yok, boşluk yok
+- Sosyal kanıt, kapanış, mobil şerit ve telefon sırası telefonda görüldü
+
+## Bu dalgada sorulan son soru — cevaplandı
+
+- [x] **Vitrindeki butik "yakında" rozeti kalıyor** ✅ — ürün sahibinin
+  kararı, 2026-09-16. Butik kipi Ü137'de yazıldı (göç 0039 + 0040) ve
+  platform panelinden açılıyor; yani ürün bunu **yapabiliyor**. Ama
+  başvuru formunda butik seçeneği yok (butik de aynı formdan başvurup
+  platform tarafından kipe alınıyor) ve akış **sahada hiç denenmedi**.
+  Rozet bugün hâlâ dürüst.
+  ➜ **Kaldırma şartı:** Dalga 7'den kalan *"butik akışı sahada
+  denenmedi"* maddesi kapanınca yeniden bakılacak.
+
+## Referans siteler (2026-09-16'da doğrulandı)
+
+Mobil animasyon için, **gerçek uygulamaların video kayıtları**:
+
+- **[60fps.design](https://60fps.design/)** — 2.080 animasyon / 487 uygulama, iOS ağırlıklı
+- **[ripplix.com](https://www.ripplix.com/)** — 7.000+ animasyon, "Mobile App" filtresi
+- **[tympanus.net/codrops](https://tympanus.net/codrops)** — çalışan demo, telefonda denenebilir
+
+🔴 **Ölü çıkanlar** (bir daha önerilmesin): Mobbin ücretsizde boş ·
+Screenlane ve UI Movement → `pageflows.com`'a yönleniyor, Page Flows'un
+ücretsiz katmanı **yok** · `mobile-patterns.com` 404 · UI Garage kapandı.
+
+⚠️ Bu sitelerdeki işlerin çoğu Framer Motion / Lottie / native iOS.
+Projede **sıfır animasyon kütüphanesi** var (saf CSS) — oradan alınan
+şey "efekt" değil "his" olmalı, CSS'e çevrilerek.
 
 ---
 

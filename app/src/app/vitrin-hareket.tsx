@@ -31,6 +31,48 @@ import { useEffect, useRef, useState } from "react";
 /* ── Belirme ───────────────────────────────────────────────── */
 
 /**
+ * Belirme yönleri — her birinin kendi dönüşümü ve **kendi süresi**.
+ *
+ * ── 🔴 Neden yön eklendi (Dalga 8) ──────────────────────────
+ *
+ * Ürün sahibi *"mobilimiz berbat kaldı"* dedi. Sayfa hareketsiz değildi:
+ * `Beliren` on sekiz yerde kullanılıyordu ve **on sekizi de aynıydı** —
+ * aynı 20 piksel, aynı 0,7 saniye, aynı eğri. Tekrarlanan tek bir geçiş
+ * bir süre sonra hareket olarak okunmuyor; göz onu sayfanın yüklenme
+ * gecikmesi sanıyor. Çeşit, hareketin miktarını değil **ritmini**
+ * değiştiriyor.
+ *
+ * ── ⚠️ Yatay mesafe neden 16 piksel ─────────────────────────
+ *
+ * Sayfanın yan boşluğu `px-5` = 20 piksel; 16 piksellik kayma o boşluğun
+ * içinde kalıyor ve taşma yaratmıyor.
+ *
+ * 🔴 **Ama bu yalnızca boşluğun içinde duran içerik için doğru.** İlk
+ * yazılışta "16 < 20, taşma imkânsız" diye düşünülmüştü ve ölçüm bunu
+ * yalanladı: `-mx-5` ile yan boşluğu aşan bir öge (vitrindeki telefon
+ * sırası) zaten tam ekran genişliğinde, yani 16 piksel kayınca sağ kenar
+ * ekranın dışına çıkıyor. 390 piksellik ekranda belge 406 piksel oldu ve
+ * mobilde yatay kaydırma çubuğu doğdu.
+ *
+ * Kural: **tam genişlikteki bir bloğa `sol`/`sag` verilmez.** Onlara
+ * `alt`, `yakin` ya da `olcek` veriliyor; hiçbiri yatay yer değiştirmiyor.
+ */
+const YONLER = {
+  /** Varsayılan: alttan yukarı. */
+  alt: { donusum: "translateY(20px)", sure: 0.7 },
+  /** Soldan girer — ızgarada solda duran sütun için. */
+  sol: { donusum: "translateX(-16px)", sure: 0.62 },
+  /** Sağdan girer. */
+  sag: { donusum: "translateX(16px)", sure: 0.62 },
+  /** Uzaktan yaklaşır — başlıklarda ağır ve yavaş durur. */
+  olcek: { donusum: "scale(0.955)", sure: 0.82 },
+  /** Alttan gelirken bir yandan büyür — görseller için. */
+  yakin: { donusum: "translateY(26px) scale(0.975)", sure: 0.75 },
+} as const;
+
+export type BelirmeYonu = keyof typeof YONLER;
+
+/**
  * Görüş alanına girince beliren bölüm — Autonomous'ın tekniği.
  *
  * Gözlemci kurulamazsa içerik **görünür kalıyor**: bir efekt uğruna
@@ -39,10 +81,13 @@ import { useEffect, useRef, useState } from "react";
 export function Beliren({
   children,
   gecikme = 0,
+  yon = "alt",
   className,
 }: {
   children: React.ReactNode;
   gecikme?: number;
+  /** Nereden gireceği. Varsayılan alttan — eski çağrılar aynı kalıyor. */
+  yon?: BelirmeYonu;
   className?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -69,14 +114,16 @@ export function Beliren({
     return () => gozlemci.disconnect();
   }, []);
 
+  const { donusum, sure } = YONLER[yon];
+
   return (
     <div
       ref={ref}
       className={className}
       style={{
         opacity: beliren ? 1 : 0,
-        transform: beliren ? "none" : "translateY(20px)",
-        transition: `opacity .7s ease ${gecikme}ms, transform .7s cubic-bezier(.2,.7,.3,1) ${gecikme}ms`,
+        transform: beliren ? "none" : donusum,
+        transition: `opacity ${sure}s ease ${gecikme}ms, transform ${sure}s cubic-bezier(.2,.7,.3,1) ${gecikme}ms`,
       }}
     >
       {children}
