@@ -4,7 +4,7 @@
 > biçimde çıkacak. Öncelik sırası: **güvenlik → altyapı → mesajlaşma →
 > hukuk → kalan ürün işleri.**
 
-**Son güncelleme:** 2026-09-15 · **Durum:** A0 ✅ · A1 ✅ · **F3 hazır, sunucu bekleniyor** · ⚠️ **Ü115–Ü124 COMMIT EDİLMEDİ**
+**Son güncelleme:** 2026-09-17 · **Durum:** A0 ✅ · A1 ✅ · **F3 hazır, sunucu bekleniyor** · ✅ **her şey commitli**
 
 ---
 
@@ -12,36 +12,43 @@
 
 > Bu bölüm oturum sıfırlansa bile nerede kalındığını söyler.
 
-### 🔴 ÖNCE BUNU YAP: 60 dosya commit edilmedi
+### ✅ Commit borcu kapandı — 2026-09-17
 
-Son commit **`7bb1930` (Ü114'ten sonra)**. O günden beri çalışma ağacında
-duran ve **hiçbir commit'te olmayan** on karar var:
+Üç dalga art arda commit edildi ve depoda bekleyen iş kalmadı:
 
-| Karar | Ne |
+| Commit | Ne |
 |---|---|
-| Ü115 | A1 — personel/yetkili adları şifrelendi + göçlere veri adımı |
-| Ü116 | F3 demo altyapısı (Dockerfile, compose, Caddy, `docs/26`) + dört arıza |
-| Ü117 | Kapsam genişlemesi: butik işletmeler, vitrin, müşteri görünürlüğü |
-| Ü118–Ü122 | **Vitrin (madde 38)** — altı tasarım turu, gerçek ekran görüntüleri, kaydırmalı sahne |
-| Ü123 | Panel turu: çark kendi sayfasında, geliştirme şeridi kalktı, defter sayfalandı |
-| Ü124 | Katalog + Ürünler tam genişlikte tabloya, çarkta ağırlık → **yüzde** |
+| `ecd8543` | Dalga 7 — butik kipi, platform paneli, on üç iş (Ü125–Ü139) |
+| `13971a3` | Dalga 8 — vitrin ürün sahibinin bölüm sırasına geçti (Ü140) |
+| `da11163` | **Dalga 9** — hareket turu, dokuz işin dokuzu (Ü141–Ü148) |
+
+`npm run ci` → **629 test, 0 hata**; tip ve lint temiz.
+Karar defteri (`docs/02`) **Ü148**'e kadar işlendi.
+
+⚠️ Tek istisna: İlmek'in ham kaynak kareleri (`kahraman.jpg`,
+`kahraman-kesik.png` — 2,2 MB, hem `public/` hem `public/avatar/`
+altında) **bilerek commit edilmedi**, silinsin mi sorusu ürün
+sahibinde. Diskte duruyorlar; `git clean` onları götürür.
+
+### Sıradaki: Dalga 6 → K5
 
 ```
-43 değişmiş · 17 yeni dosya
-```
-
-⚠️ `docs/02-karar-defteri.md` **Ü124'e kadar yazıldı** ama commit
-edilmedi. Bir `git checkout` ya da elektrik kesintisi hepsini götürür.
-**Bu listedeki başka hiçbir işe başlamadan önce commit at.**
-
-### Sonra: plan sırası
-
-```
-[commit] ──► Dalga 6 ──► K5 ──► A2 ──► A4 ──► A5 ──► E1, E2, E3
-                                  │
+Dalga 6 ──► K5 ──► A2 ──► A4 ──► A5 ──► E1, E2, E3
+                    │
 D1 (avukat) ─── paralel, ama onsuz gerçek müşteriye açılamaz
 B + F3 ─────── sunucu + DNS gelince, planın geri kalanından bağımsız
 ```
+
+**Dalga 6 sanıldığından küçük.** 2026-09-17'de koda bakılarak
+doğrulandı: maddeler **39 ve 40 Ü137'de bitmiş**, yalnızca listede
+işaretsiz kalmışlardı. Gerçekten açık olanlar:
+
+| # | İş | Boyut |
+|---|---|---|
+| 39-kalan | 🔴 Butiğin panelinde **"Oyunlar" durağı hâlâ duruyor** — `gezinme.tsx` `isletme_turu`ya hiç bakmıyor | S |
+| 41 | 🔴 İşletme müşterinin **adını ve telefonunu** görecek — **G1 kalkıyor**, aydınlatma metni ilk gerçek kullanıcıdan önce yeniden yazılmalı | L |
+| 42 | Sipariş tutarı kasada girilecek — Ü137'nin *"tutar saklanmıyor"* kararını tersine çeviriyor | M |
+| 40-saha | ⚠️ Butik akışı gerçek telefonla hiç denenmedi | — |
 
 ### F3 · sunucu hâlâ tek eksik
 
@@ -390,8 +397,8 @@ Hiçbiri canlıya çıkışı bloke etmiyor.
 ## Sıra
 
 ```
-A0 ✅ ─► A1 ✅ ─► madde 38 ✅ ─► panel turu ✅ ─► 🔴 COMMIT ─► Dalga 6 ─► K5 ─► A2 ─► A4 ─► A5 ─► E1,E2,E3
-                 (Ü118–Ü122)    (Ü123–Ü124)      (60 dosya)                                      │
+A0 ✅ ─► A1 ✅ ─► madde 38 ✅ ─► panel turu ✅ ─► COMMIT ✅ ─► Dalga 6 ─► K5 ─► A2 ─► A4 ─► A5 ─► E1,E2,E3
+                 (Ü118–Ü122)    (Ü123–Ü124)      (Ü125–Ü148)                                     │
 K1 ✅ ──► A3 (kurulumun parçası) ─────────────────────────────────────────────────────────────────┤
 K3 ──────► B1,B2,B3,B4,B6 ─────────────────────────────────────────────┤
 K2 ──────► C1,C2,C3 (⏸️ park) ─────────────────────────────────────────┤

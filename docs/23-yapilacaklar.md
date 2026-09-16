@@ -8,10 +8,10 @@
 
 **Son güncelleme:** 2026-09-17 · **Kararlar:** Ü76 – Ü148
 
-> ⬅️ **DALGA 9 bitti.** Sıradaki: **Dalga 6 → K5** (ödül aralığı +
-> basamak kafenin eline). Ürün sahibi
-> 2026-09-16'da dokuz animasyon işi verdi; **dokuzu da bitti.**
-> Ayrıntı aşağıda.
+> ⬅️ **DALGA 9 bitti ve commitlendi** (`da11163`, 39 dosya).
+> Sıradaki: **Dalga 6 → K5** (ödül aralığı + basamak kafenin eline).
+> Ürün sahibi 2026-09-16'da dokuz animasyon işi verdi; **dokuzu da
+> bitti.** Ayrıntı aşağıda.
 >
 > 🧪 **Elle denemek için:** `npm run db:demo` → `05320000099` /
 > `Deneme1234`. Oturum dolarsa komutu tekrar çalıştır.
@@ -152,19 +152,38 @@
 
 ## Dalga 9 kapandı — dokuz işin dokuzu
 
-🔴 **Dalga 9 commit edilmedi** — 19 değişmiş + 20 yeni dosya çalışma
-ağacında duruyor. Yeni oturumda ilk iş bu.
+✅ **Commitlendi** — `da11163`, 39 dosya, 2026-09-17.
+Doğrulama: `npm run ci` → **629 test, 0 hata**, tip ve lint temiz.
 
 ### Küçük açık uçlar
 
+- [ ] 🔴 **Üç tohum betiğinde canlı ortam koruması YOK.** *(2026-09-17'de
+  commit öncesi bulundu.)* `db:demo` (Ü144) bilinen paroladan bir hesap
+  açıyor (`05320000099` / `Deneme1234`) ve `APP_ENV`'a **hiç bakmıyor**;
+  `db:butik` ve `db:seed` de bakmıyor. `DATABASE_URL` canlıyı
+  gösterirken çalıştırılırsa canlı veritabanına parolası herkesçe bilinen
+  bir hesap açılır.
+  ✅ **Örüntü zaten depoda var:** `db:simule` doğru yapıyor —
+  `scripts/simulasyon.ts:553` `APP_ENV === "production"` ise hata
+  fırlatıyor. Kopyalanacak dört satır, tasarlanacak bir şey yok.
+  ⚠️ **Bu, bu listenin kendi kuralının çiğnenmesi:** Dalga 5'in madde
+  20'si tam bu adı (`npm run db:demo`) *"🔴 Canlı veritabanında
+  çalışmayı reddeder"* şartıyla ayırmıştı; Ü144 adı aldı, şartı almadı.
+  ➜ **Çözüm S boyutunda:** ortak `tohumKapisi()`, üç betiğe birden,
+  beyanla değil başlatma hatasıyla (Ü81'in `env.ts` örüntüsü).
 - [ ] **İlmek'in diğer renkleri.** Bugün tek render var ve renk/aksesuar
   seçicileri gizli. Ürün sahibi altı rengi üretip
   `app/public/avatar/ilmek-<renk>.webp` olarak koyunca
   `components/avatar.tsx` içindeki `COK_RENKLI` **tek satırla**
   açılıyor; seçiciler, kayıt, doğrulama ve testler zaten yazılı.
-- [ ] **Kaynak kareler duruyor.** `app/public/kahraman.jpg` ve
-  `kahraman-kesik.png` — İlmek'in kesildiği ham dosyalar. Ürün sahibine
-  silinsin mi diye soruldu, cevap beklemede.
+- [ ] **Kaynak kareler duruyor.** `kahraman.jpg` ve `kahraman-kesik.png`
+  — İlmek'in kesildiği ham dosyalar. Ürün sahibine silinsin mi diye
+  soruldu, cevap beklemede.
+  ⚠️ **Commit'e alınmadılar** (2,2 MB) ve **iki yerde birden duruyorlar**:
+  `app/public/` ve `app/public/avatar/`, ikisi de birebir aynı. Diskte
+  duruyorlar, git geçmişine girmediler — `git clean` çalıştırılırsa
+  giderler. Cevap "silinsin" ise iki kopya da silinecek; "kalsın" ise
+  tek kopyaya inip commit edilecekler.
 
 ## Ölü çıkan referans siteleri (bir daha önerilmesin)
 
@@ -182,7 +201,7 @@ Mobbin ücretsizde boş · Screenlane ve UI Movement → `pageflows.com`,
 >
 > Tetikleyen cümle: *"mobilimiz berbat kaldı."*
 >
-> ⚠️ **Commit edilmedi** — çalışma ağacında duruyor.
+> ✅ **Commitlendi** — `13971a3`.
 
 ## İstenen sıra (ürün sahibinin kendi ağzından)
 
@@ -767,15 +786,35 @@ ChatGPT analiz bağlantısı.
   Test artık **kendi masasını açıyor** ve sonunda siliyor. Gerçek bir
   kafenin masasında her zaman başka trafik olur; yalıtım testin işi.
 
-- [ ] **39 · İşletme tipi: kafe | butik** — M
-  Kiracıya tip kolonu, panelin tipe göre farklılaşması, terminoloji
-  ("masa" butikte ne demek), tohum verisinde bir butik örneği.
+- [x] **39 · İşletme tipi: kafe | butik** ✅ **BÜYÜK ÖLÇÜDE BİTTİ** — Ü137,
+  göç 0039 · *(2026-09-17'de doğrulandı — Dalga 7'de yapılmış, bu
+  listede işaretsiz kalmıştı)*
+  `cafes.isletme_turu` kolonu (`CHECK IN ('kafe','butik')`, varsayılan
+  kafe), platform panelinden kipe alma, tohum örneği (`npm run db:butik`).
+  ⚠️ Terminoloji sorusu (*"masa butikte ne demek"*) **kendiliğinden
+  düştü**: Ü127 masa kavramını üründen tamamen kaldırdı, kafe başına tek
+  karekod kaldı.
+  - [ ] 🔴 **Kalan tek parça: panel tipe göre farklılaşmıyor.** Butiğin
+    sol menüsünde **"Oyunlar" durağı hâlâ duruyor** (`panel/gezinme.tsx`
+    sabit liste, `isletme_turu`ya hiç bakmıyor) — oysa butikte oyun yok.
+    Bu, bu depoda dört kez çıkan *"yazıldı ama yarısına bağlandı"*
+    sınıfının aynısı. **S** boyutunda bir iş.
 
-- [ ] **40 · Butik akışı: oyun yok, doğrudan çark** — M
+- [x] **40 · Butik akışı: oyun yok, doğrudan çark** ✅ **BİTTİ** — Ü137,
+  göç 0039 + 0040 · *(2026-09-17'de doğrulandı)*
+  Kasiyer alışverişe bakıp hak veriyor → ekranda QR → müşteri kendi
+  telefonuyla okutup kaydoluyor → çarkı çeviriyor. Dört koşul türü
+  (`tutar` · `urun` · `gunluk` · `ilk_gelen`), VEYA ile bağlı.
+  🔴 **Rıza zinciri bilerek böyle:** ilk tarifte kasiyer müşterinin adını
+  ve telefonunu yazacaktı; o kurgu *"kasiyerin girdiği veriye kim onay
+  verdi"* sorusunu doğuruyordu. QR'a çevrildi — hak verilirken müşterinin
+  kim olduğu **bilinmiyor**, `player_id` müşteri kendi kaydolunca doluyor.
   🔴 **D1'i etkiliyor.** Kafede ödül kısmen beceriye bağlı (kupon eşiği
   500 puan); butikte beceri payı **tamamen kalkıyor**, ödül saf tesadüfe
   bağlanıyor. Şans mevzuatı görüşü **iki ayrı model** için sorulmalı.
-  ⚠️ Çarkın misafir akışı (`cark.misafirCevir`) zaten var — temel duruyor.
+  - [ ] ⚠️ **Sahada denenmedi** — uçtan uca testler geçiyor ama gerçek
+    telefonla kasa→QR→çark yolculuğu henüz yapılmadı (Dalga 7'den devreden
+    madde; vitrindeki butik "yakında" rozetinin kaldırılma şartı da bu).
 
 - [ ] **41 · 🔴 İşletme müşterinin adını ve telefonunu görecek** — L
   **G1 kalkıyor.** Bugün işletmenin gördüğü tek kimlik kafe bazında
@@ -793,6 +832,13 @@ ChatGPT analiz bağlantısı.
   ⚠️ Madde 32 bunu bir kez reddetmişti (*"ödül değeri katalogda tanımlı"*)
   ve o gerekçe **ödül tarafı için hâlâ geçerli**; yeniden açılan şey
   **ölçüm** tarafı.
+  🔴 **Bu madde Ü137'nin yazılı bir kararını geri alıyor.** Butikte
+  kasiyer tutarı **zaten giriyor** (`tur = 'tutar'`, `esik_kurus`) ama
+  göç 0039 onu bilerek **saklamıyor**: *"Adisyon tutarı SAKLANMIYOR:
+  neyi aldığı butiğin kendi kaydı, bizim işimiz değil. Yalnızca hakkın
+  doğduğu an ve kim verdiği."* Yani iş "tutarı girdir" değil,
+  **"o kararı tersine çevir"** — ve girildiği anda satır, bugün
+  taşımadığı bir ticari bilgiyi taşımaya başlıyor.
   ⚠️ Tutar kasiyerin **beyanı**, ölçüm değil — raporda ayrı güven
   seviyesinde gösterilmeli (Ü100'ün "kullanıldı, satıldı değil" ayrımı).
 
