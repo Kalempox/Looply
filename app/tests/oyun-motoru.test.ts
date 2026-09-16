@@ -9,6 +9,7 @@ import { normalizePhone } from "@/lib/crypto";
 import * as masa from "@/domain/masa";
 import * as oyunDomain from "@/domain/oyun";
 import * as seri from "@/domain/seri";
+import * as xp from "@/domain/xp";
 import {
   GUNLUK_TAVAN,
   KATILIM_PUANI,
@@ -191,6 +192,18 @@ function yilanOyna(tohum: string) {
   if (son) d = son;
 
   return { durum: d, girdiler, skor: yilan.skor(d) };
+}
+
+/** Testin kendi taze oyuncusu — seviye sayacı sıfırdan başlasın. */
+async function yeniOyuncu(): Promise<string> {
+  const s = await kaydet({
+    telefon: yeniTelefon(),
+    ad: "Seviye",
+    soyad: "Testi",
+    dogumYili: 1990,
+    pazarlamaIzni: false,
+  });
+  return s.oyuncu.id;
 }
 
 /** Doğrulanmış (K2) masa oturumu açar. */
@@ -984,3 +997,55 @@ describe("günlük seri (Ü54)", () => {
     assert.equal(d.riskte, true, "seri sıfırlanmış gibi gösterildi");
   });
 });
+
+/* ═══════════════════════════════════════════════════════════
+   Seviye atlama (Ü146)
+   ═══════════════════════════════════════════════════════════ */
+
+describe("seviye atlama", () => {
+  test("eşiği geçen tur seviye atlattığını bildiriyor", async () => {
+    /*
+      Seviye bir kolon değil, XP defterinin toplamı. "Bu tur atlattı mı"
+      sorusunun cevabı ancak öncesi ile sonrası karşılaştırılarak
+      bulunuyor — test tam olarak o sınırı zorluyor: oyuncu eşiğin bir
+      tık altına getiriliyor, sonra bir tur oynuyor.
+    */
+    const p = await yeniOyuncu();
+    await dogrulanmisOturum(p);
+
+    const esik = xp.SEVIYE_ESIKLERI[1];
+    const oncekiSeviye = xp.seviye(esik - 1);
+
+    await xp.yaz({
+      playerId: p,
+      cafeId: kafeA,
+      delta: esik - 1,
+      kaynak: "ADJUSTMENT",
+    });
+
+    const { cevap } = await tamOyun(p, "blok");
+    assert.ok(cevap.ok, "tur reddedildi");
+    if (!cevap.ok) return;
+
+    assert.ok(cevap.seviye, "eşik geçildi ama seviye atlama bildirilmedi");
+    assert.equal(cevap.seviye.onceki, oncekiSeviye);
+    assert.equal(cevap.seviye.yeni, oncekiSeviye + 1);
+  });
+
+  test("eşiği geçmeyen tur seviye atlama bildirmiyor", async () => {
+    /*
+      ⚠️ Bu test ilkinin aynadaki hâli ve gerekli: yalnızca "atladı"
+      sınanırsa, her turda seviye atladığını söyleyen bozuk bir kod da
+      testten geçerdi.
+    */
+    const p = await yeniOyuncu();
+    await dogrulanmisOturum(p);
+
+    const { cevap } = await tamOyun(p, "blok");
+    assert.ok(cevap.ok, "tur reddedildi");
+    if (!cevap.ok) return;
+
+    assert.equal(cevap.seviye, null, "seviye atlamadan atladı denildi");
+  });
+});
+

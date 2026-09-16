@@ -1,5 +1,6 @@
 import * as pencere from "./kullanim-penceresi";
 import { withBypass } from "@/db/context";
+import { newId } from "@/lib/ids";
 import type { KategoriTuru } from "./kategori-tur";
 
 /**
@@ -41,8 +42,22 @@ export type KuponTuru = "urun" | "yuzde" | "tutar";
 
 export type EnvanterKuponu = {
   id: string;
-  /** Ödülün adı — "1 Filtre Kahve" veya "%20 · Latte". TL yok (E9). */
-  baslik: string;
+  /**
+   * Ödülün adı — "1 Filtre Kahve" veya "%20 · Latte". TL yok (E9).
+   *
+   * ⚠️ **Kapalı kuponda `null`** (Ü141). Oyun ödülü kazınarak açılıyor
+   * ve adı o ana kadar istemciye hiç gönderilmiyor; gönderilseydi
+   * kazıma bir perde olurdu.
+   */
+  baslik: string | null;
+  /**
+   * Ü141: kupon henüz kazınıp açılmadı mı?
+   *
+   * Kapalıyken ekran ne adı ne cinsini biliyor — kazıma yüzeyi
+   * gösteriliyor. Açılınca sunucudan ad geliyor ve kart olağan hâline
+   * dönüyor.
+   */
+  kapali: boolean;
   tur: KuponTuru;
   /**
    * Ü75: bağlı ürünün kategori türü — kartın çizimini bu seçiyor.
@@ -72,6 +87,21 @@ export type EnvanterKuponu = {
 export const YENI_ACILDI_SAAT = 24;
 
 export type Envanter = {
+  /**
+   * Ü141: kazınmayı bekleyen kuponlar — henüz ne olduğu bilinmiyor.
+   *
+   * ⚠️ Diğer listelerin alt kümesi **değil**, onlardan çıkarılmış ayrı
+   * bir liste. Sebebi `yeniAcilan`ınkinin tam tersi: kapalı kupon
+   * kasada gösterilemez, yani "Kasada gösterebilirsin" sayacına ve
+   * listesine girmesi oyuncuyu kasaya boşuna gönderirdi. Önce açılacak,
+   * sonra olağan yerine oturacak.
+   *
+   * Aktifleşmiş de bekleyen de kapalı olabiliyor: kazıma *ne olduğunu*
+   * söylüyor, aktifleşme *ne zaman kullanılacağını* (Ü97). İkisi ayrı
+   * sorular ve ayrı kalmalı — bekleyen kupon da kazınabilsin ki
+   * oyuncunun beklerken yapacak bir şeyi olsun.
+   */
+  kazinacak: EnvanterKuponu[];
   kullanilabilir: EnvanterKuponu[];
   /**
    * Son 24 saatte açılan kuponlar (Ü98).
@@ -118,6 +148,8 @@ type Satir = {
   kampanya_yuzde: number | null;
   urun_adi: string | null;
   kategori_turu: string | null;
+  /** Ü141: NULL ise kupon henüz kazınmadı. */
+  revealed_at: Date | null;
   acilma_ani: Date | null;
   usable_days: number[] | null;
   usable_from_hour: number | null;
@@ -182,6 +214,8 @@ export async function envanter(playerId: string): Promise<Envanter> {
               pc.percent AS kampanya_yuzde,
               p.name     AS urun_adi,
               COALESCE(rk.kind, pk.kind) AS kategori_turu,
+              -- Ü141: kazınıp açıldı mı? NULL ise ad istemciye gitmiyor.
+              k.revealed_at,
               -- Ü98: kupon ne zaman açıldı? Defterden okunuyor,
               -- kupona kolon eklenmiyor (E3).
               -- Ters tırnak YOK: bu metin bir template literal içinde ve
@@ -208,6 +242,7 @@ export async function envanter(playerId: string): Promise<Envanter> {
 
   const simdi = Date.now();
   const sonuc: Envanter = {
+    kazinacak: [],
     kullanilabilir: [],
     yeniAcilan: [],
     bekleyen: [],
@@ -217,24 +252,50 @@ export async function envanter(playerId: string): Promise<Envanter> {
 
   for (const r of satirlar) {
     const durum = durumBelirle(r, simdi);
+    /**
+     * Ü141: kapalı kupon hakkında istemciye **hiçbir ipucu gitmiyor.**
+     *
+     * Yalnızca adı saklamak yetmezdi: `tur` ("yüzde" mi "ürün" mü),
+     * `kategoriTuru` (kartın çizimini seçen şey — tatlı, sıcak içecek)
+     * ve `pencereMetni` ("yalnızca hafta içi öğleden sonra") üçü birden
+     * ödülü büyük ölçüde ele verir. Kazınmamış kart, cinsini de
+     * söylemeyen boş bir kart olmalı.
+     */
+    const kapali = r.revealed_at === null;
     const kupon: EnvanterKuponu = {
       id: r.id,
-      baslik: baslikYaz(r),
-      tur: turBelirle(r),
-      kategoriTuru: (r.kategori_turu as KategoriTuru | null) ?? null,
+      baslik: kapali ? null : baslikYaz(r),
+      kapali,
+      tur: kapali ? "urun" : turBelirle(r),
+      kategoriTuru: kapali ? null : ((r.kategori_turu as KategoriTuru | null) ?? null),
       cafeId: r.cafe_id,
       cafeAdi: r.cafe_adi,
       durum,
       aktiflesme: r.activates_at,
       sonKullanim: r.expires_at,
-      pencereMetni: pencere.pencereYaz({
-        gunler: r.usable_days,
-        baslangicSaati: r.usable_from_hour,
-        bitisSaati: r.usable_to_hour,
-      }),
+      pencereMetni: kapali
+        ? null
+        : pencere.pencereYaz({
+            gunler: r.usable_days,
+            baslangicSaati: r.usable_from_hour,
+            bitisSaati: r.usable_to_hour,
+          }),
     };
 
-    if (durum === "kullanilabilir") {
+    /*
+      Ü141: kapalı kupon kendi yuvasına gidiyor ve başka hiçbir listeye
+      girmiyor.
+
+      ⚠️ Süresi dolmuş ya da kullanılmış bir kupon kapalı olsa bile
+      buraya DÜŞMÜYOR (aşağıdaki koşul yalnızca yaşayan iki durumu
+      alıyor): kazınacak bir şey kalmamış bir kuponu kazıtmak, oyuncuya
+      elde edemeyeceği bir ödülü açtırmak olurdu. Geçmişte öyle bir
+      satır varsa olağan yerinde, adsız duruyor.
+    */
+    if (kapali && (durum === "kullanilabilir" || durum === "beklemede")) {
+      sonuc.kazinacak.push(kupon);
+    }
+    else if (durum === "kullanilabilir") {
       sonuc.kullanilabilir.push(kupon);
 
       // Ertelenmemiş kupon hiç "açılmıyor" — kazanıldığı anda kullanıma
@@ -258,14 +319,34 @@ export async function envanter(playerId: string): Promise<Envanter> {
 
 export type KuponDetayi = {
   id: string;
-  baslik: string;
+  /** ⚠️ Ü141: kapalı kuponda `null` — bkz. `EnvanterKuponu.baslik`. */
+  baslik: string | null;
+  /**
+   * Ü141: henüz kazınmadı.
+   *
+   * 🔴 Bu alan listede olup burada olmasaydı, sızıntı kapanmış
+   * görünürken açık kalırdı: kupon detayı ayrı bir sayfa (`/oduller/
+   * [kuponId]`) ve adresi tahmin edilebilir. Kapalı kuponun adı listede
+   * saklanıp detayda yazılsaydı kazıma tamamen anlamsız olurdu — aynı
+   * "bir yerde kapatıldı, öbür yol açık kaldı" sınıfı Ü113'te bir kez
+   * yaşandı.
+   */
+  kapali: boolean;
   tur: KuponTuru;
   kategoriTuru: KategoriTuru | null;
   cafeAdi: string;
   durum: KuponDurumu;
-  /** Kasiyerin okutacağı QR jetonu. İçinde ödül bilgisi yok (Ü19). */
+  /**
+   * Kasiyerin okutacağı QR jetonu. İçinde ödül bilgisi yok (Ü19).
+   *
+   * ⚠️ Kapalı kuponda **boş**: jeton verilseydi oyuncu ödülü hiç
+   * açmadan kasada okutabilir, ödülün adını ilk kez kasiyerin
+   * ekranında görürdü. Veritabanındaki kısıt (0041) bunu zaten
+   * reddediyor; burada jetonun hiç üretilmemesi aynı kapının önündeki
+   * ikinci kilit.
+   */
   jeton: string;
-  /** Kamera çalışmazsa yedek yol (Ü19). */
+  /** Kamera çalışmazsa yedek yol (Ü19). Kapalı kuponda boş. */
   kod: string;
   aktiflesme: Date;
   sonKullanim: Date;
@@ -292,6 +373,7 @@ export async function kuponDetayi(playerId: string, kuponId: string): Promise<Ku
               pc.percent AS kampanya_yuzde,
               p.name     AS urun_adi,
               COALESCE(rk.kind, pk.kind) AS kategori_turu,
+              k.revealed_at,
               r.usable_days, r.usable_from_hour, r.usable_to_hour
          FROM coupons k
          JOIN cafes c ON c.id = k.cafe_id
@@ -310,21 +392,102 @@ export async function kuponDetayi(playerId: string, kuponId: string): Promise<Ku
 
   if (!r) return null;
 
+  // Ü141: kazınmamış kupon hakkında hiçbir şey dönmüyor — ad, cins,
+  // kullanım penceresi ve kasada okutulacak jeton dahil.
+  const kapali = r.revealed_at === null;
+
   return {
     id: r.id,
-    baslik: baslikYaz(r),
-    tur: turBelirle(r),
-    kategoriTuru: (r.kategori_turu as KategoriTuru | null) ?? null,
+    baslik: kapali ? null : baslikYaz(r),
+    kapali,
+    tur: kapali ? "urun" : turBelirle(r),
+    kategoriTuru: kapali ? null : ((r.kategori_turu as KategoriTuru | null) ?? null),
     cafeAdi: r.cafe_adi,
     durum: durumBelirle(r, Date.now()),
-    jeton: r.qr_token,
-    kod: r.code,
+    jeton: kapali ? "" : r.qr_token,
+    kod: kapali ? "" : r.code,
     aktiflesme: r.activates_at,
     sonKullanim: r.expires_at,
-    pencereMetni: pencere.pencereYaz({
-      gunler: r.usable_days,
-      baslangicSaati: r.usable_from_hour,
-      bitisSaati: r.usable_to_hour,
-    }),
+    pencereMetni: kapali
+      ? null
+      : pencere.pencereYaz({
+          gunler: r.usable_days,
+          baslangicSaati: r.usable_from_hour,
+          bitisSaati: r.usable_to_hour,
+        }),
+  };
+}
+
+/* ── Kazıyarak açma (Ü141) ─────────────────────────────────── */
+
+export type KazimaSonucu =
+  | { ok: true; baslik: string; tur: KuponTuru; kategoriTuru: KategoriTuru | null }
+  | { ok: false };
+
+/**
+ * Kuponu kazınmış sayar ve ödülün adını **ilk kez** döndürür.
+ *
+ * ── Neden sunucuda ──────────────────────────────────────────
+ *
+ * Kazıma yüzeyi tarayıcıda çiziliyor ama açılma kararı orada
+ * verilemez: ad zaten istemcide olsaydı kazımaya gerek kalmazdı
+ * (bkz. `EnvanterKuponu.baslik`). İstemci "kazıdım" diyor, sunucu
+ * defteri yazıyor ve karşılığında adı veriyor.
+ *
+ * ── Aynı anda iki kez çağrılırsa ────────────────────────────
+ *
+ * `WHERE revealed_at IS NULL` koşulu güncellemenin **kendisinde**:
+ * ikinci çağrı sıfır satır günceller ve defter satırı bir kez yazılır.
+ * Önce okuyup sonra yazsaydık iki sekmeden aynı anda kazıyan oyuncu
+ * kuponun hikâyesine iki `revealed` satırı düşürürdü. Oyuncu açısından
+ * ikisi de aynı sonucu veriyor — ad dönüyor; tekrar çağırmak hata
+ * değil, çünkü kazıma yarıda kesilip yeniden denenebilir.
+ *
+ * ── Sahiplik ────────────────────────────────────────────────
+ *
+ * `player_id = $2` süzgeci sorguda **açıkça** duruyor: bu kod
+ * `withBypass` içinde koşuyor (ödül ve kafe adları oyuncu politikası
+ * altında okunamıyor, bkz. dosya başı) ve orada RLS kapalı. Süzgeç
+ * yalnızca politikaya bırakılsaydı başkasının kuponu açılabilirdi.
+ */
+export async function kaz(playerId: string, kuponId: string): Promise<KazimaSonucu> {
+  await withBypass("kupon kazıma — açılış kaydı", async (db) => {
+    const acildi = await db.one<{ cafe_id: string }>(
+      `UPDATE coupons SET revealed_at = now()
+        WHERE id = $1 AND player_id = $2 AND revealed_at IS NULL
+        RETURNING cafe_id`,
+      [kuponId, playerId],
+    );
+
+    if (acildi) {
+      await db.query(
+        `INSERT INTO coupon_events (id, coupon_id, cafe_id, event)
+         VALUES ($1, $2, $3, 'revealed')`,
+        [newId("cev"), kuponId, acildi.cafe_id],
+      );
+    }
+  });
+
+  /*
+    ⚠️ Ad **yazma bağlamının dışında** okunuyor.
+
+    `kuponDetayi` kendi `withBypass`ini açıyor; içeride çağrılsaydı iç
+    içe iki bağlam olurdu — ikinci bir bağlantı, ve yazma henüz
+    işlenmemişse okuma kuponu hâlâ kapalı görürdü. O durumda kazıyan
+    oyuncuya "açılamadı" denirdi, oysa kupon açılmış olurdu.
+
+    Adı `UPDATE ... RETURNING` ile almak da mümkün değil: ad
+    `rewards`/`percentage_campaigns` tarafında ve "yüzde mi ürün mü"
+    başlık kuralı tek bir yerde yazılı — `kuponDetayi` onu zaten
+    uyguluyor, ikinci bir kopyası olmamalı.
+  */
+  const detay = await kuponDetayi(playerId, kuponId);
+  if (!detay || detay.kapali || detay.baslik === null) return { ok: false };
+
+  return {
+    ok: true,
+    baslik: detay.baslik,
+    tur: detay.tur,
+    kategoriTuru: detay.kategoriTuru,
   };
 }

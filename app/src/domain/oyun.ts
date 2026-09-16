@@ -23,7 +23,8 @@ import {
   type PuanSonucu,
 } from "./puan";
 import { yazIle as xpYaz } from "./xp";
-import { degerlendir } from "./rozet";
+import * as xp from "./xp";
+import { degerlendir, tanimlar as rozetTanimlari } from "./rozet";
 import { anlikOdulVer, kampanyaKuponuVer } from "./kupon";
 
 /**
@@ -121,10 +122,63 @@ async function nitelikliMi(
   return !varMi;
 }
 
+/**
+ * Oyun turunda düşen **ödül** kuponu — Ü141.
+ *
+ * ── 🔴 `baslik` neden null olabiliyor ───────────────────────
+ *
+ * Oyun ödülü artık **kapalı** doğuyor: oyuncu onu Ödüllerim ekranında
+ * kazıyarak açıyor (göç 0041). Kapalıyken ödülün adı istemciye
+ * **hiç gönderilmiyor** — gönderilseydi kazıma bir perde olurdu ve
+ * sayfanın kaynağına bakan (ya da ağ isteğini açan) herkes ödülü
+ * kazımadan görürdü. Sürprizi saklamanın tek dürüst yolu veriyi
+ * göndermemek.
+ *
+ * `kod` gidiyor ve gitmeli: kupon kodu ödül hakkında hiçbir şey
+ * söylemiyor, kapalı kuponun kasada okutulmasını da veritabanındaki
+ * kısıt engelliyor (0041).
+ */
+export type DusenOdul = {
+  kuponId: string;
+  /** Kapalıyken `null` — ad ilk kez kazıma bitince öğreniliyor. */
+  baslik: string | null;
+  kod: string;
+  ertelendi: boolean;
+  aktiflesme: Date;
+  /** Ü141: henüz kazınmadı. */
+  kapali: boolean;
+};
+
+/**
+ * Kafenin kampanya kuponu (Ö4 · Ü82) — **hep açık** doğuyor.
+ *
+ * Kazanılmış bir şey değil, kafenin pazarlaması; kazınacak bir merak
+ * yok. O yüzden `baslik` burada her zaman dolu.
+ */
+export type DusenKampanya = {
+  kuponId: string;
+  baslik: string;
+  kod: string;
+  ertelendi: boolean;
+  aktiflesme: Date;
+};
+
+/**
+ * Bu turda seviye atlandıysa — Ü146.
+ *
+ * `onceki` de taşınıyor: ekran "3. seviyeye ulaştın" derken kaçıncıdan
+ * geldiğini bilmek, atlanan seviye sayısını göstermeyi ileride mümkün
+ * kılıyor (tek turda iki seviye atlamak, büyük bir görev bonusuyla
+ * teorik olarak mümkün).
+ */
+export type SeviyeAtlama = { onceki: number; yeni: number };
+
 export type Kazanim = {
   puan: PuanSonucu | null;
   xp: number;
-  kupon: { kuponId: string; baslik: string; kod: string; ertelendi: boolean; aktiflesme: Date } | null;
+  /** Ü146: bu tur seviye atlattıysa. Atlatmadıysa null. */
+  seviye: SeviyeAtlama | null;
+  kupon: DusenOdul | null;
   taht: taht.DevirmeSonucu | null;
   /**
    * Skor eşiği bonusu (Ü48) — ulaşıldıysa hangi eşik ve ne yazıldı.
@@ -152,7 +206,7 @@ export type Kazanim = {
    * görünmeli — oyuncu "kazandığım ödül" ile "kafenin verdiği indirim"i
    * karıştırmasın.
    */
-  kampanya: { kuponId: string; baslik: string; kod: string; ertelendi: boolean; aktiflesme: Date } | null;
+  kampanya: DusenKampanya | null;
   /**
    * Ü100: upsell teklifi — kupon DEĞİL.
    *
@@ -190,6 +244,7 @@ async function kazanimIsle(
   const bos: Kazanim = {
     puan: null,
     xp: 0,
+    seviye: null,
     kupon: null,
     teklif: null,
     taht: null,
@@ -201,6 +256,21 @@ async function kazanimIsle(
   if (!opts.kazandirir || !opts.cafeId) return bos;
 
   const sonuc: Kazanim = { ...bos };
+
+  /*
+    Ü146: seviye atlama bu turda mı oldu?
+
+    Seviye bir kolon değil, XP defterinin toplamından türeyen bir sayı —
+    yani "atladı mı" sorusunun cevabı ancak **öncesi ile sonrası**
+    karşılaştırılarak bulunuyor. Toplam burada, hiçbir şey yazılmadan
+    önce okunuyor; turun sonunda yeniden okunup iki seviye
+    karşılaştırılıyor.
+
+    ⚠️ Aynı işlemin içinde: ayrı bir bağlantıdan okunsaydı bu turda
+    yazılan XP henüz görünmez ve seviye atlama hiçbir zaman fark
+    edilmezdi.
+  */
+  const xpOnce = await xp.kafeToplamiIle(db, opts.playerId, opts.cafeId);
 
   if (opts.basarili) {
     const kuponDurduruldu = await acil.durduruldu(acil.ANAHTARLAR.kupon);
@@ -244,13 +314,21 @@ async function kazanimIsle(
         // Ü91: oyuncu ödülü ekranda yakaladıysa şans yükseliyor.
         odulIsareti: opts.odulIsareti,
         kaynakId: opts.oturumId,
+        // Ü141: oyun ödülü kapalı doğuyor — adı kazınınca öğreniliyor.
+        kapali: true,
       });
       if (anlik?.ok) {
         // Ü97: kimlik ve aktifleşme anı bekleme metni için taşınıyor —
         // metin kupona göre sabit kalmalı ve "yarın" derken doğru söylemeli.
+        //
+        // ⚠️ Ü141: `baslik` BİLEREK taşınmıyor. Kupon kapalı doğuyor ve
+        // adı bu yanıtla gitseydi kazıma bir perdeye dönerdi — ağ
+        // isteğine bakan oyuncu ödülü kazımadan görürdü. Ad yalnızca
+        // kazıma bittiğinde, açma çağrısının yanıtında dönüyor.
         sonuc.kupon = {
           kuponId: anlik.kuponId,
-          baslik: anlik.baslik,
+          baslik: null,
+          kapali: true,
           kod: anlik.kod,
           ertelendi: anlik.ertelendi,
           aktiflesme: anlik.aktiflesme,
@@ -429,6 +507,21 @@ async function kazanimIsle(
     });
   }
 
+  /*
+    Seviye atladıysa ekran bunu kutluyor (Ü146).
+
+    ⚠️ Rozet değerlendirmesi bundan SONRA da XP yazabilir ama o yazım
+    bu turun sonucuna girmiyor: rozet kendi kutlamasına sahip ve iki
+    kutlamayı üst üste bindirmek ikisini de zayıflatırdı. Buradaki soru
+    dar: *bu oyun turu seviye atlattı mı?*
+  */
+  const xpSonra = await xp.kafeToplamiIle(db, opts.playerId, opts.cafeId);
+  const seviyeOnce = xp.seviye(xpOnce);
+  const seviyeSonra = xp.seviye(xpSonra);
+  if (seviyeSonra > seviyeOnce) {
+    sonuc.seviye = { onceki: seviyeOnce, yeni: seviyeSonra };
+  }
+
   return sonuc;
 }
 
@@ -523,14 +616,23 @@ export type BitirSonucu =
       /** Ü106: günün görevi bu turda tamamlandıysa. XP toplamın içinde. */
       challenge: { baslik: string; xp: number } | null;
       xp: number;
+      /** Ü146: bu tur seviye atlattıysa — ekran kutluyor. */
+      seviye: SeviyeAtlama | null;
       kazandirir: boolean;
       bonusMu: boolean;
       /** Bu çağrıda kazanılan rozetler. */
+      /**
+       * Bu çağrıda kazanılan rozetler — **kod değil başlık** (Ü148).
+       *
+       * Ekran kutlamada rozetin adını söylüyor ("İlk oyun"); kod
+       * gönderilseydi istemcinin kod→ad tablosunun ikinci bir kopyasını
+       * taşıması gerekirdi ve rozet adı değiştiğinde ikisi ayrışırdı.
+       */
       yeniRozetler: string[];
       /** E2: anlık ödül düştüyse. Oyuncuya TL değeri GÖSTERİLMEZ (E9). */
-      kupon: { kuponId: string; baslik: string; kod: string; ertelendi: boolean; aktiflesme: Date } | null;
+      kupon: DusenOdul | null;
       /** Ö4 · Ü82: kafenin kampanya kuponu düştüyse. Ödülden ayrı. */
-      kampanya: { kuponId: string; baslik: string; kod: string; ertelendi: boolean; aktiflesme: Date } | null;
+      kampanya: DusenKampanya | null;
   /**
    * Ü100: upsell teklifi — kupon DEĞİL.
    *
@@ -744,6 +846,7 @@ export async function bitir(opts: {
       seri: kazanim.seri,
       challenge: kazanim.challenge,
       xp: kazanim.xp,
+      seviye: kazanim.seviye,
       kazandirir,
       bonusMu,
       // Rozetler işlemin dışında değerlendiriliyor; burada boş başlıyor.
@@ -762,7 +865,15 @@ export async function bitir(opts: {
     if (sonuc.ok && sonuc.kazandirir) {
       try {
         const masa = await masaOturumu.aktif(opts.playerId);
-        sonuc.yeniRozetler = await degerlendir(opts.playerId, masa?.cafeId);
+        const kodlar = await degerlendir(opts.playerId, masa?.cafeId);
+        if (kodlar.length > 0) {
+          // Ü148: kod yerine başlık taşınıyor — kutlama rozetin adını
+          // söylüyor. Tanım listesi yalnızca rozet kazanıldığında
+          // okunuyor; her turda okumak boşuna bir sorgu olurdu.
+          const tanimlar = await rozetTanimlari();
+          const adlar = new Map(tanimlar.map((t) => [t.code, t.baslik]));
+          sonuc.yeniRozetler = kodlar.map((k) => adlar.get(k) ?? k);
+        }
       } catch (err) {
         log.warn("rozet degerlendirmesi basarisiz", { hata: String(err) });
       }
@@ -800,9 +911,9 @@ export type MisafirYazSonucu =
       esik: { skor: number; puan: PuanSonucu } | null;
       seri: { gun: number; puan: PuanSonucu } | null;
       xp: number;
-      kupon: { kuponId: string; baslik: string; kod: string; ertelendi: boolean; aktiflesme: Date } | null;
+      kupon: DusenOdul | null;
       /** Ö4 · Ü82: kayıt anında bozdurulan misafir turunda da düşebiliyor. */
-      kampanya: { kuponId: string; baslik: string; kod: string; ertelendi: boolean; aktiflesme: Date } | null;
+      kampanya: DusenKampanya | null;
   /**
    * Ü100: upsell teklifi — kupon DEĞİL.
    *

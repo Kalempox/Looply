@@ -34,13 +34,25 @@ export async function ozet(playerId: string, cafeId?: string): Promise<OyuncuOze
       kafePuani = Number(r?.toplam ?? 0);
     }
 
-    // Zaman karar veriyor, `status` kolonu değil: açılma saati geçmiş ama
-    // bakım işi henüz dokunmamış (`pending`) kupon da kullanılabilir. Kolona
-    // bakılsaydı ana ekran "1 kupon", Ödüllerim ekranı "2 kupon" derdi.
+    /*
+      Zaman karar veriyor, `status` kolonu değil: açılma saati geçmiş ama
+      bakım işi henüz dokunmamış (`pending`) kupon da kullanılabilir. Kolona
+      bakılsaydı ana ekran "1 kupon", Ödüllerim ekranı "2 kupon" derdi.
+
+      🔴 Ü144: aynı uyuşmazlık **ikinci kez**, başka bir sebeple doğdu.
+      Kazınmamış kupon da `active` ve penceresi açık, yani bu sayıya
+      giriyordu — ama kasada gösterilemiyor (Ü141). Ekranda ana sayfa
+      "2 kupon" derken Ödüllerim "1" diyordu ve ürün sahibi bunu
+      ekrandan yakaladı.
+
+      `revealed_at IS NOT NULL` süzgeci iki ekranı yeniden aynı cümleyi
+      kurmaya zorluyor: **sayılan şey, kasada gösterilebilen şey.**
+    */
     const kupon = await db.one<{ n: string }>(
       `SELECT count(*) AS n FROM coupons
         WHERE status IN ('active', 'pending')
-          AND activates_at <= now() AND expires_at > now()`,
+          AND activates_at <= now() AND expires_at > now()
+          AND revealed_at IS NOT NULL`,
     );
 
     const indirim = await db.one<{ toplam: string }>(

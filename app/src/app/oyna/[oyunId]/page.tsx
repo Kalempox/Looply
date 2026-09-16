@@ -7,6 +7,7 @@ import { oyunBul } from "@/oyunlar";
 import { kodEkrandaGosterilir } from "@/sms";
 import { KUPON_ESIGI } from "@/domain/puan";
 import { OyuncuSayfa } from "@/components/oyuncu";
+import * as avatar from "@/domain/avatar";
 import { OyunKabugu } from "./oyun-kabuk";
 
 export const dynamic = "force-dynamic";
@@ -41,6 +42,8 @@ export default async function OyunSayfasi({
   const masa = await masaOturumu.aktif(o.ozneId);
   const kazandirir = !!masa && (masa.kanitMaskesi & K2) !== 0;
   const bonusMu = (await oyunSecimi.gununOyunuKafede(masa?.cafeId ?? null)).id === oyun.id;
+  // Ü148: rozet kutlamasında oyuncunun KENDİ avatarı tebrik ediyor.
+  const avatarSecimi = await avatar.oku(o.ozneId);
 
   /*
     Geri düğmesi katalogda (Ü67).
@@ -69,6 +72,8 @@ export default async function OyunSayfasi({
         kazandirir={kazandirir}
         bonusMu={bonusMu}
         cafeAdi={masa?.cafeAdi ?? null}
+        avatarRenk={avatarSecimi.renk}
+        avatarAksesuar={avatarSecimi.aksesuar}
         demoKapisi={kodEkrandaGosterilir()}
         hemenBasla={sp.basla === "1"}
       />

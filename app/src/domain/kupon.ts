@@ -164,6 +164,19 @@ async function kuponUret(
     /** Ü88: kuponu doğuran oyun oturumu. Çark ve kampanyada yok. */
     oturumId?: string;
     /**
+     * Ü141: kupon **kapalı** mı doğsun — yani oyuncu kazıyana kadar
+     * ödülün adı ona hiç söylenmesin mi?
+     *
+     * Yalnızca oyun ödülü kapalı doğuyor. Çarkın kendi tören sahnesi
+     * var, kampanya kazanılmış bir şey değil, teklifi oyuncu zaten
+     * bilerek alıyor — üçünde de kazınacak bir merak yok ve kapalı
+     * doğsalardı aynı ödül iki kez açılırdı (bkz. göç 0041).
+     *
+     * Varsayılan **açık**: yeni bir kupon kaynağı eklendiğinde yanlış
+     * taraf sessizce seçilmemeli. Kapalılık bilinçli bir tercih.
+     */
+    kapali?: boolean;
+    /**
      * Ü90: bütçe temposunun okuduğu an. **Yalnızca testler için.**
      *
      * Kafe kapalıyken hiç ödül dağıtılmıyor ve tempo gün içinde kademeli
@@ -254,8 +267,8 @@ async function kuponUret(
     `INSERT INTO coupons
        (id, cafe_id, player_id, reward_id, campaign_id, code, qr_token, status,
         activates_at, expires_at, budget_period_id, reserved_kurus, proof_level,
-        happy_hour_id, play_session_id)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)`,
+        happy_hour_id, play_session_id, revealed_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
     [
       kuponId,
       opts.cafeId,
@@ -272,6 +285,8 @@ async function kuponUret(
       opts.kanitSeviyesi,
       opts.happyHourId ?? null,
       opts.oturumId ?? null,
+      // Kapalı kuponda NULL: "henüz kazınmadı". Açık doğanlarda doğduğu an.
+      opts.kapali ? null : new Date(simdi),
     ],
   );
 
@@ -308,7 +323,15 @@ async function olayYaz(
   o: {
     kuponId: string;
     cafeId: string;
-    olay: "issued" | "activated" | "redeemed" | "undone" | "expired" | "rejected";
+    olay:
+      | "issued"
+      | "activated"
+      | "redeemed"
+      | "undone"
+      | "expired"
+      | "rejected"
+      /** Ü141: oyuncu kuponu kazıyarak açtı. */
+      | "revealed";
     tutar?: number;
     not?: string;
     staffId?: string;
@@ -361,6 +384,11 @@ export async function anlikOdulVer(
     odulIsareti?: number;
     /** Ü88: kuponu doğuran oyun oturumu — artık kolona yazılıyor. */
     kaynakId?: string;
+    /**
+     * Ü141: kupon kapalı doğsun mu — oyun yolundan gelen her çağrı
+     * `true` gönderiyor. Testler açık kupon isteyebiliyor.
+     */
+    kapali?: boolean;
     /** Ü90: bütçe temposunun okuduğu an. Yalnızca testler için. */
     an?: Date;
   },
@@ -473,6 +501,7 @@ export async function anlikOdulVer(
     // Ü104: yalnızca pencereden çıkan kupon havuzun payını kullanabiliyor.
     ekHavuzKurus: pencereden && pencere ? pencere.kalanKurus : undefined,
     oturumId: opts.kaynakId,
+    kapali: opts.kapali,
     an: opts.an,
   });
 }

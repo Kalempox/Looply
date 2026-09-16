@@ -8,6 +8,8 @@ import { OyuncuSayfa, SayfaBasi, Sayac, OyuncuBolum } from "@/components/oyuncu"
 import { RENK } from "@/components/oyuncu-renk";
 import { Gorsel, gorselSec, GORSEL_RENGI } from "@/components/oyuncu-gorsel";
 import { Bilet } from "@/components/bilet";
+import { KazimaKarti } from "@/components/kazima-karti";
+import { kuponuKaz } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -45,6 +47,7 @@ export default async function OdullerSayfasi() {
 
   const e = await envanter(o.ozneId);
   const bosMu =
+    !e.kazinacak.length &&
     !e.kullanilabilir.length &&
     !e.bekleyen.length &&
     !e.kullanilan.length &&
@@ -93,6 +96,57 @@ export default async function OdullerSayfasi() {
         </div>
       ) : (
         <>
+          {/*
+            ═══ Kazınacak kuponlar (Ü141) ═══════════════
+
+            Ürün sahibi: *"oyun oynayıp kupon kazanan kişilerin
+            kuponlarım kısmına bu kazıma animasyonunu ekle."*
+
+            ── Neden en üstte ve neden ayrı ────────────
+
+            Bu kartlar ekranın **tek yapılacak işi**: geri kalan her şey
+            durum bildiriyor, bunlar bir eylem bekliyor. Gruplara
+            karışsalardı oyuncu kendi ödülünü aramak zorunda kalırdı.
+
+            ⚠️ Sayaçlara da girmiyorlar (bkz. `domain/odul.ts`):
+            kazınmamış kupon kasada gösterilemez ve "Kasada
+            gösterebilirsin" sayısına eklenseydi oyuncu kasaya boşuna
+            giderdi.
+
+            ⚠️ Kartlarda **ödül hakkında hiçbir bilgi yok** ve bu
+            sunucu tarafında sağlanıyor — ad, cins ve kategori
+            gönderilmiyor. Burada saklansaydı sayfanın kaynağına bakan
+            herkes kazımadan görürdü.
+          */}
+          {e.kazinacak.length > 0 && (
+            <OyuncuBolum
+              baslik={
+                e.kazinacak.length > 1
+                  ? `${e.kazinacak.length} kuponun kazınmayı bekliyor`
+                  : "Bir kuponun kazınmayı bekliyor"
+              }
+              not="Ne kazandığını kazıyınca göreceksin."
+              renk="amber"
+            >
+              <ul className="flex flex-col gap-3">
+                {e.kazinacak.map((k) => (
+                  <li key={k.id}>
+                    <KazimaKarti
+                      kuponId={k.id}
+                      cafeAdi={k.cafeAdi}
+                      bekliyor={k.durum === "beklemede"}
+                      son={k.sonKullanim.toLocaleDateString("tr-TR", {
+                        day: "numeric",
+                        month: "short",
+                      })}
+                      ac={kuponuKaz}
+                    />
+                  </li>
+                ))}
+              </ul>
+            </OyuncuBolum>
+          )}
+
           {/*
             Açılma anı (Ü98).
 
@@ -275,14 +329,17 @@ const DURUM_ETIKETI: Record<EnvanterKuponu["durum"], string> = {
  * görünsün, üstünde bir tutar yazmıyor.
  */
 function BiletKarti({ kupon }: { kupon: EnvanterKuponu }) {
-  const gorsel = gorselSec(kupon.baslik, kupon.tur, kupon.kategoriTuru);
+  // Ü141: kapalı kupon bu listeye hiç girmiyor (`kazinacak`a gidiyor),
+  // yani ad burada kesin dolu. Yedek dizgi yalnızca tipi daraltıyor.
+  const baslik = kupon.baslik ?? "";
+  const gorsel = gorselSec(baslik, kupon.tur, kupon.kategoriTuru);
 
   return (
     <Bilet
       veri={{
         href: `/oduller/${kupon.id}`,
         kafe: kupon.cafeAdi,
-        baslik: kupon.baslik,
+        baslik,
         gorsel,
         renk: GORSEL_RENGI[gorsel],
         son: kupon.sonKullanim.toLocaleDateString("tr-TR", {
@@ -305,12 +362,19 @@ function BiletKarti({ kupon }: { kupon: EnvanterKuponu }) {
 function SakinKart({ kupon }: { kupon: EnvanterKuponu }) {
   const bekliyor = kupon.durum === "beklemede";
   const tarih = bekliyor ? kupon.aktiflesme : kupon.sonKullanim;
-  const r = RENK[GORSEL_RENGI[gorselSec(kupon.baslik, kupon.tur, kupon.kategoriTuru)]];
+  /*
+    Ü141: geçmişte kalmış ve hiç kazınmamış bir kupon buraya düşebiliyor
+    — oyuncu kazımadan süresi dolmuşsa. Adı yok ve uydurulmuyor: kart
+    ne olduğunu bilmediğimizi söylüyor. `gorselSec` de boş başlıkla
+    çağrılıp genel çizime düşüyor, yanlış bir kategori seçmiyor.
+  */
+  const baslik = kupon.baslik ?? "Açılmamış ödül";
+  const r = RENK[GORSEL_RENGI[gorselSec(kupon.baslik ?? "", kupon.tur, kupon.kategoriTuru)]];
 
   const govde = (
     <>
       <div className="etiket-caps text-yazi-sonuk">{kupon.cafeAdi}</div>
-      <div className="mt-1.5 font-display text-[17px] leading-tight font-bold">{kupon.baslik}</div>
+      <div className="mt-1.5 font-display text-[17px] leading-tight font-bold">{baslik}</div>
       <div className="mt-2.5 flex items-baseline justify-between gap-3">
         <span className="etiket-caps text-yazi-sonuk">{DURUM_ETIKETI[kupon.durum]}</span>
         <span className="font-data text-[10px] text-yazi-sonuk tabular">

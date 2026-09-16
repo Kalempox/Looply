@@ -2,9 +2,9 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import Link from "next/link";
 import * as oturum from "@/domain/session";
-import { LooplyLogo } from "@/components/logo";
 import { Beliren, Egik } from "./vitrin-hareket";
-import { CiftYonluSimulasyon } from "./vitrin-simulasyon";
+import { VitrinUstSerit } from "./vitrin-ust";
+import { KahramanBaslik } from "./vitrin-kahraman";
 import Image from "next/image";
 import { Karekod } from "@/components/karekod";
 import { YaklasanSahne, TelefonCercevesi } from "./vitrin-yaklasma";
@@ -153,27 +153,7 @@ export default async function Vitrin() {
   return (
     <main className="min-h-dvh bg-yuzey text-yazi">
       {/* ═══ Üst şerit — sade, düz beyaz ═════════════ */}
-      <header className="sticky top-0 z-40 border-b border-cizgi bg-yuzey/85 backdrop-blur-md">
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-5 py-3.5">
-          <LooplyLogo boyut={21} hediye={false} />
-          <span className="sr-only">Looply</span>
-
-          <nav className="flex items-center gap-1 sm:gap-2">
-            <Link
-              href="/kafe/giris"
-              className="rounded-full px-3 py-2 text-[14px] font-semibold text-yazi-sonuk transition-colors hover:text-yazi sm:px-4"
-            >
-              Giriş yap
-            </Link>
-            <Link
-              href="/kafe/basvuru"
-              className="rounded-full bg-vurgu px-4 py-2 text-[14px] font-semibold text-yuzey transition-opacity hover:opacity-90 sm:px-5"
-            >
-              Kayıt ol
-            </Link>
-          </nav>
-        </div>
-      </header>
+      <VitrinUstSerit />
 
       {o && <MevcutOturum rol={o.rol} />}
 
@@ -183,12 +163,10 @@ export default async function Vitrin() {
           Kafeler ve butik işletmeler için
         </p>
 
-        {/* Dev başlık — üç örnekte de ekranı dolduruyor. */}
-        <h1 className="mx-auto mt-6 max-w-5xl font-display text-[clamp(46px,10.5vw,118px)] leading-[0.92] font-extrabold tracking-[-0.045em]">
-          Oyna. Kazan.
-          <br />
-          <span className="text-vurgu">Geri gel.</span>
-        </h1>
+        {/* Dev başlık — üç örnekte de ekranı dolduruyor. Ü142'den beri
+            "Geri gel." daktilo gibi yazılıyor ve arkadaki ödül
+            etiketleri sırayla yanıyor (bkz. `vitrin-kahraman.tsx`). */}
+        <KahramanBaslik />
 
         <p className="mx-auto mt-8 max-w-xl text-[17px] leading-relaxed text-yazi-sonuk sm:text-[19px]">
           Müşterin kafende oyun oynarken indirim kazansın — ve o indirimi
@@ -546,28 +524,49 @@ export default async function Vitrin() {
       </section>
 
       {/*
-        ═══ Çift yönlü değer simülasyonu ═════════════
+        ═══ Simülasyon çağrısı ═══════════════════════
 
-        Ürün sahibinin tasarımı.
+        🔴 Simülasyonun **kendisi** bu sayfada değil (Ü142).
 
-        ── 🔴 Yeri Dalga 8'de değişti ───────────────
+        Ürün sahibi: *"ana sayfadan kaldırıp simülasyon yapması için
+        müşteriyi itelim, çünkü inanılmaz fazla yer kaplıyor."* Sekiz
+        girdi ve dört oranla simülasyon ana sayfanın en uzun bölümüydü;
+        telefonda onu geçmek için yapılan kaydırma anlatının tam
+        ortasını ikiye bölüyordu.
 
-        Simülasyon "Neden Looply"nin **üstünde** duruyordu; gerekçesi
-        şuydu: işletmeci önce kendi rakamlarıyla oynasın, sonra
-        "müşterini elinde tutmak indirim yapmaktan ucuz" cümlesini az
-        önce kendi gördüğü tablonun özeti olarak okusun.
+        Yerinde duran şey **sırayı koruyor** (Dalga 8'de ürün sahibinin
+        verdiği sıra: avantajlardan sonra generatör) ama yeri yalnızca
+        birkaç satır tutuyor. Hesap yapmak isteyen bir tıkla gidiyor;
+        istemeyen bir cümlede geçiyor.
 
-        Ürün sahibi 2026-09-16'da bölüm sırasını baştan verdi ve
-        generatörü **"nasıl yapıyoruz + avantajlarımız"ın altına** koydu.
-        Sıra tersine döndü ama gerekçe bozulmadı, yön değiştirdi:
-        işletmeci önce ürünün ne olduğunu görüyor, sonra aynı iddiayı
-        kendi rakamlarıyla **sınıyor**. İddia önce geliyor, kanıt sonra.
-
-        ⚠️ Açık zeminde ve karanlık bölümlerin dışında: simülasyon
-        okunacak ve dokunulacak bir şey, atmosfer değil.
+        ⚠️ Rakam ya da vaat yazılmıyor. "Ayda 40.000 TL kazan" demek,
+        ziyaretçinin kendi rakamlarıyla göreceği tabloyu bizim
+        sözümüzle ezmek olurdu — simülasyonun bütün değeri sayının
+        bizden değil ondan çıkması.
       */}
-      <section className="mx-auto w-full max-w-6xl px-5 py-20 sm:py-24">
-        <CiftYonluSimulasyon />
+      <section className="mx-auto w-full max-w-6xl px-5 py-16 sm:py-20">
+        <Beliren yon="yakin">
+          <div className="flex flex-col items-center justify-between gap-6 rounded-3xl border border-cizgi bg-odul-zemin/60 px-6 py-8 text-center sm:flex-row sm:px-10 sm:text-left">
+            <div className="max-w-xl">
+              <p className="etiket-caps text-[10px] text-yazi-sonuk">
+                Çift yönlü müşteri değeri
+              </p>
+              <p className="mt-3 font-display text-[clamp(21px,3vw,30px)] leading-[1.12] font-extrabold tracking-[-0.02em]">
+                Müşterin hem düzenli gelse hem arkadaşını getirse ne olur?
+              </p>
+              <p className="mt-3 text-[15px] leading-relaxed text-yazi-sonuk">
+                Üç davranış oranını sen seç, kendi rakamlarını yaz —
+                senaryoyu kafende gör.
+              </p>
+            </div>
+            <Link
+              href="/simulasyon"
+              className="shrink-0 rounded-full bg-vurgu px-7 py-3.5 text-[15px] font-semibold text-yuzey transition-opacity hover:opacity-90"
+            >
+              Simülasyonu aç →
+            </Link>
+          </div>
+        </Beliren>
       </section>
 
       <SosyalKanit />

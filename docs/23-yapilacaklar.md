@@ -6,11 +6,15 @@
 > Yan dosyalar: neyin **var** olduğu → `21-looply-kapsam-haritasi.md` ·
 > demoda neyin **yapılabildiği** → `22-demo-yapilabilirlik.md`
 
-**Son güncelleme:** 2026-09-16 · **Kararlar:** Ü76 – Ü140
+**Son güncelleme:** 2026-09-17 · **Kararlar:** Ü76 – Ü148
 
-> ⬅️ **Şu an açık olan iş: DALGA 6 → K5** (ödül aralığı + basamak
-> kafenin eline). Dalga 8 kapandı, açık sorusu kalmadı; Dalga 3'teki
-> ⬅️ işareti daha eski.
+> ⬅️ **DALGA 9 bitti.** Sıradaki: **Dalga 6 → K5** (ödül aralığı +
+> basamak kafenin eline). Ürün sahibi
+> 2026-09-16'da dokuz animasyon işi verdi; **dokuzu da bitti.**
+> Ayrıntı aşağıda.
+>
+> 🧪 **Elle denemek için:** `npm run db:demo` → `05320000099` /
+> `Deneme1234`. Oturum dolarsa komutu tekrar çalıştır.
 
 > 🚀 **Yayına çıkış işleri ayrı bir listede:** `docs/25-yayin-plani.md`
 > (güvenlik → altyapı → mesajlaşma → hukuk). Orası **sırayı** tutuyor,
@@ -78,6 +82,96 @@
   gerçek telefonla kasa→QR→çark yolculuğu henüz yapılmadı.
 - [ ] **Vitrindeki 2.000 TL sistem maliyeti** bir fiyat açıklaması ve
   ürünün fiyatlandırması hâlâ karara bağlanmadı (Ü41'in açık bıraktığı).
+
+---
+
+# DALGA 9 · ŞİMDİ — hareket turu ⬅️
+
+> Ürün sahibi 2026-09-16'da dokuz iş verdi ve her biri için **gerçek
+> uygulama kaydı** referansı gösterdi (60fps.design · ripplix.com).
+>
+> ⚠️ Kural değişmedi: **sıfır animasyon kütüphanesi.** Referanslardan
+> alınan şey efekt değil his; hepsi saf CSS + canvas'a çevriliyor.
+
+## Biten üç iş
+
+- [x] **Kazı-kazan kupon** ✅ — Ü141 · göç 0041
+  Oyun ödülü **kapalı** doğuyor, Ödüllerim'de kazınarak açılıyor.
+  🔴 Asıl iş görünmeyen yerde: ödülün adı kazımadan önce istemciye
+  **hiç gönderilmiyor** — üç yolda birden kapatıldı (envanter, detay
+  sayfası, veritabanı kısıtı).
+  🔴 Ölçmeden görünmeyen hata: yüzey doğru görünüyordu ama hiç
+  silinmiyordu (fırça %16 opaklıkla çiziyordu). 9 yeni test.
+  ⚠️ Hukuk notu ürün sahibine iletildi, *"sadece animasyon"* diyerek
+  devam kararı verdi.
+- [x] **Simülasyon kendi sayfasına çıktı** ✅ — Ü142 · `/simulasyon`
+  Ana sayfanın en uzun bölümüydü; yerinde birkaç satırlık çağrı kaldı.
+  Üst şerit `vitrin-ust.tsx`e çıkarıldı (iki sayfa paylaşıyor).
+- [x] **Kahraman başlığı yazılıyor** ✅ — Ü142
+  *"Geri gel."* daktilo gibi yazılıyor, arkadaki ödül etiketleri sırayla
+  yanıyor. Bir kez — döngüye girmiyor (Ü133'ün gerekçesi).
+
+- [x] **3B oyun karuseli** ✅ — Ü143 · `/oyunlar`
+  Öndeki net ve açıklamalı, yanlar geriye kaçıp bulanıklaşıyor;
+  sürükleme parmağı takip ediyor. Kategoriler kart üstüne taşındı.
+  🔴 Üç hata yalnızca **gerçek fare girdisiyle** göründü — en ağırı:
+  kart bağlantı olduğu için her kaydırma oyun açıyordu. Çözüm kartı
+  bağlantı olmaktan çıkarmak oldu.
+- [x] **Elle denemek için hazır hesap** ✅ — Ü144 · `npm run db:demo`
+  `05320000099` / `Deneme1234` — açık masa oturumu, çark hakkı, 3 günlük
+  seri, kazınacak kupon + karşılaştırma kuponu.
+  🔴 Ürün sahibi ekran görüntüsünden bir uyuşmazlık yakaladı: ana ekran
+  "2 kupon", Ödüllerim "1" diyordu. Kazınmamış kupon ana ekranın
+  sayacına giriyordu; düzeltildi ve teste bağlandı.
+
+- [x] **Mobil sahnede telefondan kupon çıkıyor** ✅ — Ü145
+  Kart telefonun arkasından yukarı süzülüp öne yatıyor. Görüş alanına
+  girince bir kez; telefona dokunmak tekrar oynatıyor.
+  🔴 Ölçümle bulundu: ilk mesafede kartın alt yarısı telefonun ardında
+  kalıyor, "Kasada göster" satırı hiç görünmüyordu.
+- [x] **Seviye atlama kutlaması** ✅ — Ü146
+  🔴 Asıl iş animasyon değil **tespit**: üründe seviye atlama anı hiç
+  yoktu (seviye, XP defterinin toplamından türeyen bir sayı). Artık
+  oyun bitişinin aynı işleminde öncesi/sonrası karşılaştırılıyor.
+  `/gelistirme`'ye gözle bakmak için önizleme kondu.
+
+- [x] **Maskot İlmek** ✅ — Ü147 · göç 0042
+  Ürün sahibinin kendi 3B render'ı; arka planı kesilip WebP'ye çevrildi.
+  🔴 **Üç çizim denemesi elendi** (düz vektör · clay gövde · clay küp).
+  Ders: referans varken elle çizmeye çalışmak üç tur harcadı.
+  ⚠️ Gölge görselden çıkarıldı — zıplarken ayrı oynaması gerekiyor.
+  ⚠️ Tek render olduğu için renk ve aksesuar seçicileri **kapalı**;
+  kolonlar, doğrulama ve testler duruyor, `COK_RENKLI` ile açılıyor.
+- [x] **Profilde avatarı sevme** ✅ — Ü147
+  Tek dokunuş yetmiyor, sürtmek gerekiyor (90 piksel): yoksa ekranı
+  kaydıran herkes "sevmiş" olurdu. Yüz sabit olduğu için tepki
+  **hareketten** geliyor: ezilip yaylanıyor, yanına kalpler süzülüyor.
+- [x] **Başarım kutlaması** ✅ — Ü148
+  Kutlayan yüz oyuncunun **kendi** avatarı. Rozet artık adıyla
+  kutlanıyor (eylem kod değil başlık taşıyor).
+
+## Dalga 9 kapandı — dokuz işin dokuzu
+
+🔴 **Dalga 9 commit edilmedi** — 19 değişmiş + 20 yeni dosya çalışma
+ağacında duruyor. Yeni oturumda ilk iş bu.
+
+### Küçük açık uçlar
+
+- [ ] **İlmek'in diğer renkleri.** Bugün tek render var ve renk/aksesuar
+  seçicileri gizli. Ürün sahibi altı rengi üretip
+  `app/public/avatar/ilmek-<renk>.webp` olarak koyunca
+  `components/avatar.tsx` içindeki `COK_RENKLI` **tek satırla**
+  açılıyor; seçiciler, kayıt, doğrulama ve testler zaten yazılı.
+- [ ] **Kaynak kareler duruyor.** `app/public/kahraman.jpg` ve
+  `kahraman-kesik.png` — İlmek'in kesildiği ham dosyalar. Ürün sahibine
+  silinsin mi diye soruldu, cevap beklemede.
+
+## Ölü çıkan referans siteleri (bir daha önerilmesin)
+
+Mobbin ücretsizde boş · Screenlane ve UI Movement → `pageflows.com`,
+ücretsiz katmanı yok · `mobile-patterns.com` 404 · UI Garage kapandı.
+Çalışanlar: **60fps.design** (yazılı animasyon tarifi de veriyor),
+**ripplix.com**, **tympanus.net/codrops**.
 
 ---
 

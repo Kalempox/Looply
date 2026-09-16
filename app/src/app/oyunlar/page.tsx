@@ -1,20 +1,11 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import * as oturum from "@/domain/session";
 import * as masaOturumu from "@/domain/masa";
 import * as oyunSecimi from "@/domain/oyun-secimi";
 import { K2 } from "@/domain/masa";
 import { type HerhangiOyun } from "@/oyunlar";
-import {
-  OyuncuSayfa,
-  SayfaBasi,
-  OyuncuBolum,
-  KartDokusu,
-  kartStili,
-} from "@/components/oyuncu";
-import { RENK, oyunRengi } from "@/components/oyuncu-renk";
-import { oyunGorseli } from "@/components/oyuncu-gorsel";
-import { OyunIkonu } from "@/components/oyuncu-ikon";
+import { OyuncuSayfa, SayfaBasi } from "@/components/oyuncu";
+import { OyunKaruseli } from "./karusel";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Oyunlar · Looply" };
@@ -80,6 +71,23 @@ export default async function OyunlarSayfasi() {
   const yerlesik = new Set(KATEGORILER.flatMap((k) => k.oyunlar));
   const digerleri = acik.filter((oy) => !yerlesik.has(oy.id));
 
+  /** Karuselin sırası: kategoriler sırayla, sonra kategorisizler. */
+  const karusellListesi = [
+    ...KATEGORILER.flatMap((kat) =>
+      kat.oyunlar
+        .map((id) => acik.find((oy) => oy.id === id))
+        .filter((oy): oy is HerhangiOyun => !!oy)
+        .map((oy) => ({ oy, kategori: kat.ad })),
+    ),
+    ...digerleri.map((oy) => ({ oy, kategori: "Diğer" })),
+  ].map(({ oy, kategori }) => ({
+    id: oy.id,
+    ad: oy.ad,
+    ozet: oy.ozet,
+    kategori,
+    bugunMu: oy.id === bugun.id,
+  }));
+
   return (
     <OyuncuSayfa aktif="/oyna" geri={{ href: "/oyna", etiket: "Ana ekran" }}>
       <SayfaBasi ust="Katalog" baslik="Oyunlar" renk="gok" gorsel="kumanda">
@@ -90,84 +98,19 @@ export default async function OyunlarSayfasi() {
         </p>
       </SayfaBasi>
 
-      {KATEGORILER.map((kat) => {
-        // Ü109: `OYUNLAR` değil `acik` — kafenin kapattığı oyun kategoride
-        // de görünmemeli. Kategoriden düşen tek oyun kategoriyi boşaltıyor
-        // ve boş kategori hiç çizilmiyor.
-        const liste = kat.oyunlar
-          .map((id) => acik.find((oy) => oy.id === id))
-          .filter((oy): oy is HerhangiOyun => !!oy);
-        if (liste.length === 0) return null;
+      {/*
+        Ü143: katalog karusele geçti.
 
-        return (
-          <OyuncuBolum key={kat.ad} baslik={kat.ad} not={kat.ozet}>
-            <ul className="flex flex-col gap-3">
-              {liste.map((oy) => (
-                <li key={oy.id}>
-                  <OyunKarti oyun={oy} bugunMu={oy.id === bugun.id} />
-                </li>
-              ))}
-            </ul>
-          </OyuncuBolum>
-        );
-      })}
+        ⚠️ Sıra **kategorilere göre** kuruluyor, `acik` listesinin kendi
+        sırasına göre değil: karusel tek bir halka ama oyuncunun soldan
+        sağa göreceği düzen hâlâ "önce düşünerek, sonra yetişerek".
+        Kategori başlıkları kalktı, kategori adı kartın üstünde duruyor.
 
-      {digerleri.length > 0 && (
-        <OyuncuBolum baslik="Diğer">
-          <ul className="flex flex-col gap-3">
-            {digerleri.map((oy) => (
-              <li key={oy.id}>
-                <OyunKarti oyun={oy} bugunMu={oy.id === bugun.id} />
-              </li>
-            ))}
-          </ul>
-        </OyuncuBolum>
-      )}
+        ⚠️ Kategoriye girmemiş oyun **sona** ekleniyor, düşmüyor: yeni
+        bir oyun eklenip `KATEGORILER` güncellenmezse oyun katalogdan
+        sessizce kaybolurdu (aynı koruma liste sürümünde de vardı).
+      */}
+      <OyunKaruseli oyunlar={karusellListesi} />
     </OyuncuSayfa>
-  );
-}
-
-/**
- * Katalogdaki tek oyun.
- *
- * Arkada oyunun kendi çizimi soluk duruyor (Ü66) — kart artık bir
- * satır değil, oyunun kapağı. Bugünün oyunu altın bir pulla
- * işaretleniyor; ayrı bir kart olarak yukarı çıkarılmıyor çünkü o
- * zaman aynı oyun ekranda iki kez görünürdü.
- */
-function OyunKarti({ oyun, bugunMu }: { oyun: HerhangiOyun; bugunMu: boolean }) {
-  const r = RENK[oyunRengi(oyun.id)];
-
-  return (
-    <Link
-      href={`/oyna/${oyun.id}`}
-      className="kart-golge kart-gel relative block overflow-hidden rounded-3xl px-5 py-5 transition-transform hover:-translate-y-0.5"
-      style={kartStili(oyunRengi(oyun.id))}
-    >
-      <KartDokusu renk={oyunRengi(oyun.id)} gorsel={oyunGorseli(oyun.id)} />
-
-      <div className="relative flex items-start gap-4">
-        <span className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-yuzey shadow-sm">
-          <OyunIkonu oyunId={oyun.id} boy={32} />
-        </span>
-
-        <span className="min-w-0 flex-1">
-          <span className="flex flex-wrap items-center gap-2">
-            <span className="font-display text-xl leading-tight font-bold">{oyun.ad}</span>
-            {bugunMu && (
-              <span className="rounded-full border border-odul bg-yuzey px-2 py-0.5 etiket-caps text-[10px] text-odul-koyu">
-                Bugünün oyunu · ×2
-              </span>
-            )}
-          </span>
-          <span className="mt-1 block text-[13px] leading-relaxed" style={{ color: r.koyu }}>
-            {oyun.ozet}
-          </span>
-          <span className="mt-2.5 inline-flex items-center gap-1.5 etiket-caps" style={{ color: r.koyu }}>
-            Oyna →
-          </span>
-        </span>
-      </div>
-    </Link>
   );
 }

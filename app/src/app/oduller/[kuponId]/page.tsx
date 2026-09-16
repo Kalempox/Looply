@@ -42,15 +42,28 @@ export default async function KuponSayfasi({
   const kupon = await kuponDetayi(o.ozneId, kuponId);
   if (!kupon) notFound();
 
+  /*
+    🔴 Ü141: kazınmamış kuponun detay sayfası **açılmıyor.**
+
+    Kapalı kuponda ne ad ne jeton ne kod var (`kuponDetayi` hiçbirini
+    döndürmüyor) — sayfa açılsaydı başlığı boş, karekodu bozuk bir ekran
+    çıkardı. Ama asıl sebep kozmetik değil: bu adres tahmin edilebilir
+    ve listede saklanan ad burada yazılsaydı kazımanın hiçbir anlamı
+    kalmazdı. Oyuncu listeye dönüyor, kuponu orada kazıyor.
+  */
+  if (kupon.kapali) redirect("/oduller");
+
   const kullanilabilir = kupon.durum === "kullanilabilir";
+  // `kapali` elendiği için ad artık kesin dolu; tip daraltması burada.
+  const baslik = kupon.baslik ?? "";
 
   return (
     <OyuncuSayfa aktif="/oduller" geri={{ href: "/oduller", etiket: "Ödüllerim" }}>
       <SayfaBasi
         ust={kupon.cafeAdi}
-        baslik={kupon.baslik}
-        renk={GORSEL_RENGI[gorselSec(kupon.baslik, kupon.tur, kupon.kategoriTuru)]}
-        gorsel={gorselSec(kupon.baslik, kupon.tur, kupon.kategoriTuru)}
+        baslik={baslik}
+        renk={GORSEL_RENGI[gorselSec(baslik, kupon.tur, kupon.kategoriTuru)]}
+        gorsel={gorselSec(baslik, kupon.tur, kupon.kategoriTuru)}
       />
 
       {/*

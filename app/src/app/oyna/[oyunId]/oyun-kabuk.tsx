@@ -5,10 +5,13 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { OyunEkrani } from "@/oyunlar/arayuz";
 import { KartDokusu, kartStili } from "@/components/oyuncu";
-import { RENK, oyunRengi } from "@/components/oyuncu-renk";
+import { RENK, oyunRengi, type OyuncuRengi } from "@/components/oyuncu-renk";
 import { oyunGorseli } from "@/components/oyuncu-gorsel";
 import { OyunIkonu, HediyeIkonu, TacIkonu } from "@/components/oyuncu-ikon";
 import { Gorsel } from "@/components/oyuncu-gorsel";
+import { SeviyeKutlamasi } from "@/components/seviye-kutlamasi";
+import { RozetKutlamasi } from "@/components/rozet-kutlamasi";
+import type { AvatarAksesuari } from "@/components/avatar";
 import { baslaEylemi, bitirEylemi, type BitirCevabi, teklifAlEylemi } from "./actions";
 
 /**
@@ -51,6 +54,9 @@ type Ayar = {
    * dönüyor. Aynı hata Ü75'te yaşandı.
    */
   kuponEsigi: number;
+  /** Ü148: oyuncunun avatarı — rozet kutlamasında o tebrik ediyor. */
+  avatarRenk: OyuncuRengi;
+  avatarAksesuar: AvatarAksesuari;
   /** Demo ipuçları görünsün mü — canlıda hep false. */
   demoKapisi?: boolean;
   /**
@@ -252,7 +258,7 @@ function SonucEkrani({
     );
   }
 
-  const { skor, basarili, puan, esik, seri, challenge, xp, kazandirir, yeniRozetler, kupon, taht, kampanya, teklif } =
+  const { skor, basarili, puan, esik, seri, challenge, xp, kazandirir, yeniRozetler, kupon, taht, kampanya, teklif, seviye } =
     cevap;
 
   /*
@@ -324,20 +330,41 @@ function SonucEkrani({
     }
   }
 
-  if (yeniRozetler.length > 0) {
-    satirlar.push({
-      baslik: `${yeniRozetler.length} yeni rozet`,
-      aciklama: "Profilinde görebilirsin.",
-      vurgu: true,
-    });
-  }
+  /* ⚠️ Ü148: "N yeni rozet" satırı KALDIRILDI. Rozet artık ekranın
+     başındaki kutlamada, adıyla birlikte duruyor; satır da kalsaydı
+     aynı şey iki kez söylenir ve ikisi de zayıflardı. */
 
   const r = RENK[oyunRengi(ayar.oyunId)];
 
   return (
     <div>
+      {/*
+        Ü146: seviye atlama kutlaması, skor kartının ÜSTÜNDE.
+
+        Sıralama bir karar: seviye atlamak turun en büyük haberi ve
+        oyuncu ekranı açtığı anda görmeli. Kazanım satırlarının arasına
+        konsaydı "300 puan, 50 XP, bir de seviye" gibi okunurdu — oysa
+        diğerleri her turda oluyor, bu on turda bir.
+      */}
+      {seviye && <SeviyeKutlamasi seviye={seviye.yeni} />}
+
+      {/*
+        Ü148: rozet kutlaması. Kazanım satırlarındaki "N yeni rozet"
+        kaldırıldı — aynı şeyi iki kez söylemek kutlamayı da satırı da
+        zayıflatıyordu.
+      */}
+      {yeniRozetler.length > 0 && (
+        <div className={seviye ? "mt-3" : ""}>
+          <RozetKutlamasi
+            rozetler={yeniRozetler}
+            renk={ayar.avatarRenk}
+            aksesuar={ayar.avatarAksesuar}
+          />
+        </div>
+      )}
+
       <div
-        className="parilti kart-golge kart-gel relative overflow-hidden rounded-3xl px-5 py-6"
+        className="parilti kart-golge kart-gel relative mt-3 overflow-hidden rounded-3xl px-5 py-6"
         style={kartStili(oyunRengi(ayar.oyunId))}
       >
         <KartDokusu renk={oyunRengi(ayar.oyunId)} gorsel={oyunGorseli(ayar.oyunId)} />
@@ -394,10 +421,18 @@ function SonucEkrani({
             <KazanimSatiri key={s.baslik} {...s} renk={r.ana} gecikme={190 + i * 90} />
           ))}
 
-          {/* E2: anlık ödül. Oyuncuya ödülün ADI söyleniyor, TL değeri
-              değil (E9). Kupon en sonda ve en görünür: bu ekranda
+          {/* E2: anlık ödül. Kupon en sonda ve en görünür: bu ekranda
               kazanılan başka her şey puan, bu ise kasada gösterilecek
-              gerçek bir şey. */}
+              gerçek bir şey.
+
+              🔴 Ü141: ödülün **adı burada artık yazmıyor.** Ürün sahibi
+              "kazıma tek açılış olsun" dedi; ad ilk kez Ödüllerim
+              ekranında, kupon kazınınca görünüyor. Sunucu zaten adı
+              göndermiyor (`DusenOdul.baslik` kapalı kuponda null), yani
+              burada yanlışlıkla yazılması da mümkün değil.
+
+              ⚠️ TL değeri hâlâ yok ve olmayacak (E9). Değişen şey
+              sürprizin süresi, gizlenen bilgi değil. */}
           {kupon && (
             <Link
               href="/oduller"
@@ -411,15 +446,21 @@ function SonucEkrani({
               <span className="min-w-0 flex-1">
                 <span className="block etiket-caps text-odul-koyu">Ödül kazandın</span>
                 <span className="mt-1 block font-display text-lg leading-tight font-bold">
-                  {kupon.baslik}
+                  {kupon.kapali ? "Kapalı bir kupon" : kupon.baslik}
                 </span>
                 <span className="mt-0.5 block text-[13px] leading-relaxed text-yazi-sonuk">
-                  {/* ⚠️ Ü97: kaç saat sonra açıldığı YAZMIYOR. Oyuncu ne
-                      kazandığını biliyor — adı hemen üstünde duruyor — ne
-                      zaman açılacağını bilmiyor. */}
-                  {kupon.ertelendi
-                    ? `${beklemeMetni(kupon.kuponId, new Date(kupon.aktiflesme))} Ödüllerim ekranından takip edebilirsin.`
-                    : "Ödüllerim ekranından kasada gösterebilirsin."}
+                  {/* ⚠️ Ü97: kaç saat sonra açılacağı YAZMIYOR — bekleme
+                      metni ne zaman olduğunu söylemeden söylüyor.
+                      Ü141'den beri ödülün adı da burada yok; iki sürpriz
+                      üst üste binmiyor, çünkü ikisi farklı soruların
+                      cevabı: biri "ne", öbürü "ne zaman". */}
+                  {kupon.kapali
+                    ? kupon.ertelendi
+                      ? `${beklemeMetni(kupon.kuponId, new Date(kupon.aktiflesme))} Ödüllerim ekranından kazıyıp görebilirsin.`
+                      : "Ödüllerim ekranından kazıyıp aç."
+                    : kupon.ertelendi
+                      ? `${beklemeMetni(kupon.kuponId, new Date(kupon.aktiflesme))} Ödüllerim ekranından takip edebilirsin.`
+                      : "Ödüllerim ekranından kasada gösterebilirsin."}
                 </span>
               </span>
             </Link>

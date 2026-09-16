@@ -629,7 +629,7 @@ function DuranSahne({
           önünde olsalardı ürünün ekranını kapatırlardı ve gösterilmek
           istenen şey tam olarak o ekran.
         */}
-        <div className="relative mt-12 flex justify-center overflow-hidden py-4">
+        <div className="relative mt-12 flex justify-center overflow-hidden pt-36 pb-4">
           <div
             aria-hidden
             className="mobil-yagmur pointer-events-none absolute inset-0 z-0"
@@ -655,13 +655,7 @@ function DuranSahne({
             ))}
           </div>
 
-          <div className="salinan relative z-10">
-            <TelefonCercevesi
-              kaynak="/vitrin/oyuncu-panel.png"
-              alt="Oyuncunun menüsü — puanı, günün görevi ve kuponları"
-              genislik="min(248px, 68vw)"
-            />
-          </div>
+          <TelefondanKupon />
         </div>
       </div>
 
@@ -825,6 +819,135 @@ export function TelefonCercevesi({
  * hâlinde ne yazdığı okunmuyordu; ekranda yalnızca beyaz lekeler
  * uçuyordu ve yağan şeyin **ödül** olduğu anlaşılmıyordu.
  */
+/**
+ * Telefon ve içinden çıkan kupon — Ü145.
+ *
+ * ── Ürün sahibinin isteği ───────────────────────────────────
+ *
+ * *"Masaüstünde scroll ile QR'ın içine girip telefonu gösterme
+ * muhabbeti var ya, o kısma da mobil için bu animasyonu ekleyelim:
+ * telefonun içine girsin ve telefondan kupon çıksın — burada kart
+ * çıkıyor ya."* Referans X Money'nin zarftan çıkan kartı.
+ *
+ * ── 🔴 Kaydırmaya bağlanamaz ────────────────────────────────
+ *
+ * Geniş ekrandaki sahne kaydırma ilerlemesiyle çalışıyor ama mobilde o
+ * yol kapalı — ürün sahibinin kendi kuralı: *"mobilde bu efektler
+ * olmayacak şekilde yapalım, çünkü parmakla kaydırırken de zor
+ * oluyor."* Bu yüzden hareket **görüş alanına girince bir kez**
+ * oynuyor. Tek seferlik olması ayrıca Ü133'ün gerekçesi: sürekli
+ * tekrarlayan bir hareket bir süre sonra hareket olarak okunmuyor.
+ *
+ * Kaçıran için telefona dokunmak hareketi yeniden başlatıyor — sonsuz
+ * döngüye girmeden ikinci bir şans.
+ *
+ * ── Katman sırası hikâyeyi anlatıyor ────────────────────────
+ *
+ *   yağmur (z-0)  →  çıkan kupon (z-5)  →  telefon (z-10)
+ *
+ * Kupon telefonun **arkasında** başlıyor ve yukarı çıkarken üst
+ * kenarın ardından beliriyor; ürünün ekranını hiçbir an kapatmıyor.
+ * Önde olsaydı gösterilmek istenen şeyin — oyuncunun menüsünün —
+ * üstüne otururdu.
+ */
+function TelefondanKupon() {
+  const ref = useRef<HTMLDivElement>(null);
+  /** Kaçıncı oynatma — artınca kart yeniden monte olup baştan oynuyor. */
+  const [tur, setTur] = useState(0);
+  const [gorundu, setGorundu] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof IntersectionObserver === "undefined") {
+      setGorundu(true);
+      return;
+    }
+    const gozlemci = new IntersectionObserver(
+      ([giris]) => {
+        if (giris.isIntersecting) {
+          setGorundu(true);
+          gozlemci.disconnect();
+        }
+      },
+      { rootMargin: "0px 0px -18% 0px" },
+    );
+    gozlemci.observe(el);
+    return () => gozlemci.disconnect();
+  }, []);
+
+  return (
+    <div ref={ref} className="relative">
+      {/* Çıkan kupon — telefonun arkasında, yukarı süzülüyor. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 z-[5] flex justify-center"
+      >
+        {gorundu && (
+          <div key={tur} className="kupon-cikiyor">
+            <CikanKupon />
+          </div>
+        )}
+      </div>
+
+      {/*
+        Telefonun kendisi. `salinan` nefes alma hareketi duruyor (Ü133):
+        duran bir ekran görüntüsü ile çalışan bir ürün arasındaki fark
+        o kadar küçük bir salınım.
+
+        ⚠️ Düğme değil: burada "tıklanacak bir şey" yok, dokunmak
+        yalnızca hareketi tekrar oynatıyor. Düğme yapılsaydı ekran
+        okuyucu kullanıcıya olmayan bir eylem vaat ederdi; o yüzden
+        hareketin tamamı `aria-hidden` ve dokunma isteğe bağlı bir
+        süs.
+      */}
+      <div
+        className="salinan relative z-10"
+        onClick={() => setTur((t) => t + 1)}
+      >
+        <TelefonCercevesi
+          kaynak="/vitrin/oyuncu-panel.png"
+          alt="Oyuncunun menüsü — puanı, günün görevi ve kuponları"
+          genislik="min(248px, 68vw)"
+        />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Telefondan çıkan kuponun kendisi.
+ *
+ * ⚠️ Üstünde **kupon kodu yok.** Gerçek kuponda var ama vitrinde
+ * uydurma bir kod basmak, ekranın geri kalanı gerçek ürün görüntüsüyken
+ * tek sahte ayrıntı olurdu. Kart ne olduğunu söylüyor, kimliğini değil.
+ */
+function CikanKupon() {
+  return (
+    <div className="w-[228px] rounded-2xl bg-white px-5 py-4 shadow-[0_26px_50px_-18px_rgba(16,32,77,0.55)] ring-1 ring-vitrin-lacivert/10">
+      <div className="flex items-center gap-3">
+        <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-odul">
+          <svg width="17" height="17" viewBox="0 0 16 16" fill="none">
+            <path
+              d="M2 5.5A1.5 1.5 0 013.5 4h9A1.5 1.5 0 0114 5.5v1a1.5 1.5 0 000 3v1A1.5 1.5 0 0112.5 12h-9A1.5 1.5 0 012 10.5v-1a1.5 1.5 0 000-3v-1z"
+              fill="#10204d"
+            />
+          </svg>
+        </span>
+        <span className="min-w-0">
+          <span className="block etiket-caps text-[9px] text-yazi-sonuk">Kazandın</span>
+          <span className="mt-0.5 block font-display text-[15px] leading-tight font-extrabold">
+            Ücretsiz filtre kahve
+          </span>
+        </span>
+      </div>
+      {/* Koparma çizgisi — biletin ürün içindeki dili (Ü72). */}
+      <div className="mt-3 border-t border-dashed border-cizgi pt-2.5">
+        <span className="etiket-caps text-[9px] text-vurgu">Kasada göster</span>
+      </div>
+    </div>
+  );
+}
+
 function KuponRozeti({ baslik }: { baslik: string }) {
   return (
     <div className="flex items-center gap-4 rounded-2xl border border-cizgi bg-white px-6 py-4 shadow-[0_18px_40px_-14px_rgba(16,32,77,0.5)]">

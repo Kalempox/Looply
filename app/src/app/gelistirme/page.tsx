@@ -2,6 +2,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { defteriOku } from "@/sms/gelistirme-defteri";
 import { kodEkrandaGosterilir } from "@/sms";
+import { SeviyeKutlamasi } from "@/components/seviye-kutlamasi";
+import { Avatar } from "@/components/avatar";
+import { RozetKutlamasi } from "@/components/rozet-kutlamasi";
 import { withBypass } from "@/db/context";
 import { basiliKod } from "@/domain/qr";
 import { Yenileyici, TemizleDugmesi } from "./kontroller";
@@ -169,6 +172,67 @@ export default async function GelistirmeDefteri() {
             kendini yeniliyor — açık bırakıp yan sekmede test edebilirsin.
           </p>
         </header>
+
+        {/*
+          Kutlama önizlemesi — Ü146.
+
+          Seviye atlama kutlaması yalnızca eşiği geçen turun sonunda bir
+          kez görünüyor; onu gözle denemek için XP biriktirip doğru anda
+          oynamak gerekiyordu. Kamerasız kupon denemesi (Ü135) hangi
+          sebeple buradaysa bu da aynı sebeple burada: **denenemeyen şey
+          düzeltilemiyor.**
+
+          ⚠️ Yalnızca görünüm. Buradaki rozet hiçbir deftere bakmıyor,
+          gerçek seviyeyi göstermiyor ve hiçbir şey yazmıyor.
+        */}
+        <section className="mb-8">
+          <h2 className="mb-3 etiket-caps text-yazi-sonuk">
+            Seviye kutlaması — yalnızca görünüm
+          </h2>
+          <SeviyeKutlamasi seviye={3} kafeAdi="Kafe A" />
+        </section>
+
+        <section className="mb-8">
+          <h2 className="mb-3 etiket-caps text-yazi-sonuk">
+            Rozet kutlaması — yalnızca görünüm
+          </h2>
+          <RozetKutlamasi rozetler={["İlk oyun", "Üç gün üst üste"]} />
+        </section>
+
+        <section className="mb-8">
+          <h2 className="mb-3 etiket-caps text-yazi-sonuk">İlmek — hareketleri</h2>
+
+          {/*
+            Tek render var ve yüz değişmiyor: burada görülen şey
+            **hareket**. Dördünü yan yana koymak şart, çünkü bir
+            hareketin küçük boyda kaybolduğu ancak karşılaştırınca fark
+            ediliyor.
+          */}
+          <div className="rounded-2xl border border-cizgi bg-yuzey px-4 py-5">
+            <div className="flex flex-wrap items-end gap-6">
+              {(
+                [
+                  ["sakin", "duruş"],
+                  ["keyifli", "okşanınca"],
+                  ["mutlu", "sevinince"],
+                  ["sasirdi", "şaşırınca"],
+                ] as const
+              ).map(([i, etiket]) => (
+                <div key={i} className="text-center">
+                  <Avatar ifade={i} boy={96} />
+                  <div className="mt-1 font-data text-[10px] text-yazi-sonuk">
+                    {etiket}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <p className="mt-6 mb-2 etiket-caps text-[10px] text-yazi-sonuk">
+              Küçük boy — 28 piksel (listede böyle görünecek)
+            </p>
+            <Avatar boy={28} />
+          </div>
+        </section>
 
         {kayitlar.length === 0 ? (
           <p className="rounded-2xl border border-cizgi bg-cukur px-4 py-10 text-center text-[14px] text-yazi-sonuk">

@@ -4,6 +4,9 @@ import * as masaOturumu from "@/domain/masa";
 import { idIleBul, gorunum } from "@/domain/player";
 import { degerlendir, type KazanilmisRozet } from "@/domain/rozet";
 import { karne, type KafeKarnesi } from "@/domain/profil";
+import * as avatar from "@/domain/avatar";
+import { AvatarKosesi } from "@/components/avatar-kosesi";
+import { avatariKaydet } from "./actions";
 import Link from "next/link";
 import {
   OyuncuSayfa,
@@ -57,6 +60,7 @@ export default async function ProfilSayfasi() {
   await degerlendir(o.ozneId, masa?.cafeId);
 
   const { kafeler, globalRozetler } = await karne(o.ozneId);
+  const avatarSecimi = await avatar.oku(o.ozneId);
 
   const rozetSayisi =
     globalRozetler.length + kafeler.reduce((t, k) => t + k.rozetler.length, 0);
@@ -88,6 +92,28 @@ export default async function ProfilSayfasi() {
           </div>
         )}
       </SayfaBasi>
+
+      {/*
+        Ü147: İlmek profilin başında.
+
+        ⚠️ Sayfa başlığının İÇİNDE değil, hemen altında ayrı bir kart:
+        başlık kartı sayaçları ve rozetleri taşıyor ve avatar oraya da
+        konsaydı üç ayrı şey tek kutuya sıkışırdı. Burada avatarın
+        kendi alanı var — okşanacak bir şeyin etrafında boşluk olmalı.
+      */}
+      {/*
+        İlmek kutusuz duruyor ve ayakları alttaki kafe kartına biniyor:
+        sayfanın bir katmanı değil, önünde duran bir karakter.
+        `z-10` şart — negatif boşlukla binen öge, üstüne binmesi gereken
+        kartın ARKASINDA kalırdı.
+      */}
+      <div className="relative z-10 -mb-14 flex justify-center">
+        <AvatarKosesi
+          baslangicRenk={avatarSecimi.renk}
+          baslangicAksesuar={avatarSecimi.aksesuar}
+          kaydet={avatariKaydet}
+        />
+      </div>
 
       {kafeler.length === 0 ? (
         <div className="relative overflow-hidden rounded-3xl border border-cizgi bg-yuzey px-6 py-8 text-center">

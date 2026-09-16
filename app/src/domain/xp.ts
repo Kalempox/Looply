@@ -147,6 +147,34 @@ export async function yazIle(db: Db, opts: XpYazim): Promise<boolean> {
   return true;
 }
 
+/**
+ * Bir kafedeki XP toplamı — **var olan işlemin içinde** — Ü146.
+ *
+ * ── Neden gerekti ───────────────────────────────────────────
+ *
+ * Seviye bir kolon değil, defterin toplamından türeyen bir sayı. Bu
+ * doğru bir tasarım (tek gerçek, defterin kendisi) ama bir şeyi zor
+ * kılıyor: *"bu turda seviye atladı mı"* sorusunu cevaplamak. Cevap
+ * yalnızca **yazmadan önceki** ve **sonraki** toplamı karşılaştırarak
+ * bulunuyor.
+ *
+ * `kafeSeviyesi` bunun için kullanılamaz: o kendi bağlamını açıyor ve
+ * oyun bitişindeki yazmalar henüz işlenmemiş olurdu — tur içinde
+ * yazılan XP sayılmaz, seviye atlama hiç görünmezdi.
+ */
+export async function kafeToplamiIle(
+  db: Db,
+  playerId: string,
+  cafeId: string,
+): Promise<number> {
+  const r = await db.one<{ toplam: string }>(
+    `SELECT COALESCE(sum(delta), 0) AS toplam FROM xp_ledger
+      WHERE player_id = $1 AND cafe_id = $2`,
+    [playerId, cafeId],
+  );
+  return Number(r?.toplam ?? 0);
+}
+
 /** Bir kafedeki XP ve seviye. Oyuncu o kafede hiç oynamadıysa sıfırdan başlar. */
 export async function kafeSeviyesi(playerId: string, cafeId: string): Promise<KafeSeviyesi> {
   return withBypass("oyuncu kafe seviyesi", async (db) => {
