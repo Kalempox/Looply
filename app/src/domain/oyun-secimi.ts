@@ -2,6 +2,7 @@ import { withCafe, withBypass, type Db } from "@/db/context";
 import { audit } from "@/lib/audit";
 import { OYUNLAR, gununOyunu, type HerhangiOyun } from "@/oyunlar";
 import { isGunu } from "@/lib/tarih";
+import { isletmeTuruDb } from "@/domain/cark-kosul";
 
 /**
  * Kafe oyun yönetimi — Ü109.
@@ -167,6 +168,12 @@ export type OyunSonucu = { ok: true } | { ok: false; hata: string };
  * ⚠️ **Kapatmak silmek değil**, `closed = true`. 0001'in kuralı: hiçbir
  * kayıt uygulama tarafından silinmiyor, durum değişikliğiyle
  * işaretleniyor. Yeniden açmak da aynı satırı `false` yapıyor.
+ *
+ * ⚠️ **Butikte oyun yönetimi yok ve bu kapı burada** (Ü137). Panelin
+ * menüsü butikte "Oyunlar" durağını göstermiyor, ama menüden gizlemek bir
+ * denetim değil: adres çubuğuna yolu elle yazan biri formu görürdü.
+ * Butiğin oyun ayarı yazması anlamsız değil, **yanıltıcı** olurdu — ayar
+ * kaydedilir, hiçbir şeyi etkilemez ve işletme oyun açtığını sanır.
  */
 export async function degistir(opts: {
   cafeId: string;
@@ -179,6 +186,13 @@ export async function degistir(opts: {
   }
 
   return withCafe(opts.cafeId, async (db) => {
+    if ((await isletmeTuruDb(db, opts.cafeId)) === "butik") {
+      return {
+        ok: false as const,
+        hata: "Butik kipinde oyun yok — müşteri çark hakkını kasadan alıyor, oyundan değil.",
+      };
+    }
+
     if (!opts.acik) {
       const kapali = await kapaliIdlerIle(db, opts.cafeId);
       kapali.add(opts.oyunId);

@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LooplyLogo } from "@/components/logo";
+import type { IsletmeTuru } from "@/domain/cark-kosul";
+import { GUNLUK, GUNLUK_GENIS, KURULUM, duraklar, type Durak } from "./duraklar";
 
 /**
  * İşletme panelinin gezinmesi — Ü58.
@@ -12,6 +14,11 @@ import { LooplyLogo } from "@/components/logo";
  * Telefonda **alt şerit**, bilgisayarda **sol kenar çubuğu**. Aynı
  * duraklar, aynı dosya: ikisi ayrı bileşen olsaydı biri güncellenir
  * diğeri unutulurdu.
+ *
+ * ⚠️ **Yol ve ad artık burada değil, `duraklar.ts`te.** Panelin ana ekranı
+ * aynı yolları ikinci kez elle yazıyordu ve iki liste ayrışmıştı; tablo
+ * ortak bir düz modüle taşındı. Bu dosyada kalan şey **sunum**: ikon,
+ * yerleşim, seçili durum.
  *
  * ── Neden kenar çubuğu gerekti ──────────────────────────────
  *
@@ -27,83 +34,53 @@ import { LooplyLogo } from "@/components/logo";
  * Alt şeritte dört durak var çünkü telefonda beşinci ikon okunmuyor.
  * Kenar çubuğunda yer bol: kurulum ekranları da oraya giriyor ve kafe
  * sahibi "ürünler" için panele dönmek zorunda kalmıyor.
+ *
+ * ── 🔴 İşletme türüne göre farklılaşma (Ü137 → bu tur) ──────
+ *
+ * Ü137 butik kipini açtı: butikte **oyun yok**, çark hakkını kasiyer
+ * alışverişe bakarak veriyor. Ama bu gezinme sabit bir listeydi ve
+ * `isletme_turu`ya hiç bakmıyordu — yani oyunu olmayan işletme, menüsünde
+ * "Oyunlar" durağı görüyor ve açtığında yönetecek bir şey bulamıyordu.
+ *
+ * ⚠️ **Menüden gizlemek bir denetim değil, bir nezaket.** Asıl kapı
+ * `oyun-secimi.degistir` içinde: butik için oyun ayarı **reddediliyor**.
+ * Burada yapılan yalnızca olmayan bir şeyi menüde göstermemek — adres
+ * çubuğuna elle yazan biri sunucuda duruyor.
  */
-
-const PANEL = { yol: "/kafe/panel", ad: "Panel", ikon: PanelIkonu } as const;
-const ODUL = { yol: "/kafe/panel/oduller", ad: "Ödüller", ikon: OdulIkonu } as const;
-const RAPOR = { yol: "/kafe/panel/rapor", ad: "Rapor", ikon: RaporIkonu } as const;
-const BUTCE = { yol: "/kafe/panel/butce", ad: "Bütçe", ikon: ButceIkonu } as const;
 
 /**
- * Yalnızca kenar çubuğunda görünen iki durak.
+ * Yol → ikon.
  *
- * ⚠️ Alt şeritte YOK: telefonda dört ikon sığıyor, beşinci okunmuyor
- * (dosya başındaki kural). İkisine de telefondan panelin ana ekranındaki
- * "Kurulum ve yönetim" listesinden gidiliyor — ürünler, karekodlar ve
- * personel de aynı yoldan gidiliyor, yeni bir kalıp değil.
- *
- * **Çark** (Ü123) masa başında yapılan bir ayar, telefonda acil değil.
- *
- * **Kampanyalar** ödülün kardeşi ve menüde de onun yanında duruyor.
- * Daha önce ayrı durak değildi: `/kafe/panel/oduller` altında bir sekmeydi
- * ve kafe sahibi ikisini sürekli karıştırıyordu. Ayrı tablolar, ayrı
- * mekanizmalar (Ü26) — menüde de ayrı duruyorlar. Farkı anlatan not
- * `fark-notu.tsx`te, iki sayfanın da başında.
+ * ⚠️ Tabloda değil burada: ikon bir sunum kararı ve `duraklar.ts` düz bir
+ * modül olarak kalmalı (testten JSX'siz okunabilsin diye). Bir durak
+ * eklenip ikonu unutulursa çizim boş kalmaz — test ikisini eşliyor.
  */
-const CARK = { yol: "/kafe/panel/cark", ad: "Çark", ikon: CarkIkonu } as const;
-const KAMPANYA = {
-  yol: "/kafe/panel/kampanyalar",
-  ad: "Kampanyalar",
-  ikon: KampanyaIkonu,
-} as const;
-
-/** Telefonda alt şeritte görünen dört durak — günlük iş bunlara iniyor. */
-const GUNLUK = [PANEL, ODUL, RAPOR, BUTCE] as const;
-
-/** Kenar çubuğu: kampanya ödülün hemen ardında, çark sonda. */
-const GUNLUK_GENIS = [PANEL, ODUL, KAMPANYA, RAPOR, BUTCE, CARK] as const;
+const IKONLAR: Record<string, () => React.ReactElement> = {
+  "/kafe/panel": PanelIkonu,
+  "/kafe/panel/oduller": OdulIkonu,
+  "/kafe/panel/rapor": RaporIkonu,
+  "/kafe/panel/butce": ButceIkonu,
+  "/kafe/panel/cark": CarkIkonu,
+  "/kafe/panel/kampanyalar": KampanyaIkonu,
+  "/kafe/panel/konum": KonumIkonu,
+  "/kafe/panel/urunler": UrunIkonu,
+  "/kafe/panel/karekod": MasaIkonu,
+  "/kafe/panel/oyunlar": OyunIkonu,
+  "/kafe/panel/personel": PersonelIkonu,
+  "/kafe/panel/happy-hour": SaatIkonu,
+  "/kafe/panel/subeler": SubeIkonu,
+};
 
 /**
- * Yalnızca kenar çubuğunda — kurulum sırasında bir kez kullanılıyor.
- *
- * ── Konum: çıktı, sonra geri geldi (Ü123 → Ü131) ────────────
- *
- * Ü123'te menüden çıkarılmıştı — ürün sahibi *"panelde durmasının anlamı
- * yok"* dedi ve haklıydı: kurulumda bir kez kullanılıp bir daha
- * açılmayan bir ekran, her gün bakılan bir listede yer kaplıyordu.
- *
- * **Ü131 o gerekçeyi ortadan kaldırdı.** Sayfada artık ayarlanacak bir
- * şey var: doğrulama yarıçapı. Kafe çemberini daraltmak istediğinde
- * ("bahçeyi de saysın" / "yan bina sayılmasın") aranacak bir yer
- * gerekiyor ve bulunamayan bir ayar, olmayan bir ayardır.
- *
- * ⚠️ **Sayfanın kendisi hiç silinmedi ve silinemez.** Kafenin koordinatını
- * yazan tek yer orası; koordinat yoksa K2 hiç doğrulanamıyor ve o kafede
- * **hiç kimse hiçbir şey kazanamıyor**. Bu bir varsayım değil, yaşanmış:
- * `konum/page.tsx`in başındaki not o olayı anlatıyor.
- *
- * Panelin ana ekranındaki **konum yok** uyarısı da duruyor: menüde olması
- * onu aramayı gerektirmesin.
+ * ⚠️ `turu` varsayılanı **kafe**: oturum okunamadığında (çerez yok, rol
+ * uymuyor) menü eski hâline dönüyor. Butik menüsünü varsayılan yapmak,
+ * geçici bir okuma hatasında kafenin oyun durağını kaybetmesi demekti.
  */
-const KURULUM = [
-  // 🔴 Ü131: konum MENÜYE GERİ DÖNDÜ. Ü123'te çıkarılmıştı ("kurulumda bir
-  // kez kullanılıp bir daha açılmayan bir ekran") ve o gerekçe artık
-  // geçerli değil: sayfada ayarlanacak bir şey var — doğrulama yarıçapı.
-  // Kafe çemberini daraltmak istediğinde aranacak bir yer gerekiyor.
-  { yol: "/kafe/panel/konum", ad: "Konum", ikon: KonumIkonu },
-  { yol: "/kafe/panel/urunler", ad: "Ürünler", ikon: UrunIkonu },
-  { yol: "/kafe/panel/karekod", ad: "Karekod", ikon: MasaIkonu },
-  { yol: "/kafe/panel/oyunlar", ad: "Oyunlar", ikon: OyunIkonu },
-  { yol: "/kafe/panel/personel", ad: "Personel", ikon: PersonelIkonu },
-  { yol: "/kafe/panel/happy-hour", ad: "Happy Hour", ikon: SaatIkonu },
-  // Ü125: şube açma yolu. Üst şeritteki şube seçici tek şubeli işletmede
-  // hiç çizilmiyor ve çizilmemeli — yani ikinci şubeyi açmak isteyen kişi
-  // orayı hiç göremiyor. Yol bu yüzden menüde duruyor.
-  { yol: "/kafe/panel/subeler", ad: "Şubeler", ikon: SubeIkonu },
-] as const;
-
-export function PanelGezinme() {
+export function PanelGezinme({ turu = "kafe" }: { turu?: IsletmeTuru }) {
   const yol = usePathname();
+  const gunluk = duraklar(GUNLUK, turu);
+  const gunlukGenis = duraklar(GUNLUK_GENIS, turu);
+  const kurulum = duraklar(KURULUM, turu);
 
   // "/kafe/panel" her alt sayfanın da öneki; yalnızca tam eşleşmede
   // seçili sayılıyor, yoksa bütün duraklar birden aydınlanırdı.
@@ -117,8 +94,8 @@ export function PanelGezinme() {
         className="fixed inset-x-0 bottom-0 z-20 border-t border-cizgi bg-yuzey/95 backdrop-blur lg:hidden"
       >
         <ul className="mx-auto flex w-full max-w-4xl">
-          {GUNLUK.map((d) => {
-            const Ikon = d.ikon;
+          {gunluk.map((d) => {
+            const Ikon = IKONLAR[d.yol];
             return (
               <li key={d.yol} className="flex-1">
                 <Link
@@ -163,9 +140,9 @@ export function PanelGezinme() {
         </Link>
 
         <div className="flex-1 overflow-y-auto px-3 py-4">
-          <Grup baslik="Günlük" duraklar={GUNLUK_GENIS} secili={secili} />
+          <Grup baslik="Günlük" duraklar={gunlukGenis} secili={secili} />
           <div className="mt-5">
-            <Grup baslik="Kurulum" duraklar={KURULUM} secili={secili} />
+            <Grup baslik="Kurulum" duraklar={kurulum} secili={secili} />
           </div>
         </div>
 
@@ -188,7 +165,7 @@ function Grup({
   secili,
 }: {
   baslik: string;
-  duraklar: readonly { yol: string; ad: string; ikon: () => React.ReactElement }[];
+  duraklar: readonly Durak[];
   secili: (yol: string) => boolean;
 }) {
   return (
@@ -196,7 +173,7 @@ function Grup({
       <div className="etiket-caps px-2 pb-2 text-[9px] text-yazi-sonuk">{baslik}</div>
       <ul className="space-y-0.5">
         {duraklar.map((d) => {
-          const Ikon = d.ikon;
+          const Ikon = IKONLAR[d.yol];
           const aktif = secili(d.yol);
           return (
             <li key={d.yol}>

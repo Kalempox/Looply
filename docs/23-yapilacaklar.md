@@ -6,12 +6,13 @@
 > Yan dosyalar: neyin **var** olduğu → `21-looply-kapsam-haritasi.md` ·
 > demoda neyin **yapılabildiği** → `22-demo-yapilabilirlik.md`
 
-**Son güncelleme:** 2026-09-17 · **Kararlar:** Ü76 – Ü148
+**Son güncelleme:** 2026-09-17 · **Kararlar:** Ü76 – Ü150
 
 > ⬅️ **DALGA 9 bitti ve commitlendi** (`da11163`, 39 dosya).
-> Sıradaki: **Dalga 6 → K5** (ödül aralığı + basamak kafenin eline).
-> Ürün sahibi 2026-09-16'da dokuz animasyon işi verdi; **dokuzu da
-> bitti.** Ayrıntı aşağıda.
+> **Dalga 6 açıldı ve iki işi kapandı** (Ü149 tohum kapısı · Ü150 panel
+> işletme türüne göre). Kalan: **madde 41** (müşteri adı/telefonu, L —
+> aydınlatma metnini yeniden yazdırıyor) ve **madde 42** (sipariş
+> tutarı, M). Ondan sonra **K5**.
 >
 > 🧪 **Elle denemek için:** `npm run db:demo` → `05320000099` /
 > `Deneme1234`. Oturum dolarsa komutu tekrar çalıştır.
@@ -157,20 +158,19 @@ Doğrulama: `npm run ci` → **629 test, 0 hata**, tip ve lint temiz.
 
 ### Küçük açık uçlar
 
-- [ ] 🔴 **Üç tohum betiğinde canlı ortam koruması YOK.** *(2026-09-17'de
-  commit öncesi bulundu.)* `db:demo` (Ü144) bilinen paroladan bir hesap
-  açıyor (`05320000099` / `Deneme1234`) ve `APP_ENV`'a **hiç bakmıyor**;
-  `db:butik` ve `db:seed` de bakmıyor. `DATABASE_URL` canlıyı
-  gösterirken çalıştırılırsa canlı veritabanına parolası herkesçe bilinen
-  bir hesap açılır.
-  ✅ **Örüntü zaten depoda var:** `db:simule` doğru yapıyor —
-  `scripts/simulasyon.ts:553` `APP_ENV === "production"` ise hata
-  fırlatıyor. Kopyalanacak dört satır, tasarlanacak bir şey yok.
-  ⚠️ **Bu, bu listenin kendi kuralının çiğnenmesi:** Dalga 5'in madde
+- [x] 🔴 **Tohum betiklerinde canlı ortam kilidi** ✅ **BİTTİ** — Ü149,
+  2026-09-17 *(Dalga 9 commit edilirken bulundu)*
+  `db:demo` (Ü144) bilinen paroladan hesap açıyordu ve `APP_ENV`'a **hiç
+  bakmıyordu**; `db:butik` ve `db:seed` de bakmıyordu. Ortak
+  `tohumKapisi()` `scripts/_env.ts`e kondu, dördü de çağırıyor.
+  ⚠️ **Bu, bu listenin kendi kuralının çiğnenmesiydi:** Dalga 5'in madde
   20'si tam bu adı (`npm run db:demo`) *"🔴 Canlı veritabanında
   çalışmayı reddeder"* şartıyla ayırmıştı; Ü144 adı aldı, şartı almadı.
-  ➜ **Çözüm S boyutunda:** ortak `tohumKapisi()`, üç betiğe birden,
-  beyanla değil başlatma hatasıyla (Ü81'in `env.ts` örüntüsü).
+  ⚠️ Kapı import anında değil **çağrıyla** kapanıyor: `_env.ts`i göç ve
+  yedek betikleri de import ediyor ve onların canlıda çalışması gerekiyor.
+  🔴 Test **sınıfı** kapatıyor: `scripts/tohum-*.ts` kalıbının tamamı
+  taranıyor, beşinci tohum betiği kapıyı unutursa kırmızı yanıyor.
+  Kapısız sahte bir betikle **kırmızı yandığı doğrulandı**. 6 test.
 - [ ] **İlmek'in diğer renkleri.** Bugün tek render var ve renk/aksesuar
   seçicileri gizli. Ürün sahibi altı rengi üretip
   `app/public/avatar/ilmek-<renk>.webp` olarak koyunca
@@ -794,11 +794,29 @@ ChatGPT analiz bağlantısı.
   ⚠️ Terminoloji sorusu (*"masa butikte ne demek"*) **kendiliğinden
   düştü**: Ü127 masa kavramını üründen tamamen kaldırdı, kafe başına tek
   karekod kaldı.
-  - [ ] 🔴 **Kalan tek parça: panel tipe göre farklılaşmıyor.** Butiğin
-    sol menüsünde **"Oyunlar" durağı hâlâ duruyor** (`panel/gezinme.tsx`
-    sabit liste, `isletme_turu`ya hiç bakmıyor) — oysa butikte oyun yok.
-    Bu, bu depoda dört kez çıkan *"yazıldı ama yarısına bağlandı"*
-    sınıfının aynısı. **S** boyutunda bir iş.
+  - [x] 🔴 **Panel artık tipe göre farklılaşıyor** ✅ **BİTTİ** — Ü150,
+    2026-09-17. Butiğin menüsünde "Oyunlar" durağı yok; duraklar ortak
+    bir tabloya çıktı (`panel/duraklar.ts`), çerçeve türü okuyup
+    gezinmeye veriyor.
+    🔴 **Asıl kapı menüde değil sunucuda:** `oyun-secimi.degistir` butik
+    için oyun ayarını **reddediyor**. Menüden gizlemek bir denetim değil
+    — yolu elle yazan biri formu görür, kaydettiği ayar hiçbir şeyi
+    etkilemez ve işletme oyun açtığını sanardı. Sayfa da türü kendi
+    soruyor ve **nedenini açıklıyor** (sessiz yönlendirme değil).
+    ⚠️ Şube değiştirme çerçeveyi açıkça tazeliyor: Next çerçeveleri
+    gezinmede yeniden çalıştırmıyor, kafe şubesinden butik şubesine
+    geçen yönetici eski menüyle devam ederdi.
+  - [x] 🔴 **Yol boyunca bulundu: iki durak telefondan HİÇ açılamıyordu**
+    ✅ **BİTTİ** — Ü150. `Oyunlar` ve `Şubeler` yalnızca kenar
+    çubuğundaydı; kenar çubuğu `lg:flex`, yani 1024 pikselin altında hiç
+    çizilmiyor. Alt şeritte dört ikon var, ana ekrandaki kurulum
+    kartlarında bu ikisi yoktu. Gezinmenin **kendi yorumu** *"telefondan
+    ana ekrandaki kurulum listesinden gidiliyor"* diyordu ve doğru
+    değildi — Ü125'in şube açma yolu tam bu yüzden kurulmuştu ve
+    telefondan kimse ona ulaşamıyordu.
+    İki kart eklendi, bağlantı **testle çivilendi**: alt şeritte olmayan
+    her durağın gezinme dışında bir bağlantısı olmak zorunda. Kart
+    kaldırılarak **kırmızı yandığı doğrulandı**.
 
 - [x] **40 · Butik akışı: oyun yok, doğrudan çark** ✅ **BİTTİ** — Ü137,
   göç 0039 + 0040 · *(2026-09-17'de doğrulandı)*

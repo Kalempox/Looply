@@ -10,6 +10,7 @@ import { bugunBeklenen } from "@/domain/beklenen";
 import * as upsell from "@/domain/upsell";
 import { panelDurumu } from "@/domain/panel-durum";
 import { subeler as subeleriBul } from "@/domain/cafe";
+import { isletmeTuru } from "@/domain/cark-kosul";
 import { PanelKabugu, DurumKartlari } from "./kabuk";
 import { isGunu, gunEkle, gunYaz } from "@/lib/tarih";
 import { SayiKarti, IKON, type Alan } from "@/components/gosterge";
@@ -47,6 +48,14 @@ export default async function KafePaneli({
 }) {
   const sp = await searchParams;
   const o = await kafeYoneticisiGerekli();
+
+  /**
+   * 🔴 Butikte oyun yok (Ü137) — kurulum listesi de bunu bilmeli.
+   *
+   * Kenar çubuğu `panel/duraklar.ts`ten süzülüyor; buradaki kartlar ayrı
+   * yazıldığı için aynı süzgeci kendileri uygulamak zorunda.
+   */
+  const turu = await isletmeTuru(o.cafeId);
 
   const veri = await withCafe(o.cafeId, async (db) => {
     // Dikkat: sorgularda cafe_id süzgeci YOK. Satırları RLS süzüyor.
@@ -329,12 +338,38 @@ export default async function KafePaneli({
             ikon="karekod"
             alan="masa"
           />
+          {/*
+            🔴 Oyunlar ve Şubeler buraya SONRADAN eklendi.
+
+            İkisi de kenar çubuğunda vardı, alt şeritte yoktu ve bu listede
+            de yoktu — yani **telefondan hiçbir yoldan açılamıyorlardı.**
+            Gezinmenin kendi yorumu "telefondan ana ekrandaki kurulum
+            listesinden gidiliyor" diyordu; bu iki durak için doğru değildi.
+            Ü125'in şube açma yolu tam bu yüzden kurulmuştu ve telefondan
+            kimse ona ulaşamıyordu.
+          */}
+          {turu === "kafe" && (
+            <Kart
+              baslik="Oyunlar"
+              aciklama="Hangi oyunlar müşterine açık — kapattığın katalogdan kalkar"
+              yol="/kafe/panel/oyunlar"
+              ikon="oyun"
+              alan="masa"
+            />
+          )}
           <Kart
             baslik="Personel ve PIN"
             aciklama="Kasiyer hesabı aç, PIN ver, kasa cihazını kaydet"
             yol="/kafe/panel/personel"
             ikon="personel"
             alan="kisi"
+          />
+          <Kart
+            baslik="Şubeler"
+            aciklama="İkinci şube aç — başvurun onaylanınca şube seçici çıkıyor"
+            yol="/kafe/panel/subeler"
+            ikon="sube"
+            alan="genel"
           />
           <Kart
             baslik="Happy Hour"
@@ -752,6 +787,21 @@ const IKONLAR = {
       <rect x="5" y="12" width="4" height="7" rx="1" />
       <rect x="10" y="7" width="4" height="12" rx="1" />
       <rect x="15" y="14" width="4" height="5" rx="1" />
+    </svg>
+  ),
+  /** Oyun — kumanda kolu; kenar çubuğundaki ikonun aynısı (Ü109). */
+  oyun: (
+    <svg {...cizgi} aria-hidden>
+      <rect x="2" y="7" width="20" height="11" rx="4" />
+      <path d="M7 11v3M5.5 12.5h3M15.5 11.5h.01M18 13.5h.01" />
+    </svg>
+  ),
+  /** Şube — iki bina yan yana; kenar çubuğundakiyle aynı (Ü125). */
+  sube: (
+    <svg {...cizgi} aria-hidden>
+      <path d="M3 21V8.5L8.5 5 14 8.5V21" />
+      <path d="M14 12.5 19.5 9.5 21 10.5V21" />
+      <path d="M2 21h20M7 13h3.5M7 17h3.5" />
     </svg>
   ),
 } as const;

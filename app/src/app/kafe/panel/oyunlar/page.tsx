@@ -1,5 +1,7 @@
+import Link from "next/link";
 import { kafeYoneticisiGerekli } from "@/domain/yetki";
 import * as oyunSecimi from "@/domain/oyun-secimi";
+import { isletmeTuru } from "@/domain/cark-kosul";
 import { IsletmeSayfa, IsletmeBaslik, Bolum, IsletmeUyari } from "@/components/isletme";
 import { SayiKarti, IKON } from "@/components/gosterge";
 import { OyunAnahtari } from "./kontroller";
@@ -28,9 +30,24 @@ export const metadata = { title: "Oyunlar · Looply" };
  * Kafe o günün bonuslu oyununu kapattıysa rotasyon **kalan oyunlar
  * üzerinden** dönüyor. Ekran bunu yazıyor: kafe, kapattığı oyunun
  * bonusu da kaydırdığını görmeli.
+ *
+ * ── 🔴 Butikte bu sayfa yok (Ü137) ──────────────────────────
+ *
+ * Menü butiğe bu durağı hiç göstermiyor. Ama yolu elle yazan biri formu
+ * görürdü ve kaydettiği ayar hiçbir şeyi etkilemezdi — yanıltıcı bir
+ * sessizlik. Sayfa bu yüzden türü kendi soruyor; asıl kapı yine sunucuda
+ * (`oyun-secimi.degistir` butiği reddediyor), burası onu **açıklıyor**.
+ *
+ * ⚠️ Yönlendirme değil açıklama: bookmark'tan gelen kişiyi sessizce başka
+ * bir sayfaya atmak, "tıkladım ama bir şey olmadı" hissi bırakır.
  */
 export default async function PanelOyunlarSayfasi() {
   const o = await kafeYoneticisiGerekli();
+
+  if ((await isletmeTuru(o.cafeId)) === "butik") {
+    return <ButikteOyunYok />;
+  }
+
   const [liste, bugun] = await Promise.all([
     oyunSecimi.panelListesi(o.cafeId),
     oyunSecimi.gununOyunuKafede(o.cafeId),
@@ -127,6 +144,38 @@ export default async function PanelOyunlarSayfasi() {
       <p className="mb-10 border-l-2 border-cizgi pl-4 text-[13px] leading-relaxed text-yazi-sonuk">
         Kapattığın oyun katalogdan kalkar ve başlatılamaz. Süren bir oyun varsa
         bitirilir ve kazanımı yazılır — oynanmış bir tur geri alınmaz.
+      </p>
+    </IsletmeSayfa>
+  );
+}
+
+/**
+ * Butik kipinde oyun yönetimi yok.
+ *
+ * Boş bir ekran ya da sessiz bir yönlendirme yerine **nedenini** söylüyor
+ * ve gidilecek yeri gösteriyor: butikte hakkı veren şey oyun değil, kasada
+ * girilen alışveriş (`/kafe/panel/cark`).
+ */
+function ButikteOyunYok() {
+  return (
+    <IsletmeSayfa>
+      <IsletmeBaslik ust="İşletme paneli" alt="Butik kipinde oyun yönetimi yok.">
+        Oyunlar
+      </IsletmeBaslik>
+
+      <IsletmeUyari tur="bilgi">
+        İşletmen <strong>butik kipinde</strong>: müşteri oyun oynamıyor, çark
+        hakkını kasada alışverişine bakılarak alıyor. Kapatılacak ya da açılacak
+        bir oyun yok.
+      </IsletmeUyari>
+
+      <p className="mt-6 text-[14px] leading-relaxed text-yazi-sonuk">
+        Hakkın hangi alışverişte doğacağını{" "}
+        <Link href="/kafe/panel/cark" className="text-vurgu underline">
+          Çark
+        </Link>{" "}
+        sayfasından ayarlıyorsun: tutar eşiği, belirli bir ürün, günde bir kez
+        ya da ilk gelen müşteriler.
       </p>
     </IsletmeSayfa>
   );

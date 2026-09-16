@@ -1,4 +1,5 @@
-import "./_env";
+// İlk satır — `_env` import edilir edilmez .env.local'i yüklüyor.
+import { tohumKapisi } from "./_env";
 import { adminPool, closePools } from "@/db/pool";
 import { newId, aliasCode } from "@/lib/ids";
 import { encryptPII, phoneIndex, normalizePhone, sha256 } from "@/lib/crypto";
@@ -68,6 +69,9 @@ const SOYAD = "Deneme";
 const KAFE_SLUG = "kafe-a";
 
 async function main() {
+  // 🔴 Bu betik bilinen bir paroladan hesap açıyor — canlıda asla.
+  tohumKapisi("Demo oyuncu tohumu");
+
   const db = adminPool();
   const bugun = isGunu();
   const telefon = normalizePhone(TELEFON);

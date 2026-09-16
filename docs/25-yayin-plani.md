@@ -41,14 +41,17 @@ B + F3 ─────── sunucu + DNS gelince, planın geri kalanından bağ
 
 **Dalga 6 sanıldığından küçük.** 2026-09-17'de koda bakılarak
 doğrulandı: maddeler **39 ve 40 Ü137'de bitmiş**, yalnızca listede
-işaretsiz kalmışlardı. Gerçekten açık olanlar:
+işaretsiz kalmışlardı. Durum:
 
 | # | İş | Boyut |
 |---|---|---|
-| 39-kalan | 🔴 Butiğin panelinde **"Oyunlar" durağı hâlâ duruyor** — `gezinme.tsx` `isletme_turu`ya hiç bakmıyor | S |
-| 41 | 🔴 İşletme müşterinin **adını ve telefonunu** görecek — **G1 kalkıyor**, aydınlatma metni ilk gerçek kullanıcıdan önce yeniden yazılmalı | L |
-| 42 | Sipariş tutarı kasada girilecek — Ü137'nin *"tutar saklanmıyor"* kararını tersine çeviriyor | M |
+| ✅ 39-kalan | Panel işletme türüne göre farklılaşıyor — Ü150. Butikte "Oyunlar" yok; asıl kapı sunucuda. Yol boyunca: iki durak telefondan **hiç açılamıyordu**, düzeltildi | S |
+| ✅ 🔴 | Tohum betiklerinde canlı ortam kilidi — Ü149. `db:demo` bilinen paroladan hesap açıyordu ve `APP_ENV`'a bakmıyordu | S |
+| **41** | 🔴 İşletme müşterinin **adını ve telefonunu** görecek — **G1 kalkıyor**, aydınlatma metni ilk gerçek kullanıcıdan önce yeniden yazılmalı | L |
+| **42** | Sipariş tutarı kasada girilecek — Ü137'nin *"tutar saklanmıyor"* kararını tersine çeviriyor | M |
 | 40-saha | ⚠️ Butik akışı gerçek telefonla hiç denenmedi | — |
+
+**643 test, 0 hata** · tip ve lint temiz.
 
 ### F3 · sunucu hâlâ tek eksik
 

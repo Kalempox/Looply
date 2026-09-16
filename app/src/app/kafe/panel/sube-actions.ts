@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { kafeYoneticisiGerekli } from "@/domain/yetki";
 import { subeyeGecebilirMi } from "@/domain/cafe";
 import * as oturum from "@/domain/session";
@@ -35,6 +36,13 @@ export async function subeDegistir(hedefCafeId: string): Promise<void> {
     rol: "kafe_yoneticisi",
     cafeId: hedef.cafeId,
   });
+
+  // ⚠️ Çerçeve tazelenmeli: panelin menüsü işletme türüne göre değişiyor
+  // (butikte "Oyunlar" yok) ve türü okuyan yer `panel/layout.tsx`. Next
+  // çerçeveleri gezinmede yeniden çalıştırmıyor, istemcide saklıyor —
+  // kafe şubesinden butik şubesine geçen yönetici, tazeleme olmadan eski
+  // şubenin menüsüyle devam ederdi.
+  revalidatePath("/kafe/panel", "layout");
 
   redirect("/kafe/panel");
 }

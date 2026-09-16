@@ -1,4 +1,5 @@
-import "./_env";
+// İlk satır — `_env` import edilir edilmez .env.local'i yüklüyor.
+import { tohumKapisi } from "./_env";
 import { adminPool, closePools } from "@/db/pool";
 import { newId, aliasCode, couponCode } from "@/lib/ids";
 import { encryptPII, phoneIndex, normalizePhone, randomToken, sha256 } from "@/lib/crypto";
@@ -99,6 +100,9 @@ async function temizle(cafeId: string) {
 }
 
 async function main() {
+  // 🔴 Sahte işletme ve sahte personel yazıyor — canlıda asla.
+  tohumKapisi("Butik tohumu");
+
   const db = adminPool();
 
   const mevcut = await db.query<{ id: string }>(

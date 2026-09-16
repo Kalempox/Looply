@@ -1,4 +1,5 @@
-import "./_env";
+// İlk satır — `_env` import edilir edilmez .env.local'i yüklüyor.
+import { tohumKapisi } from "./_env";
 import { adminPool, closePools } from "@/db/pool";
 import { newId, aliasCode, couponCode } from "@/lib/ids";
 import { encryptPII, phoneIndex, normalizePhone, identifierHash, randomToken } from "@/lib/crypto";
@@ -213,6 +214,9 @@ async function kafeKur(t: KafeTohum, playerId: string) {
 }
 
 async function main() {
+  // 🔴 Sahte kafe, sahte personel ve sahte oyuncu yazıyor — canlıda asla.
+  tohumKapisi("Geliştirme tohumu");
+
   const db = adminPool();
 
   const mevcut = await db.query("SELECT 1 FROM cafes WHERE slug = 'kafe-a'");

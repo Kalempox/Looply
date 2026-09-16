@@ -1,4 +1,5 @@
-import "./_env";
+// İlk satır — `_env` import edilir edilmez .env.local'i yüklüyor.
+import { tohumKapisi } from "./_env";
 import { adminPool, closePools } from "@/db/pool";
 import { withBypass } from "@/db/context";
 import { kaydet } from "@/domain/player";
@@ -550,9 +551,9 @@ async function tutarlilik(kafeler: Kafe[], aralik: rapor.Aralik): Promise<boolea
 /* ── Ana akış ─────────────────────────────────────────────── */
 
 async function main() {
-  if (process.env.APP_ENV === "production") {
-    throw new Error("Simülasyon canlı ortamda çalıştırılamaz — sahte oyuncu ve sahte trafik üretir.");
-  }
+  // Bu kapı baştan buradaydı ve doğru olan buydu; diğer üç tohum betiği
+  // aynı korumayı almayınca ortak bir yardımcıya taşındı (`_env.ts`).
+  tohumKapisi("Simülasyon");
 
   const kafeler = await kafeleriOku();
   if (kafeler.length === 0) {
