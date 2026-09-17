@@ -208,11 +208,85 @@ sırası (kartlar `transform` ile kayıyor), ilk kartın `transform`'u
   ⚠️ Yan kartlar zaten 189×297 ve dokununca öne geliyor — o yol
   baştan beri çalışıyordu.
 
-➜ **Kalan:** ürün sahibi kendi ekranında denemeli. Düzelmezse sıradaki
-adım `touch-action`: bugün `pan-y` (dikey kaydırma tarayıcıda kalsın
-diye). Dokunma tahkimi yine de çalıyorsa yatay jest için `none`a
-geçmek gerekebilir — ama o zaman karuselin üstünden sayfayı dikey
-kaydırmak bozulur, yani bedeli ölçülmeden yapılmamalı.
+**Tur 4 · Asıl sebep hiç kodda değildi: kökeni engellenen LAN adresi.**
+
+Ürün sahibi dördüncü kez bildirdi, bu kez *"problem bende mi acaba,
+çünkü burada çalışıyor"* diye sordu — ve konsol ekran görüntüsünü
+gönderdi. Cevap oradaydı:
+
+```
+Failed to load resource: the server responded with a status of 403 (Forbidden)
+WebSocket connection to 'ws://192.168.1.3:3000/_next/hmr?id=...' failed:
+```
+
+Ekranı **`http://192.168.1.3:3000`** üzerinden açıyordu, `localhost`
+üzerinden değil (telefondan da bakabilmek için). Next 16'nın geliştirme
+sunucusu, **başlatıldığı adresten** farklı bir kökenden gelen istekleri
+varsayılan olarak engelliyor:
+
+`server/lib/router-utils/block-cross-site-dev.js` → `/_next` altındaki
+her şeye `403 Unauthorized`, HMR websocket'ine ret.
+
+🔴 **Ölçüldü** (`curl`, aynı sunucu):
+
+| İstek | Yanıt |
+|---|---|
+| `Origin` başlıksız | 404 (dosya yok — kapıdan geçti) |
+| `Origin: http://192.168.1.3:3000` | **403 `Unauthorized`** |
+
+Belirtisi bir yapılandırma hatasına hiç benzemiyor: **sayfa açılıyor,
+ekran doğru görünüyor**, ama JavaScript'in bir kısmı hiç gelmiyor ve
+sıcak güncelleme ölü. Yani her turda kodu düzelttim, her turda onun
+sekmesi eski/eksik paketi çalıştırmaya devam etti. Üç turun da tek
+başına açıklaması bu.
+
+- [x] **`allowedDevOrigins` eklendi** (`next.config.ts`, Ü164). Sabit IP
+  yazılmadı: DHCP adresi değiştirdiği gün aynı tuzağı yeniden kurardı ve
+  belirtisi yine bu kadar dolaylı olurdu. `os.networkInterfaces()` ile
+  makinenin kendi IPv4 adresleri bulunuyor, üretimde liste boş.
+
+✅ **Uçtan uca doğrulandı — `http://192.168.1.3:3000`, 375 piksel:**
+0 hatalı istek, konsol temiz, iki sürüklemede kupon **açıldı**, karusel
+üç ardışık sürüklemede üç kez tek kart ilerledi.
+
+---
+
+### Yol boyunca bulunan gerçek kusur: bırakma noktası çöpe atılıyordu
+
+Ölçerken `pointermove` sayıldı: tek bir sürükleme **iki** olay
+üretiyor. Sıfıra çok yakın. Sıfır olduğunda ne oluyor diye denendi:
+
+```
+150 piksellik jest, hiç pointermove yok → aktif 1 → 1   (hiç kıpırdamadı)
+```
+
+- [x] **`birak` artık bırakma olayının konumunu okuyor** (Ü164). Önceki
+  hâli yalnızca son `pointermove`un yazdığı payı okuyordu, yani
+  *"sürükleyen parmak yolda bol bol olay üretir"* varsayımına
+  dayanıyordu — kazımadaki `sayac % 9` hatasının aynısı, başka yerde.
+  ⚠️ Yön kararı korundu: dikey jest yatay sayılmıyor.
+
+  Doğrulama (aynı ekran, düzeltmeden sonra):
+
+  | Jest | Sonuç |
+  |---|---|
+  | Sıfır hareketli yatay fiske | 1 → **2** ✓ |
+  | Sıfır hareketli dikey jest | 2 → 2 ✓ |
+  | 5 piksellik titreme | 2 → 2 ✓ |
+
+⚠️ Hâlâ ölçülemeyen: **gerçek dokunma**. Panelde dokunma taklidi
+üretilemiyor. Sorun sürerse sıradaki adım `touch-action`: bugün `pan-y`.
+Yatay jest için `none`a geçmek gerekebilir — ama o zaman karuselin
+üstünden sayfayı dikey kaydırmak bozulur, bedeli ölçülmeden yapılmamalı.
+
+🔴 **İki ders:**
+
+1. *"Bende çalışıyor, sende çalışmıyor"* denildiğinde sorulacak ilk şey
+   kodun ne yaptığı değil, **karşı tarafa kodun ulaşıp ulaşmadığı.**
+   Dört tur boyunca yanlış katmana baktım.
+2. **"Olay bol gelir" varsayımı bu projede iki kez yanlış çıktı** —
+   kazımada (`sayac % 9`) ve karuselde (bırakma noktası). Bir jestin
+   sonucu, kaç olay geldiğine bağlı olmamalı.
 
 ---
 

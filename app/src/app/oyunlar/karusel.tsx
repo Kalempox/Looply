@@ -168,6 +168,37 @@ export function OyunKaruseli({ oyunlar }: { oyunlar: KarusellOyun[] }) {
       baslangicY = e.clientY;
     };
 
+    /**
+     * Parmağın başlangıca göre payı — uçlardaki direnç uygulanmış.
+     *
+     * Sürüklerken de bırakırken de aynı hesap kullanılıyor: iki kopya
+     * olsaydı biri düzeltilip öteki unutulabilirdi.
+     *
+     * Uçlarda direnç: ilk kartın solunda ya da son kartın sağında
+     * parmak hareketi üçte bire iniyor. Sınırsız bırakılsaydı karusel
+     * boşluğa açılır, oyuncu "bozuldu" sanırdı; sert durdurulsaydı
+     * parmağın altındaki şey donar ve dokunmatik ölü hissederdi.
+     */
+    const payHesapla = (clientX: number) => {
+      let k = -(clientX - baslangicX) / adim();
+      const hedef = aktif + k;
+      if (hedef < 0) k = -aktif + (hedef * 1) / 3;
+      else if (hedef > oyunlar.length - 1) {
+        k = oyunlar.length - 1 - aktif + ((hedef - (oyunlar.length - 1)) * 1) / 3;
+      }
+      return k;
+    };
+
+    /**
+     * Jest yatay sayılacak kadar belirgin mi.
+     *
+     * Yalnızca **hiç hareket olayı gelmediğinde** kullanılıyor; akan
+     * bir sürüklemede kararı `kimilda` veriyor ve orada eşik iki
+     * adımlı (önce 8 piksel bekle, sonra ekseni seç).
+     */
+    const yatayJest = (dx: number, dy: number) =>
+      Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy) * 1.2;
+
     const kimilda = (e: PointerEvent) => {
       if (!basiliMi) return;
       const dx = e.clientX - baslangicX;
@@ -191,19 +222,7 @@ export function OyunKaruseli({ oyunlar }: { oyunlar: KarusellOyun[] }) {
       if (!yatayMi) return;
 
       e.preventDefault();
-      /*
-        Uçlarda direnç: ilk kartın solunda ya da son kartın sağında
-        parmak hareketi üçte bire iniyor. Sınırsız bırakılsaydı karusel
-        boşluğa açılır, oyuncu "bozuldu" sanırdı; sert durdurulsaydı
-        parmağın altındaki şey donar ve dokunmatik ölü hissederdi.
-      */
-      let k = -dx / adim();
-      const hedef = aktif + k;
-      if (hedef < 0) k = -aktif + (hedef * 1) / 3;
-      else if (hedef > oyunlar.length - 1) {
-        k = oyunlar.length - 1 - aktif + ((hedef - (oyunlar.length - 1)) * 1) / 3;
-      }
-      payYaz(k);
+      payYaz(payHesapla(e.clientX));
     };
 
     const birak = (e?: PointerEvent) => {
@@ -217,15 +236,48 @@ export function OyunKaruseli({ oyunlar }: { oyunlar: KarusellOyun[] }) {
         }
       }
       setSurukleniyor(false);
+
+      /*
+        🔴 BIRAKMA NOKTASI da okunuyor — Ü164.
+
+        Önceden yalnızca son `pointermove`un yazdığı pay okunuyordu.
+        Bu bir varsayıma dayanıyordu: *"sürükleyen parmak yolda bol bol
+        hareket olayı üretir."* Ölçüldü ve varsayım zayıf çıktı: bu
+        ekranda tek bir sürükleme **iki** `pointermove` üretiyor.
+        Sıfır ürettiği durum denendiğinde karusel hiç kıpırdamadı —
+        150 piksellik bir jestten sonra `aktif` 1 → 1.
+
+        Bırakma olayı gerçek son konumu zaten taşıyor; onu okumak
+        bedava ve jestin taşıdığı bilgiyi çöpe atmayı bitiriyor.
+
+        ⚠️ Yön kararı korunuyor: dikey bir kaydırma yatay sayılmamalı.
+        Karar verilmişse ona uyuluyor, hiç hareket gelmediyse karar
+        burada bırakma noktasından veriliyor.
+      */
+      let k = payRef.current;
+      if (e) {
+        const yatay = yatayJest(e.clientX - baslangicX, e.clientY - baslangicY);
+        if (yonBelli ? yatayMi : yatay) k = payHesapla(e.clientX);
+      }
+
       // Yarım kartı geçen hareket bir sonrakine oturuyor.
-      git(Math.round(aktif + payRef.current));
+      git(Math.round(aktif + k));
       payYaz(0);
     };
+
+    /**
+     * İptal edilen jest — bırakma noktası anlamlı değil.
+     *
+     * `pointercancel`de tarayıcı jesti devralmış oluyor ve olayın
+     * koordinatı "kullanıcının bıraktığı yer" demek değil. Son
+     * yazılan pay neyse ona oturuluyor.
+     */
+    const iptal = () => birak();
 
     kutu.addEventListener("pointerdown", bas);
     kutu.addEventListener("pointermove", kimilda, { passive: false });
     kutu.addEventListener("pointerup", birak);
-    kutu.addEventListener("pointercancel", birak);
+    kutu.addEventListener("pointercancel", iptal);
     /*
       ⚠️ `pointerleave` ARTIK BAĞLI DEĞİL (Ü162). İşaretçi yakalandığı
       için kutudan çıkmak sürüklemeyi bitirmemeli; bağlı kalsaydı dar
@@ -236,7 +288,7 @@ export function OyunKaruseli({ oyunlar }: { oyunlar: KarusellOyun[] }) {
       kutu.removeEventListener("pointerdown", bas);
       kutu.removeEventListener("pointermove", kimilda);
       kutu.removeEventListener("pointerup", birak);
-      kutu.removeEventListener("pointercancel", birak);
+      kutu.removeEventListener("pointercancel", iptal);
 
     };
   }, [aktif, git, payYaz, oyunlar.length]);
