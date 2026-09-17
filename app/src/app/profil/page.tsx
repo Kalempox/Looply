@@ -7,14 +7,14 @@ import { karne, type KafeKarnesi } from "@/domain/profil";
 import Link from "next/link";
 import {
   OyuncuSayfa,
-  SayfaBasi,
-  Sayac,
   OyuncuBolum,
   Pul,
   BiletYuzeyi,
 } from "@/components/oyuncu";
-import { RENK, type OyuncuRengi } from "@/components/oyuncu-renk";
-import { MadalyaIkonu, OyunIkonu } from "@/components/oyuncu-ikon";
+import { RENK, ISIN_DOKUSU, type OyuncuRengi } from "@/components/oyuncu-renk";
+import { MadalyaIkonu, OyunIkonu, KupaIkonu } from "@/components/oyuncu-ikon";
+import { LooplyLogo } from "@/components/logo";
+import { LoopySozu } from "@/components/loopy-sozu";
 import { Gorsel } from "@/components/oyuncu-gorsel";
 import { cikisYap } from "../oyna/actions";
 
@@ -66,19 +66,91 @@ export default async function ProfilSayfasi() {
     // `yuva` AÇIK (Ü172): kapalı olmasının tek sebebi sayfanın
     // ortasındaki avatar kopyasıydı, o kalktı.
     <OyuncuSayfa aktif="/profil">
-      <SayfaBasi ust="Profil" baslik={g.ad} renk="menekse" gorsel="madalya">
-        <div className="grid grid-cols-3 gap-2">
-          <Sayac etiket="Kafe" deger={String(kafeler.length)} renk="gok" />
-          <Sayac etiket="Oyun" deger={toplamOyun.toLocaleString("tr-TR")} renk="yesil" />
-          <Sayac
-            etiket="Rozet"
-            deger={String(rozetSayisi)}
-            renk={rozetSayisi > 0 ? "amber" : undefined}
+      {/*
+        🔴 Profil başlığı `SayfaBasi` DEĞİL — Ü175.
+
+        Ürün sahibinin gönderdiği tasarım bu ekrana özel: üstte logo,
+        sağ üstte kalem, kalp yapan Loopy, ve karta **binen** üç
+        döşeme. `SayfaBasi` ürünün ortak başlığı ve beş ekranda
+        kullanılıyor; bu tasarımı oraya koymak öbür dördünü de
+        değiştirirdi.
+
+        ⚠️ Üç döşeme kartın alt kenarına **biniyor** (`-mt-12`).
+        Tasarımdaki hâli bu ve ucuz bir süs değil: kart ile içerik
+        arasındaki sınırı yumuşatıp sayıları "kartın bir parçası"
+        olmaktan çıkarıp "kartın taşıdığı şey" yapıyor.
+      */}
+      <div className="mb-8">
+        <div className="kart-golge relative overflow-hidden rounded-3xl px-5 pt-5 pb-12" style={{ background: "linear-gradient(150deg, #6d28d9 0%, #4c1d95 55%, #3b0f70 100%)" }}>
+          <span
+            aria-hidden
+            className="pointer-events-none absolute -top-[240%] left-1/2 size-[300%] -translate-x-1/2"
+            style={{ opacity: 0.08, background: ISIN_DOKUSU }}
           />
+
+          <div className="relative flex items-start justify-between gap-3">
+            <LooplyLogo boyut={30} beyaz />
+            {/*
+              Kalem `/verilerim`e gidiyor: hesabın düzenlenebilir tek
+              yeri orası (ad, bildirim tercihi, veri indirme, silme).
+              Tasarımda bir kalem var ve gideceği yer olmayan bir
+              düğme koymak, verilmemiş bir söz olurdu.
+            */}
+            <Link
+              href="/verilerim"
+              aria-label="Hesabını düzenle"
+              className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white/15 text-white transition-colors hover:bg-white/25"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+                <path
+                  d="M4 20h4L19 9a2.8 2.8 0 10-4-4L4 16v4z"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </Link>
+          </div>
+
+          <div className="relative mt-4 flex items-start gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="etiket-caps text-white/60">Profil</p>
+              <h1 className="mt-1 font-display text-3xl leading-none font-extrabold tracking-tight text-white">
+                {g.ad}
+              </h1>
+              <p className="mt-2 text-[13px] leading-snug text-white/70">
+                Kahveyle daha güzel oyunlar!
+              </p>
+            </div>
+
+            <div className="w-[7.5rem] shrink-0">
+              <LoopySozu soz="İyi ki buradasın!" ifade="keyifli" boy={86} />
+            </div>
+          </div>
+        </div>
+
+        {/*
+          🔴 `relative` ŞART, süs değil.
+
+          İlk denemede yoktu ve döşemelerin üstü kartın ALTINDA kaldı:
+          ikonlar ve etiketler görünmüyordu, yalnızca sayılar
+          çıkıyordu. Sebep yığın sırası — kart `relative`, yani
+          konumlandırılmış; döşemeler değildi ve konumlandırılmış öge
+          konumlandırılmamış kardeşinin üstüne boyanıyor. Sonra
+          gelmek yetmiyor.
+
+          ⚠️ Binme `-mt-8`: `-mt-12` denendi ve fazlaydı, döşemenin
+          yarısından çoğu kartın altına giriyordu.
+        */}
+        <div className="relative -mt-8 grid grid-cols-3 gap-2 px-2">
+          <ProfilDosem ikon={<Gorsel ad="icecek" boy={22} />} etiket="Kafe" deger={String(kafeler.length)} />
+          <ProfilDosem ikon={<Gorsel ad="kumanda" boy={22} />} etiket="Oyun" deger={toplamOyun.toLocaleString("tr-TR")} />
+          <ProfilDosem ikon={<KupaIkonu boy={22} />} etiket="Rozet" deger={String(rozetSayisi)} vurgu={rozetSayisi > 0} />
         </div>
 
         {globalRozetler.length > 0 && (
-          <div className="mt-4">
+          <div className="mt-5">
             <div className="etiket-caps text-yazi-sonuk">Rozetlerin</div>
             <ul className="mt-2 flex flex-wrap gap-1.5">
               {globalRozetler.map((r) => (
@@ -89,7 +161,7 @@ export default async function ProfilSayfasi() {
             </ul>
           </div>
         )}
-      </SayfaBasi>
+      </div>
 
       {/*
         🔴 Loopy profilin ORTASINDAN kalktı — Ü172.
@@ -394,5 +466,40 @@ function RozetPulu({ rozet, renk }: { rozet: KazanilmisRozet; renk: OyuncuRengi 
     <li>
       <Pul baslik={rozet.baslik} aciklama={rozet.aciklama} renk={renk} />
     </li>
+  );
+}
+
+/**
+ * Profil başlığındaki beyaz döşeme — Ü175.
+ *
+ * `/oyna`daki kardeşiyle (`Dosem`) aynı biçim ama ayrı duruyor:
+ * ikisini paylaştırmak, iki ekranın birbirine bağlanması demekti ve
+ * tasarımları birlikte değişmiyor. Kopya üç satır; bağ kalıcı olurdu.
+ */
+function ProfilDosem({
+  ikon,
+  etiket,
+  deger,
+  vurgu,
+}: {
+  ikon: React.ReactNode;
+  etiket: string;
+  deger: string;
+  vurgu?: boolean;
+}) {
+  return (
+    <div className="kart-golge rounded-2xl bg-yuzey px-2 py-3 text-center">
+      <span className="flex justify-center text-odul-koyu">{ikon}</span>
+      <span className="mt-1.5 block text-[11px] leading-tight font-semibold text-yazi-sonuk">
+        {etiket}
+      </span>
+      <span
+        className={`mt-0.5 block font-data text-xl leading-none font-bold tabular ${
+          vurgu ? "text-odul-koyu" : "text-yazi"
+        }`}
+      >
+        {deger}
+      </span>
+    </div>
   );
 }
