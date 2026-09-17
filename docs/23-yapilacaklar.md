@@ -309,6 +309,53 @@ Yatay jest için `none`a geçmek gerekebilir — ama o zaman karuselin
   now() - interval '2 days'` yığını yeşile döndürüyor ama ertesi gün
   aynı yerden düşüyor.
 
+- [x] **İkinci vaka — test ödülü DEMO EKRANINA sızdı (Ü165).** İlk vaka
+  yalnızca yığını düşürüyordu; bu, ürün sahibinin ekranına çıktı.
+
+  `kupon-kazima.test.ts` `before` içinde **tohum kafesine** (Kafe A)
+  `"KAZIMA Filtre Kahve"` adında bir ödül ekliyor ve silmiyordu. Ürün
+  sahibi *"bu kazıma filtre kahve ne alaka"* diye sordu. Sayıldı:
+
+  | Nerede | Ne bulundu |
+  |---|---|
+  | Kafe A | **46** kopya "KAZIMA Filtre Kahve" (gerçek ödüller birer tane), 528 kupon |
+  | `rewards` tablosu | 2.388 satırın **2.296'sı** test kalıntısı (%96) |
+  | `cafes` | 750 test kafesi — `CarkTest` ×283, `CarkButcesiz` ×283, `CarkButce` ×92, `CarkButceDolu` ×92 |
+
+  🔴 **Bedeli görüntü değildi.** Çark kafenin bütün aktif anlık
+  ödüllerini dilim yapıyor (`domain/cark.ts` → `odulleriOku`), yani
+  çarkın neredeyse her dilimi test ödülüydü: *"çarkta neden hepsinde
+  kazıma yazıyor"*.
+
+  ➜ Test artık `after` içinde kendi ödülünü ve kuponlarını siliyor.
+  ⚠️ Temizlik **yönetici rolüyle** yapılıyor; ilk yazılışta `withBypass`
+  denendi ve `aclcheck_error` ile düştü — uygulama rolünün bu tablolarda
+  silme yetkisi bilerek yok (`_yardim.ts` başlığı bunu anlatıyor).
+
+  ✅ Ölçüldü: temizlikten sonra Kafe A'da 16 ödül; tam koşudan sonra
+  **yine 16**, `KAZIMA` kalıntısı **0**. 649 test, 0 hata.
+
+- [ ] **Yedi test geceleri sessizce atlanıyor.** `hatirlatma.test.ts`
+  sessiz saatte kendini `SKIP` ediyor (`# SKIP sessiz saatte
+  koşuluyor`). Gündüz 649/649 geçiyor, akşam 642 geçip 7 atlanıyor.
+  ⚠️ Tehlikesi yeşil ekranın anlamının **saate göre değişmesi**: gece
+  koşan bir CI, hatırlatma yolunu hiç sınamadan yeşil yanıyor.
+  ➜ Sessiz saati testte sabitlemek (enjekte edilen saat) doğru çözüm;
+  koşuyu saate bırakmak değil.
+
+- [ ] **750 test kafesi hâlâ duruyor.** `cark.test.ts` her koşuda dört
+  yeni kafe açıyor (`kafeKur`) ve hiçbiri silinmiyor. Demo ekranında
+  görünmüyorlar ama tablo şişiyor ve platform tarafında kafe listesi
+  gören bir ekran olursa oraya düşerler.
+  ➜ Ya `kafeKur` kendi kafesini `after`da silmeli, ya da testler ortak
+  bir "test kiracısı" altında toplanıp toplu temizlenmeli.
+
+- [ ] **Asıl yapısal iş: `kupon-kazima.test.ts` tohum kafesine hiç
+  yazmamalı.** Bugünkü temizlik kirlenmeyi durduruyor ama testin
+  demo verisiyle aynı kafeyi paylaşması kırılgan. Kendi kafesini
+  kurmak, tohumdan aldığı personel ve bütçe kurulumunu taşımayı
+  gerektiriyor.
+
 ---
 
 ## 📌 REFERANS LİNKLERİ — buraya yazılıyor, bir daha kaybolmasın

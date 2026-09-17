@@ -330,8 +330,27 @@ async function main() {
   );
   if (kasiyer.rowCount === 0) throw new Error("Kafenin kasiyeri yok — önce: npm run db:seed");
 
-  // Önceki koşuların kuponları kalmasın — ikinci çalıştırmada liste
-  // katlanarak büyürdü.
+  /*
+    Önceki koşuların kuponları kalmasın — ikinci çalıştırmada liste
+    katlanarak büyürdü.
+
+    🔴 Bağlı satırlar ÖNCE siliniyor — Ü165.
+
+    Eskiden yalnızca `coupons` siliniyordu ve betik çalışıyordu, çünkü
+    taze kuponun hiç olayı yok. Ürün sahibi kupon kazıyıp kasada
+    gösterdikten sonra `coupon_events` doluyor ve ikinci çalıştırma
+    `coupon_events_coupon_id_fkey` ile düşüyordu: **betik tam da
+    ihtiyaç duyulduğu anda bozuluyordu** — yani "kupon kalmadı,
+    tazele" anında.
+
+    Üç tablo kupona bakıyor (`information_schema` ile doğrulandı):
+    `coupon_events`, `campaign_offers`, `cark_haklari`. Hiçbirinde
+    `ON DELETE` kuralı yok, o yüzden sıra elle veriliyor.
+  */
+  const demoKupon = `SELECT id FROM coupons WHERE player_id = $1 AND code LIKE 'DEMO%'`;
+  await db.query(`DELETE FROM coupon_events   WHERE coupon_id IN (${demoKupon})`, [playerId]);
+  await db.query(`DELETE FROM campaign_offers WHERE coupon_id IN (${demoKupon})`, [playerId]);
+  await db.query(`DELETE FROM cark_haklari    WHERE coupon_id IN (${demoKupon})`, [playerId]);
   await db.query("DELETE FROM coupons WHERE player_id = $1 AND code LIKE 'DEMO%'", [playerId]);
 
   type Kupon = {

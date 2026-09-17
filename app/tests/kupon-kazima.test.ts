@@ -117,6 +117,45 @@ before(async () => {
 });
 
 after(async () => {
+  /*
+    🔴 Test kendi ödülünü SİLİYOR — Ü165.
+
+    Bu dosya `before` içinde **tohum kafesine** (Kafe A) bir ödül
+    ekliyor ve eklediği şey demo ekranında görünen bir şey. Temizlik
+    olmadığı için her koşu bir kopya daha bırakmış: ürün sahibi
+    ekranına baktığında Kafe A'da **46 tane** "KAZIMA Filtre Kahve"
+    vardı, gerçek ödüllerin her biri birer tane.
+
+    Bedeli yalnızca çirkinlik değildi: çark kafenin bütün aktif anlık
+    ödüllerini dilim yapıyor (`domain/cark.ts` → `odulleriOku`), yani
+    çarkın neredeyse her dilimi bu test ödülüydü. Ürün sahibi
+    *"çarkta neden hepsinde kazıma yazıyor"* diye sordu ve haklıydı.
+
+    ⚠️ Kuponlar önce siliniyor: `coupons.reward_id` bu satıra bakıyor
+    (`0002_cekirdek.sql`) ve `ON DELETE` kuralı yok. `coupon_events` de
+    kupona bakıyor, o daha da önce siliniyor.
+
+    ⚠️ Temizlik `withBypass` ile DEĞİL, **yönetici rolüyle** yapılıyor.
+    İlk yazılışında `withBypass` kullanıldı ve koşu `aclcheck_error`
+    ile düştü: uygulama rolünün bu tablolarda silme yetkisi **bilerek**
+    yok (bkz. `_yardim.ts` başlığı). Yetkiyi gevşetmek, sınadığımız
+    güvenceyi bozmak olurdu.
+
+    ⚠️ Asıl doğru olan, testin tohum kafesine hiç yazmaması. Kendi
+    kafesini kurmak (`cark.test.ts`teki `kafeKur` gibi) bu dosyanın
+    tohumdan aldığı personel ve bütçe kurulumunu da taşımayı
+    gerektiriyor; o iş `docs/23`te açık duruyor. Bu temizlik demoyu
+    kirletmeyi **bugün** durduruyor.
+  */
+  if (odulId) {
+    // Kupona bakan üç tablo (`information_schema` ile sayıldı).
+    const kupon = "SELECT id FROM coupons WHERE reward_id = $1";
+    await yoneticiSorgu(`DELETE FROM coupon_events   WHERE coupon_id IN (${kupon})`, [odulId]);
+    await yoneticiSorgu(`DELETE FROM campaign_offers WHERE coupon_id IN (${kupon})`, [odulId]);
+    await yoneticiSorgu(`DELETE FROM cark_haklari    WHERE coupon_id IN (${kupon})`, [odulId]);
+    await yoneticiSorgu("DELETE FROM coupons WHERE reward_id = $1", [odulId]);
+    await yoneticiSorgu("DELETE FROM rewards WHERE id = $1", [odulId]);
+  }
   await closePools();
 });
 

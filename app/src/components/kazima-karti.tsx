@@ -55,19 +55,28 @@ import type { KategoriTuru } from "@/domain/kategori-tur";
 
 /** Yüzeyin ne kadarı silinince kupon kendiliğinden açılsın. */
 /*
-  🔴 Eşik 0,50'den 0,30'a indirildi — Ü160.
+  Eşik 0,50 — yarısı. Ü165'te 0,30'dan geri alındı.
 
-  Ürün sahibi üç kez *"kuponumu kazıyamıyorum"* dedi ve haklıydı: kazıma
-  **çalışıyordu**, yalnızca açılmıyordu. Gerçek fare girdisiyle ölçüldü —
-  ekranı boydan boya kat eden **üç ayrı geçiş silinen oranı 0,235**
-  yapıyor; 0,50 için altı yedi geçiş gerekiyordu. O kadar uğraşmadan
-  önce herkes bırakır ve karta "bozuk" der.
+  🔴 Bu değer bir tur aşağı inip geri çıktı ve sebebi öğreticiydi.
 
-  ⚠️ Sıfıra yakın bir eşik de doğru değil: tek dokunuşta açılan kart
-  kazıma değil, gecikmeli bir düğme olurdu. 0,30 dört geçişe denk
-  geliyor — jest korunuyor, sabır sınavı bitiyor.
+  Ü160'ta 0,50'den 0,30'a indirilmişti, çünkü kart bir türlü
+  açılmıyordu ve "eşik yüksek" sanılmıştı. Asıl arıza eşikte değildi:
+  ölçüm `sayac % 9` koşuluyla yapılıyor ve fare o kadar olay
+  üretmediği için **hiç koşmuyordu**. Parmak kalkışına ölçüm eklenince
+  gerçek sebep kapandı — ama indirilen eşik öylece kaldı.
+
+  Sonuç: kart yarısına gelmeden açılıyordu. Ürün sahibi *"yarısına
+  gelince açılsın"* dedi ve haklı: kazınacak yüzeyin yarısı hâlâ
+  duruyorken ödülün çıkması, jesti yarıda kesip sürprizi ucuzlatıyor.
+
+  ⚠️ **Ders:** bir belirtiyi iki kapıdan birden düzeltince, hangi
+  kapının işe yaradığı belirsiz kalıyor. Gerçek sebep bulunduğunda
+  diğer değişikliği geri almak gerekiyordu; gerekmedi çünkü unutuldu.
+
+  Ölçüldü: kartı boydan boya kat eden bir geçiş ~0,233 siliyor, yani
+  0,50 iki-üç geçişe denk geliyor. Sabır sınavı değil, jest.
 */
-const ACILMA_ORANI = 0.3;
+const ACILMA_ORANI = 0.5;
 
 /** Fırça kalınlığı (CSS pikseli). Parmak ucu kadar. */
 const FIRCA = 30;
