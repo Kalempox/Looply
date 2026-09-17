@@ -82,7 +82,9 @@ export const VARSAYILAN_AKSESUAR: AvatarAksesuari = "yok";
 /**
  * İfade → hareket.
  *
- * Yüz sabit olduğu için duygunun tamamını gövde taşıyor:
+ * Duygu iki yerden birden geliyor: **kare** (yüz) ve **hareket**
+ * (gövde). Ü173'e kadar yalnızca hareket vardı, çünkü elde tek bir
+ * render vardı.
  *
  *   sakin    → yavaş nefes
  *   keyifli  → ezilip yaylanma + kalpler   (okşanınca)
@@ -94,6 +96,26 @@ const HAREKET: Record<AvatarIfadesi, string> = {
   keyifli: "seviliyor",
   mutlu: "seviniyor",
   sasirdi: "sasirdi",
+};
+
+/**
+ * İfade → kare — Ü173.
+ *
+ * ⚠️ `sasirdi`nin kendi karesi YOK ve `sakin`e düşüyor. Uydurma bir
+ * kare koymak yerine bilerek böyle: şaşkın hâlin rengi hareketten
+ * geliyor (hızlı titreme) ve yanlış bir yüz, doğru hareketi de
+ * yalanlardı. Kare üretilince buraya bir satır eklemek yetiyor.
+ *
+ * ⚠️ Karelerdeki uçuşan süslemeler (kıvılcım, kalp) kasten silindi:
+ * ikisini de CSS çiziyor (`ilmek-kivilcimlar`, `ilmek-kalpler`) ve
+ * görselde de olsalardı ekranda iki kat görünürlerdi. Karakterin
+ * TUTTUĞU kalp duruyor — o gövdenin parçası.
+ */
+const KARE: Record<AvatarIfadesi, string> = {
+  sakin: "sakin",
+  keyifli: "keyifli",
+  mutlu: "mutlu",
+  sasirdi: "sakin",
 };
 
 /** Kıvılcımların yönü ve uzaklığı — sabit dizi (hidrasyon uyuşmazlığı olmasın). */
@@ -146,7 +168,7 @@ export function Avatar({
       <span aria-hidden className="ilmek-golge" />
 
       <Image
-        src="/avatar/ilmek-512.webp"
+        src={`/avatar/ilmek-${KARE[ifade]}-512.webp`}
         alt={ad ?? ""}
         width={512}
         height={512}

@@ -16,3 +16,9 @@ Thumbs.db
 # Tarayıcı otomasyonunun ekran görüntüleri — hata ayıklama çıktısı,
 # depoda durmasının bir sebebi yok (25 MB).
 .playwright-mcp/
+
+# Ürün sahibinin bıraktığı HAM dosyalar — video, katmanlı PNG, 3B
+# dışa aktarımlar. Depoya girmiyorlar ve girmemeliler: işlenmiş
+# hâlleri zaten `app/public/` altında duruyor ve asıl servis edilen o.
+# Ham dosyayı da commitlemek, aynı görseli iki kez taşımak olurdu.
+gelen/
