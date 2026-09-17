@@ -10,8 +10,9 @@ import {
   OyuncuBolum,
   Pul,
   BiletYuzeyi,
+  KoyuKart,
 } from "@/components/oyuncu";
-import { RENK, ISIN_DOKUSU, type OyuncuRengi } from "@/components/oyuncu-renk";
+import { RENK, type OyuncuRengi } from "@/components/oyuncu-renk";
 import { MadalyaIkonu, OyunIkonu, KupaIkonu } from "@/components/oyuncu-ikon";
 import { LooplyLogo } from "@/components/logo";
 import { LoopySozu } from "@/components/loopy-sozu";
@@ -81,14 +82,18 @@ export default async function ProfilSayfasi() {
         olmaktan çıkarıp "kartın taşıdığı şey" yapıyor.
       */}
       <div className="mb-8">
-        <div className="kart-golge relative overflow-hidden rounded-3xl px-5 pt-5 pb-12" style={{ background: "linear-gradient(150deg, #6d28d9 0%, #4c1d95 55%, #3b0f70 100%)" }}>
-          <span
-            aria-hidden
-            className="pointer-events-none absolute -top-[240%] left-1/2 size-[300%] -translate-x-1/2"
-            style={{ opacity: 0.08, background: ISIN_DOKUSU }}
-          />
+        {/*
+          🔴 Zemin `KoyuKart` — Ü177.
 
-          <div className="relative flex items-start justify-between gap-3">
+          Ü175'te bu gradyan burada **elle yazılmıştı** ve `/oyna`daki
+          karşılama kartıyla tonu tutmuyordu. Ürün sahibi ikisini yan
+          yana görüp *"renk olarak aynı olmasını istiyorum"* dedi.
+          İki yerde de elle düzeltmek aynı çatlağı bir tur sonraya
+          ertelemek olurdu; şimdi gradyan, doku ve gölge tek yerden
+          geliyor ve iki kart yapı gereği aynı.
+        */}
+        <KoyuKart className="pt-5 pb-12">
+          <div className="flex items-start justify-between gap-3">
             <LooplyLogo boyut={30} beyaz />
             {/*
               Kalem `/verilerim`e gidiyor: hesabın düzenlenebilir tek
@@ -113,10 +118,12 @@ export default async function ProfilSayfasi() {
             </Link>
           </div>
 
-          <div className="relative mt-4 flex items-start gap-3">
+          <div className="mt-4 flex items-start gap-3">
             <div className="min-w-0 flex-1">
               <p className="etiket-caps text-white/60">Profil</p>
-              <h1 className="mt-1 font-display text-3xl leading-none font-extrabold tracking-tight text-white">
+              {/* `mt-1.5` — Ü177: ürün sahibi adın biraz daha aşağıda
+                  durmasını istedi ve iki kart aynı olmak zorunda. */}
+              <h1 className="mt-1.5 font-display text-3xl leading-none font-extrabold tracking-tight text-white">
                 {g.ad}
               </h1>
               <p className="mt-2 text-[13px] leading-snug text-white/70">
@@ -124,11 +131,17 @@ export default async function ProfilSayfasi() {
               </p>
             </div>
 
+            {/*
+              ⚠️ Kolon SABİT genişlikte (7.5rem) ve Loopy onun içinde
+              büyüyor — Ü174'ün dersi. Esnek kolonda karakteri
+              büyütmek metnin yerini yer ve 375 pikselde başlık dört
+              satıra düşer. Sabit kolonda büyüme metne dokunmuyor.
+            */}
             <div className="w-[7.5rem] shrink-0">
-              <LoopySozu soz="İyi ki buradasın!" ifade="keyifli" boy={86} />
+              <LoopySozu soz="İyi ki buradasın!" ifade="keyifli" boy={106} />
             </div>
           </div>
-        </div>
+        </KoyuKart>
 
         {/*
           🔴 `relative` ŞART, süs değil.

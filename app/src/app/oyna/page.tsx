@@ -21,6 +21,7 @@ import {
 import { RENK, oyunRengi, type OyuncuRengi } from "@/components/oyuncu-renk";
 import { Gorsel, oyunGorseli, type GorselAdi } from "@/components/oyuncu-gorsel";
 import { OyunIkonu, CarkIkonu, KupaIkonu, TacIkonu, MadalyaIkonu } from "@/components/oyuncu-ikon";
+import { LooplyLogo } from "@/components/logo";
 import { LoopySozu, LoopyPozitif } from "@/components/loopy-sozu";
 import { DusenSahnesi } from "@/components/oyun-sahnesi";
 import { OyuncuNav, NavBosluk } from "@/components/oyuncu-nav";
@@ -221,9 +222,9 @@ export default async function OynaSayfasi() {
             </div>
 
             {/* Loopy: balonsuz, hep pozitif (Ü176). */}
-            <div className="pointer-events-none -mt-6 flex justify-end pr-1">
+            <div className="pointer-events-none -mt-8 flex justify-end pr-1">
               <span aria-hidden className="block">
-                <LoopyPozitif boy={72} />
+                <LoopyPozitif boy={96} />
               </span>
             </div>
 
@@ -405,11 +406,26 @@ function DurumKarti({
   */
   return (
     <div>
-      <KoyuKart className="pb-12">
-        <div className="flex items-start gap-3">
+      <KoyuKart className="pt-5 pb-12">
+        {/*
+          Logo kartın tepesinde — Ü177.
+
+          Profil başlığında zaten oradaydı ve ürün sahibi *"Looply
+          logosu Buse isminin üstünde olmalı"* dedi: iki kart aynı
+          tasarım, biri logoluysa öbürü de logolu. Selamlama sırası
+          profildekinin aynısı — logo, küçük etiket, ad.
+
+          ⚠️ Boşluk profildeki `mt-4` değil `mt-5`: orada logonun
+          yanında `size-9` kalem düğmesi var ve satırı 36 piksele
+          çıkarıyor, burada satır logonun kendi 30 pikseli. Aynı sayı
+          farklı görünürdü; asıl istenen aynı *aralık*.
+        */}
+        <LooplyLogo boyut={30} beyaz />
+
+        <div className="mt-5 flex items-start gap-3">
           <div className="min-w-0 flex-1">
             <p className="etiket-caps text-white/60">Merhaba</p>
-            <h1 className="mt-1 font-display text-3xl leading-none font-extrabold tracking-tight">
+            <h1 className="mt-1.5 font-display text-3xl leading-none font-extrabold tracking-tight">
               {ad}
             </h1>
             <p className="mt-2 text-[13px] leading-snug text-white/70">
@@ -428,11 +444,18 @@ function DurumKarti({
             pozitif olmasını istedi. `sakin`in yüzü düz — nötr bir
             karakter "iyi ki buradasın" demiyor.
           */}
+          {/*
+            ⚠️ Kolon SABİT genişlikte (7.5rem) ve Loopy onun içinde
+            büyüyor — Ü174'ün dersi. Esnek kolonda karakteri büyütmek
+            metnin yerini yer ve 375 pikselde başlık dört satıra düşer.
+            Profil başlığındaki kardeşiyle aynı boy: iki kart yan yana
+            görülüyor.
+          */}
           <div className="w-[7.5rem] shrink-0">
             <LoopySozu
               soz={masada ? "Hedeflerini tamamla!" : "Seni kafede bekliyorum!"}
               ifade="keyifli"
-              boy={80}
+              boy={106}
             />
           </div>
         </div>

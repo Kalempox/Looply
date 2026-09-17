@@ -169,10 +169,25 @@ export function OyuncuSayfa({
 /**
  * Uygulamanın imza yüzeyi: koyu mor gradyan + ışın dokusu.
  *
- * **Yalnızca ana ekranın durum kartı için.** Yeni bir ekran bunu
- * kullanmak isterse önce şu soruyu cevaplasın: ürünün ikinci bir imza
- * yüzeyine ihtiyacı var mı? Ü65'in cevabı hayır — ekranlar birbirinden
- * renkle ayrılıyor, aynı koyu zeminle değil.
+ * **Oyuncunun "ben" kartı.** İki ekranda var ve ikisi de aynı şeyi
+ * söylüyor: ana ekranın karşılama kartı ve profilin başlığı. Başka bir
+ * ekran bunu kullanmak isterse önce şu soruyu cevaplasın — ürünün
+ * ikinci bir imza yüzeyine ihtiyacı var mı? Ü65'in cevabı hayır:
+ * ekranlar birbirinden renkle ayrılıyor, aynı koyu zeminle değil.
+ *
+ * ── 🔴 İki kart neden tek bileşen (Ü177) ────────────────────
+ *
+ * Ü175'te profil başlığı bu gradyanı **elle yazmıştı** ve tonları
+ * tutmuyordu: profil #6d28d9 ile açılıyor, bu kart #4c2a8f ile.
+ * Ürün sahibi yan yana görüp *"renk olarak aynı olmasını istiyorum"*
+ * dedi. İki yerde de elle düzeltmek aynı çatlağı bir tur sonraya
+ * ertelemek olurdu — Ü71'in dersi: *"yüzey tek yerden gelmezse her
+ * turda bir ekran geride kalıyor."* Artık gradyan, doku ve gölge tek
+ * yerde; ikisi **yapı gereği** aynı, tesadüfen değil.
+ *
+ * ⚠️ Kazanan ton profilinki (daha canlı mor). Sebebi keyfi değil:
+ * ürün sahibinin gönderdiği tasarımda kart o tonda ve profil için
+ * *"güzel olmuş"* dedi. Bu kart ona uyduruldu, tersi değil.
  *
  * Işınların merkezi kartın **dışında** (yukarıda). İlk denemede merkez
  * kartın ortasına denk geliyordu ve ışınların birleştiği nokta içeriğin
@@ -187,26 +202,30 @@ export function KoyuKart({
   sikisik = false,
 }: {
   children: React.ReactNode;
+  /**
+   * Ek sınıflar — dolgu da buradan geçilebiliyor (`pt-5 pb-12`).
+   *
+   * Tailwind `pt`/`pb`yi `py`den sonra basıyor, yani sınıf listesindeki
+   * sıra değil **özgüllük** kazanıyor; iki çağıran da bunu kullanıyor.
+   */
   className?: string;
   /** Dar kartlar için daha az iç boşluk. */
   sikisik?: boolean;
 }) {
   return (
     <div
-      className={`relative overflow-hidden rounded-3xl text-white ${
+      className={`kart-golge relative overflow-hidden rounded-3xl text-white ${
         sikisik ? "px-4 py-4" : "px-5 py-6"
       } ${className}`}
       style={{
-        background: "linear-gradient(150deg, #4c2a8f 0%, #2a1450 55%, #1b0e38 100%)",
+        background: "linear-gradient(150deg, #6d28d9 0%, #4c1d95 55%, #3b0f70 100%)",
       }}
     >
+      {/* Doku da ortak sabitten: iki kart aynı sıklıkta ışınlanmalı. */}
       <span
         aria-hidden
-        className="pointer-events-none absolute -top-[240%] left-1/2 size-[300%] -translate-x-1/2 opacity-[0.10]"
-        style={{
-          background:
-            "repeating-conic-gradient(from 0deg, #fff 0deg 4deg, transparent 4deg 14deg)",
-        }}
+        className="pointer-events-none absolute -top-[240%] left-1/2 size-[300%] -translate-x-1/2"
+        style={{ opacity: 0.08, background: ISIN_DOKUSU }}
       />
       <div className="relative">{children}</div>
     </div>
