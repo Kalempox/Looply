@@ -39,6 +39,12 @@ const schema = z.object({
   BACKUP_ENC_KEY: key32,
 
   SMS_PROVIDER: z.enum(["console", "netgsm", "iletimerkezi"]).default("console"),
+  // Ü170: doğrulama kodu artık e-postadan gidiyor. SMS iskeleti öbür
+  // sekiz bildirim için duruyor (ürün sahibinin kararı).
+  EPOSTA_SAGLAYICI: z.enum(["console", "resend"]).default("console"),
+  RESEND_API_KEY: z.string().optional(),
+  // "Looply <kod@posta.looply.app>" — Resend'de doğrulanmış alan adı.
+  EPOSTA_GONDEREN: z.string().default("Looply <onboarding@resend.dev>"),
   SMS_SENDER_ID: z.string().optional(),
   SMS_API_KEY: z.string().optional(),
 });
@@ -79,6 +85,15 @@ export function env(): Env {
   if (e.APP_ENV === "production") {
     if (e.SMS_PROVIDER === "console") {
       throw new Error("Canlı ortamda SMS_PROVIDER=console olamaz — kodlar gönderilmez, ekrana basılır");
+    }
+    // Ü170: kodu taşıyan kanal artık bu. Sahte sağlayıcı canlıda
+    // kalsaydı hiç kimse hesabını doğrulayamazdı ve kodlar sunucu
+    // günlüğüne düşerdi.
+    if (e.EPOSTA_SAGLAYICI === "console") {
+      throw new Error("Canlı ortamda EPOSTA_SAGLAYICI=console olamaz — kodlar gönderilmez, ekrana basılır");
+    }
+    if (e.EPOSTA_SAGLAYICI === "resend" && !e.RESEND_API_KEY) {
+      throw new Error("EPOSTA_SAGLAYICI=resend için RESEND_API_KEY gerekli");
     }
     if (e.DATABASE_URL === e.APP_DATABASE_URL) {
       throw new Error(

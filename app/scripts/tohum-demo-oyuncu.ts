@@ -2,7 +2,7 @@
 import { tohumKapisi } from "./_env";
 import { adminPool, closePools } from "@/db/pool";
 import { newId, aliasCode } from "@/lib/ids";
-import { encryptPII, phoneIndex, normalizePhone, sha256 } from "@/lib/crypto";
+import { encryptPII, phoneIndex, emailIndex, normalizePhone, sha256 } from "@/lib/crypto";
 import { hashle } from "@/domain/parola";
 import { isGunu, gunEkle } from "@/lib/tarih";
 import { donemAraligi, tabanKurus } from "@/domain/butce";
@@ -65,6 +65,19 @@ const PAROLA = "Deneme1234";
 const AD = "Buse";
 const SOYAD = "Deneme";
 
+/**
+ * Demo hesabın e-postası — Ü170.
+ *
+ * ⚠️ `.test` alan adı kasıtlı: RFC 2606 ile ayrılmış, dünyada
+ * çözülmüyor. Gerçek bir alan adı yazılsaydı `EPOSTA_SAGLAYICI=resend`
+ * ile çalışan bir kurulumda demo kodu **yabancı birine** giderdi.
+ *
+ * Geliştirmede kod zaten ekranda görünüyor (sahte sağlayıcı), yani
+ * adresin ulaşılabilir olması gerekmiyor — gereken tek şey hesabın bir
+ * adresi olması, yoksa `kodIste` `eposta_yok` dönüyor.
+ */
+const EPOSTA = "buse@demo.test";
+
 /** Kafe A'nın tohumdaki konumu — K2 doğrulaması buna bakıyor. */
 const KAFE_SLUG = "kafe-a";
 
@@ -106,15 +119,36 @@ async function main() {
   let playerId: string;
   if (varOlan.rowCount && varOlan.rows[0]) {
     playerId = varOlan.rows[0].id;
+    /*
+      Eski demo hesabına e-posta EKLENİYOR — Ü170.
+
+      Kod artık e-postaya gidiyor (`domain/otp.ts`). Bu betik Ü169'dan
+      önce açılmış bir hesabı bulduğunda adres alanı boş kalıyordu ve
+      ürün sahibi "SMS ile gir" yolunu hiç deneyemiyordu: `eposta_yok`.
+      Betiği yeniden çalıştırmak bunu da onarıyor.
+
+      ⚠️ `WHERE email_index IS NULL`: zaten adresi olan bir hesabın
+      adresi EZİLMİYOR. Tohum betiği elle yapılmış bir değişikliği geri
+      almamalı.
+    */
+    await db.query(
+      `UPDATE players SET email_index = $2, email_enc = $3
+        WHERE id = $1 AND email_index IS NULL`,
+      [playerId, emailIndex(EPOSTA), encryptPII(EPOSTA)],
+    );
   } else {
     playerId = newId("plr");
     await db.query(
-      `INSERT INTO players (id, phone_index, phone_enc, first_name_enc, last_name_enc, birth_year_enc)
-       VALUES ($1,$2,$3,$4,$5,$6)`,
+      `INSERT INTO players
+         (id, phone_index, phone_enc, email_index, email_enc,
+          first_name_enc, last_name_enc, birth_year_enc)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
       [
         playerId,
         idx,
         encryptPII(telefon),
+        emailIndex(EPOSTA),
+        encryptPII(EPOSTA),
         encryptPII(AD),
         encryptPII(SOYAD),
         encryptPII("1995"),

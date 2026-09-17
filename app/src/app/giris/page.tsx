@@ -69,7 +69,7 @@ export default async function GirisSayfasi({
       <p className="mb-7 text-[15px] leading-relaxed text-yazi-sonuk">
         {masa
           ? "Numaranı doğruladıktan sonra oyunlar açılır. Kazandığın indirimler hesabına işlenir."
-          : "Hesabın varsa parolanla gir, yoksa buradan aç. Parolanı unuttuysan SMS ile girebilirsin."}
+          : "Hesabın varsa parolanla gir, yoksa buradan aç. Parolanı unuttuysan e-postana kod göndeririz."}
       </p>
 
       {sp.hata === "masa" && (

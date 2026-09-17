@@ -174,17 +174,21 @@ function GirisSekmesi({
       </Dugme>
 
       {/*
-        Ayrı bir "şifremi unuttum" akışı bilerek yok: numara zaten
-        doğrulanmış ve SMS ile giriş açık. Parolasını unutan buradan girer,
+        Ayrı bir "şifremi unuttum" akışı bilerek yok: kimlik zaten
+        doğrulanmış ve kodla giriş açık. Parolasını unutan buradan girer,
         isterse yenisini belirler — ayrı bir sıfırlama jetonu, ayrı bir
         kanal ve ayrı bir saldırı yüzeyi doğmuyor.
+
+        ⚠️ Metin Ü170'te "SMS ile gir"den "e-posta ile gir"e döndü.
+        Kod artık oradan gitmiyor; eski metin kullanıcıyı telefonuna
+        bakmaya gönderiyordu ve orada hiçbir şey olmuyordu.
       */}
       <button
         type="button"
         onClick={smsAkisi}
         className="w-full py-2 text-center text-[13px] text-yazi-sonuk underline"
       >
-        Parolanı mı unuttun? SMS ile gir
+        Parolanı mı unuttun? E-posta ile gir
       </button>
     </form>
   );
@@ -227,10 +231,17 @@ function KayitSekmesi({
     <form action={action} className="space-y-5">
       {durum.genelHata && <Uyari>{durum.genelHata}</Uyari>}
 
+      {/*
+        ⚠️ İpucu Ü170'te değişti. Önce "Doğrulama kodu bu numaraya
+        gelecek" yazıyordu ve kod e-postaya taşınınca **yalan oldu**.
+        Ekranın söylediği şeyle sistemin yaptığı şey ayrılınca, hata
+        kodda değil güvende olur: kullanıcı SMS bekler, gelmez, ürün
+        bozuk sanılır.
+      */}
       <Alan
         etiket="Cep telefonu"
         hata={durum.hatalar?.telefon}
-        ipucu="Doğrulama kodu bu numaraya gelecek"
+        ipucu="Hesabının kimliği — kasada bununla tanınıyorsun"
       >
         <input
           name="telefon"
@@ -246,18 +257,20 @@ function KayitSekmesi({
       </Alan>
 
       {/*
-        E-posta — Ü168.
+        E-posta — Ü168'de eklendi, Ü170'te kodu taşımaya başladı.
 
-        ⚠️ İPUCU YOK ve bu bilinçli. Buraya "doğrulama kodu bu adrese
-        gelecek" yazmak isterdim ama **bugün doğru değil**: kod hâlâ
-        SMS ile gidiyor, adres yalnızca toplanıyor. Ekranın yarısı
-        yapılmış bir özelliği anlatması, kullanıcıya verilmemiş bir
-        söz olur. Teslimat taşındığında ipucu da buraya gelecek.
+        İpucu Ü169'da bilerek boş bırakılmıştı: o gün adres yalnızca
+        toplanıyordu ve "kod buraya gelecek" demek, verilmemiş bir söz
+        olurdu. Artık gerçekten buraya geliyor, söz de yerine geldi.
 
         `type="email"` telefonlarda @ tuşlu klavyeyi açıyor;
         `autoComplete="email"` tarayıcının kayıtlı adresini öneriyor.
       */}
-      <Alan etiket="E-posta" hata={durum.hatalar?.eposta}>
+      <Alan
+        etiket="E-posta"
+        hata={durum.hatalar?.eposta}
+        ipucu="Doğrulama kodu bu adrese gelecek"
+      >
         <input
           name="eposta"
           type="email"
@@ -402,10 +415,21 @@ function KodAdimi({
       {disDurum.bilgi && !disDurum.gelistirmeKodu && <Uyari tur="bilgi">{disDurum.bilgi}</Uyari>}
       {durum.genelHata && <Uyari>{durum.genelHata}</Uyari>}
 
+      {/*
+        ⚠️ Ü170: burada NUMARA değil ADRES yazıyor.
+
+        Önce "{telefon} numarasına gönderildi" diyordu ve kod
+        e-postaya taşınınca insanı telefonuna bakmaya gönderiyordu —
+        orada hiçbir şey yok. Kullanıcının gideceği yeri yanlış
+        söylemek, koda hiç ulaşamaması demek.
+
+        `d.eposta` sunucudan geri gelen form değerlerinden; adım 2'de
+        alan ekranda görünmediği için tek kaynak o.
+      */}
       <Alan
         etiket="Doğrulama kodu"
         hata={durum.hatalar?.kod}
-        ipucu={`${telefon} numarasına gönderildi`}
+        ipucu={d.eposta ? `${d.eposta} adresine gönderildi` : "E-posta adresine gönderildi"}
       >
         <input
           name="kod"
@@ -598,17 +622,21 @@ function AppleIkonu() {
 /* ── Geliştirme kolaylığı ─────────────────────────────────── */
 
 /**
- * Sahte SMS sağlayıcısı kullanılırken kodu ekranda gösterir.
+ * Sahte e-posta sağlayıcısı kullanılırken kodu ekranda gösterir.
  *
  * Kodu görmek için sunucu logu okumak test etmeyi gereksiz zorlaştırıyordu.
  * Canlıda bu kutu hiçbir koşulda görünmez: sunucu `gelistirmeKodu` alanını
- * yalnızca sahte sağlayıcıda dolduruyor ve `env.ts` canlıda o sağlayıcıyı
- * zaten reddediyor.
+ * yalnızca sahte sağlayıcıda dolduruyor (`epostaKoduEkrandaGosterilir`) ve
+ * `env.ts` canlıda o sağlayıcıyı zaten reddediyor.
+ *
+ * ⚠️ Metin Ü170'te "SMS"ten "e-posta"ya döndü — kutu neyin
+ * gönderilmediğini söylüyor ve yanlış kanalı söylemesi, geliştiricinin
+ * yanlış yerde arama yapmasına yol açardı.
  */
 function GelistirmeKodu({ kod }: { kod: string }) {
   return (
     <div className="rounded-lg border border-odul/60 bg-cukur px-4 py-3.5">
-      <div className="etiket-caps text-odul-koyu">Geliştirme · SMS gönderilmedi</div>
+      <div className="etiket-caps text-odul-koyu">Geliştirme · e-posta gönderilmedi</div>
       <div className="mt-1.5 font-data text-2xl font-bold tracking-[0.3em] text-odul-koyu tabular">
         {kod}
       </div>

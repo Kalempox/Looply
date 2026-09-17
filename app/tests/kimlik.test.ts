@@ -23,7 +23,11 @@ import {
   hataMetni as parolaHataMetni,
 } from "@/domain/parola";
 import { omurSaniye } from "@/domain/oturum-omru";
-import { tavanDurumu, GUNLUK_TAVAN } from "@/sms";
+// Ü170: kod artık e-postadan gidiyor; tavan da oraya taşındı.
+import {
+  tavanDurumu as postaTavanDurumu,
+  GUNLUK_TAVAN as POSTA_TAVANI,
+} from "@/posta";
 import { basvuruOlustur, basvurulariListele, telefonuAc, onayla, yoneticiBul } from "@/domain/cafe";
 import {
   cihazKaydet,
@@ -138,7 +142,7 @@ after(async () => {
 describe("doğrulama kodu", () => {
   test("doğru kod kabul edilir ve tek kullanımlıktır", async () => {
     const tel = yeniTelefon();
-    const istek = await kodIste({ telefon: tel, amac: "register" });
+    const istek = await kodIste({ telefon: tel, eposta: benzersizEposta(), amac: "register" });
     assert.equal(istek.durum, "gonderildi");
 
     // Üretilen kod hiçbir yerde saklanmadığı için testte okunamıyor.
@@ -160,7 +164,7 @@ describe("doğrulama kodu", () => {
 
   test("yanlış kod kalan deneme sayısını düşürür", async () => {
     const tel = yeniTelefon();
-    await kodIste({ telefon: tel, amac: "register" });
+    await kodIste({ telefon: tel, eposta: benzersizEposta(), amac: "register" });
     await withBypass("test: bilinen kod", (db) =>
       db.query(`UPDATE otp_challenges SET code_hmac = $2 WHERE phone_index = $1`, [
         phoneIndex(tel),
@@ -177,7 +181,7 @@ describe("doğrulama kodu", () => {
 
   test("5 yanlış denemede numara kilitlenir", async () => {
     const tel = yeniTelefon();
-    await kodIste({ telefon: tel, amac: "register" });
+    await kodIste({ telefon: tel, eposta: benzersizEposta(), amac: "register" });
 
     let sonuc;
     for (let i = 0; i < MAX_DENEME; i++) {
@@ -186,14 +190,14 @@ describe("doğrulama kodu", () => {
     assert.equal(sonuc?.durum, "kilitlendi", "5. yanlış denemede kilitlenmeliydi");
 
     // Kilitliyken yeni kod da istenemez
-    assert.equal((await kodIste({ telefon: tel, amac: "register" })).durum, "kilitli");
+    assert.equal((await kodIste({ telefon: tel, eposta: benzersizEposta(), amac: "register" })).durum, "kilitli");
 
     await otpTemizle(tel);
   });
 
   test("süresi geçmiş kod reddedilir", async () => {
     const tel = yeniTelefon();
-    await kodIste({ telefon: tel, amac: "register" });
+    await kodIste({ telefon: tel, eposta: benzersizEposta(), amac: "register" });
     await withBypass("test: süre geçirme", (db) =>
       db.query(
         `UPDATE otp_challenges SET expires_at = now() - interval '1 minute' WHERE phone_index = $1`,
@@ -214,9 +218,9 @@ describe("doğrulama kodu", () => {
 
   test("aynı numaraya dakikada birden fazla SMS gitmez", async () => {
     const tel = yeniTelefon();
-    assert.equal((await kodIste({ telefon: tel, amac: "register" })).durum, "gonderildi");
+    assert.equal((await kodIste({ telefon: tel, eposta: benzersizEposta(), amac: "register" })).durum, "gonderildi");
     assert.equal(
-      (await kodIste({ telefon: tel, amac: "register" })).durum,
+      (await kodIste({ telefon: tel, eposta: benzersizEposta(), amac: "register" })).durum,
       "cok_sik",
       "dakikalık kota devreye girmeliydi",
     );
@@ -225,7 +229,8 @@ describe("doğrulama kodu", () => {
 
   test("düz kod hiçbir yerde saklanmıyor", async () => {
     const tel = yeniTelefon();
-    await kodIste({ telefon: tel, amac: "register" });
+    const adres = benzersizEposta();
+    await kodIste({ telefon: tel, eposta: adres, amac: "register" });
 
     const kayit = await withBypass("test: otp satırı", (db) =>
       db.one<Record<string, unknown>>(`SELECT * FROM otp_challenges WHERE phone_index = $1`, [
@@ -239,45 +244,65 @@ describe("doğrulama kodu", () => {
       }
     }
 
-    // Mesaj defterinde de metin alanı yok (docs/08 §7.1)
-    const sms = await withBypass("test: sms satırı", (db) =>
+    /*
+      Giden kutusunda ne kod ne de düz adres var (docs/08 §7.1).
+
+      ⚠️ Ü170'te `sms_outbox`tan `email_outbox`a taşındı: kod artık
+      e-postadan gidiyor ve eski tabloya bakan test, gerçekte hiç
+      yazılmayan bir satırı arıyordu. Sınanan şey değişmedi — defterin
+      bir TESLİMAT izi olması, mesajın kendisi olmaması.
+    */
+    const posta = await withBypass("test: eposta satırı", (db) =>
       db.one<Record<string, unknown>>(
-        `SELECT * FROM sms_outbox WHERE phone_index = $1 ORDER BY created_at DESC LIMIT 1`,
-        [phoneIndex(tel)],
+        `SELECT * FROM email_outbox WHERE email_index = $1 ORDER BY created_at DESC LIMIT 1`,
+        [emailIndex(adres)],
       ),
     );
-    assert.ok(sms, "gönderim deftere yazılmalı");
-    assert.ok(!("body" in sms), "mesaj defterinde metin alanı olmamalı");
+    assert.ok(posta, "gönderim deftere yazılmalı");
+    assert.ok(!("body" in posta), "giden kutusunda metin alanı olmamalı");
+    for (const [alan, deger] of Object.entries(posta)) {
+      if (typeof deger === "string") {
+        assert.ok(!/^\d{6}$/.test(deger), `${alan} düz kod içeriyor olabilir`);
+        assert.ok(deger !== adres, `${alan} düz e-posta adresi içeriyor`);
+      }
+    }
 
     await otpTemizle(tel);
   });
 });
 
-describe("global SMS tavanı (G14)", () => {
+describe("küresel e-posta tavanı (G14'ün yeni kanaldaki hâli)", () => {
+  /*
+    🔴 Bu blok Ü170'te yeniden yazıldı ve sebebi öğreticiydi.
+
+    Önce `sms_outbox` üzerinden G14 tavanını sınıyordu ve kod SMS'ten
+    e-postaya taşınınca **sessizce anlamsızlaştı**: testler `kapasite_dolu`
+    bekliyordu, üretim artık hiç öyle dönmüyordu. Yani testler bir
+    korumanın kaybolduğunu haber verdi — tavan e-posta tarafına kendi
+    sayısıyla taşındı (`posta/index.ts`).
+
+    ⚠️ Ders: bir kanal değiştirilirken o kanala bağlı korumaların
+    listesi çıkarılmalı. Burada listeyi çıkaran şey testlerdi; sessiz
+    kalsalardı sistem çapındaki tek durdurucu kaybolmuş olacaktı.
+  */
+
   /**
-   * Günün SMS sayacını **hedeflenen orana kurar** — üstüne eklemez.
+   * Günün e-posta sayacını **hedeflenen orana kurar** — üstüne eklemez.
    *
-   * ⚠️ İlk hâli körlemesine `TAVAN * oran` kadar satır ekliyordu ve günün
-   * sayacının sıfıra yakın başladığını varsayıyordu. O varsayım bir gün
-   * bozuldu: tarayıcıda elle yapılan denemeler 216 gerçek SMS satırı
-   * üretti, test %92 sanarak %106'ya çıktı ve "giriş açık kalmalı"
-   * beklentisi düştü. Test yanlış bir sebeple kırılıyordu — sınanan şey
-   * kademelerin doğru çalışması, sayacın nereden başladığı değil.
-   *
-   * Kendi eklediği satırları önce siliyor, sonra **eksiği** tamamlıyor.
-   * Gerçek trafik hedefi zaten aşmışsa test atlanıyor: sessizce yanlış
-   * ölçmektense hiç ölçmemek dürüst.
+   * Gerekçe SMS'teki hâlinden devralındı: körlemesine ekleme, sayacın
+   * sıfırdan başladığını varsayıyor ve elle yapılan gerçek denemeler o
+   * varsayımı bozuyor. Kendi satırlarını önce siliyor, sonra eksiği
+   * tamamlıyor; gerçek trafik hedefi aşmışsa test atlanıyor — sessizce
+   * yanlış ölçmektense hiç ölçmemek dürüst.
    */
   async function tavanKur(hedef: number, onek: string): Promise<boolean> {
-    await yoneticiSorgu(`DELETE FROM sms_outbox WHERE id LIKE $1`, [`${onek}%`]);
+    await yoneticiSorgu(`DELETE FROM email_outbox WHERE id LIKE $1`, [`${onek}%`]);
 
-    const mevcut = await withBypass("test: günün sms sayısı", (db) =>
+    const mevcut = await withBypass("test: günün eposta sayısı", (db) =>
       db.one<{ n: string }>(
-        // ⚠️ Üretimin saydığı ÖLÇÜNÜN AYNISI (`sms/index.ts`): son 24 saat
-        // ve yalnızca `sent`. İlk hâli takvim günü sayıyordu ve status
-        // süzmüyordu; sayı tutmayınca test hedeflediği oranı hiç
-        // kuramıyordu. Test, üretimin ölçtüğü şeyi ölçmeli.
-        `SELECT count(*)::text AS n FROM sms_outbox
+        // ⚠️ Üretimin saydığı ÖLÇÜNÜN AYNISI (`posta/index.ts`): son 24
+        // saat ve yalnızca `sent`. Test, üretimin ölçtüğü şeyi ölçmeli.
+        `SELECT count(*)::text AS n FROM email_outbox
           WHERE status = 'sent' AND created_at > now() - interval '1 day'`,
       ),
     );
@@ -285,41 +310,68 @@ describe("global SMS tavanı (G14)", () => {
     if (eksik <= 0) return false;
 
     await yoneticiSorgu(
-      `INSERT INTO sms_outbox (id, phone_masked, phone_index, template, provider, status)
-       SELECT $3 || g, '0555 *** ** 00', $1, 'otp', 'console', 'sent'
+      `INSERT INTO email_outbox (id, email_masked, email_index, template, provider, status)
+       SELECT $3 || g, 't***t@ornek.test', $1, 'otp', 'console', 'sent'
          FROM generate_series(1, $2) g`,
-      [phoneIndex(yeniTelefon()), eksik, onek],
+      [emailIndex(benzersizEposta()), eksik, onek],
     );
     return true;
   }
 
-
   test("%90'da kayıt durur, giriş devam eder", async (t) => {
-    if (!(await tavanKur(Math.ceil(GUNLUK_TAVAN * 0.92), "sms_test_")))
-      return t.skip("günün gerçek SMS trafiği hedefi aşmış");
+    if (!(await tavanKur(Math.ceil(POSTA_TAVANI * 0.92), "eml_test_")))
+      return t.skip("günün gerçek e-posta trafiği hedefi aşmış");
 
-    const d = await tavanDurumu();
+    const d = await postaTavanDurumu();
     assert.equal(d.kayitAcik, false, "%90 üstünde yeni kayıt durmalıydı");
     assert.equal(d.girisAcik, true, "mevcut kullanıcının girişi devam etmeliydi");
 
-    assert.equal((await kodIste({ telefon: yeniTelefon(), amac: "register" })).durum, "kapasite_dolu");
     assert.equal(
-      (await kodIste({ telefon: yeniTelefon(), amac: "login" })).durum,
+      (await kodIste({ telefon: yeniTelefon(), eposta: benzersizEposta(), amac: "register" })).durum,
+      "kapasite_dolu",
+    );
+
+    /*
+      Giriş dalı için hesabın GERÇEKTEN var olması gerekiyor: `kodIste`
+      artık adresi hesaptan okuyor (Ü170, `hedefAdres`) ve hesapsız bir
+      numara `eposta_yok` döner — tavanla ilgisi olmayan bir sebeple.
+    */
+    const telefon = yeniTelefon();
+    await kaydet({
+      telefon,
+      eposta: benzersizEposta(),
+      ad: "Tavan",
+      soyad: "Testi",
+      dogumYili: 1990,
+      pazarlamaIzni: false,
+    });
+    assert.equal(
+      (await kodIste({ telefon, amac: "login" })).durum,
       "gonderildi",
       "giriş kapatılmamalıydı — saldırganın işini görmüş oluruz",
     );
 
-    await yoneticiSorgu(`DELETE FROM sms_outbox WHERE id LIKE 'sms_test_%'`);
+    await yoneticiSorgu(`DELETE FROM email_outbox WHERE id LIKE 'eml_test_%'`);
   });
 
   test("%100'de her şey durur", async (t) => {
-    if (!(await tavanKur(GUNLUK_TAVAN + 10, "sms_test_")))
-      return t.skip("günün gerçek SMS trafiği hedefi aşmış");
+    if (!(await tavanKur(POSTA_TAVANI + 10, "eml_test_")))
+      return t.skip("günün gerçek e-posta trafiği hedefi aşmış");
 
-    assert.equal((await tavanDurumu()).girisAcik, false);
-    assert.equal((await kodIste({ telefon: yeniTelefon(), amac: "login" })).durum, "kapasite_dolu");
+    assert.equal((await postaTavanDurumu()).girisAcik, false);
 
-    await yoneticiSorgu(`DELETE FROM sms_outbox WHERE id LIKE 'sms_test_%'`);
+    const telefon = yeniTelefon();
+    await kaydet({
+      telefon,
+      eposta: benzersizEposta(),
+      ad: "Tavan",
+      soyad: "Dolu",
+      dogumYili: 1990,
+      pazarlamaIzni: false,
+    });
+    assert.equal((await kodIste({ telefon, amac: "login" })).durum, "kapasite_dolu");
+
+    await yoneticiSorgu(`DELETE FROM email_outbox WHERE id LIKE 'eml_test_%'`);
   });
 });
 
@@ -1231,5 +1283,89 @@ describe("kayıtta e-posta", () => {
     assert.equal(ikinci.yeni, false);
     assert.equal(ikinci.oyuncu.id, ilk.oyuncu.id);
     assert.equal(ikinci.oyuncu.eposta, ilk.oyuncu.eposta, "e-posta değişmiş");
+  });
+});
+
+/* ── Kanal seçimi (Ü170) ───────────────────────────────────── */
+
+describe("doğrulama kodunun kanalı", () => {
+  /*
+    🔴 Bu blok bir REGRESYONUN üstüne yazıldı.
+
+    Kod e-postaya taşınırken yalnızca oyuncular düşünüldü. Ama
+    `kodIste`yi kafe paneli ve platform girişi de çağırıyor ve onların
+    kimliği `staff` tablosunda — orada e-posta kolonu yok. Varsayılan
+    e-posta olunca o iki giriş sessizce `eposta_yok` dönmeye başladı:
+    kafe sahibi paneline hiç giremez olmuştu.
+
+    Kimse fark etmedi çünkü **o yolun testi yoktu.** Şimdi var.
+  */
+
+  test("🔴 personel kanalı (SMS) oyuncu kaydı olmadan da çalışıyor", async () => {
+    const tel = yeniTelefon();
+    // Bu numaranın `players` içinde karşılığı YOK — personel böyle.
+    const istek = await kodIste({ telefon: tel, kanal: "sms", amac: "login" });
+    assert.equal(
+      istek.durum,
+      "gonderildi",
+      "personel girişi e-posta aramamalı — kimliği staff tablosunda",
+    );
+    await otpTemizle(tel);
+  });
+
+  test("oyuncu kanalı e-postasız hesapta kod göndermiyor", async () => {
+    /*
+      Aynı numara, kanal e-posta: bu kez `eposta_yok` dönmeli. İki
+      testin farkı yalnızca `kanal` — yani dallanmanın gerçekten
+      kanala baktığını gösteriyor, başka bir şeye değil.
+    */
+    const tel = yeniTelefon();
+    const istek = await kodIste({ telefon: tel, kanal: "eposta", amac: "login" });
+    assert.equal(istek.durum, "eposta_yok");
+  });
+
+  test("🔴 GİRİŞTE adres formdan değil HESAPTAN okunuyor", async () => {
+    /*
+      Saldırı: formda başkasının numarası, e-posta alanında kendi
+      adresim. Adres olduğu gibi kullanılsaydı başkasının hesabına
+      giriş kodu alırdım — parolayı bilmeden, telefona dokunmadan.
+    */
+    const kurbanTelefon = yeniTelefon();
+    const kurbanAdres = benzersizEposta();
+    await kaydet({
+      telefon: kurbanTelefon,
+      eposta: kurbanAdres,
+      ad: "Kurban",
+      soyad: "Hesap",
+      dogumYili: 1990,
+      pazarlamaIzni: false,
+    });
+
+    const saldirganAdresi = benzersizEposta();
+    const istek = await kodIste({
+      telefon: kurbanTelefon,
+      eposta: saldirganAdresi,
+      amac: "login",
+    });
+    assert.equal(istek.durum, "gonderildi");
+
+    // Kod kurbanın adresine gitti, saldırganınkine değil.
+    const saldirgana = await withBypass("test: saldırgan adresine giden", (db) =>
+      db.one<{ n: string }>(
+        `SELECT count(*)::text AS n FROM email_outbox WHERE email_index = $1`,
+        [emailIndex(saldirganAdresi)],
+      ),
+    );
+    assert.equal(Number(saldirgana?.n ?? 0), 0, "kod SALDIRGANIN adresine gitmiş");
+
+    const kurbana = await withBypass("test: kurban adresine giden", (db) =>
+      db.one<{ n: string }>(
+        `SELECT count(*)::text AS n FROM email_outbox WHERE email_index = $1`,
+        [emailIndex(kurbanAdres)],
+      ),
+    );
+    assert.ok(Number(kurbana?.n ?? 0) > 0, "kod hesabın kendi adresine gitmeliydi");
+
+    await otpTemizle(kurbanTelefon);
   });
 });

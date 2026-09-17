@@ -53,7 +53,16 @@ export async function yoneticiKodGonder(
 
   const h = await headers();
   const ip = h.get("x-forwarded-for")?.split(",")[0].trim() ?? h.get("x-real-ip") ?? undefined;
-  const istek = await kodIste({ telefon, amac: "login", ip, kaynak: KAYNAK });
+  const istek = await kodIste({
+    telefon,
+    // Ü170: personelin kimliği `staff` tablosunda ve orada e-posta
+    // kolonu yok. Kod e-postaya taşınırken bu iki giriş sessizce
+    // kırılmıştı; kanal açıkça yazılıyor ki bir daha kaymasın.
+    kanal: "sms",
+    amac: "login",
+    ip,
+    kaynak: KAYNAK,
+  });
 
   if (istek.durum !== "gonderildi") {
     const mesaj =

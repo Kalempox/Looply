@@ -356,6 +356,49 @@ parçalar aynı renk.
 
 ---
 
+## 🔴 Doğrulama kodu SMS'ten e-postaya taşındı (Ü170)
+
+Ürün sahibi: *"kod sms gelmeyecek ama kod gmaile gidecek."*
+
+Taşımanın kendisi küçüktü (tek çağrı yeri). Asıl iş, **o kanala bağlı
+olan şeyleri bulmaktı** — ve üçü ancak arandığında çıktı.
+
+- [x] **Küresel tavan kaybolmuştu.** G14 (`sms_outbox`, 2.000/gün) OTP
+  isteklerini de sınırlıyordu; e-postaya geçince o yol tavanın dışında
+  kaldı. Kişi ve IP başına sınırlar duruyordu ama **sistem çapında
+  durdurucu yoktu.** Testler yakaladı (`kapasite_dolu` artık hiç
+  dönmüyordu). Tavan e-posta tarafına taşındı: 5.000/gün, aynı kademe
+  (%90'da kayıt durur, giriş devam eder).
+
+- [x] **🔴 Kafe ve platform girişi kırılmıştı.** `kodIste`yi onlar da
+  çağırıyor ama kimlikleri `staff` tablosunda ve orada **e-posta kolonu
+  yok**. Varsayılan e-posta olunca ikisi de sessizce `eposta_yok`
+  dönmeye başladı — kafe sahibi paneline hiç giremez olmuştu.
+  Fark edilmedi çünkü **o yolun testi yoktu**; şimdi var.
+  ➜ `kanal: "eposta" | "sms"` parametresi eklendi, personel SMS'te
+  kaldı. "Kullanıcı" oyuncu demekti, personel değil.
+
+- [x] **Ekranın dört ayrı yerinde yalan vardı.** Telefon alanının
+  ipucu ("kod bu numaraya gelecek"), kod ekranının ipucu ("… numarasına
+  gönderildi"), "Parolanı mı unuttun? SMS ile gir" ve geliştirme
+  kutusunun başlığı. Hepsi kullanıcıyı telefonuna bakmaya gönderiyordu.
+
+➜ **Açık kalanlar:**
+
+- [ ] **Tavan sayısı sağlayıcı planına göre gözden geçirilmeli.**
+  5.000/gün seçildi ama Resend'in ücretsiz katmanı **aylık** 3.000 —
+  yani bu tavan orada tek günde aşılabilir.
+- [ ] **`kodEkrandaGosterilir` adı `sms/index.ts`te duruyor** ama artık
+  e-postayı anlatıyor. Adını taşımak çağıranların hepsine dokunmayı
+  gerektiriyor.
+- [ ] **Ü169 öncesi hesapların e-postası yok** (5.767'nin 87'si hariç).
+  Onlar kodla giremiyor, yalnızca parolayla. Ekran doğru cümleyi
+  kuruyor ama kalıcı çözüm bir "e-posta ekle" akışı.
+- [ ] **`RESEND_API_KEY` henüz yok.** `EPOSTA_SAGLAYICI=console` ile
+  kod ekranda görünüyor; gerçek gönderim denenmedi.
+
+---
+
 ## 🔴 Test yığını kendi kendini zehirliyor — 2026-09-17'de bulundu
 
 - [ ] **`sms_outbox` testler arasında temizlenmiyor.** Günlük SMS tavanı

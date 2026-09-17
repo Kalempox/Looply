@@ -1,9 +1,10 @@
-import { env, demoOrtami } from "@/lib/env";
+import { env } from "@/lib/env";
 import { log } from "@/lib/log";
 import { withBypass } from "@/db/context";
 import { newId } from "@/lib/ids";
 import { phoneIndex } from "@/lib/crypto";
 import { defteriYaz } from "./gelistirme-defteri";
+import { epostaKoduEkrandaGosterilir } from "@/posta";
 
 /**
  * SMS katmanı — Ü13'ün somut hâli.
@@ -53,11 +54,22 @@ export type GonderimSonucu =
  * Geliştirmede doğrulama kodu ekranda gösterilir mi?
  *
  * Kodu görmek için sunucu logu okumak, test etmeyi gereksiz zorlaştırıyordu.
- * Kapının kendisi `demoOrtami()` — koşulları orada, tek yerde duruyor;
- * canlı ortamda hiçbir koşulda true dönmez.
+ * Canlı ortamda hiçbir koşulda true dönmez.
+ *
+ * 🔴 Kapı Ü170'te **e-posta sağlayıcısına** bağlandı.
+ *
+ * Önce `demoOrtami()` idi ve o `SMS_PROVIDER === "console"` bakıyordu.
+ * Kod artık SMS'le gitmiyor; kapı eski hâlinde kalsaydı yanlış soruyu
+ * soruyor olurdu — gerçek bir e-posta sağlayıcısı bağlıyken bile
+ * `SMS_PROVIDER=console` olduğu için kodu ekrana basmaya devam
+ * ederdi. Yani üretime yakın bir kurulumda düz kod ekranda kalırdı.
+ *
+ * ⚠️ İsim `sms/` altında duruyor ama artık e-postayı anlatıyor. Adını
+ * taşımak çağıranların hepsine dokunmayı gerektiriyor; şimdilik burada
+ * ve gerekçesiyle duruyor — `docs/23`te açık madde.
  */
 export function kodEkrandaGosterilir(): boolean {
-  return demoOrtami();
+  return epostaKoduEkrandaGosterilir();
 }
 
 export interface SmsSaglayici {

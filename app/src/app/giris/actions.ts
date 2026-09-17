@@ -115,6 +115,17 @@ function istekHatasi(durum: string, ek?: Date): string {
       return "Bu numara geçici olarak kilitlendi. 15 dakika sonra tekrar dene.";
     case "kapasite_dolu":
       return "Şu an yeni kayıt alınamıyor. Kısa süre sonra tekrar dene.";
+    case "eposta_yok":
+      /*
+        Ü170: kod e-postaya gidiyor ve bu hesapta adres yok — Ü169
+        öncesinde açılmış hesaplar böyle.
+
+        ⚠️ Cümle "e-postan kayıtlı değil" diyor, "hesabın yok"
+        demiyor: ikisi farklı ve karıştırmak insanı yanlış yere
+        götürür — hesabı olan biri yeniden kayıt olmaya çalışırdı.
+        Parola hâlâ çalıştığı için doğru yönlendirme parolayla giriş.
+      */
+      return "Bu hesapta kayıtlı e-posta yok, kod gönderilemiyor. Parolanla giriş yapabilirsin.";
     default:
       return "Kod gönderilemedi. Biraz sonra tekrar dene.";
   }
@@ -331,6 +342,15 @@ export async function kodGonder(_onceki: Durum, form: FormData): Promise<Durum> 
 
   const sonuc = await kodIste({
     telefon,
+    /*
+      Formdaki adres YALNIZCA yeni kayıtta işe yarıyor — Ü170.
+
+      `kodIste` numarayı zaten kayıtlıysa hesabın kendi adresini
+      kullanıyor ve buradan geleni yok sayıyor (bkz. `hedefAdres`).
+      Buraya koşulsuz gönderiliyor çünkü kararı tek bir yerde vermek
+      doğru: iki yerde verilseydi biri düzeltilip öteki unutulabilirdi.
+    */
+    eposta: kayit.veri.eposta,
     amac: mevcut ? "login" : "register",
     ip,
     kaynak: mevcut ? "Oyuncu girişi" : "Oyuncu kaydı",
