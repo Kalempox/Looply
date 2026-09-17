@@ -176,6 +176,46 @@ işin hangi yüzeye düştüğü, bittiği kadar önemli.**
 
 ---
 
+## 🔴 Karusel "kaydıramıyorum" — üç turda öğrenilenler (Ü162–Ü163)
+
+Ürün sahibi **üç kez** bildirdi. Üç tur sürdü çünkü her turda başka bir
+şey yanlıştı ve ikisi bendeydi.
+
+**Tur 1–2 · Ölçütüm yanlıştı.** Sentetik olaylarla test edip iki kez
+*"çalışıyor"*, bir kez *"bozuk"* dedim. Üçünde de hata aynı yerdeydi:
+`innerHTML.length` (avatar animasyonu yüzünden zaten değişiyordu), DOM
+sırası (kartlar `transform` ile kayıyor), ilk kartın `transform`'u
+(aktif kart o değil). **Ölçüt yanlışsa hem "çalışıyor" hem "bozuk"
+üretilebiliyor.**
+
+**Tur 3 · İki gerçek kusur bulundu.**
+
+- [x] **İşaretçi yakalama eklendi** (Ü162). Fare girdisiyle karusel
+  çalışıyor ama ürün sahibi DevTools'un **mobil görünümünde** deniyor ve
+  orada dokunma taklidi açık. Dokunmada tarayıcı jestin kaydırma mı
+  sürükleme mi olduğuna kendi karar veriyor ve kaydırma derse akışı
+  `pointercancel` ile kesiyor. `setPointerCapture` kararı bize alıyor.
+  ⚠️ `pointerleave` bağı da kalktı: dar ekranda kenara yaklaşan parmak
+  sürüklemeyi bitiriyordu.
+  ⚠️ **Ölçülerek değil teşhisle yapıldı** — dokunma taklidi bu panelde
+  üretilemedi.
+
+- [x] **Noktaların dokunma alanı 8 → 44 piksel** (Ü163). Sürükleme
+  dışında bir yol vardı ama kullanılamaz hâldeydi: ölçüldüğünde
+  noktalar **8×8 piksel** çıktı. Parmak ucu ~44 piksel; 8 piksellik
+  hedefe basmak şansa kalıyor. Görünen nokta aynı kaldı, büyüyen yalnızca
+  basılabilir alan.
+  ⚠️ Yan kartlar zaten 189×297 ve dokununca öne geliyor — o yol
+  baştan beri çalışıyordu.
+
+➜ **Kalan:** ürün sahibi kendi ekranında denemeli. Düzelmezse sıradaki
+adım `touch-action`: bugün `pan-y` (dikey kaydırma tarayıcıda kalsın
+diye). Dokunma tahkimi yine de çalıyorsa yatay jest için `none`a
+geçmek gerekebilir — ama o zaman karuselin üstünden sayfayı dikey
+kaydırmak bozulur, yani bedeli ölçülmeden yapılmamalı.
+
+---
+
 ## 🔴 Test yığını kendi kendini zehirliyor — 2026-09-17'de bulundu
 
 - [ ] **`sms_outbox` testler arasında temizlenmiyor.** Günlük SMS tavanı

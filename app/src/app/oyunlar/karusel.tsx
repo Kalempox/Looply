@@ -306,8 +306,26 @@ export function OyunKaruseli({ oyunlar }: { oyunlar: KarusellOyun[] }) {
         })}
       </div>
 
-      {/* ── Nerede olduğunu söyleyen noktalar ─────────── */}
-      <div className="mt-5 flex items-center justify-center gap-2">
+      {/*
+        ── Nerede olduğunu söyleyen noktalar ───────────
+
+        🔴 Dokunma alanı 8 pikselden 44'e çıkarıldı — Ü163.
+
+        Ürün sahibi karuseli **üç kez** *"kaydıramıyorum"* diye bildirdi.
+        Sürükleme dışında bir yol vardı ama kullanılamaz hâldeydi:
+        noktalar ölçüldüğünde **8×8 piksel** çıktı. Parmak ucunun
+        ortalaması ~9 mm, yani yaklaşık 44 piksel; 8 piksellik bir
+        hedefe basmak şansa kalıyor.
+
+        Görünen nokta aynı boyutta kaldı — büyütülseydi gösterge
+        olmaktan çıkıp düğme sırasına dönerdi. Büyüyen şey yalnızca
+        **basılabilir alan**: düğme 44 piksel yüksekliğinde, nokta
+        ortasında.
+
+        ⚠️ `-my-4` ile dikey büyüme yerleşimi itmiyor: alan büyüyor,
+        boşluk aynı kalıyor.
+      */}
+      <div className="mt-5 flex items-center justify-center gap-1">
         {oyunlar.map((oy, i) => (
           <button
             key={oy.id}
@@ -315,10 +333,15 @@ export function OyunKaruseli({ oyunlar }: { oyunlar: KarusellOyun[] }) {
             onClick={() => git(i)}
             aria-label={`${oy.ad} oyununu öne getir`}
             aria-current={i === aktif}
-            className={`h-2 rounded-full transition-all ${
-              i === aktif ? "w-6 bg-vurgu" : "w-2 bg-cizgi hover:bg-yazi-sonuk/40"
-            }`}
-          />
+            className="-my-4 grid h-11 w-8 place-items-center"
+          >
+            <span
+              aria-hidden
+              className={`block h-2 rounded-full transition-all ${
+                i === aktif ? "w-6 bg-vurgu" : "w-2 bg-cizgi"
+              }`}
+            />
+          </button>
         ))}
       </div>
     </div>
