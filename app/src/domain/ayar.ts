@@ -93,6 +93,29 @@ export const ANAHTARLAR = {
    */
   ertelemeSaati: "erteleme_saat",
   /**
+   * İki çark çevirmesi arasındaki en az süre — Ü158 (saat).
+   *
+   * ── Neden ayar oldu ─────────────────────────────────────────
+   *
+   * `cark.ts`te `ARALIK_SAAT = 24` diye **sabit** yazılıydı ve panelde
+   * bir kart onu *"24 saatte 1 · müşteri başına"* diye gösteriyordu.
+   * Gösterilen ama değiştirilemeyen bir sayı, kafe sahibini
+   * *"demek ki değiştirebiliyorum"* diye düşündürüyordu — ürün sahibi
+   * fark etti ve *"süreyi kafe sahibi panelden belirlemeli"* dedi.
+   *
+   * ⚠️ Sınırlar rastgele değil. **Alt sınır 1 saat:** daha kısası çarkı
+   * bir ödül musluğuna çevirir; günlük bütçe yine tavan koyar ama
+   * müşteri "çevirdikçe çıkıyor" alışkanlığı edinir ve ödülün değeri
+   * düşer. **Üst sınır 168 saat (bir hafta):** daha uzunu, haftada bir
+   * gelen müdavimin çarkı hiç görememesi demek — çark o zaman bir
+   * özellik değil, bir hayal kırıklığı olur.
+   *
+   * ⚠️ Süre **kayan**, takvim günü değil: son çevirmenin üstünden bu
+   * kadar saat geçmiş olmalı. "Günde bir" demiyoruz çünkü gece 23:50'de
+   * çeviren biri on dakika sonra tekrar çevirebilirdi.
+   */
+  carkAralikSaat: "cark_aralik_saat",
+  /**
    * K2'nin yarıçapı — kafeye kaç metre yakınlık "kafedeyim" sayılıyor
    * (Ü131, metre).
    *
@@ -162,6 +185,10 @@ export const SINIRLAR: Record<Anahtar, { en_az: number; en_cok: number; varsayil
   // ondan uzun olursa kupon **açılmadan** ölürdü. 48 saat, geçerlilik
   // süresinin altında kalan güvenli bir tavan.
   [ANAHTARLAR.ertelemeSaati]: { en_az: 1, en_cok: 48, varsayilan: 12 },
+  // Ü158: varsayılan 24 — sabitken kullanılan değer, ayar olunca
+  // varsayılan oldu. Paneli hiç açmayan kafede hiçbir şey değişmiyor.
+  // Sınırların gerekçesi `carkAralikSaat`in kendi notunda.
+  [ANAHTARLAR.carkAralikSaat]: { en_az: 1, en_cok: 168, varsayilan: 24 },
   // Ü131: varsayılan 150 — sabitken kullanılan değer, ayar olunca
   // varsayılan oldu. Paneli hiç açmayan kafede hiçbir şey değişmiyor.
   // Sınırların gerekçesi `konumYaricapi`nin kendi notunda: altı GPS hata

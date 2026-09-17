@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Avatar } from "@/components/avatar";
 import { useState, useTransition } from "react";
 import { konumBildir, konumReddedildi, demoKafedeSay } from "./actions";
 
@@ -142,6 +143,32 @@ export function DurumSeridi({
             </>
           )}
         </div>
+
+        {/*
+          🔴 Sağ üstte yuvarlak profil ikonu — Ü159.
+
+          Ürün sahibi: *"ekranın sağ üstünde yuvarlak profil ikonu olmalı
+          ve ordan isim koyup özelleştirilebilmeli."*
+
+          ── Neden avatarın kendisi, soyut bir ikon değil ─────
+          Oyuncunun profilde seçtiği İlmek burada duruyor. Genel bir
+          "kişi" ikonu koysaydık özelleştirmenin karşılığı ekranda hiç
+          görünmezdi; avatarı değiştiren oyuncu değişikliği yalnızca
+          profil sayfasında görürdü.
+
+          ⚠️ Şeridin en sağında ve **her durumda** çiziliyor: konum
+          düğmeleri duruma göre gelip gidiyor, profil kapısı sabit
+          kalmalı ki oyuncu onu aramasın.
+        */}
+        <Link
+          href="/profil"
+          aria-label="Profilin ve avatarın"
+          className="ml-1 grid size-9 shrink-0 place-items-center overflow-hidden rounded-full border border-cizgi bg-yuzey"
+        >
+          <span aria-hidden className="block">
+            <Avatar boy={24} ifade="sakin" />
+          </span>
+        </Link>
 
         {/* Masası olmayan oyuncunun tek yolu karekodu okutmak. Canlıda
             bunun ekranda bir düğmesi yok — kamera oyuncunun elinde. Demoda

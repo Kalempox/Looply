@@ -46,8 +46,24 @@ import * as ayar from "./ayar";
  * aynen uygulanıyor. Çark yalnızca "hangi ödül" sorusunu cevaplıyor.
  */
 
-/** İki çevirme arasındaki en az süre. */
-export const ARALIK_SAAT = 24;
+/*
+  🔴 `ARALIK_SAAT = 24` sabiti Ü158'de KALDIRILDI.
+
+  Süre artık kafenin ayarı (`ayar.ANAHTARLAR.carkAralikSaat`, 1–168 saat,
+  varsayılan 24) ve varsayılan **tek yerde** duruyor: `ayar.ts`in sınır
+  tablosunda. Sabit orada da dursaydı iki kaynak olurdu ve biri
+  değiştiğinde diğeri sessizce eskiyecekti.
+
+  ⚠️ Kaldırılmasının asıl sebebi başka: sabit dursa ve kimse okumasa,
+  kodda "24 saat" yazan bir satır kalırdı ve sonraki okuyucu kuralın o
+  olduğunu sanırdı. Bu depoda dört kez çıkan "yazıldı ama bağlanmadı"
+  sınıfının sessiz hâli — ölü bir sabit, yanlış bir belge gibi çalışır.
+*/
+
+/** Kafenin çark aralığı — ayarı yoksa varsayılan. */
+export async function aralikSaat(cafeId: string): Promise<number> {
+  return ayar.sayiOku(cafeId, ayar.ANAHTARLAR.carkAralikSaat);
+}
 
 /** Çarkta görünen dilim sayısı — ödül sayısı azsa liste tekrarlanıyor. */
 export const DILIM_SAYISI = 8;
@@ -282,7 +298,8 @@ export async function durum(opts: {
 
     const son = await sonCevirme(db, opts);
     if (son) {
-      const sonraki = new Date(son.getTime() + ARALIK_SAAT * 3_600_000);
+      const saat = await aralikSaat(opts.cafeId);
+      const sonraki = new Date(son.getTime() + saat * 3_600_000);
       if (sonraki > new Date()) {
         return {
           acik: false as const,

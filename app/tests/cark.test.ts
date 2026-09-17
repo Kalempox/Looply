@@ -5,7 +5,7 @@ import { randomInt } from "node:crypto";
 import { withBypass } from "@/db/context";
 import { closePools } from "@/db/pool";
 import { kaydet } from "@/domain/player";
-import { normalizePhone } from "@/lib/crypto";
+import { normalizePhone, encryptPII } from "@/lib/crypto";
 import * as cark from "@/domain/cark";
 import * as ayar from "@/domain/ayar";
 import { carkOduluVer } from "@/domain/kupon";
@@ -35,6 +35,8 @@ import { isGunu, gunEkle } from "@/lib/tarih";
  */
 
 let cafeId = "";
+/** Ayar yazan çağrılar bir aktör istiyor (denetim izi) — kafenin yöneticisi. */
+let yonetici = "";
 let cafeId2 = "";
 let oyuncu = "";
 let oyuncu2 = "";
@@ -84,6 +86,23 @@ before(async () => {
   const b = await kaydet({ telefon: yeniTelefon(), ad: "Kerem", soyad: "Şahin", dogumYili: 1992, pazarlamaIzni: false });
   oyuncu = a.oyuncu.id;
   oyuncu2 = b.oyuncu.id;
+
+  /*
+    Ayar yazımı denetim izi için gerçek bir personel satırı istiyor
+    (`ayar.sayiYaz` → `audit`). `kafeKur` personel kurmuyor, o yüzden
+    testin kendi yöneticisi burada açılıyor.
+
+    ⚠️ `name_enc` şifreli — A1/Ü115'ten beri personel adı da düz metin
+    değil. Düz yazılsaydı kolonun tipine takılırdı.
+  */
+  yonetici = newId("stf");
+  await withBypass("test: yönetici kurulumu", (db) =>
+    db.query(
+      `INSERT INTO staff (id, cafe_id, name_enc, pin_hash, role)
+       VALUES ($1,$2,$3,'-','manager')`,
+      [yonetici, cafeId, encryptPII("Çark Testi")],
+    ),
+  );
 });
 
 after(async () => {
@@ -128,6 +147,77 @@ describe("çark · günlük sınır", () => {
     const durum = await cark.durum({ playerId: oyuncu, cafeId });
     assert.equal(durum.acik, false);
     assert.match(cark.durumMetni(durum), /saat/);
+  });
+
+  /**
+   * 🔴 Aralık KAFENİN AYARI — Ü158.
+   *
+   * Önce `cark.ts`te `ARALIK_SAAT = 24` sabitti ve panelde yalnızca
+   * okunuyordu. Ürün sahibi: *"süreyi kafe sahibi panelden belirlemeli."*
+   *
+   * ⚠️ Bu test **iki yeri birden** çiviliyor: ekranı kapatan
+   * `cark.durum()` ve ödülü üreten `carkOduluVer()`. İkisi ayrı süre
+   * okusaydı çark "açık" görünüp çevirmeyi reddederdi — panelde yazan
+   * sayı ile ürünün davranışı ayrışırdı ve bu, bu deponun dört kez
+   * düştüğü "yarısına bağlandı" sınıfı olurdu.
+   */
+  test("kafe aralığı ürünün davranışını gerçekten değiştiriyor", async () => {
+    const saatSonra = (d: cark.CarkDurumu) =>
+      d.acik === false && d.sebep === "sure"
+        ? (d.sonrakiAn.getTime() - Date.now()) / 3_600_000
+        : null;
+
+    /*
+      ⚠️ İlk yazılışta bu test **yeşil yanıyordu ama hiçbir şey
+      sınamıyordu**: aralığı 1 saate çekip "çark hâlâ kapalı" diye
+      bakıyordu. Çevirme saniyeler öncesindeydi, yani 1 saatte de 24
+      saatte de kapalı — iddia iki hâli ayırt etmiyordu. Sabiti geri
+      koyup denendi, test yine geçti.
+
+      Ayırt eden şey **sonraki çevirme anı**: 24 saatlik varsayılanda
+      ~24, 1 saatlik ayarda ~1 olmalı.
+    */
+    const varsayilan = saatSonra(await cark.durum({ playerId: oyuncu, cafeId }));
+    assert.ok(varsayilan !== null, "ön koşul: çark süre yüzünden kapalı olmalıydı");
+    assert.ok(
+      varsayilan > 20 && varsayilan <= 24,
+      `varsayılan 24 saat beklenirken ${varsayilan?.toFixed(1)} çıktı`,
+    );
+
+    const y = await ayar.sayiYaz({
+      cafeId,
+      anahtar: ayar.ANAHTARLAR.carkAralikSaat,
+      deger: 1,
+      aktorId: yonetici,
+    });
+    assert.equal(y.ok, true, y.ok ? "" : y.hata);
+
+    const kisa = saatSonra(await cark.durum({ playerId: oyuncu, cafeId }));
+    assert.ok(kisa !== null, "1 saat ayarında da süre kilidi sürmeliydi");
+    assert.ok(
+      kisa <= 1.05,
+      `kafe 1 saat dedi ama ürün ${kisa?.toFixed(1)} saat bekletiyor — ayar okunmuyor`,
+    );
+
+    // Varsayılana dön — sonraki testler 24 saat bekliyor.
+    await ayar.sayiYaz({
+      cafeId,
+      anahtar: ayar.ANAHTARLAR.carkAralikSaat,
+      deger: 24,
+      aktorId: yonetici,
+    });
+  });
+
+  test("aralık sınırların dışına yazılamıyor", async () => {
+    for (const deger of [0, 169]) {
+      const r = await ayar.sayiYaz({
+        cafeId,
+        anahtar: ayar.ANAHTARLAR.carkAralikSaat,
+        deger,
+        aktorId: yonetici,
+      });
+      assert.equal(r.ok, false, `${deger} saat kabul edildi — sınır tutmuyor`);
+    }
   });
 
   test("başka oyuncunun çarkı etkilenmiyor", async () => {

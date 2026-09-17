@@ -36,7 +36,34 @@ export const dynamic = "force-dynamic";
  * indiriminde fincan, tatlıda pasta, yüzdede etiket. Renk hâlâ cinsi
  * söylüyor ama artık fısıldayarak.
  */
-export default async function OdullerSayfasi() {
+export default async function OdullerSayfasi({
+  searchParams,
+}: {
+  searchParams: Promise<{ g?: string }>;
+}) {
+  const sp = await searchParams;
+  /**
+   * 🔴 Ödüllerim ikiye ayrıldı — Ü159.
+   *
+   * Ürün sahibi: *"süresi geçenler, kullanılmışlar, yakında açılanlar
+   * aynı sayfada olmamalı; ilk Ödüllerim'e tıkladığında kullanılabilir
+   * olanları görmeli."*
+   *
+   * Haklıydı ve sebebi ekranın işinde: bu sayfanın **tek yapılacak işi**
+   * kasada kupon göstermek. Kullanılmış ve süresi geçmiş kuponlar bir iş
+   * değil, bir kayıt — ama aynı yığında dururken oyuncunun gözü onları
+   * da tarıyor ve hazır kuponunu aramak zorunda kalıyor.
+   *
+   * ⚠️ Sekme **adreste** (`?g=gecmis`), istemci durumunda değil: panelin
+   * sayfalamasıyla (Ü123, `?s=3`) aynı kalıp. Bağlantı paylaşılabiliyor,
+   * geri tuşu çalışıyor ve sunucu bileşeni istemciye dönmüyor.
+   *
+   * ⚠️ Varsayılan **kullanılabilir**: bilinmeyen bir değer gelirse de
+   * oraya düşüyor. Geçmişi varsayılan yapmak, ekranı açan oyuncuya önce
+   * kaçırdıklarını göstermek olurdu.
+   */
+  const gecmisMi = sp.g === "gecmis";
+
   const o = await oturum.oku();
   if (!o || o.rol !== "oyuncu") redirect("/giris");
 
@@ -74,6 +101,8 @@ export default async function OdullerSayfasi() {
           />
         </div>
       </SayfaBasi>
+
+      {!bosMu && <OdulSekmeleri gecmisMi={gecmisMi} e={e} />}
 
       {bosMu ? (
         <div className="relative overflow-hidden rounded-3xl border border-cizgi bg-yuzey px-6 py-8 text-center">
@@ -118,7 +147,7 @@ export default async function OdullerSayfasi() {
             gönderilmiyor. Burada saklansaydı sayfanın kaynağına bakan
             herkes kazımadan görürdü.
           */}
-          {e.kazinacak.length > 0 && (
+          {!gecmisMi && e.kazinacak.length > 0 && (
             <OyuncuBolum
               baslik={
                 e.kazinacak.length > 1
@@ -198,6 +227,7 @@ export default async function OdullerSayfasi() {
             aynı ekranın iki hâli olmasındansa tek kafede de aynı
             iskelet duruyor.
           */}
+          {!gecmisMi && (
           <OyuncuBolum
             baslik="Kullanılabilir"
             renk="kahve"
@@ -231,8 +261,9 @@ export default async function OdullerSayfasi() {
               </div>
             )}
           </OyuncuBolum>
+          )}
 
-          {e.bekleyen.length > 0 && (
+          {gecmisMi && e.bekleyen.length > 0 && (
             <OyuncuBolum baslik="Yakında açılıyor" not="zamanı gelince">
               <ul className="flex flex-col gap-2.5">
                 {e.bekleyen.map((k) => (
@@ -249,7 +280,7 @@ export default async function OdullerSayfasi() {
             "bunu kaçırdım" aynı sönük listede duruyordu ve ikisi de bir
             şey ifade etmiyordu.
           */}
-          {e.kullanilan.length > 0 && (
+          {gecmisMi && e.kullanilan.length > 0 && (
             <OyuncuBolum baslik="Kullandıkların" not={`${e.kullanilan.length} kupon`}>
               <ul className="flex flex-col gap-2.5 opacity-80">
                 {e.kullanilan.map((k) => (
@@ -261,7 +292,7 @@ export default async function OdullerSayfasi() {
             </OyuncuBolum>
           )}
 
-          {e.kacirilan.length > 0 && (
+          {gecmisMi && e.kacirilan.length > 0 && (
             <OyuncuBolum baslik="Süresi geçenler">
               <ul className="flex flex-col gap-2.5 opacity-60">
                 {e.kacirilan.map((k) => (
@@ -289,6 +320,50 @@ export default async function OdullerSayfasi() {
  * kafe, oyuncunun beş dakika önce oynadığı kafenin üstünde durur ve
  * kasada aranan kupon aşağıda kalırdı.
  */
+/**
+ * Ödüllerim'in iki sekmesi — Ü159.
+ *
+ * ⚠️ `<Link>` ile, düğme değil: sekme bir **adres**, bir durum değil.
+ * Böylece geri tuşu çalışıyor, bağlantı paylaşılabiliyor ve sunucu
+ * bileşeni istemciye dönmek zorunda kalmıyor.
+ *
+ * ⚠️ Sayılar sekmenin üstünde duruyor: oyuncu geçmişe **girmeden**
+ * orada bir şey olup olmadığını görüyor. Sayı olmasaydı boş bir
+ * sekmeye tıklamak tek yol olurdu.
+ */
+function OdulSekmeleri({
+  gecmisMi,
+  e,
+}: {
+  gecmisMi: boolean;
+  e: { kazinacak: unknown[]; kullanilabilir: unknown[]; bekleyen: unknown[]; kullanilan: unknown[]; kacirilan: unknown[] };
+}) {
+  const simdi = e.kazinacak.length + e.kullanilabilir.length;
+  const gecmis = e.bekleyen.length + e.kullanilan.length + e.kacirilan.length;
+
+  const stil = (secili: boolean) =>
+    `flex-1 rounded-xl px-4 py-2.5 text-center text-[14px] font-bold transition-colors ${
+      secili ? "bg-yazi text-yuzey" : "text-yazi-sonuk hover:text-yazi"
+    }`;
+
+  return (
+    <nav className="mb-6 flex gap-1.5 rounded-2xl border border-cizgi bg-yuzey p-1.5">
+      <Link href="/oduller" className={stil(!gecmisMi)} aria-current={!gecmisMi ? "page" : undefined}>
+        Kullanılabilir
+        {simdi > 0 && <span className="ml-1.5 font-data text-[12px] opacity-70">{simdi}</span>}
+      </Link>
+      <Link
+        href="/oduller?g=gecmis"
+        className={stil(gecmisMi)}
+        aria-current={gecmisMi ? "page" : undefined}
+      >
+        Geçmiş
+        {gecmis > 0 && <span className="ml-1.5 font-data text-[12px] opacity-70">{gecmis}</span>}
+      </Link>
+    </nav>
+  );
+}
+
 function kafeyeGore(
   kuponlar: EnvanterKuponu[],
 ): { cafeId: string; cafeAdi: string; kuponlar: EnvanterKuponu[] }[] {

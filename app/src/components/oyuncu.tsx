@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AvatarYuvasi } from "./avatar-yuvasi";
 import {
   RENK,
   kartZemin,
@@ -65,12 +66,23 @@ export function OyuncuSayfa({
   geri,
   aktif,
   children,
+  yuva = true,
 }: {
   /** Üstteki geri bağlantısı. Sekme köklerinde verilmiyor. */
   geri?: { href: string; etiket: string };
   /** Alt şeritte hangi durak yanacak. */
   aktif: Durak;
   children: React.ReactNode;
+  /**
+   * Sağ alttaki avatar yuvası (Ü159).
+   *
+   * ⚠️ Profilde **kapalı**: avatar orada zaten büyük büyük duruyor ve
+   * okşanıyor (Ü147). İkisi aynı ekranda olsaydı oyuncu hangisini
+   * seveceğini bilemezdi — aynı karakterin iki kopyası.
+   *
+   * ⚠️ Oyun ekranlarında da kapatılmalı: yuva tahtanın üstüne düşer.
+   */
+  yuva?: boolean;
 }) {
   return (
     <main className="min-h-dvh bg-zemin text-yazi">
@@ -98,6 +110,7 @@ export function OyuncuSayfa({
         <NavBosluk />
       </div>
 
+      {yuva && <AvatarYuvasi />}
       <OyuncuNav aktif={aktif} />
     </main>
   );

@@ -185,51 +185,91 @@ async function main() {
     ],
   );
 
-  /* ── 3 · Son üç gün oynanmış: günlük seri 3 ───────────── */
+  /* ── 3 · On dört günlük geçmiş, dört oyun ─────────────── */
+
+  /*
+    🔴 Ü157: "içi dolu" hesap.
+
+    Ürün sahibi oyuncu ekranlarını gözden geçirecek ve üç günlük ince bir
+    geçmişle bakılırsa **ekranların yarısı boş** görünüyor: profil karnesi
+    tek satır, rozet rafı boş, seviye çubuğu birinci seviyede, Ödüllerim
+    iki kupon. O hâlde gözden geçirilen şey ürün değil, ürünün boş hâli
+    oluyor.
+
+    ⚠️ Geçmiş yine **kurallara uyarak** yazılıyor: her tur nitelikli
+    (`is_qualified`), kanıt seviyesi 2, masa oturumuna bağlı. Uydurma
+    değil, ürünün gerçekten üretebileceği kayıtlar.
+
+    ⚠️ Seri **dünden geriye** sayılıyor ve bugün boş: ekranın anlatmak
+    istediği şey *"serin risk altında"* ve o hâl ancak bugün oynanmamışken
+    görünüyor (betiğin baştan beri gelen kararı).
+  */
+  const OYUNLAR = ["blok", "dusen", "kelime", "yilan"];
+  const GUN_SAYISI = 14;
 
   await db.query(
     "DELETE FROM play_sessions WHERE player_id = $1 AND status = 'completed'",
     [playerId],
   );
-  for (let g = 1; g <= 3; g++) {
-    await db.query(
-      `INSERT INTO play_sessions
-         (id, cafe_id, table_id, player_id, device_id_hash, game_id, seed,
-          table_session_id, proof_mask, proof_level, business_date, status,
-          started_at, ended_at, duration_ms, server_score, claimed_score, is_qualified)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'completed',
-               now() - ($12 || ' days')::interval,
-               now() - ($12 || ' days')::interval + interval '4 minutes',
-               240000,$13,$13,true)`,
-      [
-        newId("pls"),
-        cafeId,
-        tableId,
-        playerId,
-        sha256(`demo-cihaz-${playerId}`),
-        "blok",
-        newId("sed"),
-        oturumId,
-        0b11,
-        2,
-        gunEkle(bugun, -g),
-        String(g),
-        900 + g * 120,
-      ],
-    );
+  for (let g = 1; g <= GUN_SAYISI; g++) {
+    /*
+      Günde bir ya da iki tur — her gün aynı sayıda olsaydı grafik düz
+      bir çizgi olur, rapor ekranı da cansız görünürdü.
+
+      🔴 **İkinci tur NİTELİKSİZ olmak zorunda.** Şemada
+      `play_sessions_qualified_idx` var: *1 nitelikli oturum / cihaz /
+      kafe / gün* (docs/06 §5). İki turu da nitelikli yazmak kısıta
+      takılıyor — betik ilk denemede tam buradan düştü. Gerçek üründe de
+      böyle: günün ikinci turu oynanır ama puan/seri saymaz.
+    */
+    const turSayisi = g % 3 === 0 ? 2 : 1;
+    for (let t = 0; t < turSayisi; t++) {
+      await db.query(
+        `INSERT INTO play_sessions
+           (id, cafe_id, table_id, player_id, device_id_hash, game_id, seed,
+            table_session_id, proof_mask, proof_level, business_date, status,
+            started_at, ended_at, duration_ms, server_score, claimed_score, is_qualified)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'completed',
+                 now() - ($12 || ' days')::interval,
+                 now() - ($12 || ' days')::interval + interval '4 minutes',
+                 240000,$13,$13,$14)`,
+        [
+          newId("pls"),
+          cafeId,
+          tableId,
+          playerId,
+          sha256(`demo-cihaz-${playerId}`),
+          OYUNLAR[(g + t) % OYUNLAR.length],
+          newId("sed"),
+          oturumId,
+          0b11,
+          2,
+          gunEkle(bugun, -g),
+          String(g),
+          700 + ((g * 137 + t * 61) % 900),
+          t === 0,
+        ],
+      );
+    }
   }
 
-  /* ── 4 · Puan ve XP ───────────────────────────────────── */
+  /* ── 4 · Puan ve XP — seviye 5 ────────────────────────── */
 
+  /*
+    Hedef **seviye 5**: `SEVIYE_ESIKLERI` (domain/xp.ts) beşinci seviyeyi
+    1.500 XP'de açıyor. On dört gün × 150 XP = 2.100, yani seviye 5 ve
+    altıncıya doğru yolun ~%40'ı — çubuk dolu ama bitmemiş, ekranın
+    anlatmak istediği tam olarak bu.
+  */
   await db.query("DELETE FROM points_ledger WHERE player_id = $1", [playerId]);
   await db.query("DELETE FROM xp_ledger WHERE player_id = $1", [playerId]);
 
-  for (let g = 1; g <= 3; g++) {
+  for (let g = 1; g <= GUN_SAYISI; g++) {
     await db.query(
       `INSERT INTO points_ledger
          (id, cafe_id, player_id, business_date, delta, reason, multiplier, proof_level)
        VALUES ($1,$2,$3,$4,$5,'oyun',1,2)`,
-      [newId("pnt"), cafeId, playerId, gunEkle(bugun, -g), 300],
+      [newId("pnt"), cafeId, playerId, gunEkle(bugun, -g), 400],
     );
     // ⚠️ `source_type` kapalı ve BÜYÜK HARF bir liste (göç 0009):
     // GAME / BADGE / REFERRAL / ADJUSTMENT / CHALLENGE.
@@ -237,7 +277,7 @@ async function main() {
       `INSERT INTO xp_ledger
          (id, cafe_id, player_id, business_date, delta, source_type, proof_level)
        VALUES ($1,$2,$3,$4,$5,'GAME',2)`,
-      [newId("xp"), cafeId, playerId, gunEkle(bugun, -g), 60],
+      [newId("xp"), cafeId, playerId, gunEkle(bugun, -g), 150],
     );
   }
 
@@ -254,43 +294,131 @@ async function main() {
     [playerId],
   );
 
-  /* ── 6 · Kazınacak kupon + karşılaştırma kuponu ───────── */
+  /* ── 6 · Zengin kupon seti ────────────────────────────── */
 
-  const odul = await db.query<{ id: string; cost_kurus: string; title: string }>(
+  /*
+    Ödüllerim ekranının **her hâli** bir arada olsun: kazınmamış, açık,
+    kullanılmış, süresi geçmiş ve henüz aktifleşmemiş. Tek durumla
+    bakılırsa ekranın gruplama, geçmiş sekmesi ve boş hâl metinleri hiç
+    görünmüyor.
+  */
+  const oduller = await db.query<{ id: string; cost_kurus: string; title: string }>(
     `SELECT id, cost_kurus, title FROM rewards
       WHERE cafe_id = $1 AND kind = 'instant' AND active
-      ORDER BY sort_order LIMIT 1`,
+      ORDER BY sort_order LIMIT 4`,
     [cafeId],
   );
-  if (odul.rowCount === 0) throw new Error("Kafenin anlık ödülü yok — önce: npm run db:seed");
+  if (oduller.rowCount === 0) throw new Error("Kafenin anlık ödülü yok — önce: npm run db:seed");
 
   const donemSatiri = await db.query<{ id: string }>(
     "SELECT id FROM budget_periods WHERE cafe_id = $1 ORDER BY period_start DESC LIMIT 1",
     [cafeId],
   );
 
-  const kuponYaz = async (id: string, kod: string, kapali: boolean) => {
+  /*
+    🔴 Kullanılmış kupon bir KASİYER istiyor.
+
+    Şema: `CHECK (status <> 'redeemed' OR redeemed_by_staff_id IS NOT NULL)`
+    ve aynısı `committed_kurus` için. Bu A4/E9'un veritabanı tarafı —
+    kupon oyuncunun telefonundan kapatılamaz. Betik ilk denemede tam
+    buradan düştü ve düşmesi doğru: sahte bir "kullanılmış" kupon
+    yazabilseydi, ürünün en sıkı kuralını tohum verisiyle delmiş olurduk.
+  */
+  const kasiyer = await db.query<{ id: string }>(
+    "SELECT id FROM staff WHERE cafe_id = $1 AND role = 'cashier' AND active LIMIT 1",
+    [cafeId],
+  );
+  if (kasiyer.rowCount === 0) throw new Error("Kafenin kasiyeri yok — önce: npm run db:seed");
+
+  // Önceki koşuların kuponları kalmasın — ikinci çalıştırmada liste
+  // katlanarak büyürdü.
+  await db.query("DELETE FROM coupons WHERE player_id = $1 AND code LIKE 'DEMO%'", [playerId]);
+
+  type Kupon = {
+    kod: string;
+    durum: "pending" | "active" | "redeemed" | "expired";
+    /** Kazınmamış mı — `revealed_at` boş kalıyor (Ü141). */
+    kapali?: boolean;
+    /** Aktifleşme ve sona erme, bugüne göre gün cinsinden. */
+    aktif: number;
+    biter: number;
+    odul: number;
+  };
+
+  const KUPONLAR: Kupon[] = [
+    // Kazınmayı bekleyen ikisi — asıl denenecek şey.
+    { kod: "DEMO01", durum: "active", kapali: true, aktif: 0, biter: 7, odul: 0 },
+    { kod: "DEMO02", durum: "active", kapali: true, aktif: 0, biter: 5, odul: 1 },
+    // Açılmış, kasada gösterilmeyi bekleyen üçü.
+    { kod: "DEMO03", durum: "active", aktif: 0, biter: 6, odul: 2 },
+    { kod: "DEMO04", durum: "active", aktif: 0, biter: 3, odul: 3 },
+    { kod: "DEMO05", durum: "active", aktif: 0, biter: 1, odul: 0 },
+    // Henüz aktifleşmemiş — "yarın açılıyor" hâli (Ü28'in ertelemesi).
+    { kod: "DEMO06", durum: "pending", aktif: 1, biter: 8, odul: 1 },
+    // Geçmiş: kullanılmış ikisi ve süresi geçmiş biri.
+    { kod: "DEMO07", durum: "redeemed", aktif: -9, biter: -2, odul: 2 },
+    { kod: "DEMO08", durum: "redeemed", aktif: -14, biter: -7, odul: 3 },
+    { kod: "DEMO09", durum: "expired", aktif: -12, biter: -4, odul: 0 },
+  ];
+
+  for (const k of KUPONLAR) {
+    const o = oduller.rows[k.odul % oduller.rowCount!];
     await db.query(
       `INSERT INTO coupons
          (id, cafe_id, player_id, reward_id, code, qr_token, status,
-          activates_at, expires_at, budget_period_id, reserved_kurus, proof_level, revealed_at)
-       VALUES ($1,$2,$3,$4,$5,$6,'active', now(), now() + interval '7 days',$7,$8,2,$9)`,
+          issued_at, activates_at, expires_at, budget_period_id, reserved_kurus,
+          committed_kurus, proof_level, revealed_at, redeemed_at, redeemed_by_staff_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,
+               now() + ($8 || ' days')::interval,
+               now() + ($9 || ' days')::interval,
+               now() + ($10 || ' days')::interval,
+               $11,$12,$13,2,$14,$15,$16)`,
       [
-        id,
+        newId("cpn"),
         cafeId,
         playerId,
-        odul.rows[0].id,
-        kod,
-        `jeton-${id}`,
+        o.id,
+        k.kod,
+        `jeton-${k.kod}-${playerId}`,
+        k.durum,
+        // ⚠️ `issued_at` aktifleşmeden ÖNCE olmalı: şemada
+        // `CHECK (expires_at > issued_at)` var ve geçmiş kuponlarda
+        // varsayılan `now()` bu kısıtı deliyordu.
+        String(k.aktif - 1),
+        String(k.aktif),
+        String(k.biter),
         donemSatiri.rows[0].id,
-        Number(odul.rows[0].cost_kurus),
-        kapali ? null : new Date(),
+        Number(o.cost_kurus),
+        k.durum === "redeemed" ? Number(o.cost_kurus) : null,
+        k.kapali ? null : new Date(),
+        k.durum === "redeemed" ? new Date(Date.now() + k.biter * 86_400_000) : null,
+        k.durum === "redeemed" ? kasiyer.rows[0].id : null,
       ],
     );
-  };
+  }
 
-  await kuponYaz("kpn_demo_kapali", "DEMO01", true);
-  await kuponYaz("kpn_demo_acik", "DEMO02", false);
+  /* ── 7 · Rozetler ─────────────────────────────────────── */
+
+  /*
+    Altı rozetin hepsi veriliyor ve **hepsinin karşılığı geçmişte var**:
+    on dört günlük oyun, beş ayrı ziyaret günü, seviye 5, kullanılmış
+    kupon. Karşılığı olmayan bir rozet vermek, profil ekranını ürünün
+    üretemeyeceği bir hâlde göstermek olurdu.
+
+    ⚠️ `scope='cafe'` rozetleri `cafe_id` istiyor, `global` olanlar NULL
+    (göç 0009). Yanlış yazılırsa rozet profilde kafe kartına düşmüyor.
+  */
+  await db.query("DELETE FROM player_badges WHERE player_id = $1", [playerId]);
+  const rozetler = await db.query<{ code: string; scope: string }>(
+    "SELECT code, scope FROM badges ORDER BY sort_order",
+  );
+  for (const r of rozetler.rows) {
+    await db.query(
+      `INSERT INTO player_badges (id, player_id, badge_code, cafe_id, earned_at)
+       VALUES ($1,$2,$3,$4, now() - interval '3 days')`,
+      [newId("bdg"), playerId, r.code, r.scope === "cafe" ? cafeId : null],
+    );
+  }
 
   console.log("");
   console.log("  Demo oyuncu hazır");
@@ -300,11 +428,11 @@ async function main() {
   console.log(`  kafe    : ${cafeAdi} · masa oturumu açık (K2), 6 saat`);
   console.log("");
   console.log("  Hazır olanlar:");
-  console.log("    · Ödüllerim → kazınmayı bekleyen 1 kupon (DEMO01)");
-  console.log(`    · Ödüllerim → karşılaştırma için açık 1 kupon (${odul.rows[0].title})`);
+  console.log("    · Ödüllerim → 2 kazınmamış · 3 açık · 1 bekleyen · 2 kullanılmış · 1 süresi geçmiş");
+  console.log("    · Profil    → 6 rozet, seviye 5 (2.100 XP)");
   console.log("    · Çark      → hakkı açık, çevrilebilir");
-  console.log("    · Seri      → 3 gün üst üste; bugün oynanmadı (riskte)");
-  console.log("    · Puan/XP   → 900 puan, 180 XP");
+  console.log("    · Seri      → 14 günlük geçmiş; bugün oynanmadı (seri riskte)");
+  console.log("    · Puan      → 5.600 puan · dört oyunda 18 tur");
   console.log("");
   console.log("  Oturum dolarsa tekrar çalıştır: npm run db:demo");
   console.log("");

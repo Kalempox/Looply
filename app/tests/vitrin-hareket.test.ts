@@ -1,7 +1,7 @@
 import "../scripts/_env";
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync, readdirSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import path from "node:path";
 
 /**
@@ -26,16 +26,6 @@ import path from "node:path";
  */
 
 const APP = path.join(process.cwd(), "src", "app");
-
-function kaynaklar(dizin: string): string[] {
-  const cikti: string[] = [];
-  for (const girdi of readdirSync(dizin, { withFileTypes: true })) {
-    const tam = path.join(dizin, girdi.name);
-    if (girdi.isDirectory()) cikti.push(...kaynaklar(tam));
-    else if (/\.tsx$/.test(girdi.name)) cikti.push(tam);
-  }
-  return cikti;
-}
 
 /**
  * 🔴 BURADA BİR TEST SİLİNDİ — kaydı için duruyor.

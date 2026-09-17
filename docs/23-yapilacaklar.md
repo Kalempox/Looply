@@ -6,7 +6,7 @@
 > Yan dosyalar: neyin **var** olduğu → `21-looply-kapsam-haritasi.md` ·
 > demoda neyin **yapılabildiği** → `22-demo-yapilabilirlik.md`
 
-**Son güncelleme:** 2026-09-17 · **Kararlar:** Ü76 – Ü151
+**Son güncelleme:** 2026-09-17 · **Kararlar:** Ü76 – Ü159
 
 > ⬅️ **DALGA 10 bitti** (Ü151) — mobil vitrinin hareketsiz alt yarısı
 > dolduruldu. ⚠️ **Referans linkleri hâlâ bekleniyor**, aşağıya bak.
@@ -107,16 +107,79 @@ gitti (kazıma, karusel, avatar, seviye, rozet); vitrine düşen tek iş
 "bitti" derken ürün sahibi mobilde hiçbir şey görmüyordu. **Ders: bir
 işin hangi yüzeye düştüğü, bittiği kadar önemli.**
 
-## ⚠️ Verilen linkler kayıtlı değil
+## 🔴 Test yığını kendi kendini zehirliyor — 2026-09-17'de bulundu
 
-`docs/02` ve `docs/23`'te **sıfır URL** var. Tek tek işlerin referansı
-yalnızca uygulama adı olarak yazılmış ("X Money'nin zarftan çıkan
-kartı", "Duolingo'nun başarı ekranı", "Waterllama'nın başarı döngüsü").
-Bu tur ölçüme ve kayıtlı kısıtlara dayanarak yapıldı.
+- [ ] **`sms_outbox` testler arasında temizlenmiyor.** Günlük SMS tavanı
+  (G14, `sms/index.ts`) **kayan 24 saat** penceresinde `status = 'sent'`
+  satırlarını sayıyor ve 2.000'de doluyor; %90'da yeni kayıt kapanıyor.
+  Testler kendi SMS'lerini yazıyor ama silmiyor.
+  ➜ Bir günde yeterince çok koşarsan yığın **kendi kendini düşürüyor**:
+  bugün sekizinci koşuda 1.803 'sent' satır birikti ve beş test
+  `kapasite_dolu` ile kırmızı yandı. Ürün doğru çalışıyordu.
+  ⚠️ **Arıza testte değil izolasyonda:** beş testin beşi de doğru şeyi
+  sınıyor, yalnızca paylaşılan bir sayaç üzerinden. Bu, `rapor.test.ts`te
+  Ü120'de çıkan kırılganlığın (*"gerçek trafik varken kırmızı yanıyordu"*)
+  aynı ailesi — o da tohumdan ödünç aldığı masa yüzünden düşmüştü.
+  ➜ **Çözüm:** SMS yazan testler kendi satırlarını sonda silsin, ya da
+  `_yardim.ts`e `smsDefteriniTemizle()` konup `before` içinde çağrılsın.
+  ⚠️ Elle temizlemek geçici: `DELETE FROM sms_outbox WHERE created_at >
+  now() - interval '2 days'` yığını yeşile döndürüyor ama ertesi gün
+  aynı yerden düşüyor.
 
-- [ ] **Linkler istendi, bekleniyor.** Geldiğinde her biri **kendi
-  maddesinin yanına** yazılacak ve hangi bölüme düştüğü karşısına
-  işlenecek — bitince "şurası hâlâ boş" diye ölçülebilsin.
+---
+
+## 📌 REFERANS LİNKLERİ — buraya yazılıyor, bir daha kaybolmasın
+
+> 🔴 Bu tablo **Ü151'de açıldı** çünkü linkler hiçbir yere yazılmamıştı:
+> `docs/02` ve `docs/23`'te sıfır URL vardı, yalnızca uygulama adları
+> duruyordu. Ürün sahibi *"sana hepsinin linkini de vermiştim"* dedi ve
+> haklıydı — verilmişti, **kaydedilmemişti.**
+>
+> **Kural: yeni bir referans geldiğinde önce buraya yazılır, sonra
+> koda geçilir.**
+
+| # | Link | İstenen | Nereye düşüyor | Durum |
+|---|---|---|---|---|
+| R1 | [X Money · Card Envelop Reveal](https://60fps.design/appsites/x-money-card-envelop-reveal-animation) | *"Bu animasyonda kutu açılıyor, kart oluyor ya — bizde de mobil cihaz içinden kupon çıksın. Üstte de 'kuponlar para kaybı değil müşteri kazanımı' gibi bir slogan yazsın."* | Mobil vitrin · `vitrin-yaklasma.tsx` → `TelefondanKupon` | ✅ Ü152 — gözle doğrulandı |
+
+## 🔴 R1 · "gerçekleşmiyor" dedi, ölçüm başka bir şey söyledi — Ü152
+
+Ürün sahibi F12 → mobil görünümde bakıp *"bu gerçekleşmiyor mobilde"*
+dedi. Ölçüm onu doğruladı **ama beklenmedik biçimde**: kupon çıkıyordu,
+animasyon durumu `finished` dönüyordu — yani hareket olmuş, bitmiş,
+kupon telefonun üstünde park etmişti. Ekranda görülen şey hiç
+kımıldamayan bir karttı.
+
+**Sebep gözlemcinin yanlış ögeyi izlemesiydi.** Gözlemci **kapsayıcıya**
+bağlıydı ve kapsayıcı telefondan çok daha uzun (~700 px: kupon alanı +
+144 px üst boşluk + 513 px telefon). Üst kenarı ekranın altından girer
+girmez hareket başlıyordu — o anda telefon hâlâ ekranın **altındaydı**.
+
+⚠️ `-18%` alt kenar payı bunu çözmüyordu çünkü sorun paydan değil,
+**uzun bir kutunun görünmesini içindeki nesnenin görünmesi sanmaktan**
+geliyordu. Gözlemci artık **telefonun kendisine** bağlı, alt payı %40:
+telefon ekranın üst üçte ikisine girmeden hareket başlamıyor.
+
+- [x] **Slogan her genişlikte görünüyor** ✅ — Ü152
+  🔴 İlk yazılışta `DuranSahne`nin içine kondu ve o blok `lg:hidden`:
+  bilgisayardan landing page'e bakan biri **hiç göremiyordu**. Ürün
+  sahibi bildirdi: *"ben bunu landing page için istemiştim ancak
+  gözükmüyor hiçbir şekilde."*
+  ⚠️ **Ayrım:** animasyonun mobile özel olması bir karar; slogan ise bir
+  efekt değil **içerik**. Değer önermesini ekran genişliğine göre
+  saklamak kararın değil yerleştirmenin hatasıydı.
+- [x] **Döngü okunun ucu yaya değmiyordu** ✅ — Ü152
+  Ok ucu x=21'deydi, yay x=26'da başlıyordu; gözle bakınca ok ayrı bir
+  işaret gibi duruyordu. Aynı noktaya hizalandı.
+  ⚠️ Bu kusur **yalnızca ekran görüntüsüyle** görüldü — DOM ölçümü
+  "animasyon çalışıyor" diyordu ve doğruydu.
+
+- [ ] **Kalan linkler bekleniyor.** Ürün sahibi *"ben sana bulup
+  göstereyim"* dedi; geldikçe bu tabloya eklenecek.
+- [ ] **Zarfın açılma hareketi hâlâ karşılaştırılmadı.** Bizdeki kart
+  telefonun arkasından yukarı süzülüyor (`kupon-cik`, 1,25 sn). Referansın
+  adı *"Card **Envelop** Reveal"* — kapağın açılması hareketin parçası
+  olabilir. Videoyu kare kare incelemek için indirme izni gerekiyor.
 
 ## Biten işler — Ü151
 

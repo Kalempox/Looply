@@ -586,7 +586,10 @@ export async function carkOduluVer(opts: {
           WHERE c.player_id = $1 AND c.cafe_id = $2 AND e.reason = 'cark'`,
         [opts.playerId, opts.cafeId],
       );
-      if (son?.an && son.an.getTime() + cark.ARALIK_SAAT * 3_600_000 > Date.now()) {
+      // ⚠️ Kafenin ayarı (Ü158) — sabit değil. İki yerde iki farklı
+      // süre kullanmak, çarkı "açık" gösterip çevirmeyi reddetmek olurdu.
+      const carkAralik = await cark.aralikSaat(opts.cafeId);
+      if (son?.an && son.an.getTime() + carkAralik * 3_600_000 > Date.now()) {
         return { ok: false as const, hata: "Çark 24 saatte bir çevrilebilir." };
       }
     }

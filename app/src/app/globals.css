@@ -1210,3 +1210,389 @@ body {
     animation: none !important;
   }
 }
+
+/* ── Kurulum adımlarının görselleştirmesi (Ü153) ─────────────
+   Ürün sahibi: *"burdaki yazıların arası da görselleştirilmeli."*
+   İki sürüm birden yazıldı, seçim ürün sahibinin — kaybeden silinecek.
+
+   ⚠️ Hepsi tek seferlik ve `Beliren`in içinde: kutu görüş alanına
+   girince oynuyor, sonra duruyor (Ü133). Kaydırmaya bağlı değil. */
+
+/* A · Adımları birleştiren yol ----------------------------- */
+
+@keyframes adim-dugum-gel {
+  from {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  60% {
+    transform: scale(1.12);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.adim-dugum {
+  animation: adim-dugum-gel 0.45s cubic-bezier(0.34, 1.4, 0.64, 1)
+    var(--adim-gecikme, 0ms) both;
+}
+
+/* 🔴 Kesikli iz "çizilirken" ne yapılmaz (Ü154).
+
+   Ürün sahibi elle çizilmiş kesikli bir iz görseli gönderdi. Normal yol
+   çizme hilesi `stroke-dashoffset`tir ama burada `stroke-dasharray`
+   **zaten kesikleri** yapıyor: offset'i oynatmak izi çizmiyor,
+   kesikleri **yürütüyor** — yürüyen noktalar "yükleniyor" gibi okunuyor,
+   "yol uzuyor" gibi değil.
+
+   Bu yüzden yol olduğu gibi duruyor ve üstünden aşağı inen bir kırpma
+   açılıyor. Göz bunu izin uzaması diye okuyor ve kesikler yerinde
+   kalıyor. */
+/* İz kaydırmayla uzuyor — Ü155.
+   Anahtar kare yok: ilerlemeyi `--iz` (0–1) taşıyor ve onu kaydırma
+   dinleyicisi yazıyor. Kırpma yukarıdan aşağı açılıyor, kesikler
+   yerinde kalıyor. */
+.adim-iz-kaydirmali {
+  clip-path: inset(0 0 calc((1 - var(--iz, 0)) * 100%) 0);
+}
+
+/* B · Her adımın mini sahnesi ------------------------------ */
+
+/* 1 · Karekod basılıyor — kart oturuyor, kareler sırayla doluyor. */
+/* 🔴 Döngüye alındı — Ü154.
+
+   Ürün sahibi: *"bu animasyon ekranda burası açık olduğu sürece sürekli
+   dönmeli."* Ü133'ün gerekçesi bunun tersiydi (tekrarlayan hareket bir
+   süre sonra hareket olarak okunmuyor) ama orada konu sayfanın tamamıydı;
+   burada dört küçük kutu var ve ziyaretçi hangisine bakarsa onu baştan
+   görmeli. Kaçıran biri kaydırıp geri gelmek zorunda kalmıyor.
+
+   ⚠️ Her döngüde uzun bir **duruş** var (hareket sürenin dörtte birinde
+   bitiyor): aralıksız dönen bir kutu yanındaki metni okutmuyor. */
+@keyframes mini-kart-otur {
+  0% {
+    opacity: 0;
+    transform: translateY(-8px) rotate(-6deg);
+  }
+  14%,
+  88% {
+    opacity: 1;
+    transform: none;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-8px) rotate(-6deg);
+  }
+}
+
+.mini-karekod {
+  animation: mini-kart-otur 4s cubic-bezier(0.2, 0.7, 0.3, 1)
+    var(--adim-gecikme, 0ms) infinite;
+}
+
+/* 2 · Telefon zıplıyor — ürün sahibinin tarifi (Ü154).
+   ⚠️ Sürekli döngü, tek seferlik değil: bu bir olay anlatmıyor, bir
+   HÂL anlatıyor ("müşteri orada oynuyor"). Küçük ve yavaş, yoksa
+   yanındaki metni okumayı bozar. */
+@keyframes mini-telefon-zipla {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-9px);
+  }
+}
+
+.mini-telefon {
+  animation: mini-telefon-zipla 1.9s ease-in-out infinite;
+  animation-delay: var(--adim-gecikme, 0ms);
+}
+
+/* 3 · Kupon kazınıyor — yüzey soldan sağa siliniyor (Ü154).
+   ⚠️ Silinme düz bir perde değil: `polygon` ile eğik bir kenar,
+   parmakla silinmiş gibi. Düz kenar "perde kalktı" der, kazıma demez. */
+/* Sonsuzlukta iz DÖNÜYOR, çizilmiyor — Ü155.
+
+   Çizilme denendi ve elendi: her döngüde yarım şekiller görünüyordu,
+   yuvarlak uç kapağı ok gibi duruyordu. Sonsuzluğun anlattığı şey bir
+   başlangıç-bitiş değil bitmeyen dolaşma; şekil hep tam duruyor,
+   üstünde parlak bir parça sonsuza kadar dolanıyor.
+
+   ⚠️ `pathLength="240"` + dasharray 40+200=240 + offset −240: tam bir
+   tur, dikişsiz. `linear` şart — yavaşlayıp hızlanan bir tur "dönüyor"
+   değil "sallanıyor" gibi okunuyor. */
+@keyframes mini-sonsuz-don {
+  from {
+    stroke-dashoffset: 0;
+  }
+  to {
+    stroke-dashoffset: -240;
+  }
+}
+
+.mini-sonsuz {
+  stroke-dasharray: 40 200;
+  animation: mini-sonsuz-don 2.8s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Hareket kapalıyken iz dönmesin, şekil tam dursun. */
+  .mini-sonsuz {
+    animation: none !important;
+    stroke-dasharray: none !important;
+  }
+}
+
+/* ── Gerçek kazıma — Ü155 ────────────────────────────────────
+   Ürün sahibi: *"burada gerçek kazıma animasyonu olmalı."* Önceki hâli
+   düz bir renkti ve düz bir kenarla siliniyordu: "perde açıldı" gibi
+   okunuyordu, kazıma gibi değil.
+
+   İki şey eklendi: kaplamanın **dokusu** (çapraz gradyanlar, Ü141'deki
+   gerçek kartın ucuz karşılığı) ve sıyrılma kenarının **düzensizliği**
+   (çok noktalı polygon, parmağın bıraktığı tırtıklı sınır). */
+.mini-kaplama {
+  background:
+    repeating-linear-gradient(
+      58deg,
+      rgba(255, 255, 255, 0.5) 0 2px,
+      rgba(0, 0, 0, 0.06) 2px 4px
+    ),
+    linear-gradient(135deg, #c9cfdd 0%, #aeb6c8 45%, #d4d9e4 100%);
+  animation: mini-kazi 4s cubic-bezier(0.45, 0, 0.3, 1) infinite;
+  animation-delay: var(--adim-gecikme, 0ms);
+}
+
+/* Tırtıklı kenar: sağ tarafta sabit, sol sınır yukarıdan aşağı
+   zikzak. Yüzdeler ilerledikçe kaplama soldan sağa sıyrılıyor. */
+@keyframes mini-kazi {
+  0%,
+  10% {
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+  }
+  22% {
+    clip-path: polygon(26% 0, 100% 0, 100% 100%, 14% 100%, 20% 50%);
+  }
+  34% {
+    clip-path: polygon(58% 0, 100% 0, 100% 100%, 44% 100%, 52% 46%);
+  }
+  46%,
+  84% {
+    clip-path: polygon(118% 0, 100% 0, 100% 100%, 112% 100%, 116% 50%);
+  }
+  100% {
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+  }
+}
+
+/* Kopan parçacıklar — sıyrılma kenarını takip edip dışarı uçuyorlar. */
+@keyframes mini-kirinti-uc {
+  0%,
+  12% {
+    opacity: 0;
+    transform: translate(0, 0) scale(0.6);
+  }
+  20% {
+    opacity: 1;
+  }
+  46% {
+    opacity: 0;
+    transform: translate(calc(14px + var(--n) * 5px), -16px) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(0, 0) scale(0.6);
+  }
+}
+
+.mini-kirinti {
+  position: absolute;
+  top: 50%;
+  left: calc(18% + var(--n) * 21%);
+  width: 3px;
+  height: 3px;
+  border-radius: 1px;
+  background: #aeb6c8;
+  animation: mini-kirinti-uc 4s ease-out infinite;
+  animation-delay: calc(var(--adim-gecikme, 0ms) + var(--n) * 90ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Hareket kapalıyken kaplama hiç olmasın: ödül görünsün. */
+  .mini-kaplama,
+  .mini-kirinti {
+    animation: none !important;
+    opacity: 0 !important;
+  }
+}
+
+/* ── Simülasyon fragmanı (Ü156) ──────────────────────────────
+   Ürün sahibi: *"bu kısmı da daha çok öne çıkarmalıyız, müşteri
+   kazanmak için en önemli araçlarımızdan biri bu."*
+
+   Anlatılan şey bir sayı değil **mekanizma**: üç oran çubuğu kendi
+   kendine oynuyor, altındaki sonuç onlarla birlikte değişiyor. Ziyaretçi
+   tıklamadan önce "burada ayar çevirip sonuç görüyorum" fikrini alıyor.
+
+   ⚠️ Üç çubuk **aynı anda değil** kaymalı oynuyor (`--n` gecikmesi):
+   aynı anda oynasalar tek bir çubuk gibi okunur, ayar çevirme hissi
+   kaybolurdu.
+
+   ⚠️ Sonuç çubuğu bilerek para değil. Rakam yazmama kararı Ü142'den
+   geliyor ve aracın bütün değeri sayının ziyaretçiden çıkmasında. */
+@keyframes sim-cubuk-oyna {
+  0%,
+  100% {
+    width: 34%;
+  }
+  30% {
+    width: 72%;
+  }
+  62% {
+    width: 48%;
+  }
+}
+
+.sim-cubuk {
+  width: 34%;
+  animation: sim-cubuk-oyna 7s cubic-bezier(0.4, 0, 0.3, 1) infinite;
+  animation-delay: calc(var(--n) * -1.7s);
+}
+
+/* Yüzde yazısı yok ama yerini tutuyor: sayı yazsaydık uydurma bir
+   rakam vaat etmiş olurduk. Nokta dizisi "burada bir değer var,
+   onu sen gireceksin" diyor. */
+.sim-yuzde::after {
+  content: "•••";
+  letter-spacing: 0.12em;
+  opacity: 0.55;
+}
+
+@keyframes sim-sonuc-oyna {
+  0%,
+  100% {
+    width: 41%;
+  }
+  30% {
+    width: 86%;
+  }
+  62% {
+    width: 58%;
+  }
+}
+
+.sim-sonuc {
+  width: 41%;
+  /* Üç orandan SONRA hareket ediyor: sebep önce, sonuç sonra. */
+  animation: sim-sonuc-oyna 7s cubic-bezier(0.4, 0, 0.3, 1) 0.35s infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sim-cubuk,
+  .sim-sonuc {
+    animation: none !important;
+  }
+}
+
+/* ── Çark kartındaki tekerlek dönüyor (Ü159) ─────────────────
+   Ürün sahibi: *"burdaki çark animasyonu dönsün."* Duran bir çark
+   görseli kartın "hazır" dediği şeyle çelişiyordu.
+
+   ⚠️ Yavaş ve sürekli: çark bir olay değil bir **davet**. Hızlı
+   dönseydi "çevriliyor" sanılır, tıklamadan önce iş bitmiş görünürdü.
+   `linear` şart — yavaşlayıp hızlanan bir tekerlek bozuk okunuyor. */
+@keyframes cark-don {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.cark-donuyor {
+  display: inline-block;
+  animation: cark-don 9s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cark-donuyor {
+    animation: none !important;
+  }
+}
+
+/* ── Avatar yuvadan fırlıyor (Ü159) ──────────────────────────
+   Ürün sahibi: *"ona tıklarsa avatarımız fırlama animasyonuyla ekrana
+   gelmeli … 'geri yuvasına gönder' seçeneğiyle de geri o dairenin
+   içine gönderilmeli."*
+
+   ⚠️ Çıkış ve dönüş **simetrik değil**. Fırlama yaylı ve hafif aşıyor
+   (`cubic-bezier` geri tepmeli): bir şey yuvasından çıkarken hız
+   kazanır. Dönüş ise düz ve hızlı — geri girmek bir gösteri değil,
+   bir kapanış. Aynı eğri kullanılsaydı dönüş de kutlama gibi okunur
+   ve "işim bitti" hissi kaybolurdu.
+
+   ⚠️ `transform-origin` sağ altta: fırlama yuvanın olduğu noktadan
+   başlamalı, kutunun ortasından değil. */
+@keyframes avatar-firla {
+  0% {
+    opacity: 0;
+    transform: translate(18px, 26px) scale(0.2) rotate(12deg);
+  }
+  55% {
+    opacity: 1;
+    transform: translate(0, -10px) scale(1.06) rotate(-3deg);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.avatar-firliyor {
+  transform-origin: 85% 90%;
+  animation: avatar-firla 0.52s cubic-bezier(0.34, 1.5, 0.5, 1) both;
+}
+
+@keyframes avatar-yuvaya-don {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: translate(18px, 26px) scale(0.2) rotate(10deg);
+  }
+}
+
+.avatar-yuvaya {
+  transform-origin: 85% 90%;
+  animation: avatar-yuvaya-don 0.4s cubic-bezier(0.5, 0, 0.75, 0) both;
+}
+
+/* Yuva sakin sakin nefes alıyor — orada bir şey olduğunu söylüyor.
+   Fark edilmesi değil, unutulmaması amaçlanıyor. */
+@keyframes avatar-yuva-nefes {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.06);
+  }
+}
+
+.avatar-yuva {
+  animation: avatar-yuva-nefes 3.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .avatar-firliyor,
+  .avatar-yuvaya,
+  .avatar-yuva {
+    animation: none !important;
+  }
+}

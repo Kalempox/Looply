@@ -67,7 +67,10 @@ export default async function ProfilSayfasi() {
   const toplamOyun = kafeler.reduce((t, k) => t + k.toplamOyun, 0);
 
   return (
-    <OyuncuSayfa aktif="/profil">
+    // ⚠️ `yuva={false}`: avatar bu sayfada zaten büyük duruyor ve
+    // okşanıyor (Ü147). İkisi bir arada aynı karakterin iki kopyası
+    // olurdu — oyuncu hangisini seveceğini bilemezdi.
+    <OyuncuSayfa aktif="/profil" yuva={false}>
       <SayfaBasi ust="Profil" baslik={g.ad} renk="menekse" gorsel="madalya">
         <div className="grid grid-cols-3 gap-2">
           <Sayac etiket="Kafe" deger={String(kafeler.length)} renk="gok" />

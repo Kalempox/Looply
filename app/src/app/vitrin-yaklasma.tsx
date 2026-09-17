@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { LooplyLogo } from "@/components/logo";
 import { Beliren } from "./vitrin-hareket";
 
@@ -79,8 +79,12 @@ const ODAK_X = 68.385;
 const ODAK_Y = 53.194;
 const KART_GEN = 20.53;
 const KART_YUK = 53.24;
-const KART_SOL = ODAK_X - KART_GEN / 2;
-const KART_UST = ODAK_Y - KART_YUK / 2;
+/*
+  ⚠️ `KART_SOL` / `KART_UST` Ü153'te KALDIRILDI. Yalnızca dar ekrandaki
+  duran fotoğraf kopyası kullanıyordu; o blok kalkınca kullanılan yer
+  kalmadı. Kaydırmalı sahne kartı kendi `donus` değerinden türetiyor
+  (`kartGen` / `kartYuk`), sabit köşeden değil.
+*/
 
 /**
  * 🔴 Kart düz bir dikdörtgen DEĞİL — perspektifi var.
@@ -201,7 +205,22 @@ export function YaklasanSahne({
       {/* Geniş ekran — kaydırmaya bağlı sahne */}
       <KaydirmaSahnesi karekod={karekod} karesi={karesi} />
       {/* Dar ekran — aynı içerik, duran hâli */}
-      <DuranSahne karekod={karekod} karesi={karesi} />
+      <DuranSahne karekod={karekod} />
+
+      {/*
+        🔴 Slogan Ü155'te KALDIRILDI — "Kupon bir gider değil, geri
+        gelen müşteri."
+
+        Ü152'de eklenmişti ve doğru bir cümleydi; kusuru **yeri**.
+        Hemen altındaki bölümün başlığı zaten *"Müşterini elinde tutmak
+        indirim yapmaktan ucuz"* diyor — aynı iddia, iki kez, art arda.
+        Ürün sahibi ekranda görünce fark etti: *"bu yazıyı kaldıralım…
+        masaüstü görünümünde de sadece kupon gider değil yazısı kalksın."*
+
+        ⚠️ Mobilde de masaüstünde de kalktı: cümle bir efekt değil içerik
+        olduğu için ekran genişliğine göre farklı davranması anlamsız
+        olurdu (Ü152'nin kendi dersi).
+      */}
     </section>
   );
 }
@@ -529,136 +548,61 @@ function KaydirmaSahnesi({
  * (bkz. dosya başı). Burada aynı üç şey duruyor — masadaki kart, dört
  * mesaj, telefon — ama normal akışta, parmağın beklediği gibi.
  */
-function DuranSahne({
-  karekod,
-  karesi,
-}: {
-  karekod: React.ReactNode;
-  karesi: string | null;
-}) {
+function DuranSahne({ karekod }: { karekod: React.ReactNode }) {
   return (
     <div className="bg-vitrin-fildisi px-5 py-16 lg:hidden">
       <div className="mx-auto w-full max-w-lg">
-        {karesi && (
-          /*
-            Dar ekranda kadraj **karta yakınlaştırılmış** duruyor.
+        {/*
+          🔴 Masadaki karekod fotoğrafı buradan KALDIRILDI — Ü153.
 
-            İlk denemede kare 16:9 hâliyle konmuştu ve kart ekranda 73
-            piksele düşüyordu: logo kartın yarısını kaplıyor, karekod
-            kesiliyordu. Kutu 4:5'e alınıp içine geniş ekrandakinin
-            aynısı bir "sahne" konuldu — fotoğrafın oranını koruyan,
-            kutuyu kaplayan ve kartı ortalayan bir kat. Kart artık
-            kutunun yarısı kadar; karekod okunuyor.
-          */
-          <div
-            className="relative overflow-hidden rounded-3xl shadow-[0_28px_60px_-28px_rgba(16,32,77,0.5)]"
-            style={{ aspectRatio: "4 / 5" }}
-          >
-            <div
-              className="absolute top-1/2 left-1/2"
-              style={{
-                // Kutu yüksekliği × kare oranı = sahne genişliği.
-                width: `${((5 / 4) * KARE_ORANI * 100).toFixed(2)}%`,
-                aspectRatio: `${KARE_ORANI}`,
-                translate: `${(-50 - (ODAK_X - 50)).toFixed(2)}% ${(-50 - (ODAK_Y - 50)).toFixed(2)}%`,
-              }}
-            >
-              <Image
-                src={karesi}
-                alt="Kafe masasında Looply karekodu"
-                fill
-                sizes="(max-width: 640px) 230vw, 120vw"
-                className="object-cover"
-              />
-              {/* Vektör kart — geniş ekrandakiyle aynı ölçüler. */}
-              <div
-                className="absolute overflow-hidden bg-white"
-                style={{
-                  left: `${KART_SOL}%`,
-                  top: `${KART_UST}%`,
-                  width: `${KART_GEN}%`,
-                  height: `${KART_YUK}%`,
-                  /*
-                    ⚠️ `perspective()` yüzde kabul etmiyor, uzunluk
-                    istiyor. Dar ekranda sahne genişliği = kutu genişliği
-                    × 2.222 ve kutu `max-w-lg` + `px-5` ile sınırlı;
-                    uzaklık da o zincirden türetiliyor.
-                  */
-                  transform: `perspective(calc(${(PERSPEKTIF_ORANI * (5 / 4) * KARE_ORANI).toFixed(4)} * min(512px, 100vw - 40px))) rotateZ(${DONUS_Z}deg) rotateY(${DONUS_Y}deg)`,
-                  borderRadius: "3px",
-                }}
-              >
-                <KartYuzu karekod={karekod} logoBoyut={22} altVar={false} />
-              </div>
-            </div>
-          </div>
-        )}
+          Ürün sahibi: *"mobilde bu kısım çok alakasız ve seyrek,
+          bunu kaldıralım."* Dar ekranda kare 4:5'e kırpılıyor, kart
+          kutunun yarısı kadar kalıyor; ekranın üçte birini bir
+          fotoğrafa verip altına dört düz yazı kutusu dizmek sahneyi
+          seyrek gösteriyordu.
 
-        {/* Ü133: kartlar sırayla beliriyor. Üçü birden duruyordu ve
-            kaydırırken hiçbir şey olmuyordu.
+          ⚠️ Fotoğraf **silinmedi**: masaüstündeki kaydırmalı sahne
+          onun üstüne kurulu (`KaydirmaSahnesi`) ve karekoda
+          yaklaşmanın tek zemini o. Kalkan şey yalnızca dar ekrandaki
+          duran kopyası — bu yüzden `karesi` artık DuranSahne'ye hiç
+          geçmiyor.
 
-            Dalga 8: dördü de aynı yönden geliyordu. Artık dönüşümlü —
-            sıradaki kartın nereden geleceği kestirilemiyor ve liste
-            "tek bir geçişin dört kez tekrarı" gibi okunmuyor. */}
-        <ol className="mt-10 space-y-4">
-          {KENAR_YAZILARI.map((y, i) => (
-            <Beliren
-              key={y.baslik}
-              gecikme={i * 90}
-              yon={i % 2 === 0 ? "sag" : "sol"}
-            >
-              <li className="rounded-2xl bg-yuzey px-6 py-6 shadow-[0_16px_40px_-24px_rgba(16,32,77,0.45)] ring-1 ring-vitrin-lacivert/10">
-                <KutuIcerigi baslik={y.baslik} metin={y.metin} alt={y.alt} />
-              </li>
-            </Beliren>
-          ))}
-        </ol>
+          ⚠️ Bedeli bilinçli: "masaya bir karekod koy" cümlesinin
+          kanıtı mobilde artık yalnızca yazıda. Ürün sahibine söylendi,
+          kaldırma kararı onun.
+        */}
 
         {/*
-          ── Telefon + kupon yağmuru ──────────────────
+          Kurulum adımları — Ü153'te görselleştirildi.
 
-          Geniş ekranda kuponlar kaydırdıkça yağıyor; mobilde o sahne
-          hiç yok ve ekran tamamen duruyordu. Burada aynı fikir CSS
-          anahtar karesiyle: kuponlar telefonun ardından süzülüyor,
-          sonsuz döngüde, kaydırmadan bağımsız.
+          Ürün sahibi: *"burdaki yazıların arası da görselleştirilmeli."*
+          İki yol birden yazıldı ve **seçimi ürün sahibi yapacak**
+          (*"ben hangisinin daha iyi olduğuna karar vereyim"*):
 
-          ⚠️ `overflow-hidden` şart: kuponlar kutunun dışına taşarsa
-          sayfada yatay kaydırma çubuğu doğuyor — mobilde en kötü hata.
+            `yol`  — adımları birleştiren, kendini çizen dikey hat
+            `mini` — her adımın kutusunda kendi küçük sahnesi
 
-          ⚠️ Kuponlar telefonun ARKASINDA (`-z-0` / telefon `z-10`):
-          önünde olsalardı ürünün ekranını kapatırlardı ve gösterilmek
-          istenen şey tam olarak o ekran.
+          ⚠️ Kaybeden sürüm **silinecek**; ikisini birden taşımak
+          "iki tasarım da yarım" demek olurdu.
         */}
-        <div className="relative mt-12 flex justify-center overflow-hidden pt-36 pb-4">
-          <div
-            aria-hidden
-            className="mobil-yagmur pointer-events-none absolute inset-0 z-0"
-          >
-            {MOBIL_YAGAN.map((k, i) => (
-              <span
-                key={i}
-                className="absolute top-0 block"
-                style={
-                  {
-                    left: `${k.x}%`,
-                    "--egim": `${k.egim}deg`,
-                    "--donus": `${k.donus}deg`,
-                    "--sure": `${k.sure}s`,
-                    "--gecikme": `${k.gecikme}s`,
-                  } as React.CSSProperties
-                }
-              >
-                <span className="block rounded-full bg-yuzey/90 px-3 py-1.5 text-[11px] font-semibold whitespace-nowrap text-vitrin-lacivert shadow-[0_8px_20px_-10px_rgba(16,32,77,0.5)] ring-1 ring-vitrin-lacivert/10">
-                  {k.baslik}
-                </span>
-              </span>
-            ))}
-          </div>
+        <AdimlarYol karekod={karekod} />
 
-          <TelefondanKupon />
-        </div>
+        {/*
+          🔴 Telefon + kupon yağmuru mobilden KALDIRILDI — Ü154.
+
+          Ürün sahibi: *"mobilde bu telefon kısmının gözükmesine gerek
+          yok."* Sebep adımlar görselleşince ortaya çıktı: 2. kartın
+          içinde zaten bir telefon var ve oyunu o gösteriyor, 3. kartta
+          da kupon kazınarak açılıyor. Aşağıdaki dev telefon aynı iki
+          şeyi ikinci kez, daha yer kaplayarak anlatıyordu.
+
+          ⚠️ **Bedeli var ve bilinçli:** X Money referansından gelen
+          "cihazdan kupon çıkıyor" hareketi (Ü145, Ü152'de zamanlaması
+          düzeltilmişti) mobilde artık yok. Kupon hikâyesini 3. kartın
+          kazıma sahnesi taşıyor. Masaüstünde kaydırmalı sahne aynen
+          duruyor.
+        */}
       </div>
-
       {/*
         ── Akan şerit — mobilde ilk kez (Dalga 8) ───
 
@@ -701,6 +645,361 @@ function DuranSahne({
 
 /* ── Ortak parçalar ────────────────────────────────────────── */
 
+/* ── Ü154 · Kurulum adımları: yılankavi iz + yanlarda kartlar ─ */
+
+/**
+ * Adımlar, aralarından geçen kesikli bir izle.
+ *
+ * ── Ürün sahibinin tarifi ───────────────────────────────────
+ *
+ * *"Kesikli çizgi düz değil, bir sağa bir sola doğru ilerlesin; kart
+ * yolun bir sağında bir solunda olsun. İlla aşırı simetrik olmasına
+ * gerek yok, biraz dağınık olabilir."* Ayrıca her kutunun içinde kendi
+ * mini sahnesi duruyor — iki ayrı denemeydi, tek tasarımda birleşti.
+ *
+ * ── 🔴 İz neden TEK bir SVG, parça parça değil ──────────────
+ *
+ * İlk denemede her boşluğa kendi 40 piksellik parçası konmuştu ve
+ * **düz göründü**: kutu 40 piksel genişken eğrinin yanal sapması en
+ * fazla 12 piksel oluyor, üstelik yükseklik 200 piksele uzayınca o
+ * sapma göze tamamen düzleşiyor.
+ *
+ * Şimdi iz **tam genişlikte tek bir yol** ve arkada duruyor. `viewBox`
+ * 100 birim geniş, `preserveAspectRatio="none"` ile kutuya yayılıyor:
+ * x=22 → genişliğin %22'si. 375 piksellik ekranda sapma ~100 piksele
+ * çıkıyor, yani gerçekten kıvrılıyor.
+ *
+ * ── Dağınıklık kasıtlı ──────────────────────────────────────
+ *
+ * Kartların yan payları ve eğimleri birbirinin aynısı değil
+ * (`YERLESIM`). Tam simetri bir çizelge gibi duruyordu; ürün sahibi
+ * *"biraz dağınık olabilir"* dedi ve elle çizilmiş iz zaten onu
+ * söylüyor.
+ */
+/*
+  🔴 Genişlikler ölçümle indirildi.
+
+  İlk denemede kartlar %80–84'tü ve iki şey birden bozuldu:
+
+    1. **1 piksel yatay taşma.** Sağdaki kartın sağ kenarı 387'ye
+       gidiyordu, ekran 375. Dalga 8'in dersi: mobilde yatay kaydırma
+       en kötü hata ve her zaman böyle, "bir piksel" diye başlıyor.
+       Eğim de payını ekliyor — 1,5° dönen 420 piksellik bir kartın
+       köşesi ~5 piksel dışarı çıkıyor.
+    2. **İz görünmüyordu.** Kart 335 piksellik alanın 290'ını kaplayınca
+       arkadaki yoldan geriye kıvrımın göründüğü bir şerit kalmıyordu.
+
+  %72 civarı ikisini birden çözüyor: kenarda eğimin payı kadar boşluk
+  kalıyor ve karşı yanda iz için ~90 piksellik bir şerit açılıyor.
+*/
+const YERLESIM = [
+  { yan: "sol", genislik: "72%", egim: "-1deg" },
+  { yan: "sag", genislik: "74%", egim: "1.2deg" },
+  { yan: "sol", genislik: "71%", egim: "0.9deg" },
+  { yan: "sag", genislik: "75%", egim: "-1.3deg" },
+] as const;
+
+/**
+ * İki kart arasını geçen kesikli iz — Ü154.
+ *
+ * Ürün sahibi: *"Kesikli çizgi düz değil, bir sağa bir sola doğru
+ * ilerlesin; kart yolun bir sağında bir solunda olsun."*
+ *
+ * ── 🔴 İki deneme elendi, ikisi de ölçümle ──────────────────
+ *
+ * **1 · 40 piksellik dikey parçalar.** Eğri o dar kutuya sığdığı için
+ * yanal sapma en fazla 12 piksel oluyordu; yükseklik 200 piksele
+ * uzayınca göze tamamen **düz** görünüyordu.
+ *
+ * **2 · Kartların arkasında tam boy tek SVG.** Kartlar alanın çoğunu
+ * kaplıyor ve aralarında yalnızca 28 piksellik boşluk vardı; izden
+ * geriye birkaç nokta kalıyordu. Üstelik tek uzun yolun kıvrımlarını
+ * kart sıralarıyla hizalamak, kart yüksekliklerini — yani metni, yazı
+ * tipini, ekran genişliğini — bilmeyi gerektiriyordu.
+ *
+ * **Çalışan hâli:** iz kartların arkasında değil **arasında**. Her
+ * boşluk tam genişlikte ve 72 piksel yüksekliğinde; iz bir kartın
+ * yanından çıkıp öbürünün öteki yanına geçiyor. Yanal yolculuk gerçek
+ * ve hiçbir yerde kartın altında kaybolmuyor.
+ *
+ * ⚠️ `stroke-dashoffset` ile "çizilmiyor": kesikleri `stroke-dasharray`
+ * yapıyor ve offset'i oynatmak izi çizmez, kesikleri **yürütür** —
+ * "yükleniyor" gibi okunur. İz duruyor, üstünden aşağı inen bir kırpma
+ * açılıyor (`.adim-iz`).
+ *
+ * ⚠️ `vectorEffect="non-scaling-stroke"`: kutu yayılırken kesikler de
+ * yayılıp ezilmesin diye.
+ */
+function IzParcasi({ soldanSaga }: { soldanSaga: boolean }) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  /**
+   * 🔴 İz artık **kaydırmayla** çiziliyor — Ü155.
+   *
+   * Ürün sahibi: *"yol biz ekranı kaydırdıkça oluşmalı."* Önceki hâlinde
+   * görüş alanına girince bir kez oynuyordu; yani parmağın hızından
+   * bağımsızdı ve "ben çizdirdim" hissi yoktu.
+   *
+   * ⚠️ Mobilde kaydırmaya bağlı efekt kuralı (*"parmakla kaydırırken zor
+   * oluyor"*) bunu **kapsamıyor**: o kural beş ekranlık `sticky` sahne
+   * içindi — sayfa ilerlemiyormuş gibi hissettiren şey oydu. Burada sayfa
+   * normal akıyor, yalnızca 84 piksellik bir kutunun kırpması değişiyor.
+   *
+   * ⚠️ Okuma ve yazma ayrı karelerde: `scroll` saniyede onlarca kez
+   * tetikleniyor, her seferinde DOM'a yazmak kare atlatır (Ü120'nin
+   * `Kayan` bileşeninde öğrenilmişti).
+   */
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      el.style.setProperty("--iz", "1");
+      return;
+    }
+
+    let kare = 0;
+    const olc = () => {
+      kare = 0;
+      const k = el.getBoundingClientRect();
+      // Kutunun altı ekranın %85'ine geldiğinde 0, üstü %35'e çıkınca 1.
+      const bas = window.innerHeight * 0.85;
+      const son = window.innerHeight * 0.35;
+      const p = (bas - k.top) / (bas - son + k.height);
+      el.style.setProperty("--iz", String(Math.max(0, Math.min(1, p))));
+    };
+    const istek = () => {
+      if (!kare) kare = requestAnimationFrame(olc);
+    };
+
+    olc();
+    window.addEventListener("scroll", istek, { passive: true });
+    window.addEventListener("resize", istek);
+    return () => {
+      window.removeEventListener("scroll", istek);
+      window.removeEventListener("resize", istek);
+      if (kare) cancelAnimationFrame(kare);
+    };
+  }, []);
+
+  return (
+    <div ref={ref} aria-hidden className="adim-iz-kaydirmali h-[84px] w-full">
+      <svg
+        viewBox="0 0 100 84"
+        preserveAspectRatio="none"
+        className="h-full w-full text-vurgu"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="3"
+        strokeLinecap="round"
+        vectorEffect="non-scaling-stroke"
+      >
+        <path
+          d={soldanSaga ? "M22 0C22 30 78 26 78 84" : "M78 0C78 30 22 26 22 84"}
+          strokeDasharray="7 9"
+        />
+      </svg>
+    </div>
+  );
+}
+
+function AdimlarYol({ karekod }: { karekod: React.ReactNode }) {
+  const SAHNELER = [
+    () => <MiniKarekod karekod={karekod} />,
+    MiniOyun,
+    MiniKazima,
+    MiniDonus,
+  ];
+
+  return (
+    <div className="relative mt-10">
+      <ol className="relative z-[1] px-1">
+        {KENAR_YAZILARI.map((y, i) => {
+          const Sahne = SAHNELER[i];
+          const yer = YERLESIM[i];
+          return (
+            <Fragment key={y.baslik}>
+              <Beliren gecikme={i * 140} yon={yer.yan === "sol" ? "sol" : "sag"}>
+                <li
+                className={`relative rounded-2xl bg-yuzey px-5 py-5 shadow-[0_16px_40px_-24px_rgba(16,32,77,0.45)] ring-1 ring-vitrin-lacivert/10 ${
+                  yer.yan === "sol" ? "mr-auto" : "ml-auto"
+                }`}
+                style={{ width: yer.genislik, transform: `rotate(${yer.egim})` }}
+              >
+                {/* Adım numarası — izin üstüne oturan düğüm. */}
+                <span
+                  aria-hidden
+                  className={`adim-dugum absolute -top-3 grid size-8 place-items-center rounded-full bg-vurgu font-data text-[13px] font-bold text-yuzey shadow-[0_6px_14px_-6px_rgba(16,32,77,0.6)] ${
+                    yer.yan === "sol" ? "-right-3" : "-left-3"
+                  }`}
+                  style={{ "--adim-gecikme": `${i * 140 + 140}ms` } as React.CSSProperties}
+                >
+                  {i + 1}
+                </span>
+
+                <span
+                  aria-hidden
+                  className="mb-4 flex h-[58px] items-center justify-center rounded-lg bg-vitrin-fildisi"
+                  style={{ "--adim-gecikme": `${i * 140 + 240}ms` } as React.CSSProperties}
+                >
+                  <Sahne />
+                </span>
+                  <KutuIcerigi baslik={y.baslik} metin={y.metin} />
+                </li>
+              </Beliren>
+              {i < KENAR_YAZILARI.length - 1 && (
+                <IzParcasi soldanSaga={yer.yan === "sol"} />
+              )}
+            </Fragment>
+          );
+        })}
+      </ol>
+    </div>
+  );
+}
+
+/**
+ * 1 · Masaya karekod konuyor — **gerçek** karekod (Ü154).
+ *
+ * Ürün sahibi: *"masaya qr koyda gerçek qr olsun."* Haklı ve bu sayfanın
+ * kendi kuralı: vitrindeki her şey gerçek (Ü120'de ekran görüntüleri de
+ * çizimden gerçeğe çevrilmişti). Dokuz kutucuklu soyut desen "karekod
+ * gibi bir şey" diyordu; bu, okutulabilir bir karekod.
+ *
+ * Kart ayaklığa oturur gibi hafif eğik giriyor ve düzeliyor.
+ */
+function MiniKarekod({ karekod }: { karekod: React.ReactNode }) {
+  return (
+    <span className="mini-karekod block rounded-md bg-white p-1.5 shadow-[0_6px_16px_-8px_rgba(16,32,77,0.5)] ring-1 ring-vitrin-lacivert/15">
+      <span className="block [&_svg]:block [&_svg]:size-[44px]">{karekod}</span>
+    </span>
+  );
+}
+
+/**
+ * 2 · Müşteri beklerken oynuyor — telefon zıplıyor, içinde Yılan (Ü154).
+ *
+ * Ürün sahibi: *"yukarı aşağı zıplayan telefon, telefonun içinde bizim
+ * oyunlarımızdan biri."*
+ *
+ * ⚠️ Görsel **gerçek oyundan**: `public/vitrin/oyun-yilan.png`, çalışan
+ * uygulamadan Playwright ile çekilmişti (Ü120). Çizilmiş bir oyun ekranı
+ * koymak, sayfanın "ekranların hepsi gerçek" iddiasını bozardı.
+ */
+function MiniOyun() {
+  return (
+    <span className="mini-telefon relative block h-[68px] w-[38px] overflow-hidden rounded-[7px] bg-vitrin-lacivert p-[3px] shadow-[0_8px_18px_-8px_rgba(16,32,77,0.6)]">
+      <span className="relative block h-full w-full overflow-hidden rounded-[5px]">
+        <Image
+          src="/vitrin/oyun-yilan.png"
+          alt=""
+          fill
+          sizes="40px"
+          className="object-cover object-top"
+        />
+      </span>
+    </span>
+  );
+}
+
+/**
+ * 3 · Kupon kazınarak açılıyor (Ü154).
+ *
+ * Ürün sahibi: *"ne kadar indirim vereceğin kısmında kazıyarak açılan
+ * kupon animasyonu."* Ürünün kendi dili: kazı-kazan Ü141'de yazıldı ve
+ * oyuncu tarafında gerçekten böyle çalışıyor.
+ *
+ * ⚠️ Burada kazıma **etkileşimli değil**: gerçek kartta parmakla
+ * siliniyor (`kazima-karti.tsx`), burada kendiliğinden açılıyor. Vitrinde
+ * ziyaretçiden bir iş beklenmiyor; gösterilen şey mekanizma.
+ */
+function MiniKazima() {
+  return (
+    <span className="relative block h-11 w-28 overflow-visible">
+      <span className="absolute inset-0 overflow-hidden rounded-lg bg-white shadow-[0_6px_16px_-8px_rgba(16,32,77,0.5)] ring-1 ring-vitrin-lacivert/15">
+        {/* Altta duran ödül */}
+        <span className="absolute inset-0 flex items-center justify-center gap-1.5">
+          <span className="size-4 rounded bg-odul" />
+          <span className="font-display text-[11px] font-extrabold text-vitrin-lacivert">
+            25 TL
+          </span>
+        </span>
+
+        {/*
+          Kazınan yüzey — gümüş kaplama.
+
+          🔴 Ürün sahibi: *"burada gerçek kazıma animasyonu olmalı."*
+          Önceki hâli düz bir renkti ve düz bir kenarla siliniyordu;
+          o "perde açıldı" gibi okunuyordu, kazıma gibi değil.
+
+          Kaplamanın dokusu iki çapraz gradyandan geliyor (Ü141'in
+          gerçek kartındaki dokulu yüzeyin ucuz karşılığı) ve sıyrılma
+          kenarı **düzensiz**: çok noktalı bir `polygon` tırtıklı bir
+          sınır çiziyor, parmağın bıraktığı iz gibi.
+        */}
+        <span className="mini-kaplama absolute inset-0" />
+      </span>
+
+      {/*
+        Kopan parçacıklar — Ü141'in kazı kartındaki `kazinti-uc`
+        fikrinin küçüğü. ⚠️ Kartın DIŞINA taşıyorlar (`overflow-visible`
+        dıştaki kapta): kenarda duran bir parça kopmuş gibi durmuyor.
+      */}
+      {[0, 1, 2, 3].map((n) => (
+        <span key={n} className="mini-kirinti" style={{ "--n": n } as React.CSSProperties} />
+      ))}
+    </span>
+  );
+}
+
+/**
+ * Sonsuzluk işareti — üstünde sonsuza kadar dönen bir iz (Ü155).
+ *
+ * ── 🔴 İki deneme elendi ────────────────────────────────────
+ *
+ * **1 · İç içe iki halka.** Tek `C` zinciriyle yazılmıştı; eğri ortadan
+ * geçmediği için sekiz rakamı değil, üst üste binmiş iki daire çıktı.
+ * Ürün sahibi: *"bu da sonsuzluk olmamış."*
+ *
+ * **2 · Kendini çizen ilmek.** Şekil düzeldi ama hareket yanlıştı:
+ * `stroke-dasharray` ile çizilirken her döngüde **yarım şekiller**
+ * görünüyordu — ürün sahibinin ekran görüntüsünde yolun yuvarlak uç
+ * kapağı ok gibi duruyordu ve şekil kopuk okunuyordu.
+ *
+ * ── Doğru hareket: çizmek değil, DÖNMEK ─────────────────────
+ *
+ * Sonsuzluğun anlattığı şey bir başlangıç-bitiş değil, **bitmeyen
+ * dolaşma**. Şekil bu yüzden hep tam duruyor (soluk zemin yolu) ve
+ * üstünde parlak bir parça sonsuza kadar dolanıyor. Hiçbir karede
+ * yarım görünmüyor.
+ *
+ * ⚠️ `pathLength="240"` dikişsiz döngünün anahtarı: yolun gerçek
+ * uzunluğu ne olursa olsun 240'a normalleşiyor, `dasharray` 40+200=240
+ * ve offset tam bir tur olan −240'a gidiyor. Gerçek uzunluk ölçülseydi
+ * (JS ile `getTotalLength`) yol her değiştiğinde sayı bayatlardı.
+ */
+const SONSUZ_YOLU =
+  "M38 20C33 6 14 6 14 20C14 34 33 34 38 20C43 6 62 6 62 20C62 34 43 34 38 20Z";
+
+function MiniDonus() {
+  return (
+    <svg
+      viewBox="0 0 76 40"
+      aria-hidden
+      className="h-10 w-[76px] text-vurgu"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="3"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      {/* Zemin — şekil her an tam görünüyor. */}
+      <path d={SONSUZ_YOLU} className="opacity-20" />
+      {/* Dönen parça. */}
+      <path d={SONSUZ_YOLU} pathLength="240" className="mini-sonsuz" />
+    </svg>
+  );
+}
+
 function KutuIcerigi({
   baslik,
   metin,
@@ -708,7 +1007,7 @@ function KutuIcerigi({
 }: {
   baslik: string;
   metin: string;
-  alt: string;
+  alt?: string;
 }) {
   return (
     <>
@@ -718,9 +1017,11 @@ function KutuIcerigi({
       <p className="mt-3 text-[14px] leading-relaxed text-yazi-sonuk sm:text-[15px]">
         {metin}
       </p>
-      <p className="mt-4 border-t border-vitrin-lacivert/10 pt-3 etiket-caps text-[10px] text-vurgu">
-        {alt}
-      </p>
+      {alt && (
+        <p className="mt-4 border-t border-vitrin-lacivert/10 pt-3 etiket-caps text-[10px] text-vurgu">
+          {alt}
+        </p>
+      )}
     </>
   );
 }
@@ -820,139 +1121,17 @@ export function TelefonCercevesi({
  * uçuyordu ve yağan şeyin **ödül** olduğu anlaşılmıyordu.
  */
 /**
- * Telefon ve içinden çıkan kupon — Ü145.
+ * Kaydırmalı sahnede yağan kupon rozeti.
  *
- * ── Ürün sahibinin isteği ───────────────────────────────────
- *
- * *"Masaüstünde scroll ile QR'ın içine girip telefonu gösterme
- * muhabbeti var ya, o kısma da mobil için bu animasyonu ekleyelim:
- * telefonun içine girsin ve telefondan kupon çıksın — burada kart
- * çıkıyor ya."* Referans X Money'nin zarftan çıkan kartı.
- *
- * ── 🔴 Kaydırmaya bağlanamaz ────────────────────────────────
- *
- * Geniş ekrandaki sahne kaydırma ilerlemesiyle çalışıyor ama mobilde o
- * yol kapalı — ürün sahibinin kendi kuralı: *"mobilde bu efektler
- * olmayacak şekilde yapalım, çünkü parmakla kaydırırken de zor
- * oluyor."* Bu yüzden hareket **görüş alanına girince bir kez**
- * oynuyor. Tek seferlik olması ayrıca Ü133'ün gerekçesi: sürekli
- * tekrarlayan bir hareket bir süre sonra hareket olarak okunmuyor.
- *
- * Kaçıran için telefona dokunmak hareketi yeniden başlatıyor — sonsuz
- * döngüye girmeden ikinci bir şans.
- *
- * ── Katman sırası hikâyeyi anlatıyor ────────────────────────
- *
- *   yağmur (z-0)  →  çıkan kupon (z-5)  →  telefon (z-10)
- *
- * Kupon telefonun **arkasında** başlıyor ve yukarı çıkarken üst
- * kenarın ardından beliriyor; ürünün ekranını hiçbir an kapatmıyor.
- * Önde olsaydı gösterilmek istenen şeyin — oyuncunun menüsünün —
- * üstüne otururdu.
+ * ⚠️ Silinenler listesinde DEĞİL: mobildeki yağmur kalktı ama
+ * masaüstündeki kaydırmalı sahne bunu hâlâ kullanıyor (`YAGAN`).
+ * Ü154'te bir kez yanlışlıkla silindi ve derleme onu yakaladı.
  */
-function TelefondanKupon() {
-  const ref = useRef<HTMLDivElement>(null);
-  /** Kaçıncı oynatma — artınca kart yeniden monte olup baştan oynuyor. */
-  const [tur, setTur] = useState(0);
-  const [gorundu, setGorundu] = useState(false);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el || typeof IntersectionObserver === "undefined") {
-      setGorundu(true);
-      return;
-    }
-    const gozlemci = new IntersectionObserver(
-      ([giris]) => {
-        if (giris.isIntersecting) {
-          setGorundu(true);
-          gozlemci.disconnect();
-        }
-      },
-      { rootMargin: "0px 0px -18% 0px" },
-    );
-    gozlemci.observe(el);
-    return () => gozlemci.disconnect();
-  }, []);
-
-  return (
-    <div ref={ref} className="relative">
-      {/* Çıkan kupon — telefonun arkasında, yukarı süzülüyor. */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 z-[5] flex justify-center"
-      >
-        {gorundu && (
-          <div key={tur} className="kupon-cikiyor">
-            <CikanKupon />
-          </div>
-        )}
-      </div>
-
-      {/*
-        Telefonun kendisi. `salinan` nefes alma hareketi duruyor (Ü133):
-        duran bir ekran görüntüsü ile çalışan bir ürün arasındaki fark
-        o kadar küçük bir salınım.
-
-        ⚠️ Düğme değil: burada "tıklanacak bir şey" yok, dokunmak
-        yalnızca hareketi tekrar oynatıyor. Düğme yapılsaydı ekran
-        okuyucu kullanıcıya olmayan bir eylem vaat ederdi; o yüzden
-        hareketin tamamı `aria-hidden` ve dokunma isteğe bağlı bir
-        süs.
-      */}
-      <div
-        className="salinan relative z-10"
-        onClick={() => setTur((t) => t + 1)}
-      >
-        <TelefonCercevesi
-          kaynak="/vitrin/oyuncu-panel.png"
-          alt="Oyuncunun menüsü — puanı, günün görevi ve kuponları"
-          genislik="min(248px, 68vw)"
-        />
-      </div>
-    </div>
-  );
-}
-
-/**
- * Telefondan çıkan kuponun kendisi.
- *
- * ⚠️ Üstünde **kupon kodu yok.** Gerçek kuponda var ama vitrinde
- * uydurma bir kod basmak, ekranın geri kalanı gerçek ürün görüntüsüyken
- * tek sahte ayrıntı olurdu. Kart ne olduğunu söylüyor, kimliğini değil.
- */
-function CikanKupon() {
-  return (
-    <div className="w-[228px] rounded-2xl bg-white px-5 py-4 shadow-[0_26px_50px_-18px_rgba(16,32,77,0.55)] ring-1 ring-vitrin-lacivert/10">
-      <div className="flex items-center gap-3">
-        <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-odul">
-          <svg width="17" height="17" viewBox="0 0 16 16" fill="none">
-            <path
-              d="M2 5.5A1.5 1.5 0 013.5 4h9A1.5 1.5 0 0114 5.5v1a1.5 1.5 0 000 3v1A1.5 1.5 0 0112.5 12h-9A1.5 1.5 0 012 10.5v-1a1.5 1.5 0 000-3v-1z"
-              fill="#10204d"
-            />
-          </svg>
-        </span>
-        <span className="min-w-0">
-          <span className="block etiket-caps text-[9px] text-yazi-sonuk">Kazandın</span>
-          <span className="mt-0.5 block font-display text-[15px] leading-tight font-extrabold">
-            Ücretsiz filtre kahve
-          </span>
-        </span>
-      </div>
-      {/* Koparma çizgisi — biletin ürün içindeki dili (Ü72). */}
-      <div className="mt-3 border-t border-dashed border-cizgi pt-2.5">
-        <span className="etiket-caps text-[9px] text-vurgu">Kasada göster</span>
-      </div>
-    </div>
-  );
-}
-
 function KuponRozeti({ baslik }: { baslik: string }) {
   return (
     <div className="flex items-center gap-4 rounded-2xl border border-cizgi bg-white px-6 py-4 shadow-[0_18px_40px_-14px_rgba(16,32,77,0.5)]">
       <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-odul">
-        <svg width="17" height="17" viewBox="0 0 16 16" fill="none">
+        <svg width="17" height="17" viewBox="0 0 16 16" fill="none" aria-hidden>
           <path
             d="M2 5.5A1.5 1.5 0 013.5 4h9A1.5 1.5 0 0114 5.5v1a1.5 1.5 0 000 3v1A1.5 1.5 0 0112.5 12h-9A1.5 1.5 0 012 10.5v-1a1.5 1.5 0 000-3v-1z"
             fill="#10204d"
@@ -964,22 +1143,22 @@ function KuponRozeti({ baslik }: { baslik: string }) {
   );
 }
 
-/**
- * Mobildeki süzülen kuponlar — Ü133.
- *
- * Geniş ekrandakinden **ayrı ve daha az**: dar ekranda on dört kupon
- * telefonun üstünü kalabalığa çeviriyor ve ürünün ekranı kayboluyor.
- * Altı tane, farklı süre ve gecikmeyle — aynı anda başlasalardı
- * "yağmur" değil "sıra" gibi görünürdü.
- */
-const MOBIL_YAGAN = [
-  { baslik: "Ücretsiz filtre kahve", x: 2, egim: -8, donus: 16, sure: 9, gecikme: 0 },
-  { baslik: "Tatlıda %20", x: 66, egim: 7, donus: -14, sure: 11, gecikme: 1.6 },
-  { baslik: "+1 shot espresso", x: 12, egim: 5, donus: 12, sure: 10, gecikme: 3.4 },
-  { baslik: "25 TL indirim", x: 72, egim: -6, donus: -10, sure: 12, gecikme: 5.1 },
-  { baslik: "İkinci kahve yarı fiyat", x: 4, egim: 6, donus: 14, sure: 10.5, gecikme: 6.8 },
-  { baslik: "Cheesecake %25", x: 58, egim: -5, donus: -12, sure: 11.5, gecikme: 8.2 },
-];
+/*
+  🔴 Ü154'te SİLİNENLER — kaydı için.
+
+  `TelefondanKupon`, `CikanKupon`, `KuponRozeti` ve `MOBIL_YAGAN`
+  (mobildeki kupon yağmuru) buradaydı. Ürün sahibi *"mobilde bu telefon
+  kısmının gözükmesine gerek yok"* deyince dördü birden çağrısız kaldı.
+
+  ⚠️ Çağrısız kod bırakmak bu deponun dört kez düştüğü tuzağın ta
+  kendisi ("yazıldı ama bağlanmadı"): duruyor, derleniyor, kimse
+  çalışmadığını fark etmiyor. Silindiler; geri gerekirse git geçmişinde
+  Ü152 commit'inde duruyorlar.
+
+  ⚠️ Kaydırmalı sahnenin (masaüstü) kupon yağmuru **ayrı** ve duruyor —
+  bu silinen, yalnızca dar ekran için yazılmış kopyaydı.
+*/
+
 
 /**
  * Yağan kuponlar — konum ve zamanlama **sabit**.

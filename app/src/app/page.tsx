@@ -143,6 +143,12 @@ const TELEFON_SIRASI =
   "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden " +
   "sm:mx-0 sm:justify-center sm:overflow-visible sm:px-0 sm:pb-0";
 
+/*
+  ⚠️ `?sahne=` karşılaştırma anahtarı Ü154'te KALDIRILDI. İki
+  görselleştirme (çizilen yol · mini animasyonlar) ayrı ayrı denendi ve
+  ürün sahibi ikisini birden istedi: yılankavi iz, iki yanında kartlar,
+  her kartın içinde kendi mini sahnesi. Seçilecek bir şey kalmadı.
+*/
 export default async function Vitrin() {
   const o = await oturum.oku();
 
@@ -219,6 +225,142 @@ export default async function Vitrin() {
           />
         }
       />
+
+      {/*
+        🔴 Ü156 · SİMÜLASYON YUKARI TAŞINDI.
+
+        Ürün sahibi: *"simülasyonu daha üste koyalım, müşterini elinde
+        tutmak indirim yapmaktan ucuz kısmının üstüne koyalım."*
+
+        Sebebi onun kendi cümlesinde: *"müşteri kazanmak için en önemli
+        araçlarımızdan biri bu."* Aşağıdayken ziyaretçinin ona ulaşması
+        için dört bölüm okuması gerekiyordu; ikna olmadan ayrılan hiç
+        görmüyordu.
+
+        ⚠️ **Dalga 8'in sırası bilerek değiştirildi.** O sırada generatör
+        avantajlardan sonra geliyordu (ürün sahibinin o günkü tarifi).
+        Yeni yer daha erken: kaydırmalı sahne biter bitmez, ürünün ne
+        yaptığı anlatılmadan **önce** "kendi rakamlarınla dene" diyor.
+        Aynı kişinin sonraki kararı, öncekini geçersiz kılıyor.
+      */}
+      {/*
+        ═══ Simülasyon çağrısı ═══════════════════════
+
+        🔴 Simülasyonun **kendisi** bu sayfada değil (Ü142).
+
+        Ürün sahibi: *"ana sayfadan kaldırıp simülasyon yapması için
+        müşteriyi itelim, çünkü inanılmaz fazla yer kaplıyor."* Sekiz
+        girdi ve dört oranla simülasyon ana sayfanın en uzun bölümüydü;
+        telefonda onu geçmek için yapılan kaydırma anlatının tam
+        ortasını ikiye bölüyordu.
+
+        Yerinde duran şey **sırayı koruyor** (Dalga 8'de ürün sahibinin
+        verdiği sıra: avantajlardan sonra generatör) ama yeri yalnızca
+        birkaç satır tutuyor. Hesap yapmak isteyen bir tıkla gidiyor;
+        istemeyen bir cümlede geçiyor.
+
+        ⚠️ Rakam ya da vaat yazılmıyor. "Ayda 40.000 TL kazan" demek,
+        ziyaretçinin kendi rakamlarıyla göreceği tabloyu bizim
+        sözümüzle ezmek olurdu — simülasyonun bütün değeri sayının
+        bizden değil ondan çıkması.
+      */}
+      {/*
+        🔴 Ü156 · bölüm ÖNE ÇIKARILDI.
+
+        Ürün sahibi: *"bu kısmı da daha çok öne çıkarmalıyız, müşteri
+        kazanmak için en önemli araçlarımızdan biri bu."*
+
+        ── Neden yalnızca büyütmek yetmezdi ────────────────────
+        Kutu krem zeminde krem bir kutuydu ve çevresindeki bölümlerle
+        aynı ritimde duruyordu; göz onu bir bölüm değil, bir dipnot
+        sanıyordu. Asıl kusur ise daha derin: kutu **"buradan git"**
+        diyordu ama gidilecek şeyin ne olduğunu **göstermiyordu.**
+
+        ── İki şey değişti ─────────────────────────────────────
+        **1 · Zemin lacivert.** Bu bölgedeki tek koyu blok; sayfanın
+        krem-beyaz ritmini kırdığı için kaydırırken duruyorsunuz.
+        **2 · Aracın kendisinden bir parça var.** Üç oran çubuğu
+        kendiliğinden oynuyor ve altındaki sonuç çubuğu onlarla birlikte
+        değişiyor: ziyaretçi tıklamadan önce "burada ayar çevirip sonuç
+        görüyorum" fikrini anlıyor.
+
+        ⚠️ **Rakam hâlâ YOK ve olmayacak.** Etiketler simülasyonun kendi
+        etiketleri ama sonuç bir **çubuk**, para değil. "Ayda 40.000 TL"
+        demek ziyaretçinin kendi rakamlarıyla göreceği tabloyu bizim
+        sözümüzle ezmek olurdu — aracın bütün değeri sayının bizden
+        değil ondan çıkması (Ü142'nin kararı, bozulmadı).
+
+        ⚠️ Simülasyonun kendisi hâlâ burada değil (Ü142): sekiz girdi
+        ve dört oran ana sayfanın en uzun bölümüydü. Bu bir **fragman**,
+        kopyası değil.
+      */}
+      <section className="mx-auto w-full max-w-6xl px-5 py-16 sm:py-20">
+        <Beliren yon="yakin">
+          <div className="overflow-hidden rounded-3xl bg-vitrin-lacivert text-yuzey shadow-[0_30px_70px_-30px_rgba(16,32,77,0.6)]">
+            <div className="grid gap-8 px-6 py-10 sm:px-10 sm:py-12 lg:grid-cols-[1.05fr_1fr] lg:items-center lg:gap-12">
+              <div>
+                <p className="etiket-caps text-[10px] text-odul">
+                  Çift yönlü müşteri değeri
+                </p>
+                <p className="mt-3 font-display text-[clamp(25px,4.4vw,40px)] leading-[1.08] font-extrabold tracking-[-0.025em]">
+                  Müşterin hem düzenli gelse hem{" "}
+                  <span className="text-odul">arkadaşını getirse</span> ne olur?
+                </p>
+                <p className="mt-4 max-w-md text-[15px] leading-relaxed text-white/65 sm:text-[16px]">
+                  Üç davranış oranını sen seç, kendi rakamlarını yaz — senaryoyu
+                  kafende gör. Tahmin değil, senin girdiğin sayılarla hesap.
+                </p>
+                <Link
+                  href="/simulasyon"
+                  className="mt-7 inline-flex items-center gap-2 rounded-full bg-odul px-8 py-4 text-[16px] font-bold text-vitrin-lacivert transition-transform hover:scale-[1.03]"
+                >
+                  Simülasyonu aç
+                  <span aria-hidden>→</span>
+                </Link>
+              </div>
+
+              <SimulasyonFragmani />
+            </div>
+
+            {/*
+              🔴 Kayıt çağrısı — Ü156, ürün sahibinin isteği:
+              *"simülasyonun altında da koyalım hemen kayıt ol kısmını."*
+
+              ── Neden panelin İÇİNDE, ayrı bir bölüm değil ────────
+              Buradaki ziyaretçi az önce "kendi rakamlarınla dene"yi
+              görmüş, yani ilgisinin en yüksek olduğu an. Araya boşluk
+              ve yeni bir zemin girseydi o an soğur; çağrı simülasyonun
+              **devamı** gibi durmalı, ayrı bir reklam gibi değil.
+
+              ⚠️ Metin sayfadaki diğer lead şeridinden (*"Kafenin
+              karekodu beş dakikada hazır"*) **farklı**: aynı cümleyi iki
+              kez okumak çağrının ikisini birden zayıflatır. Bu, az önce
+              görülen hesabın üstüne biniyor — "rakamlar tuttuysa".
+
+              ⚠️ "Dört alan" uydurma değil: başvuru Ü126'da dört alana
+              indirildi (ticari unvan, vergi no, adres ve vergi levhası
+              kalktı). Sayfadaki her somut ifade gibi bu da doğrulanabilir.
+            */}
+            <div className="flex flex-col items-center justify-between gap-4 border-t border-white/10 bg-white/[0.04] px-6 py-6 text-center sm:flex-row sm:px-10 sm:text-left">
+              <div>
+                <p className="font-display text-[18px] leading-tight font-extrabold tracking-tight sm:text-[20px]">
+                  Rakamlar tuttuysa, sıra kendi kafende.
+                </p>
+                <p className="mt-1.5 text-[14px] leading-relaxed text-white/60">
+                  Başvuru dört alan. Onaylanınca panelin açılıyor ve karekodunu
+                  oradan yazdırıyorsun.
+                </p>
+              </div>
+              <Link
+                href="/kafe/basvuru"
+                className="shrink-0 rounded-full bg-yuzey px-7 py-3.5 text-[15px] font-bold text-vitrin-lacivert transition-transform hover:scale-[1.03]"
+              >
+                Hemen kayıt ol
+              </Link>
+            </div>
+          </div>
+        </Beliren>
+      </section>
 
       {/* ═══ Ne sağlıyoruz — gerçek ekranlar ══════ */}
       <section className="bg-vitrin-lacivert py-20 text-yuzey sm:py-28">
@@ -535,52 +677,6 @@ export default async function Vitrin() {
               className="shrink-0 rounded-full bg-vurgu px-7 py-3.5 text-[15px] font-semibold text-yuzey transition-opacity hover:opacity-90"
             >
               Hemen dene
-            </Link>
-          </div>
-        </Beliren>
-      </section>
-
-      {/*
-        ═══ Simülasyon çağrısı ═══════════════════════
-
-        🔴 Simülasyonun **kendisi** bu sayfada değil (Ü142).
-
-        Ürün sahibi: *"ana sayfadan kaldırıp simülasyon yapması için
-        müşteriyi itelim, çünkü inanılmaz fazla yer kaplıyor."* Sekiz
-        girdi ve dört oranla simülasyon ana sayfanın en uzun bölümüydü;
-        telefonda onu geçmek için yapılan kaydırma anlatının tam
-        ortasını ikiye bölüyordu.
-
-        Yerinde duran şey **sırayı koruyor** (Dalga 8'de ürün sahibinin
-        verdiği sıra: avantajlardan sonra generatör) ama yeri yalnızca
-        birkaç satır tutuyor. Hesap yapmak isteyen bir tıkla gidiyor;
-        istemeyen bir cümlede geçiyor.
-
-        ⚠️ Rakam ya da vaat yazılmıyor. "Ayda 40.000 TL kazan" demek,
-        ziyaretçinin kendi rakamlarıyla göreceği tabloyu bizim
-        sözümüzle ezmek olurdu — simülasyonun bütün değeri sayının
-        bizden değil ondan çıkması.
-      */}
-      <section className="mx-auto w-full max-w-6xl px-5 py-16 sm:py-20">
-        <Beliren yon="yakin">
-          <div className="flex flex-col items-center justify-between gap-6 rounded-3xl border border-cizgi bg-odul-zemin/60 px-6 py-8 text-center sm:flex-row sm:px-10 sm:text-left">
-            <div className="max-w-xl">
-              <p className="etiket-caps text-[10px] text-yazi-sonuk">
-                Çift yönlü müşteri değeri
-              </p>
-              <p className="mt-3 font-display text-[clamp(21px,3vw,30px)] leading-[1.12] font-extrabold tracking-[-0.02em]">
-                Müşterin hem düzenli gelse hem arkadaşını getirse ne olur?
-              </p>
-              <p className="mt-3 text-[15px] leading-relaxed text-yazi-sonuk">
-                Üç davranış oranını sen seç, kendi rakamlarını yaz —
-                senaryoyu kafende gör.
-              </p>
-            </div>
-            <Link
-              href="/simulasyon"
-              className="shrink-0 rounded-full bg-vurgu px-7 py-3.5 text-[15px] font-semibold text-yuzey transition-opacity hover:opacity-90"
-            >
-              Simülasyonu aç →
             </Link>
           </div>
         </Beliren>
@@ -935,8 +1031,85 @@ function DonguIzi() {
         eklemiyor. Yay 260 ms'de başlayıp 1,5 sn sürüyor, yani 1.760'ta
         bitiyor; ok 1.550'de giriyor ve son kıvrımla hafifçe örtüşüyor.
       */}
-      <path pathLength="1" d="M28 33l-7 7 7 7" style={{ animationDelay: "1.55s" }} />
+      {/* ⚠️ Ucun köşesi yayın başlangıcıyla (26,40) **aynı noktada**.
+          İlk çizimde uç x=21'deydi ve yay x=26'da başlıyordu: gözle
+          bakınca ok yaya değmiyor, ayrı bir işaret gibi duruyordu.
+
+          🔴 **Ok ucu eğrinin TEĞETİYLE de hizalı olmak zorunda.** İkinci
+          denemede yatay bir `<` kondu ve ürün sahibi *"okun ucu yanlış"*
+          dedi; haklıydı ve sebebi ölçülebilir: yay bu noktadan `c0 -16`
+          ile, yani **dik yukarı** ayrılıyor. Teğet dikeyken yatay duran
+          bir ok ucu eğriye ait değil, yanına yapıştırılmış gibi duruyor.
+
+          Ok artık aşağı bakıyor — tepesi (26,40)'ta, kanatları yukarı.
+          Göz eğriyi "sağdan gelip bu noktaya inen yol" diye okuyor;
+          yani müşteri geri dönmüş oluyor. */}
+      <path pathLength="1" d="M19 33l7 7 7-7" style={{ animationDelay: "1.55s" }} />
     </svg>
+  );
+}
+
+/**
+ * Simülasyonun fragmanı — Ü156.
+ *
+ * Üç oran çubuğu kendiliğinden oynuyor, altındaki sonuç çubuğu onlarla
+ * birlikte değişiyor. Anlatılan şey bir sayı değil, **mekanizma**:
+ * "burada ayar çevirip sonuç görüyorsun."
+ *
+ * ⚠️ Etiketler simülasyonun **kendi** etiketleri
+ * (`vitrin-simulasyon.tsx`): Kendi gelme oranı · 7 gün içinde ziyaret ·
+ * Arkadaşını getirme. Uydurma bir arayüz göstermek, tıklayınca başka
+ * bir şey bulmak demekti.
+ *
+ * ⚠️ Sonuç **çubuk**, para değil. Rakam yazmama kararı Ü142'den geliyor
+ * ve burada da geçerli: aracın değeri sayının ziyaretçiden çıkması.
+ *
+ * ⚠️ `aria-hidden`: ekran okuyucuya üç yüzdesiz çubuk okumak bilgi
+ * değil gürültü. Anlam yandaki metinde ve düğmede.
+ */
+function SimulasyonFragmani() {
+  const ORANLAR = [
+    { ad: "Kendi gelme oranı", n: 0 },
+    { ad: "7 gün içinde ziyaret", n: 1 },
+    { ad: "Arkadaşını getirme", n: 2 },
+  ];
+
+  return (
+    <div
+      aria-hidden
+      className="rounded-2xl bg-white/[0.06] px-5 py-6 ring-1 ring-white/10 sm:px-6"
+    >
+      <div className="space-y-4">
+        {ORANLAR.map((o) => (
+          <div key={o.ad}>
+            <div className="flex items-baseline justify-between gap-3">
+              <span className="text-[12px] font-semibold text-white/70">{o.ad}</span>
+              <span
+                className="sim-yuzde font-data text-[12px] text-odul tabular"
+                style={{ "--n": o.n } as React.CSSProperties}
+              />
+            </div>
+            <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-white/10">
+              <div
+                className="sim-cubuk h-full rounded-full bg-vurgu"
+                style={{ "--n": o.n } as React.CSSProperties}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Sonuç — üç orandan türeyen tek çubuk. */}
+      <div className="mt-6 border-t border-white/10 pt-5">
+        <div className="flex items-baseline justify-between gap-3">
+          <span className="etiket-caps text-[10px] text-odul">Senin senaryon</span>
+          <span className="text-[11px] text-white/45">kendi rakamlarınla</span>
+        </div>
+        <div className="mt-2 h-3 overflow-hidden rounded-full bg-white/10">
+          <div className="sim-sonuc h-full rounded-full bg-odul" />
+        </div>
+      </div>
+    </div>
   );
 }
 

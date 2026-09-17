@@ -5,8 +5,8 @@ import * as ayar from "@/domain/ayar";
 import * as carkKosul from "@/domain/cark-kosul";
 import * as urun from "@/domain/urun";
 import { KosulKutusu } from "./kosul-kutusu";
+import { AralikKutusu } from "./aralik-kutusu";
 import * as carkAgirlik from "@/domain/cark-agirlik";
-import { ARALIK_SAAT } from "@/domain/cark";
 import {
   IsletmeSayfa,
   IsletmeBaslik,
@@ -46,9 +46,12 @@ export const metadata = { title: "Şans çarkı · Looply" };
 export default async function CarkSayfasi() {
   const o = await kafeYoneticisiGerekli();
 
-  const [oduller, carkSinirKurus, agirlik, kosullar, urunler, turu] = await Promise.all([
+  const [oduller, carkSinirKurus, carkAralik, agirlik, kosullar, urunler, turu] =
+    await Promise.all([
     katalog.listele(o.cafeId),
     ayar.sayiOku(o.cafeId, ayar.ANAHTARLAR.carkUstSinir),
+    // Ü158: çark aralığı artık kafenin ayarı — sabit değil.
+    ayar.sayiOku(o.cafeId, ayar.ANAHTARLAR.carkAralikSaat),
     // Liste çekilişin kullandığı aynı fonksiyondan geliyor — panel kendi
     // listesini kursaydı ekrandaki yüzdelerle gerçek olasılıklar sessizce
     // ayrışırdı.
@@ -129,8 +132,8 @@ export default async function CarkSayfasi() {
         />
         <SayiKarti
           etiket="Çevirme hakkı"
-          deger={`${ARALIK_SAAT} saatte 1`}
-          alt="müşteri başına"
+          deger={`${carkAralik} saatte 1`}
+          alt="müşteri başına · aşağıdan değişir"
           ikon={IKON.saat}
           alan="genel"
         />
@@ -159,6 +162,19 @@ export default async function CarkSayfasi() {
               mevcutTl={Math.round(carkSinirKurus / 100)}
               uygunSayisi={uygun.length}
             />
+          </Bolum>
+
+          {/*
+            Ü158: çevirme sıklığı. Üst sınırın hemen altında duruyor
+            çünkü ikisi birlikte **çarkın maliyetini** belirliyor: biri
+            tek çevirmede ne kadar, öbürü ne sıklıkla. Ayrı sayfalara
+            konsalardı kafe sahibi birini değiştirip diğerini unuturdu.
+          */}
+          <Bolum
+            baslik="Ne sıklıkla çevirilebilsin"
+            alt="Aynı müşteri çarkı kaç saatte bir çevirebilir. Günlük bütçen zaten tavan koyuyor; bu ayar o tavana ne hızda yaklaşılacağını belirliyor."
+          >
+            <AralikKutusu saat={carkAralik} />
           </Bolum>
         </div>
 

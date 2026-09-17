@@ -25,6 +25,7 @@ import { RENK, oyunRengi, type OyuncuRengi } from "@/components/oyuncu-renk";
 import { oyunGorseli, type GorselAdi } from "@/components/oyuncu-gorsel";
 import { OyunIkonu, CarkIkonu, KupaIkonu } from "@/components/oyuncu-ikon";
 import { OyuncuNav, NavBosluk } from "@/components/oyuncu-nav";
+import { AvatarYuvasi } from "@/components/avatar-yuvasi";
 import { SeriSahnesi } from "@/components/seri-sahnesi";
 import { kodEkrandaGosterilir } from "@/sms";
 import { DurumSeridi, type SeritDurumu } from "./durum-seridi";
@@ -87,6 +88,8 @@ export default async function OynaSayfasi() {
   const carkDurumu = masa
     ? await cark.durum({ playerId: o.ozneId, cafeId: masa.cafeId })
     : null;
+  // Ü158: aralık kafenin ayarı — kart üzerindeki cümle bunu söylemeli.
+  const carkAralik = masa ? await cark.aralikSaat(masa.cafeId) : 24;
 
   // Ü54: günlük seri. Kafe başına — seri, o kafenin müşterisini geri
   // getirme aracı; kafeler arası ortak olsaydı A'da oynayıp B'de
@@ -152,7 +155,7 @@ export default async function OynaSayfasi() {
 
         {seriDurumu && seriDurumu.gun > 0 && <SeriKarti seri={seriDurumu} />}
 
-        {carkDurumu && <CarkKarti durum={carkDurumu} />}
+        {carkDurumu && <CarkKarti durum={carkDurumu} aralikSaat={carkAralik} />}
 
         {lider && (
           <LiderKarti
@@ -253,6 +256,10 @@ export default async function OynaSayfasi() {
         <NavBosluk />
       </div>
 
+      {/* Ü159: avatar yuvası. Ana ekran `OyuncuSayfa` kabuğunu
+          kullanmıyor (kendi düzeni var), o yüzden yuva burada elle
+          duruyor — kabuğa bırakılsaydı ana ekranda hiç çıkmazdı. */}
+      <AvatarYuvasi />
       <OyuncuNav aktif="/oyna" />
     </main>
   );
@@ -557,7 +564,14 @@ function SeriKarti({ seri: s }: { seri: seri.Seri }) {
  * olduğu yer burasıydı: iki koyu kart arasında hangisinin tıklanacağı
  * belirsizdi. Şimdi çark, çarkın kasasının rengini (gül) taşıyor.
  */
-function CarkKarti({ durum }: { durum: cark.CarkDurumu }) {
+function CarkKarti({
+  durum,
+  aralikSaat,
+}: {
+  durum: cark.CarkDurumu;
+  /** Kafenin çevirme aralığı (Ü158) — sabit değil. */
+  aralikSaat: number;
+}) {
   const acik = durum.acik;
 
   if (!acik) {
@@ -598,15 +612,33 @@ function CarkKarti({ durum }: { durum: cark.CarkDurumu }) {
       <Link href="/cark" className="block transition-transform active:scale-[0.99]">
         <RenkliKart renk="pembe" dolu>
           <div className="flex items-center gap-4">
-            <span className="shrink-0">
+            {/*
+              🔴 Çark DÖNÜYOR — Ü159.
+
+              Ürün sahibi: *"burdaki çark animasyonu dönsün."* Duran bir
+              çark görseli, kartın "hazır" dediği şeyle çelişiyordu:
+              ekran "çevirebilirsin" diyor, resim durmuş bir tekerlek
+              gösteriyordu.
+
+              ⚠️ Yavaş ve **sürekli**: çark bir olay değil bir davet.
+              Hızlı dönseydi "çevriliyor" sanılır, tıklamadan önce iş
+              bitmiş gibi görünürdü.
+            */}
+            <span className="cark-donuyor shrink-0">
               <CarkIkonu boy={54} />
             </span>
             <span className="min-w-0 flex-1">
               <span className="block font-display text-xl leading-tight font-extrabold">
                 Çarkın hazır
               </span>
+              {/* ⚠️ "Günde bir" DEĞİL: süre Ü158'den beri kafenin ayarı
+                  ve kayan saat üzerinden işliyor. Sabit cümle bırakılsaydı
+                  kafe 6 saat yazdığında ekran yalan söylerdi. */}
               <span className="mt-1 block text-[13px] leading-relaxed text-white/80">
-                Günde bir kez çevirebilirsin. Çıkan ödül hesabına işlenir.
+                {aralikSaat === 24
+                  ? "Günde bir kez çevirebilirsin."
+                  : `${aralikSaat} saatte bir çevirebilirsin.`}{" "}
+                Çıkan ödül hesabına işlenir.
               </span>
             </span>
           </div>
