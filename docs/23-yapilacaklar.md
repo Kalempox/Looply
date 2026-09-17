@@ -107,6 +107,62 @@ gitti (kazıma, karusel, avatar, seviye, rozet); vitrine düşen tek iş
 "bitti" derken ürün sahibi mobilde hiçbir şey görmüyordu. **Ders: bir
 işin hangi yüzeye düştüğü, bittiği kadar önemli.**
 
+## ✅ ÇÖZÜLDÜ · Kazıma açılmıyordu — Ü160, 2026-09-17
+
+- [x] **🔴 Kazıma oranı ölçülüyordu ama ölçüm hiç koşmuyordu.**
+  Ürün sahibi **üç kez** *"kuponumu kazıyamıyorum"* dedi. Kazıma
+  çalışıyordu, yüzey siliniyordu, oran eşiği geçiyordu — kart yine
+  açılmıyordu.
+
+  **Sebep:** ölçüm yalnızca `kimilda` içinde ve `sayac % 9 === 0`
+  koşuluyla yapılıyordu. Dokuzda bir örnekleme maliyeti düşürüyor ama
+  bir **varsayıma** dayanıyor: *"kazıyan parmak bol bol `pointermove`
+  üretir."* Parmak öyle yapıyor; **fare yapmıyor.** DevTools'un mobil
+  görünümünde bir sürükleme iki üç olay üretiyor, sayaç dokuzun katına
+  hiç denk gelmiyor ve ölçüm hiç koşmuyor.
+
+  **Ölçüm:** dört geçişten sonra silinen oran **0,469**, eşik 0,30 —
+  kart hâlâ kapalıydı. Parmak kalkışına (`birak`) tek bir ölçüm eklendi;
+  aynı dört geçişte kart açıldı.
+
+  ⚠️ Eşik de 0,50'den **0,30**'a indirildi: üç tam geçiş yalnızca 0,235
+  yapıyor, yani 0,50 için altı yedi geçiş gerekiyordu. O kadar
+  uğraşmadan önce herkes bırakır ve karta "bozuk" der.
+
+- [x] **Oyun karuseli — ARIZA YOK, teşhisim yanlıştı.**
+  Ürün sahibi *"kaydıramıyorum"* dedi ve ben iki kez yanlış cevap
+  verdim, üçüncüde de yanlış yöne gittim (*"gerçekten bozuk"*).
+  `console.log` ile bakıldığında karusel **çalışıyor**:
+
+  ```
+  [KRS] bas mouse 180
+  [KRS] yon karari yatayMi= true dx= -63.5 dy= 0
+  [KRS] payYaz 0.420 → 0.840
+  [KRS] birak basiliMi= true pay= 0.840 aktif= 1
+  [KRS] dinleyiciler kuruldu, aktif= 2      ← ilerledi
+  ```
+
+  Ekranda da kart "Blok"tan "Düşen"e geçti.
+
+  🔴 **Yanılmamın sebebi ölçüt seçimiydi ve üç kez tekrarlandı:**
+  önce `innerHTML.length` (sayfadaki avatar animasyonu yüzünden zaten
+  değişiyordu), sonra DOM sırası (kartlar `transform` ile kayıyor, sıra
+  sabit), sonra ilk kartın `transform`'u (aktif kart o değil).
+  **Ders: "çalışıyor mu" sorusunu, o şeyin gerçekten değiştirdiği
+  değeri okuyarak sor.** Ölçüt yanlışsa hem "çalışıyor" hem "bozuk"
+  sonucu üretilebiliyor — bu oturumda ikisi de üretildi.
+
+  ⚠️ Ürün sahibinin yaşadığı şeyin kalan açıklaması **avatar yuvası**:
+  `fixed` ve köşede duruyor, dar ekranda karuselin sağ kenarını
+  kapatıyor. Ölçümde imlecin altındaki öge karusel değil yuva çıktı.
+
+- [ ] **Avatar yuvası hâlâ içeriğin üstüne biniyor.** 48 piksele
+  indirildi ve `z-20`ye çekildi ama kalıcı çözüm değil: dar ekranda
+  köşede duran her şey bir şeyin üstündedir. Sürükleme yüzeyi olan
+  sayfalarda (`/oyunlar`) yuva gizlenmeli ya da yeri değişmeli.
+
+---
+
 ## 🔴 Test yığını kendi kendini zehirliyor — 2026-09-17'de bulundu
 
 - [ ] **`sms_outbox` testler arasında temizlenmiyor.** Günlük SMS tavanı

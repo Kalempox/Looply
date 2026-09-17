@@ -90,10 +90,10 @@ export function AvatarYuvasi({ ad }: { ad?: string }) {
           type="button"
           onClick={() => setDisarida(true)}
           aria-label={ad ? `${ad} adlı arkadaşını çağır` : "Arkadaşını çağır"}
-          className="avatar-yuva fixed right-4 bottom-24 z-30 grid size-14 place-items-center rounded-full border border-cizgi bg-yuzey shadow-[0_10px_26px_-10px_rgba(16,32,77,0.55)] active:scale-95"
+          className="avatar-yuva fixed right-3 bottom-[4.75rem] z-20 grid size-12 place-items-center rounded-full border border-cizgi bg-yuzey/95 shadow-[0_10px_26px_-10px_rgba(16,32,77,0.55)] backdrop-blur active:scale-95"
         >
           <span aria-hidden className="block">
-            <Avatar boy={34} ifade="sakin" />
+            <Avatar boy={28} ifade="sakin" />
           </span>
         </button>
       )}

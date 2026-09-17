@@ -54,7 +54,20 @@ import type { KategoriTuru } from "@/domain/kategori-tur";
  */
 
 /** Yüzeyin ne kadarı silinince kupon kendiliğinden açılsın. */
-const ACILMA_ORANI = 0.5;
+/*
+  🔴 Eşik 0,50'den 0,30'a indirildi — Ü160.
+
+  Ürün sahibi üç kez *"kuponumu kazıyamıyorum"* dedi ve haklıydı: kazıma
+  **çalışıyordu**, yalnızca açılmıyordu. Gerçek fare girdisiyle ölçüldü —
+  ekranı boydan boya kat eden **üç ayrı geçiş silinen oranı 0,235**
+  yapıyor; 0,50 için altı yedi geçiş gerekiyordu. O kadar uğraşmadan
+  önce herkes bırakır ve karta "bozuk" der.
+
+  ⚠️ Sıfıra yakın bir eşik de doğru değil: tek dokunuşta açılan kart
+  kazıma değil, gecikmeli bir düğme olurdu. 0,30 dört geçişe denk
+  geliyor — jest korunuyor, sabır sınavı bitiyor.
+*/
+const ACILMA_ORANI = 0.3;
 
 /** Fırça kalınlığı (CSS pikseli). Parmak ucu kadar. */
 const FIRCA = 30;
@@ -263,7 +276,29 @@ export function KazimaKarti({
     };
 
     const birak = () => {
+      if (!basiliMi) return;
       basiliMi = false;
+
+      /*
+        🔴 Parmak kalkınca da ÖLÇÜLÜYOR — Ü160.
+
+        Ürün sahibi üç kez *"kuponumu kazıyamıyorum"* dedi. Kazıma
+        çalışıyordu, yüzey siliniyordu, oran eşiği geçiyordu — kart yine
+        açılmıyordu. Sebep ölçümün **yalnızca** `kimilda` içinde ve
+        `sayac % 9 === 0` koşuluyla yapılmasıydı.
+
+        Dokuzda bir örnekleme maliyeti düşürüyor ama bir varsayıma
+        dayanıyor: "kazıyan parmak bol bol `pointermove` üretir."
+        Parmak öyle yapıyor; **fare yapmıyor.** DevTools'un mobil
+        görünümünde bir sürükleme iki üç olay üretiyor, sayaç dokuzun
+        katına hiç denk gelmiyor ve ölçüm **hiç koşmuyor**. Ölçüldü:
+        dört geçişten sonra silinen oran 0,469 (eşik 0,30) ve kart hâlâ
+        kapalıydı.
+
+        Parmak kalkışı doğal bir kontrol noktası: kullanıcı bir hamleyi
+        bitirmiştir ve tek bir ölçüm maliyeti sıfıra yakındır.
+      */
+      if (!istendiRef.current && oranOlc() >= ACILMA_ORANI) void acmayiIste();
     };
 
     /**
