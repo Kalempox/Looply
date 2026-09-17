@@ -5,7 +5,6 @@ import * as oturum from "@/domain/session";
 import { envanter, type EnvanterKuponu } from "@/domain/odul";
 import { bakim } from "@/domain/bakim";
 import { OyuncuSayfa, SayfaBasi, Sayac, OyuncuBolum } from "@/components/oyuncu";
-import { RENK } from "@/components/oyuncu-renk";
 import { Gorsel, gorselSec, GORSEL_RENGI } from "@/components/oyuncu-gorsel";
 import { Bilet } from "@/components/bilet";
 import { KazimaKarti } from "@/components/kazima-karti";
@@ -274,10 +273,19 @@ export default async function OdullerSayfasi({
           */}
           {!gecmisMi && e.bekleyen.length > 0 && (
             <OyuncuBolum baslik="Yakında açılıyor" not="zamanı gelince">
+              {/*
+                Ü172: bu kart da bilete döndü — ekranda kalan son
+                eski dil buydu. Sekmenin geri kalanı bilet, aralarında
+                tek bir düz beyaz satır duruyordu.
+
+                ⚠️ Sönük ama TIKLANABİLİR: geçmiş biletin aksine bu
+                kupon **gelecek**. Oyuncu detayına bakıp ne zaman
+                açılacağını görebilmeli.
+              */}
               <ul className="flex flex-col gap-2.5">
                 {e.bekleyen.map((k) => (
                   <li key={k.id}>
-                    <SakinKart kupon={k} />
+                    <BiletKarti kupon={k} sonuk />
                   </li>
                 ))}
               </ul>
@@ -301,7 +309,7 @@ export default async function OdullerSayfasi({
               <ul className="flex flex-col gap-2.5">
                 {e.kullanilan.map((k) => (
                   <li key={k.id}>
-                    <BiletKarti kupon={k} gecmis />
+                    <BiletKarti kupon={k} sonuk />
                   </li>
                 ))}
               </ul>
@@ -313,7 +321,7 @@ export default async function OdullerSayfasi({
               <ul className="flex flex-col gap-2.5">
                 {e.kacirilan.map((k) => (
                   <li key={k.id}>
-                    <BiletKarti kupon={k} gecmis />
+                    <BiletKarti kupon={k} sonuk />
                   </li>
                 ))}
               </ul>
@@ -428,7 +436,7 @@ const DURUM_ETIKETI: Record<EnvanterKuponu["durum"], string> = {
  * E9: ödülün adı var, değeri yok. Bilet ne kadar "değerli" görünürse
  * görünsün, üstünde bir tutar yazmıyor.
  */
-function BiletKarti({ kupon, gecmis }: { kupon: EnvanterKuponu; gecmis?: boolean }) {
+function BiletKarti({ kupon, sonuk }: { kupon: EnvanterKuponu; sonuk?: boolean }) {
   /*
     Ü141: kapalı kupon `kullanılabilir` listesine hiç girmiyor
     (`kazinacak`a gidiyor). Geçmişte ise girebiliyor: oyuncu kazımadan
@@ -436,7 +444,8 @@ function BiletKarti({ kupon, gecmis }: { kupon: EnvanterKuponu; gecmis?: boolean
     bilmediğimizi söylüyor, `gorselSec` de boş başlıkla çağrılıp genel
     çizime düşüyor ve yanlış bir kategori seçmiyor.
   */
-  const baslik = kupon.baslik ?? (gecmis ? "Açılmamış ödül" : "");
+  const baslik = kupon.baslik ?? (sonuk ? "Açılmamış ödül" : "");
+  const bekliyor = kupon.durum === "beklemede";
   const gorsel = gorselSec(kupon.baslik ?? "", kupon.tur, kupon.kategoriTuru);
 
   return (
@@ -447,66 +456,29 @@ function BiletKarti({ kupon, gecmis }: { kupon: EnvanterKuponu; gecmis?: boolean
         baslik,
         gorsel,
         renk: GORSEL_RENGI[gorsel],
-        son: kupon.sonKullanim.toLocaleDateString("tr-TR", {
+        // Bekleyende açılış günü gösteriliyor: "son 18 Eyl" demek,
+        // henüz başlamamış bir kuponun bittiğini söylemek olurdu.
+        tarihOneki: bekliyor ? "açılış" : "son",
+        son: (bekliyor ? kupon.aktiflesme : kupon.sonKullanim).toLocaleDateString("tr-TR", {
           day: "numeric",
           month: "short",
         }),
-        // Ü171: geçmiş bilet aynı biçimi taşıyor ama eylem değil durum
-        // söylüyor ve tıklanmıyor.
-        gecmis: gecmis ? { etiket: DURUM_ETIKETI[kupon.durum] } : undefined,
+        /*
+          Ü171–Ü172: sönük bilet aynı biçimi taşıyor ama eylem değil
+          durum söylüyor.
+
+          ⚠️ `baglanti` yalnızca BEKLEYENDE açık: kullanılmış kuponun
+          detay sayfasında yapacak bir şey yok, bekleyenin ise var —
+          oyuncu ne zaman açılacağına bakabilmeli.
+        */
+        sonuk: sonuk
+          ? {
+              etiket: DURUM_ETIKETI[kupon.durum],
+              baglanti: kupon.durum === "beklemede",
+            }
+          : undefined,
       }}
     />
   );
 }
 
-/**
- * Bekleyen ve geçmiş kupon — sakin kart.
- *
- * Bilet olmamaları bilinçli: kasada gösterilemeyecek bir şeyin bilet
- * gibi durması, oyuncuyu kasaya boşuna gönderir. Cins rengi burada
- * yalnızca sol kenarda bir şerit — hangi kupon olduğu görünüyor ama
- * kart "beni kullan" demiyor.
- */
-function SakinKart({ kupon }: { kupon: EnvanterKuponu }) {
-  const bekliyor = kupon.durum === "beklemede";
-  const tarih = bekliyor ? kupon.aktiflesme : kupon.sonKullanim;
-  /*
-    Ü141: geçmişte kalmış ve hiç kazınmamış bir kupon buraya düşebiliyor
-    — oyuncu kazımadan süresi dolmuşsa. Adı yok ve uydurulmuyor: kart
-    ne olduğunu bilmediğimizi söylüyor. `gorselSec` de boş başlıkla
-    çağrılıp genel çizime düşüyor, yanlış bir kategori seçmiyor.
-  */
-  const baslik = kupon.baslik ?? "Açılmamış ödül";
-  const r = RENK[GORSEL_RENGI[gorselSec(kupon.baslik ?? "", kupon.tur, kupon.kategoriTuru)]];
-
-  const govde = (
-    <>
-      <div className="etiket-caps text-yazi-sonuk">{kupon.cafeAdi}</div>
-      <div className="mt-1.5 font-display text-[17px] leading-tight font-bold">{baslik}</div>
-      <div className="mt-2.5 flex items-baseline justify-between gap-3">
-        <span className="etiket-caps text-yazi-sonuk">{DURUM_ETIKETI[kupon.durum]}</span>
-        <span className="font-data text-[10px] text-yazi-sonuk tabular">
-          {bekliyor ? "açılış" : "son"}{" "}
-          {tarih.toLocaleDateString("tr-TR", { day: "numeric", month: "short" })}
-        </span>
-      </div>
-    </>
-  );
-
-  const sinif =
-    "block rounded-2xl border border-cizgi border-l-4 bg-yuzey px-5 py-4 transition-colors";
-
-  return bekliyor ? (
-    <Link
-      href={`/oduller/${kupon.id}`}
-      className={`${sinif} hover:border-yazi-sonuk/40`}
-      style={{ borderLeftColor: r.canli }}
-    >
-      {govde}
-    </Link>
-  ) : (
-    <div className={sinif} style={{ borderLeftColor: r.canli }}>
-      {govde}
-    </div>
-  );
-}

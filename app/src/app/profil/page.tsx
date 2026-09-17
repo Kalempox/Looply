@@ -4,9 +4,6 @@ import * as masaOturumu from "@/domain/masa";
 import { idIleBul, gorunum } from "@/domain/player";
 import { degerlendir, type KazanilmisRozet } from "@/domain/rozet";
 import { karne, type KafeKarnesi } from "@/domain/profil";
-import * as avatar from "@/domain/avatar";
-import { AvatarKosesi } from "@/components/avatar-kosesi";
-import { avatariKaydet } from "./actions";
 import Link from "next/link";
 import {
   OyuncuSayfa,
@@ -14,9 +11,9 @@ import {
   Sayac,
   OyuncuBolum,
   Pul,
-  KartDokusu,
+  BiletYuzeyi,
 } from "@/components/oyuncu";
-import { RENK, kartZemin, type OyuncuRengi } from "@/components/oyuncu-renk";
+import { RENK, type OyuncuRengi } from "@/components/oyuncu-renk";
 import { MadalyaIkonu, OyunIkonu } from "@/components/oyuncu-ikon";
 import { Gorsel } from "@/components/oyuncu-gorsel";
 import { cikisYap } from "../oyna/actions";
@@ -60,17 +57,15 @@ export default async function ProfilSayfasi() {
   await degerlendir(o.ozneId, masa?.cafeId);
 
   const { kafeler, globalRozetler } = await karne(o.ozneId);
-  const avatarSecimi = await avatar.oku(o.ozneId);
 
   const rozetSayisi =
     globalRozetler.length + kafeler.reduce((t, k) => t + k.rozetler.length, 0);
   const toplamOyun = kafeler.reduce((t, k) => t + k.toplamOyun, 0);
 
   return (
-    // ⚠️ `yuva={false}`: avatar bu sayfada zaten büyük duruyor ve
-    // okşanıyor (Ü147). İkisi bir arada aynı karakterin iki kopyası
-    // olurdu — oyuncu hangisini seveceğini bilemezdi.
-    <OyuncuSayfa aktif="/profil" yuva={false}>
+    // `yuva` AÇIK (Ü172): kapalı olmasının tek sebebi sayfanın
+    // ortasındaki avatar kopyasıydı, o kalktı.
+    <OyuncuSayfa aktif="/profil">
       <SayfaBasi ust="Profil" baslik={g.ad} renk="menekse" gorsel="madalya">
         <div className="grid grid-cols-3 gap-2">
           <Sayac etiket="Kafe" deger={String(kafeler.length)} renk="gok" />
@@ -97,26 +92,25 @@ export default async function ProfilSayfasi() {
       </SayfaBasi>
 
       {/*
-        Ü147: İlmek profilin başında.
+        🔴 İlmek profilin ORTASINDAN kalktı — Ü172.
 
-        ⚠️ Sayfa başlığının İÇİNDE değil, hemen altında ayrı bir kart:
-        başlık kartı sayaçları ve rozetleri taşıyor ve avatar oraya da
-        konsaydı üç ayrı şey tek kutuya sıkışırdı. Burada avatarın
-        kendi alanı var — okşanacak bir şeyin etrafında boşluk olmalı.
+        Ü147'de buraya konmuştu: *"profil kısmına tatlı avatarımızı
+        ekleyelim, parmağımızla kaydırarak sevme olsun."* Ürün sahibi
+        şimdi kaldırılmasını istedi ve profilin yeniden tasarlanacağını
+        söyledi.
+
+        ⚠️ Kaldırırken bir şey geri veriliyor: `yuva` bu sayfada
+        **açıldı**. Kapalı olmasının tek sebebi buradaki kopyaydı —
+        *"ikisi bir arada aynı karakterin iki kopyası olurdu"*. Kopya
+        gidince yuvanın kapalı kalması için sebep kalmıyor ve İlmek
+        profilde de ulaşılabilir oluyor.
+
+        ⚠️ Özelleştirme bu sayfadan çıktı ama **hiçbir şey
+        kaybedilmedi**: renk ve aksesuar seçicileri zaten `COK_RENKLI`
+        bayrağının arkasında kapalı (`components/avatar.tsx`) — elde
+        İlmek'in tek 3B karesi var. Bayrak açıldığında seçicilerin
+        nereye gideceği yeniden kararlaştırılacak.
       */}
-      {/*
-        İlmek kutusuz duruyor ve ayakları alttaki kafe kartına biniyor:
-        sayfanın bir katmanı değil, önünde duran bir karakter.
-        `z-10` şart — negatif boşlukla binen öge, üstüne binmesi gereken
-        kartın ARKASINDA kalırdı.
-      */}
-      <div className="relative z-10 -mb-14 flex justify-center">
-        <AvatarKosesi
-          baslangicRenk={avatarSecimi.renk}
-          baslangicAksesuar={avatarSecimi.aksesuar}
-          kaydet={avatariKaydet}
-        />
-      </div>
 
       {kafeler.length === 0 ? (
         <div className="relative overflow-hidden rounded-3xl border border-cizgi bg-yuzey px-6 py-8 text-center">
@@ -243,32 +237,39 @@ function KafeKarti({ kafe, buradaMi }: { kafe: KafeKarnesi; buradaMi: boolean })
       style={{ border: `1px solid ${buradaMi ? r.ana : "var(--color-cizgi)"}` }}
     >
       {/*
-        Üst şerit kuşağın renginde ve soldan sağa açılıyor (Ü67):
-        seviye halkası solda, rengin en yoğun olduğu yerde duruyor.
-        Düz `zemin` dolgusuyken ürün sahibi *"profil kısmı yine çok
-        sönük"* dedi — haklıydı, pastelin tek tonu kartı düzleştiriyordu.
-      */}
-      <div className="relative overflow-hidden px-5 py-5" style={{ background: kartZemin(renk) }}>
-        {/* Kafe kartının arkasında fincan: kart bir kafeyi anlatıyor. */}
-        <KartDokusu renk={renk} gorsel="icecek" />
+        Üst şerit biletin yüzeyinde — Ü172.
 
-        <div className="relative flex items-start gap-4">
+        Ü67'de pastel zemindi ve ürün sahibi o zaman da *"profil kısmı
+        yine çok sönük"* demişti; gradyan eklenmişti. Şimdi aynı
+        şikâyetin kökü kapandı: ekranın geri kalanıyla (bilet, oyun
+        kartları) aynı koyu yüzey.
+
+        ⚠️ `yuvarlak={false}`: altındaki "burada oynadıkların" listesi
+        beyaz devam ediyor ve şerit kendi yuvarlağını taşısaydı
+        birleşme yerinde iki boş köşe kalırdı.
+      */}
+      <BiletYuzeyi renk={renk} gorsel="icecek" yuvarlak={false} className="px-5 py-5">
+        <div className="flex items-start gap-4">
           <SeviyeHalkasi seviye={kafe.seviye} yuzde={kafe.ilerlemeYuzde} renk={renk} />
 
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <h3 className="font-display text-xl leading-tight font-bold">{kafe.cafeAdi}</h3>
+              <h3 className="font-display text-xl leading-tight font-bold text-white">
+                {kafe.cafeAdi}
+              </h3>
               {buradaMi && <Pul baslik="Buradasın" renk={renk} />}
             </div>
 
-            <div className="mt-2 font-data text-[13px] tabular" style={{ color: r.koyu }}>
+            <div className="mt-2 font-data text-[13px] text-white/70 tabular">
               {kafe.xp.toLocaleString("tr-TR")} XP
             </div>
 
-            <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-white/70">
+            {/* Oluk koyu zeminde beyaz/%20; dolgu `canli` — koyu
+                zeminde `ana` tonu zeminden ayrılmıyordu. */}
+            <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-white/20">
               <div
                 className="asil-serit h-full rounded-full"
-                style={{ width: `${kafe.ilerlemeYuzde}%`, background: r.ana }}
+                style={{ width: `${kafe.ilerlemeYuzde}%`, background: r.canli }}
                 role="progressbar"
                 aria-valuenow={kafe.ilerlemeYuzde}
                 aria-valuemin={0}
@@ -276,7 +277,7 @@ function KafeKarti({ kafe, buradaMi }: { kafe: KafeKarnesi; buradaMi: boolean })
                 aria-label={`${kafe.cafeAdi} seviye ilerlemesi`}
               />
             </div>
-            <div className="mt-1.5 font-data text-[10px]" style={{ color: r.koyu }}>
+            <div className="mt-1.5 font-data text-[10px] text-white/55">
               {kafe.sonrakiEsik === null
                 ? "En üst seviyedesin"
                 : `Sonraki seviyeye ${(kafe.sonrakiEsik - kafe.xp).toLocaleString("tr-TR")} XP`}
@@ -285,13 +286,13 @@ function KafeKarti({ kafe, buradaMi }: { kafe: KafeKarnesi; buradaMi: boolean })
         </div>
 
         {kafe.rozetler.length > 0 && (
-          <ul className="relative mt-4 flex flex-wrap gap-1.5">
+          <ul className="mt-4 flex flex-wrap gap-1.5">
             {kafe.rozetler.map((rz) => (
               <RozetPulu key={rz.code} rozet={rz} renk={renk} />
             ))}
           </ul>
         )}
-      </div>
+      </BiletYuzeyi>
 
       {kafe.sonOyunlar.length > 0 && (
         <div className="px-5 py-4">

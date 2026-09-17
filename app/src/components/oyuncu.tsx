@@ -424,18 +424,32 @@ export function BiletYuzeyi({
   renk,
   gorsel,
   className = "",
+  yuvarlak = true,
   children,
 }: {
   renk: OyuncuRengi;
   gorsel?: GorselAdi;
   className?: string;
+  /**
+   * Köşeler ve gölge — Ü172.
+   *
+   * Yüzey her zaman kartın tamamı olmuyor: profildeki kafe kartında
+   * **üst şerit** bu yüzeyde, altındaki oynananlar listesi beyaz
+   * kalıyor. Şerit kendi yuvarlağını taşısaydı beyaz bölümle
+   * birleştiği yerde iki boş köşe kalırdı; yuvarlağı dıştaki
+   * `<section>` veriyor ve `overflow-hidden` ile kırpıyor.
+   *
+   * Gölge de aynı sebeple kalkıyor: kartın içindeki bir şeridin
+   * kendi gölgesi olması, iki ayrı kart varmış gibi okunurdu.
+   */
+  yuvarlak?: boolean;
   children: React.ReactNode;
 }) {
   const r = RENK[renk];
 
   return (
     <div
-      className={`kart-golge kart-gel relative overflow-hidden rounded-3xl ${className}`}
+      className={`relative overflow-hidden ${yuvarlak ? "kart-golge kart-gel rounded-3xl" : ""} ${className}`}
       style={{ background: `linear-gradient(115deg, ${r.koyu} 0%, ${r.ana} 100%)` }}
     >
       {/* Işın: pastelde %5'te kayboluyordu, koyu zeminde %8 yetiyor. */}

@@ -54,10 +54,23 @@ export type BiletVerisi = {
   baslik: string;
   gorsel: KuponGorseli;
   renk: OyuncuRengi;
-  /** "8 Eyl" — biletin son kullanım günü. */
+  /** "8 Eyl" — biletin son kullanım günü (bekleyende açılış günü). */
   son: string;
   /**
-   * Geçmişte kalmış bilet — Ü171.
+   * Tarihin başındaki kelime — varsayılan "son".
+   *
+   * Bekleyen kuponda anlamlı tarih **açılış**, son kullanım değil;
+   * "son 18 Eyl" yazmak orada yanlış olurdu. Varsayılanı olan bir
+   * alan, çağıranların çoğunu rahat bırakıp istisnayı mümkün kılıyor.
+   */
+  tarihOneki?: string;
+  /**
+   * Sönük bilet — şu an kasada gösterilemeyen kupon (Ü171–Ü172).
+   *
+   * Üç hâli var: **kullanıldı**, **süresi geçti**, **birazdan
+   * açılıyor**. Üçü de "şimdi kullanamazsın" diyor, o yüzden aynı
+   * yüzeyi paylaşıyorlar; ilk ikisi geçmiş, üçüncüsü gelecek —
+   * farkı `baglanti` taşıyor.
    *
    * ── Neden bilet oldu ────────────────────────────────────────
    *
@@ -81,12 +94,24 @@ export type BiletVerisi = {
    * **doygunluk** düşüyor (`saturate`). Kart tam opak kalıyor, beyaz
    * metin keskin duruyor; değişen tek şey rengin bağırması.
    */
-  gecmis?: { etiket: string };
+  sonuk?: {
+    /** Kesikli çizginin altında yazan şey — eylem değil durum. */
+    etiket: string;
+    /**
+     * Sönük ama TIKLANABİLİR — Ü172.
+     *
+     * Geçmiş bilet tıklanmıyor: kullanılmış kuponun detay sayfasında
+     * yapacak bir şey yok. Bekleyen kupon ise **gelecek**: oyuncu
+     * detayına bakıp ne zaman açılacağını görebilmeli. İkisi aynı
+     * yüzeyi paylaşıyor ama aynı sözü vermiyor.
+     */
+    baglanti?: boolean;
+  };
 };
 
 export function Bilet({ veri }: { veri: BiletVerisi }) {
   const r = RENK[veri.renk];
-  const gecmis = veri.gecmis;
+  const sonuk = veri.sonuk;
 
   const govde = (
     <>
@@ -166,7 +191,7 @@ export function Bilet({ veri }: { veri: BiletVerisi }) {
         karartma onları bozuk gösteriyordu. Şimdi canlı koyu bir
         bilet ve perde "olmuş bitmiş" diyor.
       */}
-      {gecmis && (
+      {sonuk && (
         <span aria-hidden className="pointer-events-none absolute inset-0 bg-black/45" />
       )}
 
@@ -189,7 +214,10 @@ export function Bilet({ veri }: { veri: BiletVerisi }) {
           kalıyor.
         */}
         <span className="block etiket-caps text-white/55">
-          {veri.kafe} <span className="text-white/35">· son {veri.son}</span>
+          {veri.kafe}{" "}
+          <span className="text-white/35">
+            · {veri.tarihOneki ?? "son"} {veri.son}
+          </span>
         </span>
         <span className="mt-1 block font-display text-xl leading-tight font-bold text-white">
           {veri.baslik}
@@ -203,8 +231,8 @@ export function Bilet({ veri }: { veri: BiletVerisi }) {
           yere gitmeyi vaat ediyor.
         */}
         <span className="mt-2.5 block border-t border-dashed border-white/30 pt-2">
-          <span className="etiket-caps" style={{ color: gecmis ? "rgba(255,255,255,0.72)" : r.canli }}>
-            {gecmis ? gecmis.etiket : "Kasada göster →"}
+          <span className="etiket-caps" style={{ color: sonuk ? "rgba(255,255,255,0.72)" : r.canli }}>
+            {sonuk ? sonuk.etiket : "Kasada göster →"}
           </span>
         </span>
       </div>
@@ -220,12 +248,9 @@ export function Bilet({ veri }: { veri: BiletVerisi }) {
 
   const ortak = "kart-golge relative block h-[124px] overflow-hidden rounded-2xl";
 
-  if (gecmis) {
-    return (
-      <div
-        className={ortak}
-        style={{
-          ...zemin,
+  if (sonuk) {
+    const stil = {
+      ...zemin,
           /*
             Karartan şey perde (yukarıda, `bg-black/45`); buradaki
             doygunluk düşüşü onun yanında ikinci bir işaret.
@@ -238,9 +263,15 @@ export function Bilet({ veri }: { veri: BiletVerisi }) {
             ⚠️ `filter` metni de etkiliyor ama beyaz metin doygunluğu
             zaten sıfır, yani ondan etkilenmiyor.
           */
-          filter: "saturate(0.55)",
-        }}
-      >
+      filter: "saturate(0.55)",
+    };
+
+    return sonuk.baglanti ? (
+      <Link href={veri.href} className={`${ortak} transition-transform active:scale-[0.99]`} style={stil}>
+        {govde}
+      </Link>
+    ) : (
+      <div className={ortak} style={stil}>
         {govde}
       </div>
     );
