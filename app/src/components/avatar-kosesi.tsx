@@ -22,7 +22,7 @@ import { RENK, type OyuncuRengi } from "./oyuncu-renk";
  * ── Tepki neye göre veriliyor ───────────────────────────────
  *
  * Tek dokunuş yetmiyor: **sürtmek** gerekiyor. Parmak avatarın üstünde
- * gezdikçe bir sayaç doluyor; eşiği geçince İlmek gözlerini kapatıp
+ * gezdikçe bir sayaç doluyor; eşiği geçince Loopy gözlerini kapatıp
  * yanaklarını pembeleştiriyor ve hafifçe eziliyor. Parmak kalkınca
  * birkaç saniye içinde olağan hâline dönüyor.
  *
@@ -149,7 +149,7 @@ export function AvatarKosesi({
     /*
       🔴 Kutu YOK — bilerek.
 
-      İlk sürümde İlmek çerçeveli beyaz bir kartın içindeydi ve ürün
+      İlk sürümde Loopy çerçeveli beyaz bir kartın içindeydi ve ürün
       sahibi *"bu bir pencerenin içinde gibi"* dedi. Haklı: çerçeve
       karakteri sayfanın bir parçası olmaktan çıkarıp bir **öge**
       yapıyordu. Maskot sayfanın üstünde durmalı, içinde değil —
@@ -165,7 +165,7 @@ export function AvatarKosesi({
         şey karakterden önce görülüyor.
       */}
       <p className="mb-1 text-[13px] text-yazi-sonuk">
-        {ifade === "keyifli" ? "İlmek keyiflendi 💙" : "İlmek'i parmağınla sev"}
+        {ifade === "keyifli" ? "Loopy keyiflendi 💙" : "Loopy'i parmağınla sev"}
       </p>
 
       <div
@@ -179,7 +179,7 @@ export function AvatarKosesi({
           // çünkü jest klavyeyle yapılamıyor. Altındaki seçimler ise
           // gerçek düğmeler ve onlar erişilebilir.
         >
-          <Avatar renk={renk} aksesuar={aksesuar} ifade={ifade} boy={140} ad="İlmek" />
+          <Avatar renk={renk} aksesuar={aksesuar} ifade={ifade} boy={140} ad="Loopy" />
         </div>
       </div>
 

@@ -16,7 +16,7 @@ import { Avatar, type AvatarIfadesi } from "./avatar";
  *
  * ── Neden bir yuva, neden sürekli ekranda değil ─────────────
  *
- * İlmek her ekranda dolaşsaydı içeriğin üstünü kapatırdı ve bir süre
+ * Loopy her ekranda dolaşsaydı içeriğin üstünü kapatırdı ve bir süre
  * sonra kapatılacak bir şeye dönüşürdü. Yuvada dururken **davet**
  * ediyor; çağrıldığında geliyor, işi bitince geri dönüyor. Oyuncu onu
  * ne zaman göreceğine kendi karar veriyor.

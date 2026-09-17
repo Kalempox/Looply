@@ -656,7 +656,7 @@ body {
 }
 
 /* ── Başarım kutlaması (Ü148) ────────────────────────────────
-   İlmek zıplayarak giriyor, arkasından ışık açılıyor, rozet adı
+   Loopy zıplayarak giriyor, arkasından ışık açılıyor, rozet adı
    ardından geliyor. Seviye kutlamasıyla aynı tempo (~1 sn) ve aynı
    sebep: kutlama oyun sonu ekranının önünde duruyor, oyuncuyu
    skorundan ayırmamalı. */
@@ -701,7 +701,7 @@ body {
   animation: yukari 0.45s cubic-bezier(0.2, 0.7, 0.3, 1) 0.5s both;
 }
 
-/* ── İlmek'in hareketleri (Ü147) ─────────────────────────────
+/* ── Loopy'in hareketleri (Ü147) ─────────────────────────────
    Maskot tek bir 3B render ve yüzü değişmiyor; duygunun tamamını
    **gövde hareketi** taşıyor. Animasyonun en eski kuralı burada tek
    başına iş görüyor: ezilme–uzama (squash & stretch). Zıplarken dikey
@@ -716,13 +716,13 @@ body {
    Görselin içine gömülü bir gölge karakterle birlikte havalanır ve
    zıplamayı yalan gösterirdi. */
 
-.ilmek {
+.loopy {
   position: relative;
   display: grid;
   place-items: end center;
 }
 
-.ilmek-govde {
+.loopy-govde {
   position: relative;
   z-index: 2;
   width: 100%;
@@ -730,7 +730,7 @@ body {
   transform-origin: bottom center;
 }
 
-.ilmek-golge {
+.loopy-golge {
   position: absolute;
   bottom: 2%;
   left: 50%;
@@ -744,7 +744,7 @@ body {
 }
 
 /* ── Duruş: yavaş nefes ─────────────────────────────── */
-@keyframes ilmek-nefes {
+@keyframes loopy-nefes {
   0%,
   100% {
     transform: scale(1, 1);
@@ -754,12 +754,12 @@ body {
   }
 }
 
-.ilmek-durgun .ilmek-govde {
-  animation: ilmek-nefes 3.8s ease-in-out infinite;
+.loopy-durgun .loopy-govde {
+  animation: loopy-nefes 3.8s ease-in-out infinite;
 }
 
 /* ── Okşanma: ezilip yaylanıyor, hafifçe yatıyor ────── */
-@keyframes ilmek-ezil {
+@keyframes loopy-ezil {
   0%,
   100% {
     transform: scale(1.05, 0.95) rotate(-2deg);
@@ -769,7 +769,7 @@ body {
   }
 }
 
-@keyframes ilmek-golge-ezil {
+@keyframes loopy-golge-ezil {
   0%,
   100% {
     transform: scaleX(1.06);
@@ -781,16 +781,16 @@ body {
   }
 }
 
-.ilmek-seviliyor .ilmek-govde {
-  animation: ilmek-ezil 0.6s ease-in-out infinite;
+.loopy-seviliyor .loopy-govde {
+  animation: loopy-ezil 0.6s ease-in-out infinite;
 }
 
-.ilmek-seviliyor .ilmek-golge {
-  animation: ilmek-golge-ezil 0.6s ease-in-out infinite;
+.loopy-seviliyor .loopy-golge {
+  animation: loopy-golge-ezil 0.6s ease-in-out infinite;
 }
 
 /* ── Sevinç: çömelme → zıplama → iki küçük sekme ────── */
-@keyframes ilmek-zipla {
+@keyframes loopy-zipla {
   0% {
     transform: translateY(0) scale(1, 1);
   }
@@ -814,7 +814,7 @@ body {
   }
 }
 
-@keyframes ilmek-golge-zipla {
+@keyframes loopy-golge-zipla {
   0%,
   52%,
   84%,
@@ -832,16 +832,16 @@ body {
   }
 }
 
-.ilmek-seviniyor .ilmek-govde {
-  animation: ilmek-zipla 1.15s cubic-bezier(0.3, 0.7, 0.4, 1) both;
+.loopy-seviniyor .loopy-govde {
+  animation: loopy-zipla 1.15s cubic-bezier(0.3, 0.7, 0.4, 1) both;
 }
 
-.ilmek-seviniyor .ilmek-golge {
-  animation: ilmek-golge-zipla 1.15s cubic-bezier(0.3, 0.7, 0.4, 1) both;
+.loopy-seviniyor .loopy-golge {
+  animation: loopy-golge-zipla 1.15s cubic-bezier(0.3, 0.7, 0.4, 1) both;
 }
 
 /* ── Şaşırma: hızlı küçük titreme ───────────────────── */
-@keyframes ilmek-titre {
+@keyframes loopy-titre {
   0%,
   100% {
     transform: rotate(0deg);
@@ -854,20 +854,20 @@ body {
   }
 }
 
-.ilmek-sasirdi .ilmek-govde {
-  animation: ilmek-titre 0.24s ease-in-out 3;
+.loopy-sasirdi .loopy-govde {
+  animation: loopy-titre 0.24s ease-in-out 3;
 }
 
 /* ── Yardımcı ögeler: kıvılcım ve kalp ──────────────── */
-.ilmek-kivilcimlar,
-.ilmek-kalpler {
+.loopy-kivilcimlar,
+.loopy-kalpler {
   position: absolute;
   inset: 0;
   z-index: 3;
   pointer-events: none;
 }
 
-@keyframes ilmek-kivilcim-sac {
+@keyframes loopy-kivilcim-sac {
   0% {
     transform: translate(-50%, -50%) scale(0.4);
     opacity: 0;
@@ -881,16 +881,16 @@ body {
   }
 }
 
-.ilmek-kivilcim {
+.loopy-kivilcim {
   position: absolute;
   top: 46%;
   left: 50%;
   border-radius: 1px;
   background: var(--color-odul);
-  animation: ilmek-kivilcim-sac 0.9s cubic-bezier(0.15, 0.7, 0.4, 1) 0.28s both;
+  animation: loopy-kivilcim-sac 0.9s cubic-bezier(0.15, 0.7, 0.4, 1) 0.28s both;
 }
 
-@keyframes ilmek-kalp-suzul {
+@keyframes loopy-kalp-suzul {
   0% {
     transform: translateY(0) scale(0.6);
     opacity: 0;
@@ -904,10 +904,10 @@ body {
   }
 }
 
-.ilmek-kalp {
+.loopy-kalp {
   position: absolute;
   top: 18%;
-  animation: ilmek-kalp-suzul 1.5s ease-out infinite;
+  animation: loopy-kalp-suzul 1.5s ease-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -915,8 +915,8 @@ body {
      tamamen kesmek karakteri cansız bırakırdı. Yine de her şey
      `globals.css` başındaki genel kuralla 0.01ms'ye iniyor — yani
      hareket anında bitmiş hâline geçiyor, göz yorulmuyor. */
-  .ilmek-kalp,
-  .ilmek-kivilcim {
+  .loopy-kalp,
+  .loopy-kivilcim {
     display: none !important;
   }
 }

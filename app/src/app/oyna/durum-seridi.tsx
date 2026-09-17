@@ -151,7 +151,7 @@ export function DurumSeridi({
           ve ordan isim koyup özelleştirilebilmeli."*
 
           ── Neden avatarın kendisi, soyut bir ikon değil ─────
-          Oyuncunun profilde seçtiği İlmek burada duruyor. Genel bir
+          Oyuncunun profilde seçtiği Loopy burada duruyor. Genel bir
           "kişi" ikonu koysaydık özelleştirmenin karşılığı ekranda hiç
           görünmezdi; avatarı değiştiren oyuncu değişikliği yalnızca
           profil sayfasında görürdü.

@@ -92,7 +92,7 @@ export default async function ProfilSayfasi() {
       </SayfaBasi>
 
       {/*
-        🔴 İlmek profilin ORTASINDAN kalktı — Ü172.
+        🔴 Loopy profilin ORTASINDAN kalktı — Ü172.
 
         Ü147'de buraya konmuştu: *"profil kısmına tatlı avatarımızı
         ekleyelim, parmağımızla kaydırarak sevme olsun."* Ürün sahibi
@@ -102,13 +102,13 @@ export default async function ProfilSayfasi() {
         ⚠️ Kaldırırken bir şey geri veriliyor: `yuva` bu sayfada
         **açıldı**. Kapalı olmasının tek sebebi buradaki kopyaydı —
         *"ikisi bir arada aynı karakterin iki kopyası olurdu"*. Kopya
-        gidince yuvanın kapalı kalması için sebep kalmıyor ve İlmek
+        gidince yuvanın kapalı kalması için sebep kalmıyor ve Loopy
         profilde de ulaşılabilir oluyor.
 
         ⚠️ Özelleştirme bu sayfadan çıktı ama **hiçbir şey
         kaybedilmedi**: renk ve aksesuar seçicileri zaten `COK_RENKLI`
         bayrağının arkasında kapalı (`components/avatar.tsx`) — elde
-        İlmek'in tek 3B karesi var. Bayrak açıldığında seçicilerin
+        Loopy'in tek 3B karesi var. Bayrak açıldığında seçicilerin
         nereye gideceği yeniden kararlaştırılacak.
       */}
 

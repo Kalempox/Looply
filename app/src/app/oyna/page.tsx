@@ -15,13 +15,13 @@ import * as happy from "@/domain/happy";
 import {
   BiletYuzeyi,
   KoyuKart,
-  CamKutu,
   SiraJetonu,
   RenkliKart,
 } from "@/components/oyuncu";
 import { RENK, oyunRengi, type OyuncuRengi } from "@/components/oyuncu-renk";
-import { oyunGorseli, type GorselAdi } from "@/components/oyuncu-gorsel";
-import { OyunIkonu, CarkIkonu, KupaIkonu } from "@/components/oyuncu-ikon";
+import { Gorsel, oyunGorseli, type GorselAdi } from "@/components/oyuncu-gorsel";
+import { OyunIkonu, CarkIkonu, KupaIkonu, TacIkonu, MadalyaIkonu } from "@/components/oyuncu-ikon";
+import { LoopySozu } from "@/components/loopy-sozu";
 import { OyuncuNav, NavBosluk } from "@/components/oyuncu-nav";
 import { AvatarYuvasi } from "@/components/avatar-yuvasi";
 import { SeriSahnesi } from "@/components/seri-sahnesi";
@@ -166,40 +166,58 @@ export default async function OynaSayfasi() {
 
         {/* ── Günün oyunu ───────────────────────────────── */}
         <section className="mb-10">
-          <div className="mb-3 flex items-baseline justify-between">
-            <h2 className="etiket-caps" style={{ color: RENK[oyunRengi(bonus.id)].ana }}>
-              Bugünün oyunu
-            </h2>
-            <span className="font-data text-[10px] tracking-[0.14em] text-odul-koyu">×2 PUAN</span>
-          </div>
-
           {/*
-            Ü171: kart biletin yüzeyine taşındı (`KoyuKart`).
+            Ü174: ürün sahibinin gönderdiği tasarıma göre yeniden
+            yazıldı. Değişenler: "×2 PUAN" kartın DIŞINDAN içine bir
+            rozete döndü, yanına "Bugün" rozeti geldi, oyunun çizimi
+            büyüdü, Loopy konuşmaya başladı ve düğme turuncu oldu.
 
-            Rengi hâlâ oyunun kendi rengi (Ü65) — aşağıdaki geçiş
-            kartlarıyla aynı aile. Değişen tek şey yüzeyin pastelden
-            koyuya dönmesi; ürün sahibi *"ödüllerim kısmındakiler daha
-            güzel, ona göre uyumlu yapmalıyız"* dedi.
+            ⚠️ "×2 PUAN" bölüm başlığının yanında dururken kartın
+            değil **başlığın** özelliği gibi okunuyordu. Rozet olarak
+            kartın içinde, oyunun yanında duruyor — söylediği şey o
+            oyuna ait.
           */}
+          <h2 className="mb-3 etiket-caps" style={{ color: RENK[oyunRengi(bonus.id)].ana }}>
+            Bugünün oyunu
+          </h2>
+
           <BiletYuzeyi
             renk={oyunRengi(bonus.id)}
             gorsel={oyunGorseli(bonus.id)}
-            className="px-6 py-7"
+            className="px-5 py-6"
           >
-            <div className="flex items-start gap-4">
-              {/* İkon kutusu beyaz kalıyor: oyunun kendi çizimi koyu
-                  zeminde okunmuyordu, kutu ona kendi zeminini veriyor. */}
-              <span className="flex size-16 shrink-0 items-center justify-center rounded-2xl bg-yuzey shadow-sm">
-                <OyunIkonu oyunId={bonus.id} boy={38} />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block font-display text-2xl leading-tight font-extrabold tracking-tight text-white">
+            <div className="flex items-start gap-3">
+              <div className="min-w-0 flex-1">
+                <span className="block font-display text-[28px] leading-none font-extrabold tracking-tight text-white">
                   {bonus.ad}
                 </span>
-                <span className="mt-1.5 block text-[14px] leading-relaxed text-white/70">
+                <span className="mt-2 block text-[13px] leading-snug text-white/70">
                   {bonus.ozet}
                 </span>
-              </span>
+
+                <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                  <Rozet>
+                    <span className="text-odul">★</span> ×2 puan
+                  </Rozet>
+                  <Rozet>Bugün</Rozet>
+                </div>
+              </div>
+
+              {/*
+                Oyunun kendi çizimi BEYAZ kutuda: koyu zeminde kendi
+                renkleriyle okunmuyordu, kutu ona kendi zeminini
+                veriyor. Kutunun altında Loopy konuşuyor.
+              */}
+              <div className="flex w-[7rem] shrink-0 flex-col items-center gap-2">
+                <span className="flex size-16 items-center justify-center rounded-2xl bg-yuzey shadow-sm">
+                  <OyunIkonu oyunId={bonus.id} boy={40} />
+                </span>
+                {/* İfade `sakin`: `mutlu` karesi ~30° eğik bir kutlama pozu ve
+                    sabit dururken düşüyor gibi görünüyor. Kutlama pozu bir
+                    AN için doğru — kartta sürekli duran bir karakter için
+                    değil. */}
+                <LoopySozu soz="Hadi oynayalım!" boy={64} />
+              </div>
             </div>
 
             <Link
@@ -207,13 +225,20 @@ export default async function OynaSayfasi() {
               // varsayılan. Bırakılsaydı sonraki okuyucu bunu bir
               // anahtar sanır ve katalog bağlantısında "eksik" arardı.
               href={`/oyna/${bonus.id}`}
-              /* Düğme BEYAZ: koyu kartın üstünde renkli bir düğme
-                 zeminle aynı aileden olduğu için ayrılmıyordu. Beyaz,
-                 ekranın birincil eylemini tartışmasız öne çıkarıyor. */
-              className="mt-5 block w-full rounded-xl bg-yuzey py-3.5 text-center font-display text-[16px] font-bold transition-transform active:scale-[0.99]"
-              style={{ color: RENK[oyunRengi(bonus.id)].koyu }}
+              /*
+                🔴 Düğme TURUNCU — Ü174'te beyazdan döndü.
+
+                Ü171'de beyaz yapılmıştı çünkü kartın kendi rengindeki
+                düğme zeminle aynı aileden olup ayrılmıyordu. Doğru
+                teşhis, eksik çözüm: beyaz ayrılıyordu ama kartın
+                içindeki öbür beyazlarla (çizim kutusu, balon) aynı
+                şeyi söylüyordu. Turuncu ürünün **vurgu** rengi ve
+                karttaki tek turuncu o — bakılacak yer tartışmasız.
+              */
+              className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl py-4 text-center font-display text-[17px] font-bold text-white shadow-sm transition-transform active:scale-[0.99]"
+              style={{ background: "linear-gradient(100deg, #f97316 0%, #fb923c 100%)" }}
             >
-              Oyna
+              <span aria-hidden>▶</span> Oyna
             </Link>
           </BiletYuzeyi>
         </section>
@@ -352,64 +377,147 @@ function DurumKarti({
   masada: boolean;
   seviye: KafeSeviyesi | null;
 }) {
-  // Zemin ve ışın dokusu `KoyuKart`'a taşındı (Ü64): aynı yüzey artık
-  // /oduller, /profil, /liderlik ve oyun kabuğunda da kullanılıyor.
-  // Burada kopyası durduğu sürece beşi ayrı ayrı kayabilirdi.
-  //
-  // ⚠️ Bu kart `BiletYuzeyi` DEĞİL (Ü171): durum kartı ürünün sabit
-  // mor imza yüzeyi, oyun/geçiş kartları ise kendi renklerini alıyor.
+  /*
+    Ü174: ürün sahibinin gönderdiği tasarıma göre yeniden yazıldı.
+
+    Değişenler: selamlama satırı, sağda konuşan Loopy, ve sayaçlar
+    cam kutulardan **beyaz döşemelere** geçti.
+
+    ⚠️ Beyaz döşeme koyu kartın üstünde bilerek: cam kutu (beyaz %10)
+    zeminle aynı aileden olduğu için sayılar okunuyordu ama kutular
+    görünmüyordu — üç ayrı bilgi tek bir bulanık blok gibi duruyordu.
+    Beyaz döşeme her sayıyı kendi kabına koyuyor.
+
+    ⚠️ Zemin `KoyuKart` (ürünün sabit mor imza yüzeyi), `BiletYuzeyi`
+    değil — bkz. Ü171.
+  */
   return (
     <KoyuKart>
-      <p className="etiket-caps text-white/60">Merhaba</p>
-      <h1 className="mt-1 font-display text-3xl leading-none font-extrabold tracking-tight">
-        {ad}
-      </h1>
+      {/*
+        🔴 Loopy AKIŞTA, mutlak konumda değil — ve bu iki denemeden
+        sonra böyle.
 
-      <div className="mt-5 grid grid-cols-2 gap-2.5">
-        <CamKutu
-          etiket={masada ? "Bu kafedeki puanın" : "Puan"}
-          deger={puan.toLocaleString("tr-TR")}
-          alt={masada ? undefined : "kafede kazanılır"}
-        />
-        <CamKutu
-          etiket="Kullanılabilir kupon"
-          deger={kupon.toLocaleString("tr-TR")}
-          altin={kupon > 0}
-        />
+        1. Yan yana iki esnek kolon: 375 pikselde metin dört satıra
+           düştü, karakter metnin yerini yedi.
+        2. Mutlak konum: metin tam genişlik aldı ama balon akışta yer
+           kaplamadığı için "MERHABA / Buse" başlığının ÜSTÜNE bindi.
+           Çakışma mutlak konumun doğasında — kimse kimsenin boyunu
+           bilmiyor.
+
+        Şimdi iki kolon var ama sağdaki **sabit genişlikte**: balon da
+        Loopy de o kolonun içinde kalıyor, metin kalanı alıyor ve
+        hiçbiri ötekinin üstüne binemiyor.
+      */}
+      <div className="flex items-start gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="etiket-caps text-white/60">Merhaba</p>
+          <h1 className="mt-1 font-display text-3xl leading-none font-extrabold tracking-tight">
+            {ad}
+          </h1>
+          <p className="mt-2 text-[13px] leading-snug text-white/70">
+            {masada
+              ? "Bugün harika bir gün, oynayalım!"
+              : "Bir Looply kafesine uğra, puan kazanmaya başla."}
+          </p>
+        </div>
+
+        {/*
+          Loopy'nin sözü kartın DURUMUNA göre değişiyor: masada
+          değilken "hedeflerini tamamla" demek, yapılamayacak bir şeyi
+          istemek olurdu — oyuncu kafeye gitmeden puan kazanamıyor.
+        */}
+        <div className="w-[7.5rem] shrink-0">
+          <LoopySozu
+            soz={masada ? "Hedeflerini tamamla!" : "Seni kafede bekliyorum!"}
+            boy={80}
+          />
+        </div>
       </div>
 
-      {seviye && (
-        <Link
-          href="/profil"
-          className="mt-3 block rounded-2xl bg-white/10 px-4 py-3.5 transition-colors hover:bg-white/15"
-        >
-          <div className="flex items-baseline justify-between gap-3">
-            <span className="etiket-caps text-white/60">Bu kafedeki seviyen</span>
-            <span className="font-data text-lg leading-none font-bold text-odul tabular">
+      <div className="mt-4 grid grid-cols-3 gap-2">
+        <Dosem ikon={<TacIkonu boy={20} />} etiket="Kullanılabilir kupon" deger={kupon.toLocaleString("tr-TR")} vurgu={kupon > 0} />
+        <Dosem
+          ikon={<Gorsel ad="para" boy={22} />}
+          etiket={masada ? "Bu kafedeki puanın" : "Puanın"}
+          deger={puan.toLocaleString("tr-TR")}
+        />
+        {seviye ? (
+          <Link
+            href="/profil"
+            className="rounded-2xl bg-yuzey px-2.5 py-3 text-center transition-transform active:scale-[0.98]"
+          >
+            <span className="flex justify-center text-odul-koyu">
+              <MadalyaIkonu boy={20} />
+            </span>
+            <span className="mt-1.5 block text-[10px] leading-tight font-semibold text-yazi-sonuk">
+              Seviyen
+            </span>
+            <span className="mt-0.5 block font-data text-xl leading-none font-bold text-yazi tabular">
               {seviye.seviye}
             </span>
-          </div>
+            <span className="mt-1.5 block h-1 w-full overflow-hidden rounded-full bg-cizgi">
+              <span
+                className="block h-full rounded-full bg-odul"
+                style={{ width: `${seviye.ilerlemeYuzde}%` }}
+                role="progressbar"
+                aria-valuenow={seviye.ilerlemeYuzde}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-label="Seviye ilerlemesi"
+              />
+            </span>
+          </Link>
+        ) : (
+          <Dosem ikon={<MadalyaIkonu boy={20} />} etiket="Seviyen" deger="—" />
+        )}
+      </div>
 
-          <div className="mt-2.5 h-1.5 w-full rounded-full bg-white/15">
-            <div
-              className="asil-serit h-full rounded-full bg-odul"
-              style={{ width: `${seviye.ilerlemeYuzde}%` }}
-              role="progressbar"
-              aria-valuenow={seviye.ilerlemeYuzde}
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-label="Seviye ilerlemesi"
-            />
-          </div>
-
-          <div className="mt-2 font-data text-[10px] text-white/55">
-            {seviye.sonrakiEsik === null
-              ? "En üst seviyedesin"
-              : `Sonraki seviyeye ${(seviye.sonrakiEsik - seviye.xp).toLocaleString("tr-TR")} XP`}
-          </div>
-        </Link>
+      {seviye && seviye.sonrakiEsik !== null && (
+        <p className="mt-2 text-center font-data text-[10px] text-white/55">
+          Sonraki seviyeye {(seviye.sonrakiEsik - seviye.xp).toLocaleString("tr-TR")} XP
+        </p>
       )}
     </KoyuKart>
+  );
+}
+
+/**
+ * Karşılama kartındaki beyaz döşeme — Ü174.
+ *
+ * `CamKutu`nun (beyaz %10) yerini aldı ve sebebi ölçülebilir: cam kutu
+ * koyu zeminle aynı aileden olduğu için **kutunun kendisi
+ * görünmüyordu**; üç sayı tek bir blok gibi okunuyordu. Beyaz döşeme
+ * her sayıya kendi kabını veriyor.
+ *
+ * ⚠️ `CamKutu` silinmedi: başka ekranlarda (liderlik, oyun kabuğu)
+ * hâlâ kullanılıyor ve orada tek başına duruyor, yan yana değil.
+ */
+function Dosem({
+  ikon,
+  etiket,
+  deger,
+  vurgu,
+}: {
+  ikon: React.ReactNode;
+  etiket: string;
+  deger: string;
+  /** Kazanılmış bir şey varsa sayı altın. */
+  vurgu?: boolean;
+}) {
+  return (
+    <div className="rounded-2xl bg-yuzey px-2.5 py-3 text-center">
+      <span className="flex justify-center text-odul-koyu">{ikon}</span>
+      <span className="mt-1.5 block text-[10px] leading-tight font-semibold text-yazi-sonuk">
+        {etiket}
+      </span>
+      <span
+        className={`mt-0.5 block font-data text-xl leading-none font-bold tabular ${
+          vurgu ? "text-odul-koyu" : "text-yazi"
+        }`}
+      >
+        {deger}
+      </span>
+    </div>
   );
 }
 
@@ -860,5 +968,20 @@ function GecisKarti({
         <p className="mt-1 text-[13px] leading-relaxed text-white/65">{alt}</p>
       </BiletYuzeyi>
     </Link>
+  );
+}
+
+/**
+ * Oyun kartındaki küçük rozet — Ü174.
+ *
+ * Koyu zeminde beyaz %15: kendi kabı var ama zemini bastırmıyor.
+ * Dolu beyaz olsaydı düğmeyle yarışırdı; kartta bakılacak tek yer
+ * "Oyna" olmalı.
+ */
+function Rozet({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-semibold text-white">
+      {children}
+    </span>
   );
 }

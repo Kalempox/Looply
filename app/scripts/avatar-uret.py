@@ -26,7 +26,7 @@ Kaynak: `gelen/avatar/`  ·  Çıktı: `app/public/avatar/`
 
 Havada duran kalpler ve kıvılcım çizgileri siliniyor. İki sebep:
 ölçek (onları korumak bardağı yarı boyda bırakıyor) ve tekrar —
-kıvılcımları CSS zaten çiziyor (`ilmek-kivilcimlar`), görselde de
+kıvılcımları CSS zaten çiziyor (`loopy-kivilcimlar`), görselde de
 olsaydı ekranda iki kat kıvılcım olurdu.
 
 ⚠️ Karakterin TUTTUĞU kalp kalıyor: gövdeye değiyor, yani aynı
@@ -171,21 +171,21 @@ def main() -> None:
         tuval = Image.new("RGBA", (BOY, BOY), (0, 0, 0, 0))
         tuval.alpha_composite(im, (round(BOY / 2 - mx), round(BOY / 2 - my)))
 
-        tuval.save(os.path.join(CIKTI, f"ilmek-{ad}-1024.png"), optimize=True)
+        tuval.save(os.path.join(CIKTI, f"loopy-{ad}-1024.png"), optimize=True)
         for b in (512, 256):
             tuval.resize((b, b), Image.LANCZOS).save(
-                os.path.join(CIKTI, f"ilmek-{ad}-{b}.webp"), quality=88, method=6
+                os.path.join(CIKTI, f"loopy-{ad}-{b}.webp"), quality=88, method=6
             )
 
         gk = govde_olcu(tuval)
-        kb = os.path.getsize(os.path.join(CIKTI, f"ilmek-{ad}-512.webp")) // 1024
+        kb = os.path.getsize(os.path.join(CIKTI, f"loopy-{ad}-512.webp")) // 1024
         kirpik = tuval.getbbox()
         tasti = kirpik[0] <= 0 or kirpik[1] <= 0 or kirpik[2] >= BOY or kirpik[3] >= BOY
         print(f"  {ad:9} {kaynak[:28]:30} {gk[0]:6.1f}   {kb:3} KB{'  ⚠️ TAŞTI' if tasti else ''}")
 
     # Önizleme şeritleri
     kucukler = [
-        (ad, Image.open(os.path.join(CIKTI, f"ilmek-{ad}-256.webp")).convert("RGBA"))
+        (ad, Image.open(os.path.join(CIKTI, f"loopy-{ad}-256.webp")).convert("RGBA"))
         for ad, *_ in hazir
     ]
     for zemin, dosya in [((24, 24, 32), "koyu"), ((250, 250, 252), "acik")]:

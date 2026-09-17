@@ -200,7 +200,7 @@ export default async function GelistirmeDefteri() {
         </section>
 
         <section className="mb-8">
-          <h2 className="mb-3 etiket-caps text-yazi-sonuk">İlmek — hareketleri</h2>
+          <h2 className="mb-3 etiket-caps text-yazi-sonuk">Loopy — hareketleri</h2>
 
           {/*
             Tek render var ve yüz değişmiyor: burada görülen şey

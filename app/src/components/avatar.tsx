@@ -2,7 +2,7 @@ import Image from "next/image";
 import type { OyuncuRengi } from "./oyuncu-renk";
 
 /**
- * İlmek — Looply'nin maskotu (Ü147).
+ * Loopy — Looply'nin maskotu (Ü147).
  *
  * ── 🔴 Çizim değil, ürün sahibinin 3B render'ı ──────────────
  *
@@ -51,7 +51,7 @@ import type { OyuncuRengi } from "./oyuncu-renk";
  * Renk ve aksesuar seçicileri açık mı?
  *
  * Tek render varken `false`. Ürün sahibi altı rengi üretip
- * `public/avatar/ilmek-<renk>.webp` olarak koyunca `true` yapmak
+ * `public/avatar/loopy-<renk>.webp` olarak koyunca `true` yapmak
  * yetiyor — seçiciler, kayıt ve doğrulama zaten yazılı.
  */
 export const COK_RENKLI = false;
@@ -107,7 +107,7 @@ const HAREKET: Record<AvatarIfadesi, string> = {
  * yalanlardı. Kare üretilince buraya bir satır eklemek yetiyor.
  *
  * ⚠️ Karelerdeki uçuşan süslemeler (kıvılcım, kalp) kasten silindi:
- * ikisini de CSS çiziyor (`ilmek-kivilcimlar`, `ilmek-kalpler`) ve
+ * ikisini de CSS çiziyor (`loopy-kivilcimlar`, `loopy-kalpler`) ve
  * görselde de olsalardı ekranda iki kat görünürlerdi. Karakterin
  * TUTTUĞU kalp duruyor — o gövdenin parçası.
  */
@@ -157,7 +157,7 @@ export function Avatar({
 
   return (
     <div
-      className={`ilmek ilmek-${hareket}`}
+      className={`loopy loopy-${hareket}`}
       style={{ width: boy, height: boy * 1.06 }}
     >
       {/*
@@ -165,25 +165,25 @@ export function Avatar({
         gömülü olsaydı karakterle birlikte havaya kalkardı ve zıplama
         yalan görünürdü — hareketi bozan en büyük tek şey.
       */}
-      <span aria-hidden className="ilmek-golge" />
+      <span aria-hidden className="loopy-golge" />
 
       <Image
-        src={`/avatar/ilmek-${KARE[ifade]}-512.webp`}
+        src={`/avatar/loopy-${KARE[ifade]}-512.webp`}
         alt={ad ?? ""}
         width={512}
         height={512}
-        className="ilmek-govde"
+        className="loopy-govde"
         aria-hidden={ad ? undefined : true}
         priority={boy >= 120}
       />
 
       {/* Sevinç kıvılcımları — yalnızca zıplarken. */}
       {hareket === "seviniyor" && (
-        <span aria-hidden className="ilmek-kivilcimlar">
+        <span aria-hidden className="loopy-kivilcimlar">
           {KIVILCIM.map((k, i) => (
             <span
               key={i}
-              className="ilmek-kivilcim"
+              className="loopy-kivilcim"
               style={
                 {
                   width: k.g,
@@ -200,11 +200,11 @@ export function Avatar({
 
       {/* Okşanınca yukarı süzülen kalpler. */}
       {hareket === "seviliyor" && (
-        <span aria-hidden className="ilmek-kalpler">
+        <span aria-hidden className="loopy-kalpler">
           {KALPLER.map((k, i) => (
             <svg
               key={i}
-              className="ilmek-kalp"
+              className="loopy-kalp"
               width="16"
               height="16"
               viewBox="0 0 16 16"

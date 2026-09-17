@@ -27,7 +27,7 @@
  * biçimi gösterirdi. Çizilen tek şey ilmek — asıl işaret o.
  */
 
-/* ── İlmek: işaretin kendisi ───────────────────────────────── */
+/* ── Loopy: işaretin kendisi ───────────────────────────────── */
 
 /**
  * Yalnız başına kullanılabilen kompakt işaret.
@@ -222,7 +222,7 @@ export function LooplyLogo({
       >
         <span>L</span>
         {/*
-          İlmek `oo`nun YERİNE geçiyor, yanına eklenmiyor.
+          Loopy `oo`nun YERİNE geçiyor, yanına eklenmiyor.
 
           Ölçü **yükseklikten** türüyor: işaretin boyu büyük harf
           yüksekliği kadar (0.72 em) olsun isteniyor, genişlik oradan

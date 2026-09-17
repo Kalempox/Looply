@@ -2,7 +2,7 @@ import { Avatar, type AvatarAksesuari } from "./avatar";
 import type { OyuncuRengi } from "./oyuncu-renk";
 
 /**
- * Başarım kutlaması — İlmek tebrik ediyor (Ü148).
+ * Başarım kutlaması — Loopy tebrik ediyor (Ü148).
  *
  * ── Ürün sahibinin isteği ───────────────────────────────────
  *
@@ -11,7 +11,7 @@ import type { OyuncuRengi } from "./oyuncu-renk";
  *
  * ── 🔴 Kutlayan şey oyuncunun KENDİ avatarı ─────────────────
  *
- * Sahnede duran İlmek genel bir maskot değil, oyuncunun profilde
+ * Sahnede duran Loopy genel bir maskot değil, oyuncunun profilde
  * seçtiği renk ve aksesuarla duruyor. Ürün sahibinin isteğinin özü bu:
  * tebrik eden karakter tanıdık olmalı. Sabit bir maskot koysaydık
  * kutlama "uygulamadan bir bildirim" gibi okunurdu.
@@ -84,7 +84,7 @@ export function RozetKutlamasi({
           <p className="mt-3 text-[13px] leading-relaxed text-yazi-sonuk">
             {/* ⚠️ Ü16: rozetin ekonomik değeri yok ve ekran bunu ima
                 etmemeli. Cümle bir kutlama, bir vaat değil. */}
-            İlmek seninle gurur duyuyor.
+            Loopy seninle gurur duyuyor.
           </p>
         </div>
       </div>
