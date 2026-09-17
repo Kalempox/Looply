@@ -38,12 +38,42 @@ export type HucreDurumu =
   /** Blok'ta parçanın ineceği yer, sığmıyor. */
   | "gecersiz";
 
-/** Tahtanın kabı — kartların yüzey ailesinden, ama desensiz. */
+/**
+ * Tahtanın kabı — kartların yüzey ailesinden, ama desensiz.
+ *
+ * ── 🔴 Tahta KOYULAŞTI, hücreler beyaza yaklaştı — Ü166 ─────
+ *
+ * Ürün sahibi *"oyunların arayüzleri çok çirkin"* dedi. Ölçüldü ve
+ * tek bir sayı bütün izlenimi açıklıyordu: **boş hücre ile tahtanın
+ * zemini arasındaki kontrast 1,10 : 1.** (1,00 iki rengin aynı olması
+ * demek.) Yani ızgara ızgara değildi — üstünde hafif bir doku olan
+ * düz bir levhaydı. Dört oyunda da aynı: blok 1,10 · düşen 1,13 ·
+ * yılan 1,11 · kelime 1,12.
+ *
+ * İlginç olan, asıl şüphelinin masum çıkması: dolu-boş kontrastı
+ * zaten 3,3–4,5 ile iyiydi. Parçalar görünüyordu; **görünmeyen şey
+ * tahtaydı.**
+ *
+ * ── Neden ilişki ters çevrildi ──────────────────────────────
+ *
+ * Önceden zemin açık (`r.zemin`) ve hücre onun üstünde biraz koyuydu
+ * (`ana` %8). İki açık ton yan yana duruyordu. Döşeme oyunlarının
+ * kurduğu ilişki tersi: **tahta koyu bir tepsi, hücreler onun üstünde
+ * duran açık karolar.** O zaman aradaki boşluk kendiliğinden ızgara
+ * çizgisi oluyor ve hiçbir çizgi çizmeye gerek kalmıyor.
+ *
+ * Ölçülerek seçildi (`ana` %36 tepsi, hücre beyaz %82):
+ * ızgara kontrastı 1,10 → **1,45–1,65**. Daha yükseği (%40+) denendi
+ * ve ızgara parçalardan daha çok bağırmaya başlıyor.
+ *
+ * ⚠️ En zayıf halka gök (blok): `ana`sı diğerlerinden açık olduğu için
+ * aynı alfada daha düşük kontrast veriyor. Eşik ona göre seçildi.
+ */
 export function tahtaStili(oyunId: string): CSSProperties {
   const r = RENK[oyunRengi(oyunId)];
   return {
-    background: r.zemin,
-    border: `1px solid ${r.ana}33`,
+    background: `${r.ana}5c`,
+    border: `1px solid ${r.ana}70`,
   };
 }
 
@@ -60,11 +90,21 @@ export function hucreStili(oyunId: string, durum: HucreDurumu): CSSProperties {
 
   switch (durum) {
     case "bos":
-      // Nötr gri değil, oyunun renginin çok soluk hâli: boş tahta bile
-      // hangi oyunda olduğunu söylüyor.
+      /*
+        Beyazın kendisi değil, koyu tepsinin üstünde **beyaz %82**:
+        kalan %18 tepsiden sızıyor ve hücre oyunun renginden bir
+        parça taşıyor (Ü85'in kuralı duruyor — boş tahta bile hangi
+        oyunda olduğunu söylüyor). Tam beyaz olsaydı dört oyunun boş
+        tahtası birbirinin aynısı olurdu.
+
+        ⚠️ Renk tepsiden TÜRETİLMİYOR, üstüne konuyor. `${"$"}{r.ana}0f` gibi
+        bir değer tepsinin üstünde onu daha da koyulaştırırdı — hücre
+        tepsiden açık olmalı ki aradaki boşluk ızgara çizgisi gibi
+        okunsun.
+      */
       return {
-        background: `${r.ana}14`,
-        boxShadow: `inset 0 1px 2px ${r.koyu}1a`,
+        background: "rgba(255,255,255,0.82)",
+        boxShadow: `inset 0 1px 2px ${r.koyu}14`,
       };
 
     case "dolu":

@@ -202,7 +202,10 @@ export default async function OynaSayfasi() {
             </div>
 
             <Link
-              href={`/oyna/${bonus.id}?basla=1`}
+              // `?basla=1` kalktı — Ü167'den beri doğrudan başlamak
+              // varsayılan. Bırakılsaydı sonraki okuyucu bunu bir
+              // anahtar sanır ve katalog bağlantısında "eksik" arardı.
+              href={`/oyna/${bonus.id}`}
               className="mt-5 block w-full rounded-xl py-3.5 text-center font-display text-[16px] font-bold text-white transition-transform active:scale-[0.99]"
               style={{ background: RENK[oyunRengi(bonus.id)].ana }}
             >

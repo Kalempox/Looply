@@ -58,7 +58,15 @@ export default async function OyunSayfasi({
     gelenler için de katalog bir adım ötede, çıkmaz sokak yok.
   */
   return (
-    <OyuncuSayfa aktif="/oyna" geri={{ href: "/oyunlar", etiket: "Oyunlar" }} yuva={false}>
+    // `menu={false}`: oyun oynanırken alt şerit yok — Ü166. Düşen'de
+    // "Bırak" düğmesi ölçülerek şeridin ALTINDA kalıyordu; basmak
+    // parçayı bırakmıyor, oyundan çıkarıyordu.
+    <OyuncuSayfa
+      aktif="/oyna"
+      geri={{ href: "/oyunlar", etiket: "Oyunlar" }}
+      yuva={false}
+      menu={false}
+    >
       {/* Başlık kabuğun içinde: üç durumun üçü de oyunun adını farklı
           yerde söylüyor (kartın tepesinde, oynarken şeritte, sonuçta
           sonuç kartında). Sayfanın da ayrıca söylemesi, oyun adını
@@ -75,7 +83,28 @@ export default async function OyunSayfasi({
         avatarRenk={avatarSecimi.renk}
         avatarAksesuar={avatarSecimi.aksesuar}
         demoKapisi={kodEkrandaGosterilir()}
-        hemenBasla={sp.basla === "1"}
+        /*
+          🔴 Varsayılan DOĞRUDAN BAŞLAMAK — Ü167.
+
+          Önce `sp.basla === "1"` idi: yalnızca ana ekrandaki bonus
+          bağlantısı doğrudan başlıyordu, katalogdan gelen oyuncu ise
+          "Oyna"ya basıp **ikinci bir "Oyna" düğmesine** çıkıyordu.
+          Ürün sahibi *"oynaya bastıktan sonra tekrar oyna menüsü
+          açılmamalı"* dedi. Kabuğun kendi yorumu da zaten bunu
+          söylüyordu: *"'Oyna' düğmesi tek dokunuşta oynatmalı."*
+
+          ⚠️ Tanıtım ekranının kasıtlı bir gerekçesi vardı: "kazandırır
+          mı" bilgisini tur başlamadan söylemek. O bilgi kaybolmuyor —
+          oynarken başlıkta duruyor (`oyun-kabuk.tsx`, "Kazandırmaz").
+
+          ⚠️ Bedeli: bu sayfaya gelmek artık günlük hakkı **harcıyor**.
+          Önce tanıtım ekranından geri dönülebiliyordu. Kabul edildi,
+          çünkü buraya gelmenin tek yolu "Oyna"ya basmak.
+
+          `basla=0` kapıyı açık bırakıyor: hata ayıklarken tanıtım
+          ekranı hâlâ görülebilir.
+        */
+        hemenBasla={sp.basla !== "0"}
       />
     </OyuncuSayfa>
   );

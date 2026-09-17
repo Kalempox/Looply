@@ -135,32 +135,36 @@ export function OyunKaruseli({ oyunlar }: { oyunlar: KarusellOyun[] }) {
 
     const bas = (e: PointerEvent) => {
       /*
-        🔴 İşaretçi YAKALANIYOR — Ü162.
+        🔴 BURADA YAKALAMA YOK — ve bu bir düzeltme, eksiklik değil.
 
-        Ürün sahibi karuseli üç kez *"kaydıramıyorum"* diye bildirdi.
-        Fare girdisiyle ölçüldüğünde çalışıyor (`pointerType: mouse`),
-        ama o DevTools'un **mobil görünümünde** deniyor ve orada
-        dokunma taklidi açık: olaylar `pointerType: touch` geliyor.
+        Ü162'de `setPointerCapture` tam buraya, `pointerdown`a
+        konmuştu: sürükleme dokunmada `pointercancel` ile ölüyordu ve
+        yakalama kararı bize alıyor. Sürükleme düzeldi. Karşılığında
+        **oyun başlatmak öldü.**
 
-        Dokunmada tarayıcı jestin kaydırma mı sürükleme mi olduğuna
-        **kendi** karar veriyor ve kaydırma derse akışı `pointercancel`
-        ile kesiyor — parmak hâlâ ekrandayken sürükleme ölüyor.
-        `setPointerCapture` bu kararı bize alıyor: işaretçi bu ögeye
-        bağlanıyor ve sonraki olaylar buraya geliyor.
+        Ü167'de A/B ölçüldü — aynı sayfa, "Oyna →" bağlantısının tam
+        ortasına aynı tıklama:
 
-        ⚠️ Yan kazanç: parmak kutunun dışına çıktığında da sürükleme
-        sürüyor. Öncesinde `pointerleave` sürüklemeyi kesiyordu ve dar
-        ekranda kutunun kenarına yaklaşmak bile hareketi bitiriyordu.
+          pointerdown'da yakala (eski)  → click hedefi DIV, gitmedi
+          yön kararında yakala (yeni)   → click hedefi A,   /oyna/kelime
 
-        ⚠️ `try` içinde: yakalama başarısız olursa (bazı tarayıcılar
-        belirli koşullarda atıyor) sürükleme eski yoluyla devam etmeli,
-        hata yüzünden hiç başlamaması değil.
+        Yakalanan işaretçide tarayıcı `click` hedefini yakalayan ögeye
+        kaydırıyor; bağlantı hiç tetiklenmiyor. Yani Ü162'den beri
+        karuselden hiçbir oyun açılamıyordu — ürün sahibinin *"oyunlar
+        oynanabilir durumda değil"* dediği tabloya bu da dâhil.
+
+        ⚠️ **Ders:** yakalama ucuz bir sigorta gibi duruyor ama bedeli
+        var ve bedeli başka bir etkileşimde ödeniyor. Bir jesti
+        kurtarmak için konan şey, aynı yüzeydeki başka bir jesti
+        sessizce kapatabiliyor.
+
+        Çözüm yakalamayı kaldırmak değil, **geciktirmek**: jestin
+        sürükleme olduğu anlaşılınca yakalanıyor (bkz. `kimilda`).
+        Dokunup bırakan parmak hiç yakalamıyor, tıklaması bağlantıya
+        ulaşıyor; sürükleyen parmak yakalıyor ve hem sürüklemesi
+        sürüyor hem de tıklaması bastırılmış oluyor — sürükledikten
+        sonra oyunun açılmaması zaten istenen şey.
       */
-      try {
-        kutu.setPointerCapture(e.pointerId);
-      } catch {
-        // Yakalanamadı — eski davranışla devam.
-      }
       basiliMi = true;
       yonBelli = false;
       yatayMi = false;
@@ -217,7 +221,30 @@ export function OyunKaruseli({ oyunlar }: { oyunlar: KarusellOyun[] }) {
         if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
         yatayMi = Math.abs(dx) > Math.abs(dy) * 1.2;
         yonBelli = true;
-        if (yatayMi) setSurukleniyor(true);
+        if (yatayMi) {
+          setSurukleniyor(true);
+          /*
+            İşaretçi ANCAK ŞİMDİ yakalanıyor — Ü167.
+
+            Jestin sürükleme olduğu bu satırda belli oluyor. Daha
+            erken yakalamak (Ü162'de `pointerdown`daydı) dokunup
+            bırakan parmağın tıklamasını da yutuyordu.
+
+            Yakalamanın işi buradan sonrası: parmak kutunun dışına
+            taşsa bile olaylar buraya gelsin, tarayıcı jesti
+            `pointercancel` ile elimizden almasın.
+
+            ⚠️ `try` içinde: yakalama bazı ortamlarda atıyor
+            (otomasyonla üretilmiş olay, etkin olmayan `pointerId`).
+            Atan çağrı yakalanmasaydı sürükleme burada kesilir ve
+            düzeltmeye çalıştığımız şey geri gelirdi.
+          */
+          try {
+            kutu.setPointerCapture(e.pointerId);
+          } catch {
+            // Yakalanamadı — sürükleme yakalamasız da yürüyor.
+          }
+        }
       }
       if (!yatayMi) return;
 

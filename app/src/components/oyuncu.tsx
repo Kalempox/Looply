@@ -67,12 +67,39 @@ export function OyuncuSayfa({
   aktif,
   children,
   yuva = true,
+  menu = true,
 }: {
   /** Üstteki geri bağlantısı. Sekme köklerinde verilmiyor. */
   geri?: { href: string; etiket: string };
   /** Alt şeritte hangi durak yanacak. */
   aktif: Durak;
   children: React.ReactNode;
+  /**
+   * Alttaki üç duraklı şerit.
+   *
+   * ── 🔴 Oyun oynanırken şerit YOK — Ü166 ─────────────────────
+   *
+   * Ürün sahibi *"oynanışları çok kötü, hiç oynanabilir durumda
+   * değil"* dedi. Düşen'de sebebi ölçüldü ve bir his meselesi
+   * değildi:
+   *
+   *   Bırak düğmesi   748 – 803 piksel
+   *   Alt şerit       743'ten başlıyor (`fixed`, `z-20`)
+   *
+   * Düğmenin tam ortasındaki (188, 775) noktada `elementFromPoint`
+   * **şeridin içindeki bir ikonu** döndürüyordu. Yani düşen bloğu
+   * bırakmak için basılan yer parçayı bırakmıyor, **oyundan
+   * çıkarıyordu.**
+   *
+   * `NavBosluk` (80 piksel) zaten vardı ama yetmiyor: oyun ekranı
+   * 923 piksel, görünen alan 812. Sayfa kayıyor ve varsayılan kaydırma
+   * konumunda asıl kontrol şeridin altında kalıyor.
+   *
+   * ⚠️ Şeridi gizlemek yolu kapatmıyor: oyun ekranında üstte
+   * `‹ Oyunlar` bağlantısı duruyor. Kapatan şey şeritti — oyunun
+   * ortasında yanlışlıkla basılan bir sekme turu bitiriyordu.
+   */
+  menu?: boolean;
   /**
    * Sağ alttaki avatar yuvası (Ü159).
    *
@@ -126,11 +153,13 @@ export function OyuncuSayfa({
 
         {children}
 
-        <NavBosluk />
+        {/* Boşluk da şeride bağlı: şerit yoksa altında kalınacak bir
+            şey de yok ve o 80 piksel tahtadan çalınmış olur. */}
+        {menu && <NavBosluk />}
       </div>
 
       {yuva && <AvatarYuvasi />}
-      <OyuncuNav aktif={aktif} />
+      {menu && <OyuncuNav aktif={aktif} />}
     </main>
   );
 }

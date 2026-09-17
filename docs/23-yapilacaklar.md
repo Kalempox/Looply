@@ -290,6 +290,72 @@ Yatay jest için `none`a geçmek gerekebilir — ama o zaman karuselin
 
 ---
 
+## 🔴 Oyunlar "oynanabilir değil" — iki arıza, ikisi de bizim (Ü166–Ü167)
+
+Ürün sahibi *"oyunların arayüzleri de çok çirkin, oynanışları da çok
+kötü, hiç oynanabilir durumda değil"* dedi. Dördünü de oynadım. İki
+gerçek arıza çıktı ve ikisi de **kendi eklediğimiz** şeylerdi.
+
+- [x] **🔴 Karuselden hiçbir oyun açılamıyormuş (Ü167).** "Oyna →"ya
+  basmak hiçbir şey yapmıyordu. Sebep Ü162'de sürüklemeyi düzeltmek
+  için eklenen `setPointerCapture`: işaretçi `pointerdown`da
+  yakalanınca tarayıcı `click` hedefini yakalayan ögeye kaydırıyor ve
+  bağlantı hiç tetiklenmiyor.
+
+  A/B ölçüldü — aynı sayfa, bağlantının tam ortasına aynı tıklama:
+
+  | Davranış | Tıklama hedefi | Sonuç |
+  |---|---|---|
+  | `pointerdown`da yakala (Ü162) | `DIV` | gitmedi |
+  | Yön kararında yakala (Ü167) | `A` → `/oyna/kelime` | **gitti** |
+
+  Yakalama kaldırılmadı, **geciktirildi**: jestin sürükleme olduğu
+  anlaşılınca yakalanıyor. Dokunup bırakan parmak hiç yakalamıyor.
+  Sürüklemenin bozulmadığı da ölçüldü (`aktif` 2 → 3, sayfa değişmedi).
+
+  🔴 **Ders:** yakalama ucuz bir sigorta gibi duruyor ama bedeli var ve
+  bedeli **başka bir etkileşimde** ödeniyor. Bir jesti kurtarmak için
+  konan şey, aynı yüzeydeki başka bir jesti sessizce kapatabiliyor.
+
+- [x] **🔴 Düşen'de "Bırak" düğmesi alt şeridin altında kalıyormuş
+  (Ü166).** Ölçüldü: düğme 748–803, şerit 743'ten başlıyor
+  (`fixed`, `z-20`). Düğmenin tam ortasında `elementFromPoint`
+  **şeridin ikonunu** döndürüyordu — yani parçayı bırakmak için
+  basılan yer oyundan çıkarıyordu.
+  ➜ Oyun oynanırken şerit yok (`menu={false}`). Üstteki `‹ Oyunlar`
+  duruyor, yol kapanmıyor.
+
+- [x] **Tahtalar "çirkin"in tek sayısı (Ü166):** boş hücre ile tahtanın
+  zemini arasındaki kontrast **1,10 : 1** (1,00 = aynı renk).
+
+  | | blok | düşen | yılan | kelime |
+  |---|---|---|---|---|
+  | önce | 1,10 | 1,13 | 1,11 | 1,12 |
+  | sonra | 1,45 | 1,65 | 1,50 | 1,56 |
+
+  ⚠️ Asıl şüpheli masum çıktı: dolu-boş kontrastı zaten 3,3–4,5'ti.
+  Parçalar görünüyordu, **görünmeyen tahtaydı.** İlişki ters çevrildi:
+  tahta koyu tepsi, hücreler açık karo — aradaki boşluk kendiliğinden
+  ızgara çizgisi oluyor.
+
+- [x] **"Oyna"dan sonra ikinci bir "Oyna" ekranı yok (Ü167).**
+  ⚠️ Bedeli: sayfaya gelmek artık günlük hakkı harcıyor. "Kazandırmaz"
+  uyarısı kaybolmadı, oynarken başlıkta duruyor.
+
+🔴 **Ölçüm aracının kendisi de yanılttı:** tarayıcı paneli tıklama
+koordinatlarını **1,345** ile ölçekliyor — istenen (133, 581) sayfaya
+(179, 781) gidiyor. İlk teşhisler bu yüzden hedefi kaçırmış
+tıklamalara dayanıyordu. Fark edilince A/B baştan kuruldu ve sonuç
+değişmedi, ama **önceki sayılara güvenilmezdi.**
+➜ Panelde koordinatla tıklamadan önce bir `pointerdown` dinleyicisiyle
+oranı ölç; `ref` ile tıklamak da aynı ölçeklemeye giriyor.
+
+➜ **Kalan (sıradaki tur):** skor küçük gri ve değişince hiçbir şey
+olmuyor; tahta büyüyebilir (şerit kalkınca alan açıldı); Blok'ta bütün
+parçalar aynı renk.
+
+---
+
 ## 🔴 Test yığını kendi kendini zehirliyor — 2026-09-17'de bulundu
 
 - [ ] **`sms_outbox` testler arasında temizlenmiyor.** Günlük SMS tavanı
