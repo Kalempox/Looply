@@ -346,9 +346,20 @@ async function main() {
   };
 
   const KUPONLAR: Kupon[] = [
-    // Kazınmayı bekleyen ikisi — asıl denenecek şey.
+    /*
+      Kazınmayı bekleyenler — asıl denenecek şey.
+
+      ⚠️ **Beş tane** (Ü162). İkiyken ürün sahibi kazımayı denerken
+      hepsini tüketip *"kupon kalmadı"* diyordu; betiği her seferinde
+      yeniden çalıştırmak, denemenin akışını kesiyor. Beş kart bir
+      oturumluk deneme için yetiyor ve bitince `npm run db:demo` yine
+      tazeliyor.
+    */
     { kod: "DEMO01", durum: "active", kapali: true, aktif: 0, biter: 7, odul: 0 },
     { kod: "DEMO02", durum: "active", kapali: true, aktif: 0, biter: 5, odul: 1 },
+    { kod: "DEMO10", durum: "active", kapali: true, aktif: 0, biter: 6, odul: 2 },
+    { kod: "DEMO11", durum: "active", kapali: true, aktif: 0, biter: 4, odul: 3 },
+    { kod: "DEMO12", durum: "active", kapali: true, aktif: 0, biter: 9, odul: 0 },
     // Açılmış, kasada gösterilmeyi bekleyen üçü.
     { kod: "DEMO03", durum: "active", aktif: 0, biter: 6, odul: 2 },
     { kod: "DEMO04", durum: "active", aktif: 0, biter: 3, odul: 3 },
@@ -428,7 +439,7 @@ async function main() {
   console.log(`  kafe    : ${cafeAdi} · masa oturumu açık (K2), 6 saat`);
   console.log("");
   console.log("  Hazır olanlar:");
-  console.log("    · Ödüllerim → 2 kazınmamış · 3 açık · 1 bekleyen · 2 kullanılmış · 1 süresi geçmiş");
+  console.log("    · Ödüllerim → 5 kazınmamış · 3 açık · 1 bekleyen · 2 kullanılmış · 1 süresi geçmiş");
   console.log("    · Profil    → 6 rozet, seviye 5 (2.100 XP)");
   console.log("    · Çark      → hakkı açık, çevrilebilir");
   console.log("    · Seri      → 14 günlük geçmiş; bugün oynanmadı (seri riskte)");

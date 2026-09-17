@@ -134,6 +134,33 @@ export function OyunKaruseli({ oyunlar }: { oyunlar: KarusellOyun[] }) {
     const adim = () => KART_EN * ADIM_ORANI;
 
     const bas = (e: PointerEvent) => {
+      /*
+        🔴 İşaretçi YAKALANIYOR — Ü162.
+
+        Ürün sahibi karuseli üç kez *"kaydıramıyorum"* diye bildirdi.
+        Fare girdisiyle ölçüldüğünde çalışıyor (`pointerType: mouse`),
+        ama o DevTools'un **mobil görünümünde** deniyor ve orada
+        dokunma taklidi açık: olaylar `pointerType: touch` geliyor.
+
+        Dokunmada tarayıcı jestin kaydırma mı sürükleme mi olduğuna
+        **kendi** karar veriyor ve kaydırma derse akışı `pointercancel`
+        ile kesiyor — parmak hâlâ ekrandayken sürükleme ölüyor.
+        `setPointerCapture` bu kararı bize alıyor: işaretçi bu ögeye
+        bağlanıyor ve sonraki olaylar buraya geliyor.
+
+        ⚠️ Yan kazanç: parmak kutunun dışına çıktığında da sürükleme
+        sürüyor. Öncesinde `pointerleave` sürüklemeyi kesiyordu ve dar
+        ekranda kutunun kenarına yaklaşmak bile hareketi bitiriyordu.
+
+        ⚠️ `try` içinde: yakalama başarısız olursa (bazı tarayıcılar
+        belirli koşullarda atıyor) sürükleme eski yoluyla devam etmeli,
+        hata yüzünden hiç başlamaması değil.
+      */
+      try {
+        kutu.setPointerCapture(e.pointerId);
+      } catch {
+        // Yakalanamadı — eski davranışla devam.
+      }
       basiliMi = true;
       yonBelli = false;
       yatayMi = false;
@@ -179,9 +206,16 @@ export function OyunKaruseli({ oyunlar }: { oyunlar: KarusellOyun[] }) {
       payYaz(k);
     };
 
-    const birak = () => {
+    const birak = (e?: PointerEvent) => {
       if (!basiliMi) return;
       basiliMi = false;
+      if (e) {
+        try {
+          kutu.releasePointerCapture(e.pointerId);
+        } catch {
+          // Zaten bırakılmış olabilir.
+        }
+      }
       setSurukleniyor(false);
       // Yarım kartı geçen hareket bir sonrakine oturuyor.
       git(Math.round(aktif + payRef.current));
@@ -192,14 +226,18 @@ export function OyunKaruseli({ oyunlar }: { oyunlar: KarusellOyun[] }) {
     kutu.addEventListener("pointermove", kimilda, { passive: false });
     kutu.addEventListener("pointerup", birak);
     kutu.addEventListener("pointercancel", birak);
-    kutu.addEventListener("pointerleave", birak);
+    /*
+      ⚠️ `pointerleave` ARTIK BAĞLI DEĞİL (Ü162). İşaretçi yakalandığı
+      için kutudan çıkmak sürüklemeyi bitirmemeli; bağlı kalsaydı dar
+      ekranda kenara yaklaşan parmak hareketi öldürürdü.
+    */
 
     return () => {
       kutu.removeEventListener("pointerdown", bas);
       kutu.removeEventListener("pointermove", kimilda);
       kutu.removeEventListener("pointerup", birak);
       kutu.removeEventListener("pointercancel", birak);
-      kutu.removeEventListener("pointerleave", birak);
+
     };
   }, [aktif, git, payYaz, oyunlar.length]);
 

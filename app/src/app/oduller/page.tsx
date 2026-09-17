@@ -263,7 +263,16 @@ export default async function OdullerSayfasi({
           </OyuncuBolum>
           )}
 
-          {gecmisMi && e.bekleyen.length > 0 && (
+          {/*
+            🔴 "Yakında açılıyor" GEÇMİŞ değil — Ü162.
+
+            Ü159'da geçmiş sekmesine konmuştu ve yanlıştı: ürün sahibi
+            *"yakında açılan kuponlar geçmişte gözükmemeli"* dedi.
+            Haklı — bu kuponlar **gelecek**, oyuncunun bekledikleri.
+            Geçmiş sekmesi "olup bitenler"; bekleyen bir kuponu oraya
+            koymak, oyuncuya onu kaçırmış gibi hissettirir.
+          */}
+          {!gecmisMi && e.bekleyen.length > 0 && (
             <OyuncuBolum baslik="Yakında açılıyor" not="zamanı gelince">
               <ul className="flex flex-col gap-2.5">
                 {e.bekleyen.map((k) => (
@@ -282,7 +291,12 @@ export default async function OdullerSayfasi({
           */}
           {gecmisMi && e.kullanilan.length > 0 && (
             <OyuncuBolum baslik="Kullandıkların" not={`${e.kullanilan.length} kupon`}>
-              <ul className="flex flex-col gap-2.5 opacity-80">
+              {/* ⚠️ `opacity` YOK (Ü162). Ürün sahibi: *"kullanılan
+                  kuponlarda siyah gölge karartılmış gibi olmayacak,
+                  normal şeffaf renkte."* Karartma "bu kupon bozuk" gibi
+                  okunuyordu; oysa kullanılmış kupon bir **başarı** —
+                  oyuncu kasaya gitti ve indirimini aldı. */}
+              <ul className="flex flex-col gap-2.5">
                 {e.kullanilan.map((k) => (
                   <li key={k.id}>
                     <SakinKart kupon={k} />
@@ -294,7 +308,7 @@ export default async function OdullerSayfasi({
 
           {gecmisMi && e.kacirilan.length > 0 && (
             <OyuncuBolum baslik="Süresi geçenler">
-              <ul className="flex flex-col gap-2.5 opacity-60">
+              <ul className="flex flex-col gap-2.5">
                 {e.kacirilan.map((k) => (
                   <li key={k.id}>
                     <SakinKart kupon={k} />
@@ -338,8 +352,9 @@ function OdulSekmeleri({
   gecmisMi: boolean;
   e: { kazinacak: unknown[]; kullanilabilir: unknown[]; bekleyen: unknown[]; kullanilan: unknown[]; kacirilan: unknown[] };
 }) {
-  const simdi = e.kazinacak.length + e.kullanilabilir.length;
-  const gecmis = e.bekleyen.length + e.kullanilan.length + e.kacirilan.length;
+  // Ü162: bekleyenler "şimdi" tarafında — henüz olmamış bir şey geçmiş değil.
+  const simdi = e.kazinacak.length + e.kullanilabilir.length + e.bekleyen.length;
+  const gecmis = e.kullanilan.length + e.kacirilan.length;
 
   const stil = (secili: boolean) =>
     `flex-1 rounded-xl px-4 py-2.5 text-center text-[14px] font-bold transition-colors ${
@@ -385,7 +400,15 @@ const DURUM_ETIKETI: Record<EnvanterKuponu["durum"], string> = {
   kullanilabilir: "Kasada göster",
   beklemede: "Birazdan açılıyor",
   kullanildi: "Kullanıldı",
-  suresi_doldu: "Süresi doldu",
+  /*
+    Ü162: ürün sahibi *"süresi geçenlerde de 'tüh süresi geçti' gibi
+    tatlı bir metin yazacak"* dedi.
+
+    ⚠️ Cümle **suçlamıyor**: "kaçırdın" ya da "kullanmadın" demek,
+    oyuncuya bir kusur yüklemek olurdu. "Tüh" iki tarafın da üzüldüğü
+    bir ses — kupon gitti, kimse suçlu değil.
+  */
+  suresi_doldu: "Tüh, süresi geçti",
   geri_alindi: "Geri alındı",
 };
 
