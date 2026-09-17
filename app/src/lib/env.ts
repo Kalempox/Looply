@@ -28,6 +28,9 @@ const schema = z.object({
 
   PII_ENC_KEY: key32,
   PHONE_INDEX_KEY: key32,
+  // Ü168: e-posta kör indeksi. Telefonunkinden AYRI — bir indeks
+  // anahtarının sızması yalnızca kendi alanını açığa çıkarmalı.
+  EMAIL_INDEX_KEY: key32,
   OTP_PEPPER: key32,
   SESSION_HASH_KEY: key32,
   IDENTIFIER_HASH_KEY: key32,
@@ -55,12 +58,15 @@ export function env(): Env {
 
   const e = parsed.data;
 
-  // Beş anahtarın tamamı birbirinden farklı olmalı (docs/08 §5.1).
+  // Anahtarların tamamı birbirinden farklı olmalı (docs/08 §5.1).
   // Aynı anahtar kullanılırsa, kör indeks sızıntısı doğrudan numaraların
   // okunmasına dönüşür — ayrı olmalarının tek sebebi bu.
+  // ⚠️ Yeni anahtar eklenince bu listeye de eklenmeli; liste eksik
+  // kalırsa kontrol sessizce o anahtarı hiç sınamaz (Ü168'de eklendi).
   const keys = [
     e.PII_ENC_KEY,
     e.PHONE_INDEX_KEY,
+    e.EMAIL_INDEX_KEY,
     e.OTP_PEPPER,
     e.SESSION_HASH_KEY,
     e.IDENTIFIER_HASH_KEY,

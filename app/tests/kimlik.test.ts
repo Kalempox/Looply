@@ -26,7 +26,16 @@ import {
   platformKullanicisiBul,
   platformKullanicisiEkle,
 } from "@/domain/staff";
-import { phoneIndex, normalizePhone, hashOtp, identifierHash } from "@/lib/crypto";
+import {
+  phoneIndex,
+  normalizePhone,
+  normalizeEmail,
+  emailIndex,
+  encryptPII,
+  decryptPII,
+  hashOtp,
+  identifierHash,
+} from "@/lib/crypto";
 import { yoneticiSorgu } from "./_yardim";
 
 /**
@@ -1056,5 +1065,60 @@ describe("ad şifreleme — işletme tarafı (Ü115)", () => {
     for (const [kolon, gerekce] of Object.entries(DUZ_KALABILIR)) {
       assert.ok(gerekce.length > 15, `${kolon}: gerekçe yetersiz`);
     }
+  });
+});
+
+/* ── E-posta normalizasyonu ve kör indeksi (Ü168) ──────────── */
+
+describe("e-posta adresi", () => {
+  test("büyük harf ve boşluk aynı adrese iner", () => {
+    assert.equal(normalizeEmail("  Buse@Ornek.COM "), "buse@ornek.com");
+  });
+
+  test("🔴 nokta ve +etiket KIRPILMIYOR — sağlayıcıya özel kurallar", () => {
+    /*
+      `b.u.s.e@gmail.com` → `buse@gmail.com` dönüşümü yalnızca bazı
+      sağlayıcılarda doğru. Genel kural sanıp uygulamak, başka bir
+      sağlayıcıda iki ayrı insanın adresini aynı hesaba bağlar —
+      yani hesabı yanlış kişiye açar.
+    */
+    assert.equal(normalizeEmail("b.u.s.e@ornek.com"), "b.u.s.e@ornek.com");
+    assert.equal(normalizeEmail("buse+kafe@ornek.com"), "buse+kafe@ornek.com");
+  });
+
+  test("bozuk adresler reddediliyor, sessizce düzeltilmiyor", () => {
+    for (const bozuk of [
+      "buse",
+      "buse@",
+      "@ornek.com",
+      "buse@ornek",
+      "buse@@ornek.com",
+      "bu se@ornek.com",
+      "buse@.com",
+      "buse@ornek.",
+      `${"u".repeat(65)}@ornek.com`,
+    ]) {
+      assert.throws(() => normalizeEmail(bozuk), /Geçersiz e-posta/, `kabul edildi: ${bozuk}`);
+    }
+  });
+
+  test("kör indeks kararlı ve farklı adresler farklı indeks üretiyor", () => {
+    assert.deepEqual(emailIndex("buse@ornek.com"), emailIndex("buse@ornek.com"));
+    assert.notDeepEqual(emailIndex("buse@ornek.com"), emailIndex("ayse@ornek.com"));
+  });
+
+  test("🔴 e-posta indeksi TELEFON indeksinden farklı anahtarla üretiliyor", () => {
+    /*
+      Aynı girdi iki indeksleyiciye verildiğinde aynı çıktı gelirse,
+      anahtarlar aynı demektir ve ayrı şifrelemenin anlamı kalmaz:
+      telefon indeksi anahtarı sızdığında e-posta indeksi de çözülür.
+    */
+    const ayni = "buse@ornek.com";
+    assert.notDeepEqual(emailIndex(ayni), phoneIndex(ayni));
+  });
+
+  test("düz metin adres şifreli alandan geri okunuyor", () => {
+    const adres = normalizeEmail("Buse@Ornek.com");
+    assert.equal(decryptPII(encryptPII(adres)), "buse@ornek.com");
   });
 });

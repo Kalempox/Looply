@@ -10,8 +10,9 @@ import { randomBytes } from "node:crypto";
  */
 
 const ANAHTARLAR = [
-  ["PII_ENC_KEY", "Ad, soyad, telefon, doğum yılı — şifreleme"],
+  ["PII_ENC_KEY", "Ad, soyad, telefon, e-posta, doğum yılı — şifreleme"],
   ["PHONE_INDEX_KEY", "Telefon kör indeksi — aramak için, geri çevrilemez"],
+  ["EMAIL_INDEX_KEY", "E-posta kör indeksi — telefonunkinden ayrı olmalı (Ü168)"],
   ["OTP_PEPPER", "Doğrulama kodu biberi — veritabanında durmaz"],
   ["SESSION_HASH_KEY", "Oturum jetonu hash'i"],
   ["IDENTIFIER_HASH_KEY", "IP ve cihaz kimliği hash'i"],

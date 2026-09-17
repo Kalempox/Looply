@@ -21,7 +21,15 @@ import { env } from "./env";
 
 const KEY_VERSION = 1;
 
-function key(name: "PII_ENC_KEY" | "PHONE_INDEX_KEY" | "OTP_PEPPER" | "SESSION_HASH_KEY" | "IDENTIFIER_HASH_KEY"): Buffer {
+function key(
+  name:
+    | "PII_ENC_KEY"
+    | "PHONE_INDEX_KEY"
+    | "EMAIL_INDEX_KEY"
+    | "OTP_PEPPER"
+    | "SESSION_HASH_KEY"
+    | "IDENTIFIER_HASH_KEY",
+): Buffer {
   return Buffer.from(env()[name], "base64");
 }
 
@@ -72,6 +80,60 @@ export function normalizePhone(raw: string): string {
 /** Aramak için: aynı numara her zaman aynı indeksi üretir, geri çevrilemez. */
 export function phoneIndex(e164: string): Buffer {
   return createHmac("sha256", key("PHONE_INDEX_KEY")).update(e164).digest();
+}
+
+/**
+ * E-posta adresini tek biçime indirger — Ü168.
+ *
+ * Telefondaki gerekçenin aynısı: normalize edilmezse `Buse@X.com` ve
+ * `buse@x.com` **iki ayrı hesap** olur, doğrulama kodu tavanı anlamını
+ * yitirir ve "bu adres zaten kayıtlı" kontrolü delinir.
+ *
+ * ── Ne yapılıyor, ne YAPILMIYOR ─────────────────────────────
+ *
+ * Yapılan: kırpma ve küçük harfe çevirme. Alan adı zaten harf
+ * duyarsız; yerel kısım teknik olarak duyarlı olabilir ama gerçek
+ * dünyada hiçbir sağlayıcı öyle davranmıyor ve duyarlı bırakmak
+ * yukarıdaki iki-hesap arızasını geri getirir.
+ *
+ * 🔴 Yapılmayan: nokta atma (`b.u.s.e@gmail.com` → `buse@gmail.com`)
+ * ve `+etiket` kırpma. Bunlar **yalnızca bazı sağlayıcılarda** doğru;
+ * genel kural sanıp uygulamak, başka sağlayıcıda iki ayrı insanın
+ * adresini aynı hesaba bağlar. Yanlış tarafta hata yapmak burada
+ * "hesabı yanlış kişiye açmak" demek.
+ *
+ * Doğrulama kasıtlı olarak dar: tek `@`, iki yanı dolu, alan adında
+ * en az bir nokta ve boşluk yok. Adresin gerçekten çalıştığını
+ * kanıtlayan tek şey **oraya giden kod**, düzenli ifade değil.
+ */
+export function normalizeEmail(raw: string): string {
+  const adres = raw.trim().toLowerCase();
+  const parcalar = adres.split("@");
+  if (parcalar.length !== 2) throw new Error("Geçersiz e-posta adresi");
+
+  const [yerel, alan] = parcalar;
+  if (!yerel || !alan) throw new Error("Geçersiz e-posta adresi");
+  if (/\s/.test(adres)) throw new Error("Geçersiz e-posta adresi");
+  if (!alan.includes(".") || alan.startsWith(".") || alan.endsWith(".")) {
+    throw new Error("Geçersiz e-posta adresi");
+  }
+  // Uzunluk sınırı: RFC 5321 yerel kısım için 64, tamamı için 254.
+  if (yerel.length > 64 || adres.length > 254) throw new Error("Geçersiz e-posta adresi");
+
+  return adres;
+}
+
+/**
+ * E-posta kör indeksi — Ü168.
+ *
+ * ⚠️ Anahtar `PHONE_INDEX_KEY` DEĞİL. Aynı anahtarla üretilseler bile
+ * çakışmazlardı (girdi farklı), ama anahtar ayrımı bu şemanın kuralı:
+ * bir indeks anahtarının sızması yalnızca o alanı açığa çıkarmalı.
+ * Telefon indeksi sızdığında e-posta indeksi de çözülebilir olsaydı,
+ * iki alanı ayrı şifrelemenin anlamı kalmazdı.
+ */
+export function emailIndex(adres: string): Buffer {
+  return createHmac("sha256", key("EMAIL_INDEX_KEY")).update(adres).digest();
 }
 
 /** IP ve cihaz kimliği — anahtarlı, yani gökkuşağı tablosuyla çözülemez. */
