@@ -6,12 +6,15 @@
 > Yan dosyalar: neyin **var** olduğu → `21-looply-kapsam-haritasi.md` ·
 > demoda neyin **yapılabildiği** → `22-demo-yapilabilirlik.md`
 
-**Son güncelleme:** 2026-09-17 · **Kararlar:** Ü76 – Ü150
+**Son güncelleme:** 2026-09-17 · **Kararlar:** Ü76 – Ü151
 
-> ⬅️ **DALGA 9 bitti ve commitlendi** (`da11163`, 39 dosya).
-> **Dalga 6 açıldı ve iki işi kapandı** (Ü149 tohum kapısı · Ü150 panel
-> işletme türüne göre). Kalan: **madde 41** (müşteri adı/telefonu, L —
-> aydınlatma metnini yeniden yazdırıyor) ve **madde 42** (sipariş
+> ⬅️ **DALGA 10 bitti** (Ü151) — mobil vitrinin hareketsiz alt yarısı
+> dolduruldu. ⚠️ **Referans linkleri hâlâ bekleniyor**, aşağıya bak.
+>
+> Önceki turlar: Dalga 9 commitlendi (`da11163`) · Dalga 6'nın iki işi
+> commitlendi (`91ee2ed` — Ü149 tohum kapısı, Ü150 panel işletme
+> türüne göre). **Dalga 6'da kalan:** madde 41 (müşteri adı/telefonu,
+> L — aydınlatma metnini yeniden yazdırıyor) ve madde 42 (sipariş
 > tutarı, M). Ondan sonra **K5**.
 >
 > 🧪 **Elle denemek için:** `npm run db:demo` → `05320000099` /
@@ -86,13 +89,110 @@
 
 ---
 
-# DALGA 9 · ŞİMDİ — hareket turu ⬅️
+# DALGA 10 · mobil vitrinin alt yarısı ⬅️
+
+> Ürün sahibi 2026-09-17: *"mobil landing page için sana söylediğim
+> hiçbir animasyon gerçekleşmemiş, sana hepsinin linkini de vermiştim."*
+>
+> **Ölçüldü ve haklıydı.** 375 pikselde sayfa 10.989 piksel; on iki
+> örnekleme noktasından **sekizi sıfır animasyon** gösterdi. 5.791'inci
+> pikselden aşağısı — sayfanın **%47'si**, yedi bölümün beşi — yalnızca
+> `Beliren`in tek jestini taşıyordu (35 kez, hep aynı).
+
+## 🔴 Neden "dokuz işin dokuzu bitti" ile çelişmiyor
+
+Dalga 9'un dokuz işi gerçekten bitti. Ama **sekizi oyuncu tarafına**
+gitti (kazıma, karusel, avatar, seviye, rozet); vitrine düşen tek iş
+Ü145'ti ve o sayfanın en üstünde. Belge bu ayrımı hiç yazmadı — liste
+"bitti" derken ürün sahibi mobilde hiçbir şey görmüyordu. **Ders: bir
+işin hangi yüzeye düştüğü, bittiği kadar önemli.**
+
+## ⚠️ Verilen linkler kayıtlı değil
+
+`docs/02` ve `docs/23`'te **sıfır URL** var. Tek tek işlerin referansı
+yalnızca uygulama adı olarak yazılmış ("X Money'nin zarftan çıkan
+kartı", "Duolingo'nun başarı ekranı", "Waterllama'nın başarı döngüsü").
+Bu tur ölçüme ve kayıtlı kısıtlara dayanarak yapıldı.
+
+- [ ] **Linkler istendi, bekleniyor.** Geldiğinde her biri **kendi
+  maddesinin yanına** yazılacak ve hangi bölüme düştüğü karşısına
+  işlenecek — bitince "şurası hâlâ boş" diye ölçülebilsin.
+
+## Biten işler — Ü151
+
+- [x] **Kapanan döngü izi** ✅ — "Bir kere gelen müşteri, bir daha
+  gelsin" başlığının altında ok kafeden çıkıp dolanıyor ve başladığı
+  yere dönüyor. Logo ile aynı dil (`oo` sonsuzluk ilmeği, Ü118).
+- [x] **Kanıtlar teker teker mühürleniyor** ✅ — sosyal kanıttaki üç
+  kart sırayla giriyor, her birine onay işareti **çiziliyor**.
+  ⚠️ Mühür bir sayı ya da referans değil, kendi iddiamızı işaretliyor —
+  uydurma yorum / şişirilmiş sayı yasağı (Dalga 8) bozulmadı.
+- [x] **Reklam karşılaştırmasında asimetri** ✅ — sol sütun dört maddeyi
+  **birden** gösteriyor (gösterim toptan satılır), sağ sütun **teker
+  teker sayıyor**. Bölümün cümlesi artık ekranda da duruyor.
+- [x] **"Kimler için" iki kart ayrıldı** ✅ — başlıkla birlikte tek blok
+  hâlinde beliriyorlardı; iki ayrı kitlenin farkı da aynı anda yutuluyordu.
+- [x] **Lacivert kapanışa gezen ışık** ✅ — sayfanın son ekranıydı ve
+  duran bir duvardı. Altın tonunda, 18 saniyelik; fark edilmesi değil
+  ekranın ölü durmaması amaçlanıyor.
+- [x] **Üç kayıp teker teker sayılıyor** ✅ — kayıp bir liste değil,
+  birikiyor.
+
+⚠️ **Kaydırmaya bağlı hiçbir şey yok.** Ürün sahibinin kuralı iki kez
+doğrulandı: *"mobilde bu efektler olmayacak şekilde yapalım"* ve
+2026-09-17'de *"o sadece masaüstünde olsun mobilde olmasın."* Hepsi
+görüş alanına girince **bir kez** oynuyor (Ü133'ün gerekçesi).
+
+## 🔴 Yol boyunca bulunan iki şey
+
+- [x] **Arka plandaki sekmede içerik hiç görünmüyordu** ✅
+  Ölçüm sırasında 15 kartın 15'i `opacity: 0`da takıldı ve elle kurulan
+  bir gözlemci de ateşlemedi. Sebep: sekme **gizliyken**
+  `requestAnimationFrame` duruyor ve `IntersectionObserver` onunla aynı
+  çizim döngüsüne bağlı — geri çağrıyı hiç teslim etmiyor. Sayfa arka
+  planda açılırsa (bağlantıya orta tıkla, önden getirme) ekranın
+  üstündeki içerik görünmüyordu. **`Beliren` dahil, yani bu arıza Dalga
+  8'den beri duruyordu.** `useGorunur` artık monte olurken senkron bir
+  kutu okuması yapıyor.
+- [x] **Yeşil yanan ama hiçbir şey sınamayan bir test silindi** ✅
+  *"Her `<Cizilen>` içindeki yol `pathLength="1"` taşıyor"* testi
+  yazıldı, koştu, geçti — ve `pathLength` elle silinip sınandığında
+  **yine geçti**. `<Cizilen>` çoğu zaman bir bileşen sarıyor
+  (`<DonguIzi />`) ve yollar o bileşenin gövdesinde, bloğun dışında.
+  Koruma olmadığı hâlde koruma hissi veren test, testsizlikten kötü.
+  Test silindi, **tuzak kaldırıldı**: `Cizilen` özniteliği artık kendisi
+  koyuyor.
+
+## Doğrulama
+
+- `npm run ci` — **647 test, 0 hata**; tip ve lint temiz
+- 375 pikselde beş bölümün beşi de hareket taşıyor, **yatay taşma 0**
+- Üç animasyon uçtan uca ölçüldü: `iz-ciz` dashoffset 1→0 (1.500 ms),
+  `sira-gir` opaklık 0→1 (550 ms), `muhur-bas` 0→1 (500 ms)
+- Sıralama gecikmeleri kademeli: kartlarda 0 · 110 · 220 ms, reklam
+  sütununda 240 · 410 · 580 · 750 ms
+- `prefers-reduced-motion` altı yeni sınıfın altısını da kapatıyor
+- ⚠️ **Gözle görülmedi:** tarayıcı paneli bu oturumda gizliydi, ekran
+  görüntüsü boş dönüyordu. Ölçümler DOM ve animasyon zaman çizelgesi
+  üzerinden yapıldı. **Telefonda bir kez gözle bakılmalı.**
+
+---
+
+# DALGA 9 · ✅ TAMAMLANDI — hareket turu
 
 > Ürün sahibi 2026-09-16'da dokuz iş verdi ve her biri için **gerçek
 > uygulama kaydı** referansı gösterdi (60fps.design · ripplix.com).
 >
 > ⚠️ Kural değişmedi: **sıfır animasyon kütüphanesi.** Referanslardan
 > alınan şey efekt değil his; hepsi saf CSS + canvas'a çevriliyor.
+>
+> 🔴 **Bu dalga MOBİL VİTRİNE dokunmadı — Dalga 10'da anlaşıldı.**
+> Dokuz işin **sekizi oyuncu tarafına** gitti (kazıma, karusel, avatar,
+> seviye, rozet); vitrine düşen tek iş **Ü145** ve o sayfanın en
+> üstünde. Liste "dokuzu da bitti" derken doğru söylüyordu ama ürün
+> sahibi mobil landing page'de hiçbir şey görmüyordu ve haklıydı.
+> ⚠️ **Ders:** bir işin hangi **yüzeye** düştüğü, bittiği kadar önemli;
+> madde başlığı bunu söylemiyorsa liste yanıltıyor.
 
 ## Biten üç iş
 

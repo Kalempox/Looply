@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Children, useEffect, useRef, useState } from "react";
 
 /**
  * Vitrinin kaydırma hareketleri — madde 38 (Ü120).
@@ -73,6 +73,70 @@ const YONLER = {
 export type BelirmeYonu = keyof typeof YONLER;
 
 /**
+ * "Görüş alanına girdi mi" — tek yerde.
+ *
+ * Üç hareket de (`Beliren`, `Cizilen`, `Sirali`) aynı soruyu soruyor ve
+ * aynı cevabı istiyor: **bir kez**, göründüğünde. Ayrı ayrı yazılsaydı
+ * `rootMargin` üçünde ayrışır ve aynı bölümdeki iki hareket farklı
+ * anlarda başlardı.
+ *
+ * ⚠️ Gözlemci kurulamazsa `true` dönüyor: bir efekt uğruna içeriği
+ * kaybetmek kabul edilemez. Aynı sebeple `disconnect` ilk girişte —
+ * hareket tekrar etmiyor (Ü133: tekrarlayan hareket hareket olarak
+ * okunmuyor).
+ */
+function useGorunur<T extends HTMLElement>() {
+  const ref = useRef<T>(null);
+  const [gorunur, setGorunur] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof IntersectionObserver === "undefined") {
+      setGorunur(true);
+      return;
+    }
+
+    /*
+      🔴 Gözlemciyi beklemeden: öge zaten ekrandaysa hemen aç.
+
+      `IntersectionObserver` geri çağrısını **arka plandaki sekmeye hiç
+      teslim etmiyor** — sekme gizliyken `requestAnimationFrame` de
+      duruyor ve gözlemci onunla aynı çizim döngüsüne bağlı. Sayfa
+      arka planda açılırsa (bağlantıya orta tıkla, sekmeyi arkada aç,
+      önden getirme) ekranın üstündeki içerik `opacity: 0`da kalıyor ve
+      kullanıcı sekmeye geçene kadar **görünmüyor**.
+
+      Bu ölçülerek bulundu: pane gizliyken 15 kartın 15'i saydamlıkta
+      takılı kaldı ve elle kurulan bir gözlemci de ateşlemedi.
+
+      Kutu okuması senkron — gizli sekmede de doğru cevap veriyor.
+      Ekran dışındaki içerik yine gözlemciyi bekliyor, yani kaydırma
+      hareketi kaybolmuyor; kapanan şey yalnızca "hiç görünmeme" hâli.
+    */
+    const kutu = el.getBoundingClientRect();
+    if (kutu.top < window.innerHeight && kutu.bottom > 0) {
+      setGorunur(true);
+      return;
+    }
+
+    const gozlemci = new IntersectionObserver(
+      ([giris]) => {
+        if (giris.isIntersecting) {
+          setGorunur(true);
+          gozlemci.disconnect();
+        }
+      },
+      { rootMargin: "0px 0px -12% 0px" },
+    );
+
+    gozlemci.observe(el);
+    return () => gozlemci.disconnect();
+  }, []);
+
+  return [ref, gorunur] as const;
+}
+
+/**
  * Görüş alanına girince beliren bölüm — Autonomous'ın tekniği.
  *
  * Gözlemci kurulamazsa içerik **görünür kalıyor**: bir efekt uğruna
@@ -90,29 +154,7 @@ export function Beliren({
   yon?: BelirmeYonu;
   className?: string;
 }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [beliren, setBeliren] = useState(false);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el || typeof IntersectionObserver === "undefined") {
-      setBeliren(true);
-      return;
-    }
-
-    const gozlemci = new IntersectionObserver(
-      ([giris]) => {
-        if (giris.isIntersecting) {
-          setBeliren(true);
-          gozlemci.disconnect();
-        }
-      },
-      { rootMargin: "0px 0px -12% 0px" },
-    );
-
-    gozlemci.observe(el);
-    return () => gozlemci.disconnect();
-  }, []);
+  const [ref, beliren] = useGorunur<HTMLDivElement>();
 
   const { donusum, sure } = YONLER[yon];
 
@@ -128,6 +170,187 @@ export function Beliren({
     >
       {children}
     </div>
+  );
+}
+
+/* ── Çizilen iz ────────────────────────────────────────────── */
+
+/**
+ * Görüş alanına girince **kendini çizen** SVG.
+ *
+ * ── Neden bu hareket eklendi ────────────────────────────────
+ *
+ * Ürün sahibi: *"mobil landing page için sana söylediğim hiçbir animasyon
+ * gerçekleşmemiş."* Ölçüm onu doğruladı: 10.989 piksellik mobil vitrinin
+ * 5.791'inci pikselinden aşağısında — sayfanın **%47'sinde** — hiçbir
+ * keyframe animasyonu yoktu. Duran tek hareket `Beliren`'di ve o da tek
+ * bir jest: yukarı doğru soluklaşma, 35 kez.
+ *
+ * 🔴 **Çözüm daha çok soluklaşma değil.** Dalga 8 aynı teşhisi koyup beş
+ * *yön* eklemişti; aynı jestin beş yönü hâlâ aynı jest. Eksik olan şey
+ * çeşit değil **anlam**: hareketin bölümün ne iddia ettiğini taşıması.
+ * Çizilen bir iz, "bu oluyor" diyor; soluklaşan bir kutu yalnızca
+ * "buradayım" diyor.
+ *
+ * ── `pathLength="1"` neden şart ─────────────────────────────
+ *
+ * `stroke-dashoffset` mutlak uzunluk istiyor ve her yolun uzunluğu
+ * farklı — CSS'ten tek bir sayı veremezsin, JS ile `getTotalLength()`
+ * okumak gerekirdi. `pathLength="1"` yolun uzunluğunu **1'e
+ * normalleştiriyor**: dasharray da offset de 1, hangi yol olursa olsun.
+ * Böylece hareketin tamamı CSS'te kalıyor.
+ *
+ * ── 🔴 Öznitelik neden ELLE bırakılmadı ─────────────────────
+ *
+ * İlk yazılışta kural "çocuk yollara `pathLength="1"` yaz" idi ve bir
+ * test onu koruyacaktı. Test yazıldı, koştu, **yeşil yandı ve hiçbir
+ * şey sınamıyordu**: `<Cizilen>` çoğu zaman bir *bileşen* sarıyor
+ * (`<DonguIzi />`) ve SVG yolları o bileşenin içinde, yani `<Cizilen>`
+ * bloğunun dışında kalıyor. Kaynak taraması onları hiç görmüyordu.
+ *
+ * Unutulduğunda sessizce çalışmayan bir kural, kuralın kendisi
+ * yanlıştır. Öznitelik artık **burada** konuyor: yazarın hatırlaması
+ * gereken bir şey kalmadı. Biçimlendirmede duranlar zararsız — zaten
+ * aynı değer.
+ */
+export function Cizilen({
+  children,
+  gecikme = 0,
+  sure = 1.1,
+  className,
+  style,
+}: {
+  children: React.ReactNode;
+  gecikme?: number;
+  /** Saniye. Uzun iz yavaş çizilmeli, yoksa çırpınmış gibi duruyor. */
+  sure?: number;
+  className?: string;
+  /**
+   * Ek satır içi stil — kabın kendisi de canlanacaksa (örn. mührün
+   * basılması) onun değişkenleri buradan geliyor.
+   *
+   * ⚠️ İzin kendi değişkenlerinden **sonra** yayılıyor, yani dışarıdan
+   * `--iz-sure` geçilirse o kazanıyor. Bilinçli: çağrı yeri istisna
+   * yapabilmeli.
+   */
+  style?: React.CSSProperties;
+}) {
+  const [ref, gorunur] = useGorunur<HTMLDivElement>();
+
+  /*
+    Yolları normalleştir — biçimlendirmede unutulmuş olsa bile.
+
+    ⚠️ `hasAttribute` kontrolü var: çağrı yeri bilerek başka bir değer
+    vermişse (parçalı iz, ters yön) ona dokunulmuyor.
+  */
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.querySelectorAll("path, circle, line, polyline").forEach((yol) => {
+      if (!yol.hasAttribute("pathLength")) yol.setAttribute("pathLength", "1");
+    });
+  }, [ref]);
+
+  return (
+    <div
+      ref={ref}
+      className={`${gorunur ? "iz-cizilen" : "iz-bekliyor"} ${className ?? ""}`}
+      style={
+        {
+          "--iz-sure": `${sure}s`,
+          "--iz-gecikme": `${gecikme}ms`,
+          ...style,
+        } as React.CSSProperties
+      }
+    >
+      {children}
+    </div>
+  );
+}
+
+/* ── Sıralı giriş ──────────────────────────────────────────── */
+
+/**
+ * Çocukları **teker teker** içeri alan kap.
+ *
+ * ── Neden `Beliren`in gecikmesi yetmiyordu ──────────────────
+ *
+ * Bugün sıralama elle yazılıyor: her kardeşe ayrı bir `<Beliren
+ * gecikme={110}>`. Üç kutuda katlanılır, dört maddelik bir listede
+ * değil — ve asıl sorun şu: elle yazılan gecikme **liste uzunluğundan
+ * habersiz**. Bir madde eklendiğinde ritim bozuluyor ve kimse fark
+ * etmiyor.
+ *
+ * Burada ritim kabın işi: çocuk sayısı ne olursa olsun `adim` kadar
+ * arayla giriyorlar.
+ *
+ * ── ⚠️ Yatay kayma YOK ──────────────────────────────────────
+ *
+ * Dalga 8'in kuralı: tam genişlikteki bloğa yatay kayma verilmez, 390
+ * piksellik ekranda belge 406 piksel oluyor. Bu kap nerede kullanılacağını
+ * bilmediği için **hiç** yatay kaymıyor — yalnızca dikey ve ölçek.
+ */
+export function Sirali({
+  children,
+  adim = 90,
+  gecikme = 0,
+  className,
+  cocukSinifi,
+  etiket = "div",
+  cocukEtiketi = "div",
+}: {
+  children: React.ReactNode;
+  /** İki çocuk arasındaki milisaniye. */
+  adim?: number;
+  gecikme?: number;
+  className?: string;
+  /**
+   * Sarmalayıcıya eklenen sınıf — ızgaralarda `h-full` için.
+   *
+   * ⚠️ Gerekli çünkü sarmalayıcı **araya giriyor**: `Kart`, `Kanit` ve
+   * `Kayip` `h-full` taşıyor ve ızgarada eşit yükseklik bekliyorlar.
+   * Sarmalayıcı ızgara ögesi olduğu için esneyen odur; içindeki kartın
+   * ona yetişebilmesi için sarmalayıcının da yüksekliği geçirmesi
+   * gerekiyor. Varsayılan olarak eklenmiyor — esnek ya da satır içi
+   * kullanımda `h-full` kutuyu bozardı.
+   */
+  cocukSinifi?: string;
+  /**
+   * Kabın ve çocukların etiketi.
+   *
+   * ⚠️ Gerekli çünkü sarmalayıcı araya giriyor: bir listede
+   * `<ul><div><li>` üretmek geçersiz HTML ve ekran okuyucu listeyi liste
+   * olarak duyurmaz. Madde listelerinde `etiket="ul" cocukEtiketi="li"`
+   * veriliyor, kartlarda varsayılan `div` kalıyor.
+   */
+  etiket?: "div" | "ul";
+  cocukEtiketi?: "div" | "li";
+}) {
+  const [ref, gorunur] = useGorunur<HTMLDivElement>();
+  const cocuklar = Children.toArray(children);
+  /*
+    ⚠️ `as "div"`: kap `div` ya da `ul` olabiliyor ve ikisinin ref tipi
+    ayrı (`HTMLDivElement` / `HTMLUListElement`). Birleşim tipi ref'i
+    kesişime düşürüyor ve hiçbir öge ikisini birden karşılamıyor.
+    Gözlemcinin tek ihtiyacı `Element`, yani daralma zararsız.
+  */
+  const Kap = etiket as "div";
+  const Cocuk = cocukEtiketi as "div";
+
+  return (
+    <Kap ref={ref} className={className}>
+      {cocuklar.map((cocuk, i) => (
+        <Cocuk
+          key={i}
+          className={`${gorunur ? "sirali-giren" : "sirali-bekliyor"} ${cocukSinifi ?? ""}`}
+          style={
+            { "--sira-gecikme": `${gecikme + i * adim}ms` } as React.CSSProperties
+          }
+        >
+          {cocuk}
+        </Cocuk>
+      ))}
+    </Kap>
   );
 }
 

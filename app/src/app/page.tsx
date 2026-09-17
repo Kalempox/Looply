@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import Link from "next/link";
 import * as oturum from "@/domain/session";
-import { Beliren, Egik } from "./vitrin-hareket";
+import { Beliren, Cizilen, Egik, Sirali } from "./vitrin-hareket";
 import { VitrinUstSerit } from "./vitrin-ust";
 import { KahramanBaslik } from "./vitrin-kahraman";
 import Image from "next/image";
@@ -396,6 +396,21 @@ export default async function Vitrin() {
           </Beliren>
 
           {/*
+            Başlığın altında kapanan döngü — Dalga 10.
+
+            Bu bölümün tek iddiası **geri dönüş**. Altındaki üç kutu onu
+            anlatıyor; iz onu **çiziyor**: ok kafeden çıkıp dolanıyor ve
+            başladığı yere dönüyor. Soluklaşan bir kutu "buradayım" der,
+            çizilen bir iz "bu oluyor" der — eksik olan ikincisiydi.
+
+            ⚠️ Logoyla aynı dil: `oo` sonsuzluk ilmeği (Ü118). Yeni bir
+            işaret icat edilmiyor, var olan fikir tekrarlanıyor.
+          */}
+          <Cizilen gecikme={260} sure={1.5} className="mt-8 flex justify-center">
+            <DonguIzi />
+          </Cizilen>
+
+          {/*
             Kasa anı — döngünün kapandığı kare.
 
             Bu bölümün iddiası "müşteri geri gelir" ve altındaki üç kutu
@@ -421,26 +436,23 @@ export default async function Vitrin() {
             </Beliren>
           )}
 
-          <div className="mt-14 grid gap-4 sm:grid-cols-3">
-            <Beliren yon="sol" gecikme={0}>
-              <Kart
-                baslik="Müşterin geri gelir"
-                metin="Kazandığı indirimi kullanmak için ikinci kez kapından girer. Sadakat, hatırlatmayla değil, elinde duran bir ödülle kurulur."
-              />
-            </Beliren>
-            <Beliren yon="alt" gecikme={110}>
-              <Kart
-                baslik="Bekleme keyfe dönüşür"
-                metin="Sipariş beklerken telefonuna bakan müşteri, senin kafende oyun oynar. O dakikalar artık şikâyet değil."
-              />
-            </Beliren>
-            <Beliren yon="sag" gecikme={220}>
-              <Kart
-                baslik="Kontrol sende"
-                metin="Hangi ödül, ne sıklıkla, ne kadar — hepsini kendi panelinden sen belirlersin."
-              />
-            </Beliren>
-          </div>
+          {/* Üç kutu teker teker giriyor. Elle yazılmış gecikmeler
+              kalktı: ritim artık kabın işi ve dördüncü kutu eklenirse
+              kendiliğinden sıraya giriyor. */}
+          <Sirali adim={110} cocukSinifi="h-full" className="mt-14 grid gap-4 sm:grid-cols-3">
+            <Kart
+              baslik="Müşterin geri gelir"
+              metin="Kazandığı indirimi kullanmak için ikinci kez kapından girer. Sadakat, hatırlatmayla değil, elinde duran bir ödülle kurulur."
+            />
+            <Kart
+              baslik="Bekleme keyfe dönüşür"
+              metin="Sipariş beklerken telefonuna bakan müşteri, senin kafende oyun oynar. O dakikalar artık şikâyet değil."
+            />
+            <Kart
+              baslik="Kontrol sende"
+              metin="Hangi ödül, ne sıklıkla, ne kadar — hepsini kendi panelinden sen belirlersin."
+            />
+          </Sirali>
         </div>
       </section>
 
@@ -451,8 +463,14 @@ export default async function Vitrin() {
             <h2 className="text-center etiket-caps text-yazi-sonuk">
               Kimler için
             </h2>
-            <div className="mt-10 grid gap-4 sm:grid-cols-2">
-              <div className="rounded-2xl border border-cizgi p-8">
+          </Beliren>
+
+          {/* Dalga 10: iki kart tek blok hâlinde beliriyordu — başlıkla
+              birlikte, tek jest. İki ayrı kitleden söz eden bir bölümün
+              ikisini aynı anda göstermesi, farkı da aynı anda yutuyordu.
+              Artık teker teker giriyorlar. */}
+          <Sirali adim={140} cocukSinifi="h-full" className="mt-10 grid gap-4 sm:grid-cols-2">
+              <div className="h-full rounded-2xl border border-cizgi p-8">
                 <h3 className="font-display text-2xl font-bold tracking-tight">
                   Kafeler
                 </h3>
@@ -466,7 +484,7 @@ export default async function Vitrin() {
                 ⚠️ "Yakında" bilerek duruyor: butik akışı (madde 39–40) henüz
                 yazılmadı ve bugün başvuran bir butik kafe panelini görürdü.
               */}
-              <div className="rounded-2xl border border-dashed border-cizgi p-8">
+              <div className="h-full rounded-2xl border border-dashed border-cizgi p-8">
                 <div className="flex items-start justify-between gap-3">
                   <h3 className="font-display text-2xl font-bold tracking-tight">
                     Butik işletmeler
@@ -480,8 +498,7 @@ export default async function Vitrin() {
                   gelişinde kullanır.
                 </p>
               </div>
-            </div>
-          </Beliren>
+          </Sirali>
         </div>
       </section>
 
@@ -610,11 +627,23 @@ export default async function Vitrin() {
           <Beliren yon="sol" gecikme={80}>
             <div className="h-full rounded-3xl border border-cizgi bg-cukur px-7 py-8">
               <p className="etiket-caps text-yazi-sonuk">Reklama verdiğinde</p>
+              {/* Dört madde BİRDEN duruyor — sıralı değil. Gösterim
+                  toptan satılıyor, tek tek kimse sayılmıyor; sağdaki
+                  sütunun sayması bu durgunlukla karşılaştırılınca
+                  anlam kazanıyor. */}
               <ul className="mt-5 space-y-3.5 text-[15px] leading-relaxed text-yazi-sonuk">
-                <Eksi>Kaç kişi gördü — ama kaçı geldi, bilinmiyor</Eksi>
-                <Eksi>Gelen müşteri bir daha gelmezse haberin olmuyor</Eksi>
-                <Eksi>Para gösterimde harcanıyor, müşteride değil</Eksi>
-                <Eksi>Durduğun gün etki de duruyor</Eksi>
+                <li>
+                  <Eksi>Kaç kişi gördü — ama kaçı geldi, bilinmiyor</Eksi>
+                </li>
+                <li>
+                  <Eksi>Gelen müşteri bir daha gelmezse haberin olmuyor</Eksi>
+                </li>
+                <li>
+                  <Eksi>Para gösterimde harcanıyor, müşteride değil</Eksi>
+                </li>
+                <li>
+                  <Eksi>Durduğun gün etki de duruyor</Eksi>
+                </li>
               </ul>
             </div>
           </Beliren>
@@ -622,7 +651,24 @@ export default async function Vitrin() {
           <Beliren yon="sag" gecikme={160}>
             <div className="h-full rounded-3xl border-2 border-vurgu/40 bg-yuzey px-7 py-8 shadow-[0_24px_60px_-30px_rgba(16,32,77,0.45)]">
               <p className="etiket-caps text-vurgu">Looply kullandığında</p>
-              <ul className="mt-5 space-y-3.5 text-[15px] leading-relaxed">
+              {/*
+                🔴 Dalga 10 — asimetri argümanın kendisi.
+
+                Sol sütun (reklam) dört maddeyi **birden** gösteriyor:
+                gösterim toptan satılır, tek tek kimse sayılmaz. Sağ
+                sütun **teker teker** sayıyor — bölümün iddiası zaten bu:
+                *"Reklam gösterimi sayar. Looply kapıdan gireni sayar."*
+
+                İki sütun aynı ritimle girseydi cümle ekranda değil
+                yalnızca metinde kalırdı.
+              */}
+              <Sirali
+                etiket="ul"
+                cocukEtiketi="li"
+                adim={170}
+                gecikme={240}
+                className="mt-5 space-y-3.5 text-[15px] leading-relaxed"
+              >
                 <Arti>Kaç kişi geldi, kaçı ilk kez — sayıyla</Arti>
                 <Arti>Kaçı ikinci kez geldi, ne kadar sürede</Arti>
                 <Arti>Hangi saatler boş, hangi ürün çekiyor</Arti>
@@ -630,7 +676,7 @@ export default async function Vitrin() {
                   Para yalnızca <strong className="font-semibold">kasada kullanılan</strong>{" "}
                   kupon için çıkıyor
                 </Arti>
-              </ul>
+              </Sirali>
             </div>
           </Beliren>
         </div>
@@ -665,8 +711,29 @@ export default async function Vitrin() {
         "Hiçbir şey kaybetmezsiniz" bir satış vaadi olurdu ve vaat,
         sorunun kendisinden zayıf.
       */}
-      <section className="bg-vitrin-lacivert py-20 text-yuzey sm:py-28">
-        <div className="mx-auto w-full max-w-6xl px-5 text-center">
+      <section className="relative overflow-hidden bg-vitrin-lacivert py-20 text-yuzey sm:py-28">
+        {/*
+          Yavaşça gezen ışık — Dalga 10.
+
+          Sayfanın **son** ekranıydı ve tamamen hareketsizdi: okuyucunun
+          ayrıldığı yer duran bir duvar oluyordu. Işık altın tonunda
+          (vitrin paleti: beyaz · fildişi · mavi · altın; siyah yok) ve
+          18 saniyelik — fark edilmesi değil, ekranın ölü durmaması
+          amaçlanıyor.
+
+          ⚠️ `overflow-hidden` bölümde: ışık kutunun dışına taşarsa
+          mobilde yatay kaydırma doğar. Dalga 8'de tam bu yüzden 390
+          piksellik ekranda belge 406 piksel olmuştu.
+        */}
+        <div
+          aria-hidden
+          className="lacivert-isik pointer-events-none absolute -top-1/4 left-1/2 -z-0 h-[120%] w-[140%] -translate-x-1/2 rounded-full opacity-60 blur-3xl"
+          style={{
+            background:
+              "radial-gradient(closest-side, rgba(214,178,94,0.20), rgba(214,178,94,0) 70%)",
+          }}
+        />
+        <div className="relative z-[1] mx-auto w-full max-w-6xl px-5 text-center">
           <Beliren yon="olcek">
             <h2 className="mx-auto max-w-2xl font-display text-[clamp(32px,5.5vw,60px)] leading-[1.02] font-extrabold tracking-[-0.035em]">
               Kullanmazsan
@@ -675,27 +742,26 @@ export default async function Vitrin() {
             </h2>
           </Beliren>
 
-          {/* Üç kayıp — hareketsizliğin devam eden bedeli. */}
-          <div className="mx-auto mt-12 grid max-w-3xl gap-3 text-left sm:grid-cols-3">
-            <Beliren yon="sag" gecikme={0}>
-              <Kayip
-                baslik="Bugün gelen müşteriyi"
-                metin="Hesabı ödeyip çıkan müşterinin elinde, yarın geri gelmek için bir sebep kalmıyor."
-              />
-            </Beliren>
-            <Beliren yon="alt" gecikme={110}>
-              <Kayip
-                baslik="Kimin geldiğini"
-                metin="Kaç kişi geldi, kaçı ikinci kez geldi, hangi saat boş kaldı — ölçmediğin şeyi düzeltemiyorsun."
-              />
-            </Beliren>
-            <Beliren yon="sol" gecikme={220}>
-              <Kayip
-                baslik="Reklama verdiğin parayı"
-                metin="Gösterim satın alıyorsun, ziyaret değil. Durduğun gün etkisi de duruyor."
-              />
-            </Beliren>
-          </div>
+          {/* Üç kayıp — hareketsizliğin devam eden bedeli.
+              Teker teker sayılıyorlar: kayıp bir liste değil, birikiyor. */}
+          <Sirali
+            adim={160}
+            cocukSinifi="h-full"
+            className="mx-auto mt-12 grid max-w-3xl gap-3 text-left sm:grid-cols-3"
+          >
+            <Kayip
+              baslik="Bugün gelen müşteriyi"
+              metin="Hesabı ödeyip çıkan müşterinin elinde, yarın geri gelmek için bir sebep kalmıyor."
+            />
+            <Kayip
+              baslik="Kimin geldiğini"
+              metin="Kaç kişi geldi, kaçı ikinci kez geldi, hangi saat boş kaldı — ölçmediğin şeyi düzeltemiyorsun."
+            />
+            <Kayip
+              baslik="Reklama verdiğin parayı"
+              metin="Gösterim satın alıyorsun, ziyaret değil. Durduğun gün etkisi de duruyor."
+            />
+          </Sirali>
 
           <Beliren yon="olcek" gecikme={120} className="mt-16">
             <p className="mx-auto max-w-2xl font-display text-[clamp(22px,3.4vw,34px)] leading-[1.15] font-extrabold tracking-[-0.02em]">
@@ -783,10 +849,15 @@ function Onay({ children }: { children: React.ReactNode }) {
  * "Kaç kişi gördü — ama kaçı geldi, bilinmiyor" cümlesi işareti
  * görmeyen birine de olumsuz olduğunu söylüyor. İşaret rengi tek başına
  * anlam taşısaydı ekran okuyucuda iki sütun aynı görünürdü.
+ *
+ * ⚠️ **`<li>` üretmiyorlar** (Dalga 10). Sağ sütun `Sirali` ile teker
+ * teker giriyor ve o kap her çocuğu kendi ögesine sarıyor; madde de
+ * `<li>` olsaydı `<li><li>` doğardı. Satır ögesi artık çağrı yerinde:
+ * iki sütun da `<ul>` içinde duruyor, biri düz biri sıralı.
  */
 function Eksi({ children }: { children: React.ReactNode }) {
   return (
-    <li className="flex gap-3">
+    <span className="flex gap-3">
       <span
         aria-hidden
         className="mt-[3px] flex size-[18px] shrink-0 items-center justify-center rounded-full bg-yazi-sonuk/15 text-[13px] leading-none font-bold text-yazi-sonuk"
@@ -794,13 +865,13 @@ function Eksi({ children }: { children: React.ReactNode }) {
         −
       </span>
       <span>{children}</span>
-    </li>
+    </span>
   );
 }
 
 function Arti({ children }: { children: React.ReactNode }) {
   return (
-    <li className="flex gap-3">
+    <span className="flex gap-3">
       <span
         aria-hidden
         className="mt-[3px] flex size-[18px] shrink-0 items-center justify-center rounded-full bg-vurgu text-[12px] leading-none font-bold text-yuzey"
@@ -808,7 +879,7 @@ function Arti({ children }: { children: React.ReactNode }) {
         ✓
       </span>
       <span>{children}</span>
-    </li>
+    </span>
   );
 }
 
@@ -818,6 +889,54 @@ function Madde({ children }: { children: React.ReactNode }) {
       <span className="mt-[9px] size-1.5 shrink-0 rounded-full bg-odul" aria-hidden />
       <span className="leading-relaxed">{children}</span>
     </li>
+  );
+}
+
+/**
+ * Kapanan döngü izi — Dalga 10.
+ *
+ * Kafeden çıkan ok dolanıp kapıya geri dönüyor: bölümün tek iddiası bu.
+ *
+ * ── ⚠️ `pathLength="1"` zorunlu ─────────────────────────────
+ *
+ * `Cizilen` hareketi saf CSS'te tutuyor ve bunun tek yolu yol uzunluğunu
+ * normalleştirmek. Bu öznitelik unutulursa iz çizilmiş görünmez — bir
+ * test onu koruyor.
+ *
+ * ── Neden ok kafanın ayrı bir yolu ──────────────────────────
+ *
+ * Tek parça çizilseydi ok ucu izin ortasında bir yerde belirir ve
+ * "dönüş tamamlandı" anı kaybolurdu. Ayrı yol + kendi gecikmesi: önce
+ * yay tamamlanıyor, sonra ok başladığı yere basıyor.
+ */
+function DonguIzi() {
+  return (
+    <svg
+      viewBox="0 0 220 64"
+      role="img"
+      aria-label="Müşteri gidiyor ve geri dönüyor"
+      className="h-14 w-full max-w-[220px] text-vurgu"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      {/* Gidiş ve dönüş — tek sürekli yay. */}
+      <path
+        pathLength="1"
+        d="M26 40c0-16 14-26 32-26s32 10 32 26 14 26 32 26 32-10 32-26-14-26-32-26"
+        style={{ opacity: 0.85 }}
+      />
+      {/*
+        Kapıya dönen ok ucu — yay başladığı yere vardığında basıyor.
+
+        ⚠️ Satır içi gecikme kısayoldaki gecikmeyi **değiştiriyor**,
+        eklemiyor. Yay 260 ms'de başlayıp 1,5 sn sürüyor, yani 1.760'ta
+        bitiyor; ok 1.550'de giriyor ve son kıvrımla hafifçe örtüşüyor.
+      */}
+      <path pathLength="1" d="M28 33l-7 7 7 7" style={{ animationDelay: "1.55s" }} />
+    </svg>
   );
 }
 
@@ -901,26 +1020,34 @@ function SosyalKanit() {
           </p>
         </Beliren>
 
-        <div className="mt-12 grid gap-4 sm:grid-cols-3">
-          <Beliren yon="sol" gecikme={0}>
-            <Kanit
-              baslik="Ekranların hepsi gerçek"
-              metin="Yukarıdaki panel, çark ve oyun görüntüleri çalışan uygulamadan alındı. Çizim yok, sahte ekran yok."
-            />
-          </Beliren>
-          <Beliren yon="alt" gecikme={110}>
-            <Kanit
-              baslik="Hesabı sen yapıyorsun"
-              metin="Az önceki tablo senin girdiğin sayılarla çalışıyor. Bizim seçtiğimiz güzel bir örnekle değil."
-            />
-          </Beliren>
-          <Beliren yon="sag" gecikme={220}>
-            <Kanit
-              baslik="Sözümüz dar"
-              metin="Dört alanlık başvuru, panelden yazdırılan karekod, kasada onaylanan kupon. Anlattığımız her adım üründe var."
-            />
-          </Beliren>
-        </div>
+        {/*
+          Dalga 10: üç kanıt teker teker giriyor ve her biri **mühürleniyor**.
+
+          Bölümün iddiası *"yorum yok, doğrulanabilir üç şey var"*. Onay
+          işareti tam bunu söylüyor ve kendi kendine çiziliyor — hazır
+          basılı duran bir tik, madde kadar sessiz kalırdı.
+
+          ⚠️ Mühür bir **sayı ya da referans değil**; bizim kendi
+          iddiamızı işaretliyor. Uydurma yorum ya da şişirilmiş sayı bu
+          bölümde yasak (Dalga 8) ve bu kural bozulmuyor.
+        */}
+        <Sirali adim={150} cocukSinifi="h-full" className="mt-12 grid gap-4 sm:grid-cols-3">
+          <Kanit
+            sira={0}
+            baslik="Ekranların hepsi gerçek"
+            metin="Yukarıdaki panel, çark ve oyun görüntüleri çalışan uygulamadan alındı. Çizim yok, sahte ekran yok."
+          />
+          <Kanit
+            sira={1}
+            baslik="Hesabı sen yapıyorsun"
+            metin="Az önceki tablo senin girdiğin sayılarla çalışıyor. Bizim seçtiğimiz güzel bir örnekle değil."
+          />
+          <Kanit
+            sira={2}
+            baslik="Sözümüz dar"
+            metin="Dört alanlık başvuru, panelden yazdırılan karekod, kasada onaylanan kupon. Anlattığımız her adım üründe var."
+          />
+        </Sirali>
 
         <Beliren gecikme={300}>
           <p className="mt-10 text-center text-[15px] leading-relaxed text-yazi-sonuk">
@@ -938,9 +1065,45 @@ function SosyalKanit() {
   );
 }
 
-function Kanit({ baslik, metin }: { baslik: string; metin: string }) {
+/**
+ * Sosyal kanıt kartı — üstünde kendini çizen bir onay mührü.
+ *
+ * ⚠️ `sira` yalnızca **gecikme** için: kart sırası `Sirali`den geliyor
+ * ama mühür kartın kendi içinde ve kabın ritmini bilmiyor. Sayı
+ * dışarıdan veriliyor ki mühür, kartı yerine oturduktan sonra bassın.
+ */
+function Kanit({
+  baslik,
+  metin,
+  sira = 0,
+}: {
+  baslik: string;
+  metin: string;
+  sira?: number;
+}) {
+  const gecikme = 420 + sira * 150;
+
   return (
     <div className="h-full rounded-2xl border border-cizgi bg-yuzey px-6 py-6">
+      <Cizilen
+        gecikme={gecikme + 120}
+        sure={0.5}
+        className="muhur-basan mb-3 inline-flex size-7 items-center justify-center rounded-full bg-vurgu-zemin text-vurgu"
+        style={{ "--muhur-gecikme": `${gecikme}ms` } as React.CSSProperties}
+      >
+        <svg
+          viewBox="0 0 24 24"
+          aria-hidden
+          className="size-4"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="3"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path pathLength="1" d="M5 12.5l4.5 4.5L19 7" />
+        </svg>
+      </Cizilen>
       <h3 className="text-[16px] font-bold">{baslik}</h3>
       <p className="mt-2.5 text-[14px] leading-relaxed text-yazi-sonuk">
         {metin}
