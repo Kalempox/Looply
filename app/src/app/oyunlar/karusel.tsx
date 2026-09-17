@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { RENK, oyunRengi } from "@/components/oyuncu-renk";
 import { Gorsel, oyunGorseli } from "@/components/oyuncu-gorsel";
+import { DusenSahnesi } from "@/components/oyun-sahnesi";
 import { OyunIkonu } from "@/components/oyuncu-ikon";
 
 /**
@@ -459,14 +460,42 @@ function OyunKapagi({
         border: `1px solid ${r.canli}`,
       }}
     >
-      {/* Kapak görseli — oyunun kendi çizimi, büyük ve soluk. */}
-      <span
-        aria-hidden
-        className="pointer-events-none absolute -right-6 -bottom-2 opacity-[0.18]"
-        style={{ color: r.koyu }}
-      >
-        <Gorsel ad={oyunGorseli(oyun.id)} boy={190} />
-      </span>
+      {/*
+        Kapak görseli.
+
+        Ü176: Düşen'in kendi SAHNESİ var — renkli blok yığını
+        (`components/oyun-sahnesi.tsx`). Ürün sahibi *"hem oyunlar
+        kısmındaki kartını hem de ana sayfadaki kartını bu görseldeki
+        gibi"* dedi; iki kartın aynı sahneyi paylaşması da onu
+        sağlıyor.
+
+        ⚠️ Sahne SOLUK DEĞİL, tam renkte: çizim soluk duruyordu çünkü
+        tek renkli bir kontur ve kartın metniyle yarışmaması
+        gerekiyordu. Sahne ise kendi renklerini taşıyor ve kartın alt
+        köşesinde duruyor — metinle çakışmıyor, o yüzden bastırmaya
+        gerek yok.
+
+        Öbür oyunlar kendi sahneleri üretilene kadar eski soluk
+        çizimde kalıyor.
+
+        ⚠️ Sahne kartın ÜST yarısında: alt yarıda denendi ve metinle
+        çakıştı — "İnen parçalarla satır doldur" blokların altında
+        kaldı. Karusel kartı dikey ve metin alt yarıyı dolduruyor;
+        sahneye kalan tek boş alan ikonun sağı.
+      */}
+      {oyun.id === "dusen" ? (
+        <span aria-hidden className="pointer-events-none absolute -right-4 top-12">
+          <DusenSahnesi boy={116} />
+        </span>
+      ) : (
+        <span
+          aria-hidden
+          className="pointer-events-none absolute -right-6 -bottom-2 opacity-[0.18]"
+          style={{ color: r.koyu }}
+        >
+          <Gorsel ad={oyunGorseli(oyun.id)} boy={190} />
+        </span>
+      )}
 
       {/*
         Arkadaki kartın tamamı bir düğme: dokununca öne geliyor, oyunu

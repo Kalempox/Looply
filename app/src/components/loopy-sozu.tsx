@@ -92,3 +92,38 @@ export function LoopySozu({
     </span>
   );
 }
+
+/**
+ * Balonsuz Loopy — Ü176.
+ *
+ * Ürün sahibi: *"hep Loopy karakterimiz sevgi dolu, heyecanlı gibi
+ * pozitif olmalı"* ve oyun kartında *"sadece hadi oynayalım
+ * yazmasın"*.
+ *
+ * ── 🔴 Neden karşı döndürme var ─────────────────────────────
+ *
+ * `mutlu` karesi kaynakta ~22° eğik çizilmiş: kollar havada, gövde
+ * yana yatık — havada süzülen bir an. Kartta SABİT dururken o eğiklik
+ * sevinç değil **devrilme** okunuyordu ve bu yüzden Ü174'te `sakin`e
+ * düşülmüştü. Ama `sakin`in yüzü düz: ürün sahibinin istediği
+ * pozitiflik orada yok.
+ *
+ * Karşı döndürme ikisini birden çözüyor: yüz `mutlu`nun yüzü, duruş
+ * dik. Ölçülerek seçildi — 22°'de bardağın dikey ekseni sakin
+ * karedekiyle çakışıyor.
+ *
+ * ⚠️ Kollar ve bacaklar eğik poza göre çizildiği için hafifçe asimetrik
+ * kalıyor. Bedeli bu ve kabul edildi: dik duran neşeli bir karakter,
+ * devrilmiş neşeli bir karakterden iyi.
+ */
+export function LoopyPozitif({ boy = 84 }: { boy?: number }) {
+  return (
+    <span
+      aria-hidden
+      className="inline-block"
+      style={{ transform: "rotate(-22deg)", transformOrigin: "50% 60%" }}
+    >
+      <Avatar ifade="mutlu" boy={boy} />
+    </span>
+  );
+}

@@ -21,7 +21,8 @@ import {
 import { RENK, oyunRengi, type OyuncuRengi } from "@/components/oyuncu-renk";
 import { Gorsel, oyunGorseli, type GorselAdi } from "@/components/oyuncu-gorsel";
 import { OyunIkonu, CarkIkonu, KupaIkonu, TacIkonu, MadalyaIkonu } from "@/components/oyuncu-ikon";
-import { LoopySozu } from "@/components/loopy-sozu";
+import { LoopySozu, LoopyPozitif } from "@/components/loopy-sozu";
+import { DusenSahnesi } from "@/components/oyun-sahnesi";
 import { OyuncuNav, NavBosluk } from "@/components/oyuncu-nav";
 import { AvatarYuvasi } from "@/components/avatar-yuvasi";
 import { SeriSahnesi } from "@/components/seri-sahnesi";
@@ -165,80 +166,77 @@ export default async function OynaSayfasi() {
         )}
 
         {/* ── Günün oyunu ───────────────────────────────── */}
+        {/*
+          Ü176: tasarımdaki hâline getirildi. Bölüm başlığı kartın
+          İÇİNE girdi, sahne çizimi geldi, düğme hap biçimini aldı.
+
+          ⚠️ Loopy'nin balonu KALKTI — ürün sahibi *"sadece hadi
+          oynayalım yazmasın"* dedi. Karakter duruyor, sözü gitti:
+          kartta zaten "Oyna" yazan bir düğme var ve balon aynı şeyi
+          ikinci kez söylüyordu.
+        */}
         <section className="mb-10">
-          {/*
-            Ü174: ürün sahibinin gönderdiği tasarıma göre yeniden
-            yazıldı. Değişenler: "×2 PUAN" kartın DIŞINDAN içine bir
-            rozete döndü, yanına "Bugün" rozeti geldi, oyunun çizimi
-            büyüdü, Loopy konuşmaya başladı ve düğme turuncu oldu.
+          <BiletYuzeyi renk={oyunRengi(bonus.id)} className="px-5 pt-5 pb-5">
+            <p className="etiket-caps text-odul">Bugünün oyunu</p>
 
-            ⚠️ "×2 PUAN" bölüm başlığının yanında dururken kartın
-            değil **başlığın** özelliği gibi okunuyordu. Rozet olarak
-            kartın içinde, oyunun yanında duruyor — söylediği şey o
-            oyuna ait.
-          */}
-          <h2 className="mb-3 etiket-caps" style={{ color: RENK[oyunRengi(bonus.id)].ana }}>
-            Bugünün oyunu
-          </h2>
-
-          <BiletYuzeyi
-            renk={oyunRengi(bonus.id)}
-            gorsel={oyunGorseli(bonus.id)}
-            className="px-5 py-6"
-          >
-            <div className="flex items-start gap-3">
+            <div className="mt-2 flex items-start gap-2">
               <div className="min-w-0 flex-1">
-                <span className="block font-display text-[28px] leading-none font-extrabold tracking-tight text-white">
+                <h2 className="font-display text-[34px] leading-none font-extrabold tracking-tight text-white">
                   {bonus.ad}
-                </span>
-                <span className="mt-2 block text-[13px] leading-snug text-white/70">
-                  {bonus.ozet}
-                </span>
+                </h2>
+                <p className="mt-2 text-[14px] leading-snug text-white/80">{bonus.ozet}</p>
 
                 <div className="mt-3 flex flex-wrap items-center gap-1.5">
-                  <Rozet>
-                    <span className="text-odul">★</span> ×2 puan
-                  </Rozet>
-                  <Rozet>Bugün</Rozet>
+                  {/*
+                    "×2 PUAN" DOLU beyaz, "Bugün" saydam: ikisi aynı
+                    ağırlıkta olsaydı hangisinin kazanç olduğu
+                    belirsiz kalırdı. Kazandıran şey öne çıkıyor.
+                  */}
+                  <span className="inline-flex items-center gap-1 rounded-full bg-yuzey px-2.5 py-1 text-[11px] font-bold text-odul-koyu">
+                    <span aria-hidden className="text-odul">★</span> ×2 PUAN
+                  </span>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-semibold text-white">
+                    Bugün
+                  </span>
                 </div>
               </div>
 
               {/*
-                Oyunun kendi çizimi BEYAZ kutuda: koyu zeminde kendi
-                renkleriyle okunmuyordu, kutu ona kendi zeminini
-                veriyor. Kutunun altında Loopy konuşuyor.
+                Sahne ve ikon: ikon beyaz kutuda, sahne onun arkasında
+                taşıyor. Tasarımdaki katman sırası bu — kutu oyunu
+                tanıtıyor, sahne oyunun ne olduğunu gösteriyor.
               */}
-              <div className="flex w-[7rem] shrink-0 flex-col items-center gap-2">
-                <span className="flex size-16 items-center justify-center rounded-2xl bg-yuzey shadow-sm">
-                  <OyunIkonu oyunId={bonus.id} boy={40} />
+              <div className="relative shrink-0">
+                <span className="absolute -top-1 -left-2 z-10 flex size-12 items-center justify-center rounded-2xl bg-yuzey shadow-lg">
+                  <OyunIkonu oyunId={bonus.id} boy={28} />
                 </span>
-                {/* İfade `sakin`: `mutlu` karesi ~30° eğik bir kutlama pozu ve
-                    sabit dururken düşüyor gibi görünüyor. Kutlama pozu bir
-                    AN için doğru — kartta sürekli duran bir karakter için
-                    değil. */}
-                <LoopySozu soz="Hadi oynayalım!" boy={64} />
+                {bonus.id === "dusen" ? (
+                  <DusenSahnesi boy={112} />
+                ) : (
+                  <span className="flex h-[112px] w-[140px] items-end justify-center text-white/25">
+                    <Gorsel ad={oyunGorseli(bonus.id)} boy={104} />
+                  </span>
+                )}
               </div>
             </div>
 
+            {/* Loopy: balonsuz, hep pozitif (Ü176). */}
+            <div className="pointer-events-none -mt-6 flex justify-end pr-1">
+              <span aria-hidden className="block">
+                <LoopyPozitif boy={72} />
+              </span>
+            </div>
+
             <Link
-              // `?basla=1` kalktı — Ü167'den beri doğrudan başlamak
-              // varsayılan. Bırakılsaydı sonraki okuyucu bunu bir
-              // anahtar sanır ve katalog bağlantısında "eksik" arardı.
               href={`/oyna/${bonus.id}`}
               /*
-                🔴 Düğme TURUNCU — Ü174'te beyazdan döndü.
-
-                Ü171'de beyaz yapılmıştı çünkü kartın kendi rengindeki
-                düğme zeminle aynı aileden olup ayrılmıyordu. Doğru
-                teşhis, eksik çözüm: beyaz ayrılıyordu ama kartın
-                içindeki öbür beyazlarla (çizim kutusu, balon) aynı
-                şeyi söylüyordu. Turuncu ürünün **vurgu** rengi ve
-                karttaki tek turuncu o — bakılacak yer tartışmasız.
+                Hap biçimi ve turuncu gradyan tasarımdan. Karttaki tek
+                turuncu bu — bakılacak yer tartışmasız.
               */
-              className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl py-4 text-center font-display text-[17px] font-bold text-white shadow-sm transition-transform active:scale-[0.99]"
-              style={{ background: "linear-gradient(100deg, #f97316 0%, #fb923c 100%)" }}
+              className="-mt-2 flex w-full items-center justify-center gap-2.5 rounded-full py-4 text-center font-display text-[19px] font-bold text-white shadow-lg transition-transform active:scale-[0.99]"
+              style={{ background: "linear-gradient(100deg, #fb923c 0%, #f97316 50%, #ea580c 100%)" }}
             >
-              <span aria-hidden>▶</span> Oyna
+              <span aria-hidden className="text-[15px]">▶</span> Oyna
             </Link>
           </BiletYuzeyi>
         </section>
@@ -391,50 +389,56 @@ function DurumKarti({
     ⚠️ Zemin `KoyuKart` (ürünün sabit mor imza yüzeyi), `BiletYuzeyi`
     değil — bkz. Ü171.
   */
+  /*
+    Ü176: profil başlığının kalıbına geçti — ürün sahibi *"profilim
+    kısmında yaptığın bu kısmı oyna kısmı için yapmalısın"* dedi.
+
+    Değişen: üç döşeme artık kartın İÇİNDE değil, alt kenarına
+    **biniyor**. Kart ile içerik arasındaki sınırı yumuşatıyor ve
+    sayıları "kartın bir parçası" olmaktan çıkarıp "kartın taşıdığı
+    şey" yapıyor.
+
+    ⚠️ Döşeme sırası `relative` ŞART: kart konumlandırılmış
+    (`relative`), döşemeler değilse kartın ALTINDA kalıyorlar — DOM'da
+    sonra gelmek yetmiyor. Bu tuzağa profil başlığında bir kez
+    düşüldü (Ü175).
+  */
   return (
-    <KoyuKart>
-      {/*
-        🔴 Loopy AKIŞTA, mutlak konumda değil — ve bu iki denemeden
-        sonra böyle.
+    <div>
+      <KoyuKart className="pb-12">
+        <div className="flex items-start gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="etiket-caps text-white/60">Merhaba</p>
+            <h1 className="mt-1 font-display text-3xl leading-none font-extrabold tracking-tight">
+              {ad}
+            </h1>
+            <p className="mt-2 text-[13px] leading-snug text-white/70">
+              {masada
+                ? "Bugün harika bir gün, oynayalım!"
+                : "Bir Looply kafesine uğra, puan kazanmaya başla."}
+            </p>
+          </div>
 
-        1. Yan yana iki esnek kolon: 375 pikselde metin dört satıra
-           düştü, karakter metnin yerini yedi.
-        2. Mutlak konum: metin tam genişlik aldı ama balon akışta yer
-           kaplamadığı için "MERHABA / Buse" başlığının ÜSTÜNE bindi.
-           Çakışma mutlak konumun doğasında — kimse kimsenin boyunu
-           bilmiyor.
+          {/*
+            Loopy'nin sözü kartın DURUMUNA göre değişiyor: masada
+            değilken "hedeflerini tamamla" demek, yapılamayacak bir şeyi
+            istemek olurdu — oyuncu kafeye gitmeden puan kazanamıyor.
 
-        Şimdi iki kolon var ama sağdaki **sabit genişlikte**: balon da
-        Loopy de o kolonun içinde kalıyor, metin kalanı alıyor ve
-        hiçbiri ötekinin üstüne binemiyor.
-      */}
-      <div className="flex items-start gap-3">
-        <div className="min-w-0 flex-1">
-          <p className="etiket-caps text-white/60">Merhaba</p>
-          <h1 className="mt-1 font-display text-3xl leading-none font-extrabold tracking-tight">
-            {ad}
-          </h1>
-          <p className="mt-2 text-[13px] leading-snug text-white/70">
-            {masada
-              ? "Bugün harika bir gün, oynayalım!"
-              : "Bir Looply kafesine uğra, puan kazanmaya başla."}
-          </p>
+            ⚠️ İfade `keyifli` (Ü176): ürün sahibi Loopy'nin hep
+            pozitif olmasını istedi. `sakin`in yüzü düz — nötr bir
+            karakter "iyi ki buradasın" demiyor.
+          */}
+          <div className="w-[7.5rem] shrink-0">
+            <LoopySozu
+              soz={masada ? "Hedeflerini tamamla!" : "Seni kafede bekliyorum!"}
+              ifade="keyifli"
+              boy={80}
+            />
+          </div>
         </div>
+      </KoyuKart>
 
-        {/*
-          Loopy'nin sözü kartın DURUMUNA göre değişiyor: masada
-          değilken "hedeflerini tamamla" demek, yapılamayacak bir şeyi
-          istemek olurdu — oyuncu kafeye gitmeden puan kazanamıyor.
-        */}
-        <div className="w-[7.5rem] shrink-0">
-          <LoopySozu
-            soz={masada ? "Hedeflerini tamamla!" : "Seni kafede bekliyorum!"}
-            boy={80}
-          />
-        </div>
-      </div>
-
-      <div className="mt-4 grid grid-cols-3 gap-2">
+      <div className="relative -mt-8 grid grid-cols-3 gap-2 px-2">
         <Dosem ikon={<TacIkonu boy={20} />} etiket="Kullanılabilir kupon" deger={kupon.toLocaleString("tr-TR")} vurgu={kupon > 0} />
         <Dosem
           ikon={<Gorsel ad="para" boy={22} />}
@@ -444,7 +448,7 @@ function DurumKarti({
         {seviye ? (
           <Link
             href="/profil"
-            className="rounded-2xl bg-yuzey px-2.5 py-3 text-center transition-transform active:scale-[0.98]"
+            className="kart-golge rounded-2xl bg-yuzey px-2 py-3 text-center transition-transform active:scale-[0.98]"
           >
             <span className="flex justify-center text-odul-koyu">
               <MadalyaIkonu boy={20} />
@@ -473,11 +477,11 @@ function DurumKarti({
       </div>
 
       {seviye && seviye.sonrakiEsik !== null && (
-        <p className="mt-2 text-center font-data text-[10px] text-white/55">
+        <p className="mt-2.5 text-center font-data text-[10px] text-yazi-sonuk">
           Sonraki seviyeye {(seviye.sonrakiEsik - seviye.xp).toLocaleString("tr-TR")} XP
         </p>
       )}
-    </KoyuKart>
+    </div>
   );
 }
 
@@ -505,7 +509,7 @@ function Dosem({
   vurgu?: boolean;
 }) {
   return (
-    <div className="rounded-2xl bg-yuzey px-2.5 py-3 text-center">
+    <div className="kart-golge rounded-2xl bg-yuzey px-2 py-3 text-center">
       <span className="flex justify-center text-odul-koyu">{ikon}</span>
       <span className="mt-1.5 block text-[10px] leading-tight font-semibold text-yazi-sonuk">
         {etiket}
@@ -971,17 +975,3 @@ function GecisKarti({
   );
 }
 
-/**
- * Oyun kartındaki küçük rozet — Ü174.
- *
- * Koyu zeminde beyaz %15: kendi kabı var ama zemini bastırmıyor.
- * Dolu beyaz olsaydı düğmeyle yarışırdı; kartta bakılacak tek yer
- * "Oyna" olmalı.
- */
-function Rozet({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-semibold text-white">
-      {children}
-    </span>
-  );
-}
