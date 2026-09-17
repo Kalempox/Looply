@@ -76,11 +76,30 @@ export function OyuncuSayfa({
   /**
    * Sağ alttaki avatar yuvası (Ü159).
    *
-   * ⚠️ Profilde **kapalı**: avatar orada zaten büyük büyük duruyor ve
-   * okşanıyor (Ü147). İkisi aynı ekranda olsaydı oyuncu hangisini
-   * seveceğini bilemezdi — aynı karakterin iki kopyası.
+   * ── 🔴 Kural: SÜRÜKLEME yüzeyi olan ekranda yuva YOK (Ü161) ─
    *
-   * ⚠️ Oyun ekranlarında da kapatılmalı: yuva tahtanın üstüne düşer.
+   * Yuva `fixed` ve köşede duruyor; dar ekranda köşe her zaman bir
+   * şeyin üstündedir. Ölçüldü: `/oyunlar`ta imlecin altındaki öge
+   * karusel değil **yuva** çıkıyordu — yani kullanıcı kaydırmak
+   * isterken yuvaya basıyordu.
+   *
+   * Kapalı olduğu yerler ve sebepleri:
+   *
+   *   · `/oyunlar`           — karusel parmakla sürükleniyor
+   *   · `/oduller` ve detayı — kazı-kazan kartı parmakla siliniyor
+   *   · `/oyna/[oyunId]`     — oyun tahtası parmakla oynanıyor
+   *   · `/profil`            — avatar orada zaten büyük duruyor ve
+   *                            okşanıyor (Ü147); ikisi aynı karakterin
+   *                            iki kopyası olurdu
+   *
+   * ⚠️ Küçültmek çözüm değildi ve denendi: 56'dan 48 piksele indirildi,
+   * `z-30`dan `z-20`ye çekildi — çakışma azaldı ama kalmadı. Köşede
+   * duran bir şeyin dar ekranda içeriğin üstüne binmemesi mümkün değil;
+   * doğru çözüm **nerede durmayacağına** karar vermek.
+   *
+   * ⚠️ Yeni bir ekran sürükleme içeriyorsa buraya da yazılmalı: liste
+   * gerekçesiyle duruyor, çünkü gerekçesiz bir istisna sonraki
+   * okuyucuya "unutulmuş" gibi görünür.
    */
   yuva?: boolean;
 }) {

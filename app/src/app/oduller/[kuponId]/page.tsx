@@ -58,7 +58,7 @@ export default async function KuponSayfasi({
   const baslik = kupon.baslik ?? "";
 
   return (
-    <OyuncuSayfa aktif="/oduller" geri={{ href: "/oduller", etiket: "Ödüllerim" }}>
+    <OyuncuSayfa aktif="/oduller" geri={{ href: "/oduller", etiket: "Ödüllerim" }} yuva={false}>
       <SayfaBasi
         ust={kupon.cafeAdi}
         baslik={baslik}

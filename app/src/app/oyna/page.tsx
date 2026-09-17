@@ -609,7 +609,24 @@ function CarkKarti({
         Şans çarkı
       </h2>
 
-      <Link href="/cark" className="block transition-transform active:scale-[0.99]">
+      {/*
+        🔴 `?cark=1` — Ü161.
+
+        Ürün sahibi: *"Çevir'e basınca bir ekran daha açılmamalı, direkt
+        çevirme ekranı açılmalı."* Haklıydı: düğmenin adı "Çevir" ama
+        vardığı yer bir **davet kartıydı** (*"Dokun, çark tam ekranda
+        açılsın"*) ve oyuncu aynı şeye ikinci kez basmak zorundaydı.
+        Düğmenin sözü ile yaptığı iş ayrışıyordu.
+
+        ⚠️ Yeni bir yol açılmadı: Ü96 karekodu yeni okutan oyuncu için
+        `?cark=1` ile sahneyi kendiliğinden açan mekanizmayı zaten
+        kurmuştu. İkinci bir "doğrudan aç" kapısı yazmak, aynı şeyin iki
+        kopyası olurdu.
+
+        ⚠️ Adres çubuğundan `/cark`e giden hâlâ daveti görüyor ve bu
+        doğru: oraya niyetle gelen, çevirmeden önce dilimlere bakabilir.
+      */}
+      <Link href="/cark?cark=1" className="block transition-transform active:scale-[0.99]">
         <RenkliKart renk="pembe" dolu>
           <div className="flex items-center gap-4">
             {/*

@@ -156,10 +156,23 @@ işin hangi yüzeye düştüğü, bittiği kadar önemli.**
   `fixed` ve köşede duruyor, dar ekranda karuselin sağ kenarını
   kapatıyor. Ölçümde imlecin altındaki öge karusel değil yuva çıktı.
 
-- [ ] **Avatar yuvası hâlâ içeriğin üstüne biniyor.** 48 piksele
-  indirildi ve `z-20`ye çekildi ama kalıcı çözüm değil: dar ekranda
-  köşede duran her şey bir şeyin üstündedir. Sürükleme yüzeyi olan
-  sayfalarda (`/oyunlar`) yuva gizlenmeli ya da yeri değişmeli.
+- [x] **Avatar yuvası içeriğin üstüne biniyordu** ✅ **ÇÖZÜLDÜ** — Ü161
+  🔴 **Küçültmek çözüm değildi ve denendi:** 56'dan 48 piksele indirildi,
+  `z-30`dan `z-20`ye çekildi — çakışma azaldı ama kalmadı. Dar ekranda
+  köşede duran bir şeyin içeriğin üstüne binmemesi mümkün değil.
+  ➜ **Doğru çözüm nerede DURMAYACAĞINA karar vermek:** sürükleme yüzeyi
+  olan ekranlarda yuva yok. `/oyunlar` (karusel), `/oduller` ve detayı
+  (kazı-kazan), `/oyna/[oyunId]` (oyun tahtası), `/profil` (avatar zaten
+  orada). Kural ve gerekçeleri `components/oyuncu.tsx`te yazılı.
+  Doğrulandı: karuselin üstündeki öge artık kartın kendisi.
+
+- [x] **Çevir düğmesi ara ekrana götürüyordu** ✅ **ÇÖZÜLDÜ** — Ü161
+  Düğmenin adı "Çevir" ama vardığı yer bir **davet kartıydı**
+  (*"Dokun, çark tam ekranda açılsın"*); oyuncu aynı şeye ikinci kez
+  basmak zorundaydı. ⚠️ Yeni yol açılmadı: Ü96 karekodu yeni okutan
+  oyuncu için `?cark=1` mekanizmasını zaten kurmuştu. Adres çubuğundan
+  `/cark`e giden hâlâ daveti görüyor — oraya niyetle gelen, çevirmeden
+  önce dilimlere bakabilmeli.
 
 ---
 

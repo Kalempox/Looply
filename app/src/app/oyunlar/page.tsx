@@ -89,7 +89,7 @@ export default async function OyunlarSayfasi() {
   }));
 
   return (
-    <OyuncuSayfa aktif="/oyna" geri={{ href: "/oyna", etiket: "Ana ekran" }}>
+    <OyuncuSayfa aktif="/oyna" geri={{ href: "/oyna", etiket: "Ana ekran" }} yuva={false}>
       <SayfaBasi ust="Katalog" baslik="Oyunlar" renk="gok" gorsel="kumanda">
         <p className="text-[13px] leading-relaxed text-yazi-sonuk">
           {kazandirir

@@ -92,6 +92,8 @@ export default async function CarkSayfasi({
   const isletmeAdi = masa ? masa.cafeAdi : await carkHakki.isletmeAdi(cafeId);
 
   const durum = await cark.durum({ playerId: o.ozneId, cafeId });
+  // Ü158: aralık kafenin ayarı — ekrandaki cümle bunu söylemeli.
+  const carkAralik = await cark.aralikSaat(cafeId);
   const dilimler = durum.acik || durum.sebep === "sure" ? durum.dilimler : [];
 
   return (
@@ -114,6 +116,7 @@ export default async function CarkSayfasi({
           dilimler={dilimler.map((d) => ({ baslik: d.baslik }))}
           acik={durum.acik}
           kapaliMetin={cark.durumMetni(durum)}
+          aralikSaat={carkAralik}
         />
       )}
 

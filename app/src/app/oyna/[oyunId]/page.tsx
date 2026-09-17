@@ -58,7 +58,7 @@ export default async function OyunSayfasi({
     gelenler için de katalog bir adım ötede, çıkmaz sokak yok.
   */
   return (
-    <OyuncuSayfa aktif="/oyna" geri={{ href: "/oyunlar", etiket: "Oyunlar" }}>
+    <OyuncuSayfa aktif="/oyna" geri={{ href: "/oyunlar", etiket: "Oyunlar" }} yuva={false}>
       {/* Başlık kabuğun içinde: üç durumun üçü de oyunun adını farklı
           yerde söylüyor (kartın tepesinde, oynarken şeritte, sonuçta
           sonuç kartında). Sayfanın da ayrıca söylemesi, oyun adını

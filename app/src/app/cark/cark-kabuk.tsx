@@ -23,10 +23,13 @@ export function GunlukCark({
   acik,
   kapaliMetin,
   otomatikAc,
+  aralikSaat,
 }: {
   dilimler: { baslik: string }[];
   acik: boolean;
   kapaliMetin: string;
+  /** Kafenin çevirme aralığı (Ü158) — sabit değil. */
+  aralikSaat: number;
   /** Ü96: karekodu yeni okutan oyuncuda sahne kendiliğinden açılıyor. */
   otomatikAc?: boolean;
 }) {
@@ -39,7 +42,9 @@ export function GunlukCark({
       otomatikAc={otomatikAc}
       davetBaslik={acik ? "Çarkın hazır" : "Çark kapalı"}
       davetMetin="Dokun, çark tam ekranda açılsın."
-      altMetin="Çark 24 saatte bir açılıyor. Çıkan ödül doğrudan hesabına işlenir."
+      /* ⚠️ "24 saatte bir" sabit yazılıydı; Ü158'den beri süre kafenin
+         ayarı. Kafe 6 saat yazdığında ekran yalan söylüyordu. */
+      altMetin={`Çark ${aralikSaat} saatte bir açılıyor. Çıkan ödül doğrudan hesabına işlenir.`}
       kazandiMetni={
         <>
           Ödülün hesabına işlendi.{" "}

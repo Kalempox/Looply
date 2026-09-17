@@ -84,7 +84,7 @@ export default async function OdullerSayfasi({
   const kafeler = kafeyeGore(e.kullanilabilir);
 
   return (
-    <OyuncuSayfa aktif="/oduller">
+    <OyuncuSayfa aktif="/oduller" yuva={false}>
       <SayfaBasi ust="Envanter" baslik="Ödüllerim" renk="amber" gorsel="bilet">
         <div className="grid grid-cols-2 gap-2.5">
           <Sayac
