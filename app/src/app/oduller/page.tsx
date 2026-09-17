@@ -295,11 +295,13 @@ export default async function OdullerSayfasi({
                   kuponlarda siyah gölge karartılmış gibi olmayacak,
                   normal şeffaf renkte."* Karartma "bu kupon bozuk" gibi
                   okunuyordu; oysa kullanılmış kupon bir **başarı** —
-                  oyuncu kasaya gitti ve indirimini aldı. */}
+                  oyuncu kasaya gitti ve indirimini aldı.
+                  Ü171'de bilete dönerken de aynı kural: sönüklük
+                  saydamlıkla değil **doygunlukla** yapılıyor. */}
               <ul className="flex flex-col gap-2.5">
                 {e.kullanilan.map((k) => (
                   <li key={k.id}>
-                    <SakinKart kupon={k} />
+                    <BiletKarti kupon={k} gecmis />
                   </li>
                 ))}
               </ul>
@@ -311,7 +313,7 @@ export default async function OdullerSayfasi({
               <ul className="flex flex-col gap-2.5">
                 {e.kacirilan.map((k) => (
                   <li key={k.id}>
-                    <SakinKart kupon={k} />
+                    <BiletKarti kupon={k} gecmis />
                   </li>
                 ))}
               </ul>
@@ -426,11 +428,16 @@ const DURUM_ETIKETI: Record<EnvanterKuponu["durum"], string> = {
  * E9: ödülün adı var, değeri yok. Bilet ne kadar "değerli" görünürse
  * görünsün, üstünde bir tutar yazmıyor.
  */
-function BiletKarti({ kupon }: { kupon: EnvanterKuponu }) {
-  // Ü141: kapalı kupon bu listeye hiç girmiyor (`kazinacak`a gidiyor),
-  // yani ad burada kesin dolu. Yedek dizgi yalnızca tipi daraltıyor.
-  const baslik = kupon.baslik ?? "";
-  const gorsel = gorselSec(baslik, kupon.tur, kupon.kategoriTuru);
+function BiletKarti({ kupon, gecmis }: { kupon: EnvanterKuponu; gecmis?: boolean }) {
+  /*
+    Ü141: kapalı kupon `kullanılabilir` listesine hiç girmiyor
+    (`kazinacak`a gidiyor). Geçmişte ise girebiliyor: oyuncu kazımadan
+    süresi dolmuşsa. Adı yok ve **uydurulmuyor** — kart ne olduğunu
+    bilmediğimizi söylüyor, `gorselSec` de boş başlıkla çağrılıp genel
+    çizime düşüyor ve yanlış bir kategori seçmiyor.
+  */
+  const baslik = kupon.baslik ?? (gecmis ? "Açılmamış ödül" : "");
+  const gorsel = gorselSec(kupon.baslik ?? "", kupon.tur, kupon.kategoriTuru);
 
   return (
     <Bilet
@@ -444,6 +451,9 @@ function BiletKarti({ kupon }: { kupon: EnvanterKuponu }) {
           day: "numeric",
           month: "short",
         }),
+        // Ü171: geçmiş bilet aynı biçimi taşıyor ama eylem değil durum
+        // söylüyor ve tıklanmıyor.
+        gecmis: gecmis ? { etiket: DURUM_ETIKETI[kupon.durum] } : undefined,
       }}
     />
   );

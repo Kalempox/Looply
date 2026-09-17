@@ -56,22 +56,40 @@ export type BiletVerisi = {
   renk: OyuncuRengi;
   /** "8 Eyl" — biletin son kullanım günü. */
   son: string;
+  /**
+   * Geçmişte kalmış bilet — Ü171.
+   *
+   * ── Neden bilet oldu ────────────────────────────────────────
+   *
+   * Geçmiş sekmesindeki kuponlar `SakinKart` diye ayrı bir bileşendi:
+   * düz beyaz satır, sol kenarında bir şerit. Gerekçesi yazılıydı ve
+   * mantıklıydı — *"kasada gösterilemeyecek bir şeyin bilet gibi
+   * durması, oyuncuyu kasaya boşuna gönderir."*
+   *
+   * Ürün sahibi ekrana bakıp *"ödüllerim kısmındakiler daha güzel, ona
+   * göre uyumlu yapmalıyız"* dedi ve haklı: aynı ekranda iki ayrı kart
+   * dili konuşuluyordu. Kaygı yine de gerçek, o yüzden bilet **aynı
+   * biçimi taşıyor ama aynı şeyi söylemiyor**: "Kasada göster →"
+   * yerine "Kullanıldı" / "Tüh, süresi geçti" yazıyor ve tıklanmıyor.
+   *
+   * ── 🔴 SÖNÜK demek SAYDAM demek DEĞİL ───────────────────────
+   *
+   * Ü162'de kullanılmış kuponlardan `opacity` **kaldırılmıştı**:
+   * karartma "bu kupon bozuk" gibi okunuyordu, oysa kullanılmış kupon
+   * bir **başarı** — oyuncu kasaya gitti ve indirimini aldı. Aynı
+   * hatayı sönükleştirirken tekrarlamamak için burada saydamlık değil
+   * **doygunluk** düşüyor (`saturate`). Kart tam opak kalıyor, beyaz
+   * metin keskin duruyor; değişen tek şey rengin bağırması.
+   */
+  gecmis?: { etiket: string };
 };
 
 export function Bilet({ veri }: { veri: BiletVerisi }) {
   const r = RENK[veri.renk];
+  const gecmis = veri.gecmis;
 
-  return (
-    <Link
-      href={veri.href}
-      className="kart-golge kart-gel relative block h-[124px] overflow-hidden rounded-2xl transition-transform active:scale-[0.99]"
-      style={{
-        // Koyu ve doygun: `koyu` tondan `ana` tona. Beyaz metin bu iki
-        // durağın hepsinde AA geçiyor; pastel zeminde geçmiyordu ve
-        // metni koyu yapmak gerekiyordu.
-        background: `linear-gradient(115deg, ${r.koyu} 0%, ${r.ana} 100%)`,
-      }}
-    >
+  const govde = (
+    <>
       {/* Desen kartın tamamına döşeniyor. */}
       <span
         aria-hidden
@@ -133,6 +151,26 @@ export function Bilet({ veri }: { veri: BiletVerisi }) {
       </span>
 
       {/*
+        🔴 Geçmiş biletin ÜSTÜ KARARIYOR — Ü171.
+
+        Ürün sahibi: *"üstleri kararmış olsun."*
+
+        ⚠️ Bu, Ü162'de kaldırdığımız karartmanın aynısı değil ve
+        karıştırmamak önemli. Orada kaldırılan `opacity` idi: kartın
+        **tamamı** saydamlaşıyordu, metin dâhil, ve sonuç "bu kupon
+        bozuk" gibi okunuyordu. Burada konan şey bir **perde** —
+        kart tam opak, metin tam beyaz, kararan yalnızca yüzey.
+        O yüzden perde metin kolonunun ALTINDA duruyor.
+
+        Bağlam da değişti: Ü162'de bunlar soluk beyaz satırlardı ve
+        karartma onları bozuk gösteriyordu. Şimdi canlı koyu bir
+        bilet ve perde "olmuş bitmiş" diyor.
+      */}
+      {gecmis && (
+        <span aria-hidden className="pointer-events-none absolute inset-0 bg-black/45" />
+      )}
+
+      {/*
         Metin kolonu sağdan **96 piksel** dar.
 
         İlk denemede tam genişlikteydi ve "son 8 Eyl" tarihi çizimin
@@ -157,13 +195,64 @@ export function Bilet({ veri }: { veri: BiletVerisi }) {
           {veri.baslik}
         </span>
 
-        {/* Kesikli çizgi: biletin koparma yeri. */}
+        {/*
+          Kesikli çizgi: biletin koparma yeri.
+
+          Altındaki satır biletin ne olduğunu söylüyor ve geçmişte
+          **eylem değil durum**: ok işareti de kalkıyor, çünkü ok bir
+          yere gitmeyi vaat ediyor.
+        */}
         <span className="mt-2.5 block border-t border-dashed border-white/30 pt-2">
-          <span className="etiket-caps" style={{ color: r.canli }}>
-            Kasada göster →
+          <span className="etiket-caps" style={{ color: gecmis ? "rgba(255,255,255,0.72)" : r.canli }}>
+            {gecmis ? gecmis.etiket : "Kasada göster →"}
           </span>
         </span>
       </div>
+    </>
+  );
+
+  const zemin = {
+    // Koyu ve doygun: `koyu` tondan `ana` tona. Beyaz metin bu iki
+    // durağın hepsinde AA geçiyor; pastel zeminde geçmiyordu ve
+    // metni koyu yapmak gerekiyordu.
+    background: `linear-gradient(115deg, ${r.koyu} 0%, ${r.ana} 100%)`,
+  };
+
+  const ortak = "kart-golge relative block h-[124px] overflow-hidden rounded-2xl";
+
+  if (gecmis) {
+    return (
+      <div
+        className={ortak}
+        style={{
+          ...zemin,
+          /*
+            Karartan şey perde (yukarıda, `bg-black/45`); buradaki
+            doygunluk düşüşü onun yanında ikinci bir işaret.
+
+            İkisi birlikte gerekiyor: yalnızca karartma, kartı gece
+            çekilmiş bir fotoğraf gibi bırakıyordu — renk hâlâ
+            bağırıyordu. Yalnızca doygunluk düşüşü ise ürün sahibinin
+            istediği "kararmış" hâli vermiyordu.
+
+            ⚠️ `filter` metni de etkiliyor ama beyaz metin doygunluğu
+            zaten sıfır, yani ondan etkilenmiyor.
+          */
+          filter: "saturate(0.55)",
+        }}
+      >
+        {govde}
+      </div>
+    );
+  }
+
+  return (
+    <Link
+      href={veri.href}
+      className={`${ortak} kart-gel transition-transform active:scale-[0.99]`}
+      style={zemin}
+    >
+      {govde}
     </Link>
   );
 }

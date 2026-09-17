@@ -13,13 +13,11 @@ import * as oyunSecimi from "@/domain/oyun-secimi";
 import { withBypass } from "@/db/context";
 import * as happy from "@/domain/happy";
 import {
+  BiletYuzeyi,
   KoyuKart,
   CamKutu,
   SiraJetonu,
   RenkliKart,
-  GorselKart,
-  KartDokusu,
-  kartStili,
 } from "@/components/oyuncu";
 import { RENK, oyunRengi, type OyuncuRengi } from "@/components/oyuncu-renk";
 import { oyunGorseli, type GorselAdi } from "@/components/oyuncu-gorsel";
@@ -175,27 +173,30 @@ export default async function OynaSayfasi() {
             <span className="font-data text-[10px] tracking-[0.14em] text-odul-koyu">×2 PUAN</span>
           </div>
 
-          {/* Ekranın birincil eylemi ve kartın rengi oyunun kendi rengi
-              (Ü65): aşağıdaki karolarla aynı renk ailesi, böylece
-              "bugünün oyunu" ile "tüm oyunlar" aynı ürünün parçası
-              olarak okunuyor. */}
-          <GorselKart
+          {/*
+            Ü171: kart biletin yüzeyine taşındı (`KoyuKart`).
+
+            Rengi hâlâ oyunun kendi rengi (Ü65) — aşağıdaki geçiş
+            kartlarıyla aynı aile. Değişen tek şey yüzeyin pastelden
+            koyuya dönmesi; ürün sahibi *"ödüllerim kısmındakiler daha
+            güzel, ona göre uyumlu yapmalıyız"* dedi.
+          */}
+          <BiletYuzeyi
             renk={oyunRengi(bonus.id)}
             gorsel={oyunGorseli(bonus.id)}
             className="px-6 py-7"
           >
             <div className="flex items-start gap-4">
+              {/* İkon kutusu beyaz kalıyor: oyunun kendi çizimi koyu
+                  zeminde okunmuyordu, kutu ona kendi zeminini veriyor. */}
               <span className="flex size-16 shrink-0 items-center justify-center rounded-2xl bg-yuzey shadow-sm">
                 <OyunIkonu oyunId={bonus.id} boy={38} />
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block font-display text-2xl leading-tight font-extrabold tracking-tight">
+                <span className="block font-display text-2xl leading-tight font-extrabold tracking-tight text-white">
                   {bonus.ad}
                 </span>
-                <span
-                  className="mt-1.5 block text-[14px] leading-relaxed"
-                  style={{ color: RENK[oyunRengi(bonus.id)].koyu }}
-                >
+                <span className="mt-1.5 block text-[14px] leading-relaxed text-white/70">
                   {bonus.ozet}
                 </span>
               </span>
@@ -206,12 +207,15 @@ export default async function OynaSayfasi() {
               // varsayılan. Bırakılsaydı sonraki okuyucu bunu bir
               // anahtar sanır ve katalog bağlantısında "eksik" arardı.
               href={`/oyna/${bonus.id}`}
-              className="mt-5 block w-full rounded-xl py-3.5 text-center font-display text-[16px] font-bold text-white transition-transform active:scale-[0.99]"
-              style={{ background: RENK[oyunRengi(bonus.id)].ana }}
+              /* Düğme BEYAZ: koyu kartın üstünde renkli bir düğme
+                 zeminle aynı aileden olduğu için ayrılmıyordu. Beyaz,
+                 ekranın birincil eylemini tartışmasız öne çıkarıyor. */
+              className="mt-5 block w-full rounded-xl bg-yuzey py-3.5 text-center font-display text-[16px] font-bold transition-transform active:scale-[0.99]"
+              style={{ color: RENK[oyunRengi(bonus.id)].koyu }}
             >
               Oyna
             </Link>
-          </GorselKart>
+          </BiletYuzeyi>
         </section>
 
         {/* ── Diğer sayfalara geçişler (Ü66) ─────────────
@@ -351,6 +355,9 @@ function DurumKarti({
   // Zemin ve ışın dokusu `KoyuKart`'a taşındı (Ü64): aynı yüzey artık
   // /oduller, /profil, /liderlik ve oyun kabuğunda da kullanılıyor.
   // Burada kopyası durduğu sürece beşi ayrı ayrı kayabilirdi.
+  //
+  // ⚠️ Bu kart `BiletYuzeyi` DEĞİL (Ü171): durum kartı ürünün sabit
+  // mor imza yüzeyi, oyun/geçiş kartları ise kendi renklerini alıyor.
   return (
     <KoyuKart>
       <p className="etiket-caps text-white/60">Merhaba</p>
@@ -826,28 +833,32 @@ function GecisKarti({
 }) {
   const r = RENK[renk];
 
+  /*
+    Ü171: bu kart da biletin yüzeyinde.
+
+    ⚠️ `KoyuKart` bir `<div>`; bağlantı onu SARIYOR, içine girmiyor.
+    Tersi denendi ve olmuyor: kartın kendi `overflow-hidden`ı ve
+    yuvarlak köşeleri bağlantının dışında kalırsa tıklama alanı
+    köşelerden taşıyor.
+  */
   return (
     <Link
       href={yol}
-      className="kart-golge kart-gel relative block overflow-hidden rounded-3xl px-5 py-4 transition-transform hover:-translate-y-0.5"
-      style={kartStili(renk)}
+      className="block transition-transform hover:-translate-y-0.5 active:scale-[0.99]"
     >
-      <KartDokusu renk={renk} gorsel={gorsel} />
-
-      <div className="relative">
-        <div className="etiket-caps" style={{ color: r.koyu }}>
-          {ust}
-        </div>
+      <BiletYuzeyi renk={renk} gorsel={gorsel} className="px-5 py-4">
+        <div className="etiket-caps text-white/55">{ust}</div>
         <div className="mt-1 flex items-baseline justify-between gap-3">
-          <span className="font-display text-lg leading-tight font-bold text-yazi">{baslik}</span>
-          <span aria-hidden className="text-[15px]" style={{ color: r.ana }}>
+          <span className="font-display text-lg leading-tight font-bold text-white">{baslik}</span>
+          {/* Ok biletteki "Kasada göster →"in karşılığı: bu kart da bir
+              yere gitmeyi vaat ediyor. Rengi `canli` — koyu zeminde
+              beyazdan ayrılıyor ama başlığı bastırmıyor. */}
+          <span aria-hidden className="text-[15px]" style={{ color: r.canli }}>
             →
           </span>
         </div>
-        <p className="mt-1 text-[13px] leading-relaxed" style={{ color: r.koyu }}>
-          {alt}
-        </p>
-      </div>
+        <p className="mt-1 text-[13px] leading-relaxed text-white/65">{alt}</p>
+      </BiletYuzeyi>
     </Link>
   );
 }

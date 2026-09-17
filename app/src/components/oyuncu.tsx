@@ -383,6 +383,99 @@ export function GorselKart({
 }
 
 /**
+ * Biletin yüzeyi, kupon OLMAYAN kartlar için (Ü171).
+ *
+ * ⚠️ `KoyuKart` DEĞİL ve olamaz: o, ana ekranın sabit mor imza yüzeyi
+ * ve kendi dokümanı *"yalnızca ana ekranın durum kartı için"* diyor.
+ * Bu ise kartın **kendi rengini** alıyor — oyun mavi, fırsat yeşil.
+ * İkisini tek isim altında toplamak, Ü65'in "ekranlar renkle ayrılır"
+ * kuralını sessizce bozardı.
+ *
+ * ── Neden doğdu ─────────────────────────────────────────────
+ *
+ * Ürün sahibi `/oyna` ekranına bakıp *"burdaki kart tasarımını
+ * beğenmedim, ödüllerim kısmındakiler daha güzel, ona göre uyumlu
+ * yapmalıyız"* dedi.
+ *
+ * Haklıydı ve sebebi tek bir şey: aynı üründe **iki ayrı kart dili**
+ * vardı. Bilet (Ü72) koyu doygun zemin + döşeli desen + taşan çizim;
+ * `GorselKart` ise pastel zemin + soluk ışın + soluk çizim. Yan yana
+ * gelmedikleri için fark edilmemişti ama oyuncu ikisini aynı gezinti
+ * içinde görüyor.
+ *
+ * ── Biletin kopyası değil, aynı ailenin üyesi ───────────────
+ *
+ * `Bilet` doğrudan kullanılamıyor: onun deseni ve sahnesi **kupon
+ * kategorisine** bağlı (`KuponGorseli` — sıcak/tatlı/para/soğuk).
+ * Oyun ve geçiş kartlarının anlatacak bir kategorisi yok, onların
+ * çizimi `GorselAdi` ailesinden (kumanda, etiket, oyun çizimleri).
+ *
+ * O yüzden desen yerine **ışın** kalıyor — Ü72'nin kendi notu da bunu
+ * söylüyordu: *"Diğer kartlar hâlâ ışın dokusunda; orada anlatacak bir
+ * desen yok."* Değişen şey ışının artık koyu zeminde görünür olması:
+ * pastelde %5'te kayboluyordu.
+ *
+ * ── Perde neden var ─────────────────────────────────────────
+ *
+ * Biletteki gerekçenin aynısı: taşan çizim metnin sağ ucuna değiyor.
+ * Soldan sağa açılan perde metni okunur bırakıyor, çizimi kapatmıyor.
+ */
+export function BiletYuzeyi({
+  renk,
+  gorsel,
+  className = "",
+  children,
+}: {
+  renk: OyuncuRengi;
+  gorsel?: GorselAdi;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  const r = RENK[renk];
+
+  return (
+    <div
+      className={`kart-golge kart-gel relative overflow-hidden rounded-3xl ${className}`}
+      style={{ background: `linear-gradient(115deg, ${r.koyu} 0%, ${r.ana} 100%)` }}
+    >
+      {/* Işın: pastelde %5'te kayboluyordu, koyu zeminde %8 yetiyor. */}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute -top-[240%] left-1/2 size-[300%] -translate-x-1/2"
+        style={{ opacity: 0.08, background: ISIN_DOKUSU }}
+      />
+
+      {/*
+        Çizim beyaz ve büyük — `ArkaCizim` DEĞİL.
+        O, `koyu` tonu %24 opaklıkla çiziyor ve koyu zeminde kayboluyor:
+        koyu rengin üstüne koyu renk. Burada beyaz, açık zeminde
+        yapamayacağı kadar büyük durabiliyor.
+      */}
+      {gorsel && (
+        <span
+          aria-hidden
+          className="pointer-events-none absolute top-1/2 -right-7 -translate-y-1/2 text-white"
+          style={{ opacity: 0.17 }}
+        >
+          <Gorsel ad={gorsel} boy={150} />
+        </span>
+      )}
+
+      {/* Perde: çizimin metne değdiği yerde zemin koyulaşıyor. */}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background: `linear-gradient(100deg, ${r.koyu} 24%, ${r.koyu}cc 44%, transparent 68%)`,
+        }}
+      />
+
+      <div className="relative">{children}</div>
+    </div>
+  );
+}
+
+/**
  * Kartın satır içi stili — zemin ve çerçeve.
  *
  * Bileşene sarılamayan kartlar da var (bir `<Link>`, bir `<section>`,
