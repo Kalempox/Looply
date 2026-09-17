@@ -12,7 +12,7 @@ import * as kupon from "@/domain/kupon";
 import * as puan from "@/domain/puan";
 import { envanter, kuponDetayi, kaz } from "@/domain/odul";
 import { isGunu } from "@/lib/tarih";
-import { yoneticiSorgu } from "./_yardim";
+import { yoneticiSorgu, benzersizEposta } from "./_yardim";
 
 /**
  * Ü141 — kupon kazınarak açılıyor.
@@ -64,6 +64,7 @@ KAFE_ACIK.setHours(14, 0, 0, 0);
 async function yeniOyuncu(): Promise<string> {
   const s = await kaydet({
     telefon: yeniTelefon(),
+    eposta: benzersizEposta(),
     ad: "Kazıma",
     soyad: "Testi",
     dogumYili: 1990,

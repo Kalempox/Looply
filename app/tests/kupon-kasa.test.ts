@@ -15,7 +15,7 @@ import * as ayar from "@/domain/ayar";
 import { kuponDetayi, envanter, YENI_ACILDI_SAAT } from "@/domain/odul";
 import { yazIle as puanYaz } from "@/domain/puan";
 import { isGunu } from "@/lib/tarih";
-import { yoneticiSorgu } from "./_yardim";
+import { yoneticiSorgu, benzersizEposta } from "./_yardim";
 
 /**
  * FAZ 7 GÜVENLİK KAPISI — kupon ve kasa onayı.
@@ -176,6 +176,7 @@ before(async () => {
   oyuncuId = (
     await kaydet({
       telefon: yeniTelefon(),
+      eposta: benzersizEposta(),
       ad: "Kupon",
       soyad: "Testi",
       dogumYili: 1990,
@@ -640,6 +641,7 @@ describe("ödül motoru (Ü77)", () => {
     const p = (
       await kaydet({
         telefon: yeniTelefon(),
+        eposta: benzersizEposta(),
         ad: "Bag",
         soyad: "Testi",
         dogumYili: 1990,
@@ -701,6 +703,7 @@ describe("ödül motoru (Ü77)", () => {
       const p = (
         await kaydet({
           telefon: yeniTelefon(),
+          eposta: benzersizEposta(),
           ad: "Motor",
           soyad: "Testi",
           dogumYili: 1990,
@@ -741,6 +744,7 @@ describe("ödül motoru (Ü77)", () => {
     const p = (
       await kaydet({
         telefon: yeniTelefon(),
+        eposta: benzersizEposta(),
         ad: "Tekrar",
         soyad: "Testi",
         dogumYili: 1990,
@@ -1277,6 +1281,7 @@ describe("Happy Hour penceresi (Ö3)", () => {
     return (
       await kaydet({
         telefon: yeniTelefon(),
+        eposta: benzersizEposta(),
         ad: "Havuz",
         soyad: "Testi",
         dogumYili: 1990,

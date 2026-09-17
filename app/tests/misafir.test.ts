@@ -11,7 +11,7 @@ import * as masaOturumu from "@/domain/masa";
 import { K2 } from "@/domain/masa";
 import { misafirOyunuYaz } from "@/domain/oyun";
 import { biletUret, biletCoz } from "@/domain/qr";
-import { yoneticiSorgu } from "./_yardim";
+import { yoneticiSorgu, benzersizEposta } from "./_yardim";
 
 /**
  * FAZ 2 GÜVENLİK KAPISI — misafir oyun akışı (Ü35).
@@ -39,6 +39,7 @@ const olusturulanOyuncular: string[] = [];
 async function testOyuncu() {
   const { oyuncu } = await kaydet({
     telefon: yeniTelefon(),
+    eposta: benzersizEposta(),
     ad: "Buse",
     soyad: "Misafir",
     dogumYili: 1994,

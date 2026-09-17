@@ -19,6 +19,7 @@ import { newId } from "@/lib/ids";
  */
 const KAFE_ACIK = new Date("2026-09-02T20:00:00+03:00");
 import { isGunu, gunEkle } from "@/lib/tarih";
+import { benzersizEposta } from "./_yardim";
 
 /**
  * ŞANS ÇARKI — Ü49.
@@ -82,8 +83,8 @@ before(async () => {
   cafeId = await kafeKur("CarkTest", true);
   cafeId2 = await kafeKur("CarkButcesiz", false);
 
-  const a = await kaydet({ telefon: yeniTelefon(), ad: "Deniz", soyad: "Aydın", dogumYili: 1990, pazarlamaIzni: false });
-  const b = await kaydet({ telefon: yeniTelefon(), ad: "Kerem", soyad: "Şahin", dogumYili: 1992, pazarlamaIzni: false });
+  const a = await kaydet({ telefon: yeniTelefon(), eposta: benzersizEposta(), ad: "Deniz", soyad: "Aydın", dogumYili: 1990, pazarlamaIzni: false });
+  const b = await kaydet({ telefon: yeniTelefon(), eposta: benzersizEposta(), ad: "Kerem", soyad: "Şahin", dogumYili: 1992, pazarlamaIzni: false });
   oyuncu = a.oyuncu.id;
   oyuncu2 = b.oyuncu.id;
 
@@ -271,6 +272,7 @@ describe("çark · günlük bütçeye dahil (Ü123)", () => {
     const oyuncuId = (
       await kaydet({
         telefon: yeniTelefon(),
+        eposta: benzersizEposta(),
         ad: "Selin",
         soyad: "Koç",
         dogumYili: 1994,
@@ -310,6 +312,7 @@ describe("çark · günlük bütçeye dahil (Ü123)", () => {
     const oyuncuId = (
       await kaydet({
         telefon: yeniTelefon(),
+        eposta: benzersizEposta(),
         ad: "Emre",
         soyad: "Tan",
         dogumYili: 1991,

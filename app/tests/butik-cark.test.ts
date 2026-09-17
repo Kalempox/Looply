@@ -8,7 +8,7 @@ import { kaydet } from "@/domain/player";
 import { normalizePhone } from "@/lib/crypto";
 import * as kosul from "@/domain/cark-kosul";
 import * as hak from "@/domain/cark-hakki";
-import { yoneticiSorgu } from "./_yardim";
+import { yoneticiSorgu, benzersizEposta } from "./_yardim";
 
 /**
  * BUTİK ÇARKI — Ü137.
@@ -64,6 +64,7 @@ before(async () => {
 
   const p = await kaydet({
     telefon: yeniTelefon(),
+    eposta: benzersizEposta(),
     ad: "Butik",
     soyad: "Testi",
     dogumYili: 1990,
@@ -193,6 +194,7 @@ describe("butik çarkı (Ü137)", () => {
 
     const ikinci = await kaydet({
       telefon: yeniTelefon(),
+      eposta: benzersizEposta(),
       ad: "Araya",
       soyad: "Giren",
       dogumYili: 1992,

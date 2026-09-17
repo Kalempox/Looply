@@ -12,7 +12,7 @@ import * as masaYonetim from "@/domain/masa-yonetim";
 import * as kupon from "@/domain/kupon";
 import * as odul from "@/domain/odul";
 import * as ayar from "@/domain/ayar";
-import { yoneticiSorgu } from "./_yardim";
+import { yoneticiSorgu, benzersizEposta } from "./_yardim";
 
 /**
  * KAREKOD ZİNCİRİ — uçtan uca (Ü132).
@@ -96,6 +96,7 @@ before(async () => {
 
   const p = await kaydet({
     telefon: yeniTelefon(),
+    eposta: benzersizEposta(),
     ad: "Karekod",
     soyad: "Testi",
     dogumYili: 1995,

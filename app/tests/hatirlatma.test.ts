@@ -9,7 +9,7 @@ import { normalizePhone, phoneIndex } from "@/lib/crypto";
 import { newId } from "@/lib/ids";
 import * as hatirlatma from "@/domain/hatirlatma";
 import { sablonMetni, GUNLUK_TAVAN, tavanDurumu } from "@/sms";
-import { yoneticiSorgu } from "./_yardim";
+import { yoneticiSorgu, benzersizEposta } from "./_yardim";
 
 /**
  * FAZ 4 GÜVENLİK KAPISI — kupon hatırlatması.
@@ -43,6 +43,7 @@ const yeniTelefon = () => normalizePhone(`0557${String(TABAN + sayac++).slice(-7
 async function testOyuncu() {
   const { oyuncu } = await kaydet({
     telefon: yeniTelefon(),
+    eposta: benzersizEposta(),
     ad: "Buse",
     soyad: "Hatirlatma",
     dogumYili: 1993,

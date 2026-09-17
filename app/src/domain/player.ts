@@ -1,5 +1,12 @@
 import { withBypass, type Db } from "@/db/context";
-import { encryptPII, decryptPII, phoneIndex, identifierHash } from "@/lib/crypto";
+import {
+  encryptPII,
+  decryptPII,
+  phoneIndex,
+  emailIndex,
+  normalizeEmail,
+  identifierHash,
+} from "@/lib/crypto";
 import { newId, aliasCode } from "@/lib/ids";
 import { audit } from "@/lib/audit";
 import { log } from "@/lib/log";
@@ -23,6 +30,16 @@ export { RIZA_SURUMU };
 export type Oyuncu = {
   id: string;
   telefon: string; // çözülmüş, YALNIZCA sunucu tarafında
+  /**
+   * E-posta — çözülmüş, YALNIZCA sunucu tarafında (Ü168).
+   *
+   * ⚠️ `null` olabiliyor ve bu bir eksiklik değil: Ü168'den önce
+   * açılmış hesaplarda e-posta yok. Kayıt akışı bugün e-postasız
+   * hesap açtırmıyor ama **tipin** bunu garanti etmesi yalan olurdu —
+   * veritabanında o satırlar duruyor. Okuyan her yer boşluğu
+   * karşılamak zorunda.
+   */
+  eposta: string | null;
   ad: string;
   soyad: string;
   olusturuldu: Date;
@@ -41,6 +58,7 @@ export type OyuncuGorunum = {
 function coz(satir: {
   id: string;
   phone_enc: Buffer;
+  email_enc: Buffer | null;
   first_name_enc: Buffer;
   last_name_enc: Buffer;
   created_at: Date;
@@ -49,6 +67,7 @@ function coz(satir: {
   return {
     id: satir.id,
     telefon: decryptPII(satir.phone_enc),
+    eposta: satir.email_enc ? decryptPII(satir.email_enc) : null,
     ad: decryptPII(satir.first_name_enc),
     soyad: decryptPII(satir.last_name_enc),
     olusturuldu: satir.created_at,
@@ -56,13 +75,35 @@ function coz(satir: {
   };
 }
 
-const ALANLAR = `id, phone_enc, first_name_enc, last_name_enc, created_at, phone_changed_at`;
+const ALANLAR = `id, phone_enc, email_enc, first_name_enc, last_name_enc, created_at, phone_changed_at`;
 
 export async function telefonlaBul(telefon: string): Promise<Oyuncu | null> {
   const r = await withBypass("oyuncu arama", (db) =>
     db.one<Parameters<typeof coz>[0]>(
       `SELECT ${ALANLAR} FROM players WHERE phone_index = $1 AND anonymized_at IS NULL`,
       [phoneIndex(telefon)],
+    ),
+  );
+  return r ? coz(r) : null;
+}
+
+/**
+ * E-postayla arama — Ü168.
+ *
+ * Giriş ikisiyle de yapılabiliyor, yani bu `telefonlaBul`un eşi ve
+ * aynı kuralları taşıyor: silinmiş hesap (`anonymized_at`) bulunmuyor.
+ *
+ * ⚠️ Adres **normalize edilmiş** gelmeli. Ham adres verilirse
+ * `Buse@X.com` ile `buse@x.com` farklı indeks üretir ve kayıtlı hesap
+ * "yok" görünür. Çağıranın unutmaması için burada yeniden
+ * normalize ETMİYORUZ: sessizce düzeltmek, aynı hatanın kaydı
+ * açarken de yapıldığını gizlerdi.
+ */
+export async function epostaylaBul(eposta: string): Promise<Oyuncu | null> {
+  const r = await withBypass("oyuncu arama — e-posta", (db) =>
+    db.one<Parameters<typeof coz>[0]>(
+      `SELECT ${ALANLAR} FROM players WHERE email_index = $1 AND anonymized_at IS NULL`,
+      [emailIndex(eposta)],
     ),
   );
   return r ? coz(r) : null;
@@ -81,6 +122,15 @@ export async function idIleBul(playerId: string): Promise<Oyuncu | null> {
  */
 export async function kaydet(opts: {
   telefon: string;
+  /**
+   * E-posta — Ü168'den beri ZORUNLU.
+   *
+   * Doğrulama kodu buraya gidiyor; e-postasız hesap doğrulanamaz.
+   * İsteğe bağlı bırakılsaydı kural yalnızca kayıt formunda yaşardı
+   * ve formdan geçmeyen her çağrı (betikler, ileride başka bir akış)
+   * sessizce e-postasız hesap açardı.
+   */
+  eposta: string;
   ad: string;
   soyad: string;
   dogumYili: number;
@@ -88,8 +138,30 @@ export async function kaydet(opts: {
   ip?: string;
   ua?: string;
 }): Promise<{ oyuncu: Oyuncu; yeni: boolean }> {
+  const eposta = normalizeEmail(opts.eposta);
+
   const mevcut = await telefonlaBul(opts.telefon);
   if (mevcut) return { oyuncu: mevcut, yeni: false };
+
+  /*
+    🔴 E-posta BAŞKASINA aitse hesap açılmıyor — Ü168.
+
+    Şemadaki kısmi tekil indeks bunu zaten engelliyor, ama oradan
+    gelen hata `duplicate key value violates unique constraint
+    players_email_index_uq` diye çıkardı: kayıt ekranında gösterilecek
+    bir cümle değil ve hangi alanın çakıştığını çağırana anlatmaz.
+    Burada durdurmak, kısıtın yerini almıyor — kısıt son savunma,
+    bu ilk cevap.
+
+    ⚠️ Telefon dalı (`mevcut`) YUKARIDA ve bilerek önce: aynı
+    numarayla ikinci kez kayıt olmaya çalışan kişi kendi hesabını
+    geri alıyor (G13). O dalda e-posta hiç sınanmıyor, çünkü kimliği
+    numara kurmuş durumda.
+  */
+  const epostaSahibi = await epostaylaBul(eposta);
+  if (epostaSahibi) {
+    throw new Error("Bu e-posta adresi başka bir hesapta kayıtlı");
+  }
 
   const id = newId("plr");
   const ipHash = opts.ip ? identifierHash(opts.ip) : null;
@@ -98,12 +170,15 @@ export async function kaydet(opts: {
   await withBypass("oyuncu kaydı", async (db) => {
     await db.query(
       `INSERT INTO players
-         (id, phone_index, phone_enc, first_name_enc, last_name_enc, birth_year_enc)
-       VALUES ($1,$2,$3,$4,$5,$6)`,
+         (id, phone_index, phone_enc, email_index, email_enc,
+          first_name_enc, last_name_enc, birth_year_enc)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
       [
         id,
         phoneIndex(opts.telefon),
         encryptPII(opts.telefon),
+        emailIndex(eposta),
+        encryptPII(eposta),
         encryptPII(opts.ad),
         encryptPII(opts.soyad),
         encryptPII(String(opts.dogumYili)),

@@ -16,7 +16,7 @@ import { kaydet } from "@/domain/player";
 import { normalizePhone, decryptPII, encryptPII } from "@/lib/crypto";
 import { randomInt } from "node:crypto";
 import { pazartesi, isGunu } from "@/lib/tarih";
-import { yoneticiSorgu } from "./_yardim";
+import { yoneticiSorgu, benzersizEposta } from "./_yardim";
 
 /**
  * FAZ 6 GÜVENLİK KAPISI — kafe paneli.
@@ -1165,6 +1165,7 @@ describe("kafe konumu", () => {
 
     const oyuncu = await kaydet({
       telefon: normalizePhone(`0546${String(4_100_000 + randomInt(800_000)).slice(-7)}`),
+      eposta: benzersizEposta(),
       ad: "Konumsuz",
       soyad: "Test",
       dogumYili: 1990,

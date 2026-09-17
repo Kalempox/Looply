@@ -6,7 +6,14 @@ import { withBypass } from "@/db/context";
 import { closePools } from "@/db/pool";
 import { kodIste, kodDogrula, MAX_DENEME } from "@/domain/otp";
 import { masaCoz, basiliKod, biletUret, biletCoz, taramaKaydet } from "@/domain/qr";
-import { kaydet, telefonlaBul, numaraDegistir, odulKilidiBitis, takmaAd } from "@/domain/player";
+import {
+  kaydet,
+  telefonlaBul,
+  epostaylaBul,
+  numaraDegistir,
+  odulKilidiBitis,
+  takmaAd,
+} from "@/domain/player";
 import {
   belirle as parolaBelirle,
   varMi as parolaVarMi,
@@ -36,7 +43,7 @@ import {
   hashOtp,
   identifierHash,
 } from "@/lib/crypto";
-import { yoneticiSorgu } from "./_yardim";
+import { yoneticiSorgu, benzersizEposta } from "./_yardim";
 
 /**
  * FAZ 3 GÜVENLİK KAPISI — kimlik.
@@ -71,6 +78,7 @@ async function testOyuncu(opts: {
 }) {
   const sonuc = await kaydet({
     telefon: opts.telefon,
+    eposta: benzersizEposta(),
     ad: opts.ad ?? "Test",
     soyad: opts.soyad ?? "Oyuncu",
     dogumYili: 1990,
@@ -1120,5 +1128,108 @@ describe("e-posta adresi", () => {
   test("düz metin adres şifreli alandan geri okunuyor", () => {
     const adres = normalizeEmail("Buse@Ornek.com");
     assert.equal(decryptPII(encryptPII(adres)), "buse@ornek.com");
+  });
+});
+
+/* ── Kayıtta e-posta (Ü168) ────────────────────────────────── */
+
+describe("kayıtta e-posta", () => {
+  test("adres şifreli yazılıyor ve geri okunuyor", async () => {
+    const adres = benzersizEposta();
+    const { oyuncu } = await kaydet({
+      telefon: yeniTelefon(),
+      eposta: adres,
+      ad: "Eposta",
+      soyad: "Testi",
+      dogumYili: 1990,
+      pazarlamaIzni: false,
+    });
+    assert.equal(oyuncu.eposta, adres);
+  });
+
+  test("büyük harfle yazılan adres normalize edilerek saklanıyor", async () => {
+    /*
+      Normalize edilmeseydi `Buse@X.com` ile `buse@x.com` iki ayrı
+      hesap olurdu ve "bu adres kayıtlı" kontrolü delinirdi.
+    */
+    const adres = benzersizEposta();
+    const { oyuncu } = await kaydet({
+      telefon: yeniTelefon(),
+      eposta: adres.toUpperCase(),
+      ad: "Buyuk",
+      soyad: "Harf",
+      dogumYili: 1990,
+      pazarlamaIzni: false,
+    });
+    assert.equal(oyuncu.eposta, adres.toLowerCase());
+  });
+
+  test("e-postayla aranınca aynı hesap bulunuyor", async () => {
+    const adres = benzersizEposta();
+    const { oyuncu } = await kaydet({
+      telefon: yeniTelefon(),
+      eposta: adres,
+      ad: "Arama",
+      soyad: "Testi",
+      dogumYili: 1990,
+      pazarlamaIzni: false,
+    });
+    const bulunan = await epostaylaBul(adres);
+    assert.equal(bulunan?.id, oyuncu.id);
+  });
+
+  test("🔴 aynı adresle BAŞKA numaraya hesap açılamıyor", async () => {
+    const adres = benzersizEposta();
+    await kaydet({
+      telefon: yeniTelefon(),
+      eposta: adres,
+      ad: "Ilk",
+      soyad: "Sahip",
+      dogumYili: 1990,
+      pazarlamaIzni: false,
+    });
+
+    await assert.rejects(
+      kaydet({
+        telefon: yeniTelefon(),
+        eposta: adres,
+        ad: "Ikinci",
+        soyad: "Kisi",
+        dogumYili: 1990,
+        pazarlamaIzni: false,
+      }),
+      /başka bir hesapta kayıtlı/,
+    );
+  });
+
+  test("aynı NUMARAYLA ikinci kayıt mevcut hesabı döndürüyor, e-posta çakıştırmıyor", async () => {
+    /*
+      G13'ün davranışı korunuyor: numara zaten kayıtlıysa yeni hesap
+      açılmıyor, mevcut hesap dönüyor. O dalda e-posta hiç sınanmıyor —
+      kimliği numara kurmuş durumda. Sınansaydı, e-postasını değiştirmek
+      isteyen oyuncu kendi hesabına giremezdi.
+    */
+    const telefon = yeniTelefon();
+    const ilk = await kaydet({
+      telefon,
+      eposta: benzersizEposta(),
+      ad: "Ayni",
+      soyad: "Numara",
+      dogumYili: 1990,
+      pazarlamaIzni: false,
+    });
+
+    const ikinci = await kaydet({
+      telefon,
+      eposta: benzersizEposta(),
+      ad: "Ayni",
+      soyad: "Numara",
+      dogumYili: 1990,
+      pazarlamaIzni: false,
+    });
+
+    assert.equal(ikinci.yeni, false);
+    assert.equal(ikinci.oyuncu.id, ilk.oyuncu.id);
+    assert.equal(ikinci.oyuncu.eposta, ilk.oyuncu.eposta, "e-posta değişmiş");
   });
 });

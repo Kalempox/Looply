@@ -10,7 +10,7 @@ import * as challenge from "@/domain/challenge";
 import { OYUNLAR, gununOyunu } from "@/oyunlar";
 import { newId } from "@/lib/ids";
 import { isGunu, gunEkle } from "@/lib/tarih";
-import { yoneticiSorgu } from "./_yardim";
+import { yoneticiSorgu, benzersizEposta } from "./_yardim";
 
 /**
  * GÜNÜN GÖREVİ — Ü106.
@@ -94,6 +94,7 @@ before(async () => {
   cafeId = await kafeKur("GorevTest");
   const r = await kaydet({
     telefon: yeniTelefon(),
+    eposta: benzersizEposta(),
     ad: "Görev",
     soyad: "Testçi",
     dogumYili: 1990,

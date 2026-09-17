@@ -8,7 +8,7 @@ import { kaydet } from "@/domain/player";
 import { normalizePhone } from "@/lib/crypto";
 import * as masa from "@/domain/masa";
 import * as ayar from "@/domain/ayar";
-import { yoneticiSorgu } from "./_yardim";
+import { yoneticiSorgu, benzersizEposta } from "./_yardim";
 
 /**
  * FAZ 4 GÜVENLİK KAPISI — masa oturumu ve konum doğrulaması.
@@ -57,6 +57,7 @@ before(async () => {
 
   const { oyuncu } = await kaydet({
     telefon: yeniTelefon(),
+    eposta: benzersizEposta(),
     ad: "Masa",
     soyad: "Testi",
     dogumYili: 1990,
@@ -230,6 +231,7 @@ describe("konum doğrulaması (K2)", () => {
   test("masa oturumu olmayan oyuncuda konum işlemi yok sayılıyor", async () => {
     const { oyuncu } = await kaydet({
       telefon: yeniTelefon(),
+      eposta: benzersizEposta(),
       ad: "Oturumsuz",
       soyad: "Testi",
       dogumYili: 1990,
@@ -279,6 +281,7 @@ describe("oyuncu neden kazanamadığını görebiliyor (Ü95)", () => {
     // aktif oturum vardı — bu kenar durum değil, olağan durum.
     const yeniOyuncu = await kaydet({
       telefon: yeniTelefon(),
+      eposta: benzersizEposta(),
       ad: "Ceren",
       soyad: "Aydın",
       dogumYili: 1996,

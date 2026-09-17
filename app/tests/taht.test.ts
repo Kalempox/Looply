@@ -8,7 +8,7 @@ import { kaydet, takmaAd } from "@/domain/player";
 import { normalizePhone } from "@/lib/crypto";
 import * as taht from "@/domain/taht";
 import { isGunu, pazartesi, gunEkle } from "@/lib/tarih";
-import { yoneticiSorgu } from "./_yardim";
+import { yoneticiSorgu, benzersizEposta } from "./_yardim";
 
 /**
  * Ö1 · MASAYI FETHET — masa tahtı.
@@ -42,6 +42,7 @@ const yeniTelefon = () => normalizePhone(`0543${String(TABAN + sayac++).slice(-7
 async function yeniOyuncu(ad: string) {
   const { oyuncu } = await kaydet({
     telefon: yeniTelefon(),
+    eposta: benzersizEposta(),
     ad,
     soyad: "Kral",
     dogumYili: 1990,

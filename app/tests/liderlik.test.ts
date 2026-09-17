@@ -10,6 +10,7 @@ import * as liderlik from "@/domain/liderlik";
 import { adGorunurluguAyarla } from "@/domain/taht";
 import { newId } from "@/lib/ids";
 import { isGunu, pazartesi, gunEkle } from "@/lib/tarih";
+import { benzersizEposta } from "./_yardim";
 
 /**
  * LİDERLİK TABLOSU.
@@ -83,7 +84,7 @@ before(async () => {
     ["Elif", "Demir"],
     ["Ahmet", "Çelik"],
   ] as const) {
-    const r = await kaydet({ telefon: yeniTelefon(), ad, soyad, dogumYili: 1990, pazarlamaIzni: false });
+    const r = await kaydet({ telefon: yeniTelefon(), eposta: benzersizEposta(), ad, soyad, dogumYili: 1990, pazarlamaIzni: false });
     oyuncular.push({ id: r.oyuncu.id, ad, soyad });
   }
 
@@ -174,6 +175,7 @@ describe("liderlik · sıralama ve sınırlar", () => {
   test("konumu doğrulanmamış oyun listeye girmiyor", async () => {
     const r = await kaydet({
       telefon: yeniTelefon(),
+      eposta: benzersizEposta(),
       ad: "Uzak",
       soyad: "Oyuncu",
       dogumYili: 1990,

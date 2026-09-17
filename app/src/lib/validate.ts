@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { log } from "./log";
-import { normalizePhone } from "./crypto";
+import { normalizePhone, normalizeEmail } from "./crypto";
 
 /**
  * Girdi doğrulama katmanı — docs/07 §2.5.
@@ -63,6 +63,35 @@ export const telefonSemasi = z
   .regex(/^[0-9+\s().-]+$/, "Telefon numarası yalnızca rakam içerebilir")
   .refine(cepNumarasiMi, "Geçerli bir cep telefonu numarası girin")
   .transform(normalizePhone);
+
+/**
+ * Oyuncunun e-postası — Ü168.
+ *
+ * Doğrulama kodu buraya gidiyor, yani yanlış yazılmış bir adres
+ * "hesap açılmadı" demek. Yine de kontrol **dar** tutuldu: uzun bir
+ * düzenli ifade, geçerli ama sıra dışı adresleri (tire, artı, uzun
+ * alan adları) reddedip gerçek kullanıcıyı kapıda bırakıyor. Adresin
+ * çalıştığını kanıtlayan tek şey **oraya giden kod**.
+ *
+ * ⚠️ `normalizeEmail` hem doğruluyor hem küçük harfe indiriyor ve
+ * dönüşüm burada yapılıyor: şemadan çıkan değer doğrudan
+ * `kaydet()`e gidiyor, yani "normalize etmeyi unutma" diye bir kural
+ * kalmıyor. Telefonda da aynı kalıp var (`transform(normalizePhone)`).
+ */
+export const epostaSemasi = z
+  .string()
+  .trim()
+  .min(3, "E-posta adresi eksik")
+  .max(254, "E-posta adresi çok uzun")
+  .refine((a) => {
+    try {
+      normalizeEmail(a);
+      return true;
+    } catch {
+      return false;
+    }
+  }, "Geçerli bir e-posta adresi girin")
+  .transform(normalizeEmail);
 
 /**
  * İşletmenin aranacak telefonu — Ü126.

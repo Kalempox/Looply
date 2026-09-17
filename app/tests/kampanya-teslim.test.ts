@@ -10,7 +10,7 @@ import { kaydet } from "@/domain/player";
 import { normalizePhone } from "@/lib/crypto";
 import { randomInt } from "node:crypto";
 import { isGunu } from "@/lib/tarih";
-import { yoneticiSorgu } from "./_yardim";
+import { yoneticiSorgu, benzersizEposta } from "./_yardim";
 
 /**
  * KAMPANYA TESLİMİ — Ö4, Ü82.
@@ -55,6 +55,7 @@ const TAVAN_KURUS = 20_00;
 async function yeniOyuncu(ad: string): Promise<string> {
   const o = await kaydet({
     telefon: normalizePhone(`0547${String(3_100_000 + randomInt(800_000)).slice(-7)}`),
+    eposta: benzersizEposta(),
     ad,
     soyad: "Kampanya",
     dogumYili: 1994,

@@ -20,7 +20,14 @@ import {
   EN_COK_UZUNLUK as PAROLA_EN_COK,
 } from "@/domain/parola";
 import { gonder } from "@/sms";
-import { telefonSemasi, isimSemasi, otpSemasi, dogumYiliSemasi, dogrula } from "@/lib/validate";
+import {
+  telefonSemasi,
+  epostaSemasi,
+  isimSemasi,
+  otpSemasi,
+  dogumYiliSemasi,
+  dogrula,
+} from "@/lib/validate";
 import { phoneIndex } from "@/lib/crypto";
 import { log } from "@/lib/log";
 import * as davet from "@/domain/davet";
@@ -62,7 +69,13 @@ export type Durum = {
    * dönüyor ve React durumunda yaşıyor; parola konsaydı ekranın hata ayıklama
    * yüzeyine sızardı. Parola yalnızca form gövdesinde taşınıyor.
    */
-  degerler?: { telefon?: string; ad?: string; soyad?: string; dogumYili?: string };
+  degerler?: {
+    telefon?: string;
+    eposta?: string;
+    ad?: string;
+    soyad?: string;
+    dogumYili?: string;
+  };
   /** Kullanıcının "beni hatırla" tercihi — adımlar arasında korunur. */
   hatirla?: boolean;
   /** Ticari ileti izni — adım 2'ye taşınmazsa sessizce kaybolur (G7). */
@@ -71,6 +84,8 @@ export type Durum = {
 
 const kayitSemasi = z.object({
   telefon: telefonSemasi,
+  // Ü168: doğrulama kodu buraya gidecek, yani kayıt için zorunlu.
+  eposta: epostaSemasi,
   ad: isimSemasi,
   soyad: isimSemasi,
   dogumYili: dogumYiliSemasi,
@@ -108,6 +123,7 @@ function istekHatasi(durum: string, ek?: Date): string {
 function formDegerleri(form: FormData) {
   return {
     telefon: String(form.get("telefon") ?? ""),
+    eposta: String(form.get("eposta") ?? ""),
     ad: String(form.get("ad") ?? ""),
     soyad: String(form.get("soyad") ?? ""),
     dogumYili: String(form.get("dogumYili") ?? ""),
@@ -382,15 +398,40 @@ export async function kodDogrulaVeGir(_onceki: Durum, form: FormData): Promise<D
 
   // ── Kod doğru: hesap buradan sonra yazılır (G13)
   const { ip, ua } = await istekBilgisi();
-  const { oyuncu, yeni } = await kaydet({
-    telefon,
-    ad: kayit.veri.ad,
-    soyad: kayit.veri.soyad,
-    dogumYili: kayit.veri.dogumYili,
-    pazarlamaIzni: pazarlama,
-    ip,
-    ua,
-  });
+
+  /*
+    🔴 E-posta çakışması BURADA yakalanıyor — Ü168.
+
+    `kaydet` adres başkasına aitse istisna atıyor. Yakalanmasaydı
+    ekrana beklenmedik sunucu hatası düşerdi ve kullanıcı **kodunu
+    tüketmiş** olurdu: kod doğrulaması bu satırın üstünde, yani
+    hata anında kod zaten harcanmış durumda. Alan hatası olarak
+    göstermek, kişinin adresi düzeltip tekrar denemesini sağlıyor.
+
+    ⚠️ Mesaj "bu adres kayıtlı" diyor ve bu bir hesap sayımı
+    sızıntısı — kabul edildi, çünkü alternatifi "kaydolamıyorum ama
+    sebebini söylemiyorlar" oluyor. Aynı ödünleşim telefonda da var:
+    kayıtlı numara "giriş" akışına düşerek kendini zaten ele veriyor.
+  */
+  let kayitSonucu;
+  try {
+    kayitSonucu = await kaydet({
+      telefon,
+      eposta: kayit.veri.eposta,
+      ad: kayit.veri.ad,
+      soyad: kayit.veri.soyad,
+      dogumYili: kayit.veri.dogumYili,
+      pazarlamaIzni: pazarlama,
+      ip,
+      ua,
+    });
+  } catch (e) {
+    if (e instanceof Error && e.message.includes("e-posta")) {
+      return formaDon({ hatalar: { eposta: "Bu e-posta adresi başka bir hesapta kayıtlı" } });
+    }
+    throw e;
+  }
+  const { oyuncu, yeni } = kayitSonucu;
 
   // Parola hesapla aynı adımda yazılıyor: numara az önce doğrulandı, yani
   // parolayı koyan kişinin o numaraya sahip olduğu kanıtlandı.

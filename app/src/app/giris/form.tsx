@@ -245,6 +245,33 @@ function KayitSekmesi({
         />
       </Alan>
 
+      {/*
+        E-posta — Ü168.
+
+        ⚠️ İPUCU YOK ve bu bilinçli. Buraya "doğrulama kodu bu adrese
+        gelecek" yazmak isterdim ama **bugün doğru değil**: kod hâlâ
+        SMS ile gidiyor, adres yalnızca toplanıyor. Ekranın yarısı
+        yapılmış bir özelliği anlatması, kullanıcıya verilmemiş bir
+        söz olur. Teslimat taşındığında ipucu da buraya gelecek.
+
+        `type="email"` telefonlarda @ tuşlu klavyeyi açıyor;
+        `autoComplete="email"` tarayıcının kayıtlı adresini öneriyor.
+      */}
+      <Alan etiket="E-posta" hata={durum.hatalar?.eposta}>
+        <input
+          name="eposta"
+          type="email"
+          inputMode="email"
+          autoComplete="email"
+          autoCapitalize="none"
+          spellCheck={false}
+          defaultValue={d.eposta}
+          placeholder="ornek@eposta.com"
+          className={girdiSinifi}
+          required
+        />
+      </Alan>
+
       <div className="grid grid-cols-2 gap-3">
         <Alan etiket="Ad" hata={durum.hatalar?.ad}>
           <input

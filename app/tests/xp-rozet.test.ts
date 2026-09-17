@@ -12,7 +12,7 @@ import * as rozet from "@/domain/rozet";
 import * as acil from "@/domain/acil";
 import { envanter } from "@/domain/odul";
 import { birlestir, karne } from "@/domain/profil";
-import { yoneticiSorgu } from "./_yardim";
+import { yoneticiSorgu, benzersizEposta } from "./_yardim";
 
 /**
  * FAZ 4 GÜVENLİK KAPISI — XP, seviye ve rozetler.
@@ -77,6 +77,7 @@ before(async () => {
 
   const { oyuncu } = await kaydet({
     telefon: yeniTelefon(),
+    eposta: benzersizEposta(),
     ad: "XP",
     soyad: "Testi",
     dogumYili: 1990,
@@ -86,6 +87,7 @@ before(async () => {
 
   const { oyuncu: diger } = await kaydet({
     telefon: yeniTelefon(),
+    eposta: benzersizEposta(),
     ad: "Diger",
     soyad: "Oyuncu",
     dogumYili: 1990,

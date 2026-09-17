@@ -11,7 +11,7 @@ import * as fraud from "@/domain/fraud";
 import * as butce from "@/domain/butce";
 import { kafeSeviyesi } from "@/domain/xp";
 import { isGunu } from "@/lib/tarih";
-import { yoneticiSorgu } from "./_yardim";
+import { yoneticiSorgu, benzersizEposta } from "./_yardim";
 
 /**
  * FAZ 9 GÜVENLİK KAPISI — davet sistemi ve fraud motoru.
@@ -38,6 +38,7 @@ const yeniTelefon = () => normalizePhone(`0557${String(TABAN + sayac++).slice(-7
 async function yeniOyuncu(iz?: { ip?: string; ua?: string }) {
   const { oyuncu, yeni } = await kaydet({
     telefon: yeniTelefon(),
+    eposta: benzersizEposta(),
     ad: "Davet",
     soyad: "Testi",
     dogumYili: 1990,

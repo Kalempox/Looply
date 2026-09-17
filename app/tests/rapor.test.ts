@@ -9,7 +9,7 @@ import { normalizePhone } from "@/lib/crypto";
 import * as rapor from "@/domain/rapor";
 import * as tz from "@/domain/tekrar-ziyaret";
 import { isGunu, pazartesi } from "@/lib/tarih";
-import { yoneticiSorgu } from "./_yardim";
+import { yoneticiSorgu, benzersizEposta } from "./_yardim";
 
 /**
  * FAZ 8 GÜVENLİK KAPISI — kafe raporları.
@@ -111,6 +111,7 @@ before(async () => {
     const p = (
       await kaydet({
         telefon: yeniTelefon(),
+        eposta: benzersizEposta(),
         ad: `Rapor${i}`,
         soyad: "Testi",
         dogumYili: 1990,
@@ -417,6 +418,7 @@ describe("yeni ve tekrar gelen müşteri (Ü44)", () => {
   async function gecmisliOyuncu(gunler: number[]) {
     const { oyuncu } = await kaydet({
       telefon: yeniTelefon(),
+      eposta: benzersizEposta(),
       ad: "Buse",
       soyad: "Tekrar",
       dogumYili: 1992,
@@ -684,6 +686,7 @@ describe("geri dönüş oranı (Ü102)", () => {
   async function yeniOyuncu(ad: string): Promise<string> {
     const s = await kaydet({
       telefon: yeniTelefon(),
+      eposta: benzersizEposta(),
       ad,
       soyad: "Test",
       dogumYili: 1995,

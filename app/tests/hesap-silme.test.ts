@@ -9,7 +9,7 @@ import * as parola from "@/domain/parola";
 import { normalizePhone } from "@/lib/crypto";
 import { dogumYiliSemasi } from "@/lib/validate";
 import { RIZA_SURUMU, rizaTarihiIso, rizaTarihiYazi } from "@/lib/riza-surumu";
-import { yoneticiSorgu } from "./_yardim";
+import { yoneticiSorgu, benzersizEposta } from "./_yardim";
 
 /**
  * 🔴 HESAP SİLME — AYDINLATMA METNİNDE VERİLEN SÖZ.
@@ -46,6 +46,7 @@ const uretilenler: string[] = [];
 async function oyuncuKur(parolaliMi = true): Promise<string> {
   const r = await kaydet({
     telefon: yeniTelefon(),
+    eposta: benzersizEposta(),
     ad: "Silme",
     soyad: "Testçi",
     dogumYili: 1990,

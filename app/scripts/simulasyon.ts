@@ -156,6 +156,22 @@ function telefon(i: number): string {
   return normalizePhone(`0${TELEFON_TABANI + i}`);
 }
 
+/**
+ * Simülasyon oyuncusunun e-postası — Ü168.
+ *
+ * ⚠️ `.test` alan adı kasıtlı: RFC 2606 ile ayrılmış ve dünyada
+ * çözülmüyor. Simülasyon yüzlerce hesap açıyor; `@gmail.com` gibi
+ * gerçek bir alan adı yazılsaydı, ileride bu adreslere gerçekten
+ * posta gönderen bir yol açıldığında hepsi **yabancı insanlara**
+ * giderdi. Uydurma veriye gerçek bir hedef yazılmaz.
+ *
+ * Numarayla aynı sayaçtan türüyor, yani adres de numara kadar
+ * benzersiz — tekil indeks (`players_email_index_uq`) çakışmıyor.
+ */
+function eposta(i: number): string {
+  return `oyuncu${TELEFON_TABANI + i}@simulasyon.test`;
+}
+
 async function oyuncularıKur(): Promise<{ id: string; ad: string }[]> {
   const liste: { id: string; ad: string }[] = [];
   for (let i = 0; i < OYUNCU_SAYISI; i++) {
@@ -163,6 +179,7 @@ async function oyuncularıKur(): Promise<{ id: string; ad: string }[]> {
     const soyad = SOYADLAR[(i * 7) % SOYADLAR.length];
     const { oyuncu } = await kaydet({
       telefon: telefon(i),
+      eposta: eposta(i),
       ad,
       soyad,
       dogumYili: 1985 + (i % 20),

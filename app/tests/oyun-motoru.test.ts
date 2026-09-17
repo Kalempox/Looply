@@ -33,7 +33,7 @@ import {
 import { OYUNLAR, type HerhangiOyun } from "@/oyunlar";
 import kelimeVerisi from "@/oyunlar/veri/kelimeler.json";
 import { isGunu } from "@/lib/tarih";
-import { yoneticiSorgu } from "./_yardim";
+import { yoneticiSorgu, benzersizEposta } from "./_yardim";
 
 /**
  * FAZ 5 GÜVENLİK KAPISI — oyun motoru ve sunucu skor doğrulaması.
@@ -198,6 +198,7 @@ function yilanOyna(tohum: string) {
 async function yeniOyuncu(): Promise<string> {
   const s = await kaydet({
     telefon: yeniTelefon(),
+    eposta: benzersizEposta(),
     ad: "Seviye",
     soyad: "Testi",
     dogumYili: 1990,
@@ -257,6 +258,7 @@ before(async () => {
   oyuncuId = (
     await kaydet({
       telefon: yeniTelefon(),
+      eposta: benzersizEposta(),
       ad: "Oyun",
       soyad: "Testi",
       dogumYili: 1990,
@@ -267,6 +269,7 @@ before(async () => {
   disaridakiId = (
     await kaydet({
       telefon: yeniTelefon(),
+      eposta: benzersizEposta(),
       ad: "Disarida",
       soyad: "Oyuncu",
       dogumYili: 1990,
@@ -920,6 +923,7 @@ describe("günlük seri (Ü54)", () => {
     const oyuncu = (
       await kaydet({
         telefon: yeniTelefon(),
+        eposta: benzersizEposta(),
         ad: "Seri",
         soyad: "Testi",
         dogumYili: 1990,
@@ -963,6 +967,7 @@ describe("günlük seri (Ü54)", () => {
     const oyuncu = (
       await kaydet({
         telefon: yeniTelefon(),
+        eposta: benzersizEposta(),
         ad: "Riskte",
         soyad: "Testi",
         dogumYili: 1990,

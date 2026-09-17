@@ -7,7 +7,7 @@ import { kaydet } from "@/domain/player";
 import { normalizePhone } from "@/lib/crypto";
 import * as avatar from "@/domain/avatar";
 import { AVATAR_RENKLERI, AVATAR_AKSESUARLARI } from "@/components/avatar";
-import { yoneticiSorgu } from "./_yardim";
+import { yoneticiSorgu, benzersizEposta } from "./_yardim";
 
 /**
  * İlmek'in özelleştirmesi — Ü147.
@@ -30,6 +30,7 @@ const yeniTelefon = () => normalizePhone(`0557${String(TABAN + sayac++).slice(-7
 async function yeniOyuncu(): Promise<string> {
   const s = await kaydet({
     telefon: yeniTelefon(),
+    eposta: benzersizEposta(),
     ad: "Avatar",
     soyad: "Testi",
     dogumYili: 1990,
