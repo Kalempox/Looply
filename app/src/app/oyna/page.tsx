@@ -26,6 +26,7 @@ import { LoopySozu, LoopyPozitif } from "@/components/loopy-sozu";
 import { OyunSahnesi, sahneVarMi } from "@/components/oyun-sahnesi";
 import { OyuncuNav, NavBosluk } from "@/components/oyuncu-nav";
 import { AvatarYuvasi } from "@/components/avatar-yuvasi";
+import { OyuncununRenkleri } from "@/components/loopy-renk-kapsami";
 import { SeriSahnesi } from "@/components/seri-sahnesi";
 import { kodEkrandaGosterilir } from "@/sms";
 import { DurumSeridi, type SeritDurumu } from "./durum-seridi";
@@ -309,6 +310,10 @@ export default async function OynaSayfasi() {
 
         <NavBosluk />
       </div>
+
+      {/* Ü186: oyuncunun seçtiği renkler — sayfadaki her Loopy
+          (karşılama kartı, durum şeridi, yuva) o renkte çiziliyor. */}
+      <OyuncununRenkleri />
 
       {/* Ü159: avatar yuvası. Ana ekran `OyuncuSayfa` kabuğunu
           kullanmıyor (kendi düzeni var), o yüzden yuva burada elle

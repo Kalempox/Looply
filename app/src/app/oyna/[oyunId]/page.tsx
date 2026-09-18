@@ -7,7 +7,7 @@ import { oyunBul } from "@/oyunlar";
 import { kodEkrandaGosterilir } from "@/sms";
 import { KUPON_ESIGI } from "@/domain/puan";
 import { OyuncuSayfa } from "@/components/oyuncu";
-import * as avatar from "@/domain/avatar";
+import { OyuncununRenkleri } from "@/components/loopy-renk-kapsami";
 import { OyunKabugu } from "./oyun-kabuk";
 
 export const dynamic = "force-dynamic";
@@ -42,8 +42,6 @@ export default async function OyunSayfasi({
   const masa = await masaOturumu.aktif(o.ozneId);
   const kazandirir = !!masa && (masa.kanitMaskesi & K2) !== 0;
   const bonusMu = (await oyunSecimi.gununOyunuKafede(masa?.cafeId ?? null)).id === oyun.id;
-  // Ü148: rozet kutlamasında oyuncunun KENDİ avatarı tebrik ediyor.
-  const avatarSecimi = await avatar.oku(o.ozneId);
 
   /*
     Geri düğmesi katalogda (Ü67).
@@ -67,6 +65,11 @@ export default async function OyunSayfasi({
       yuva={false}
       menu={false}
     >
+      {/* Ü148: rozet kutlamasında oyuncunun KENDİ avatarı tebrik
+          ediyor. Ü186'ya kadar renk kabuğa prop olarak giriyordu;
+          artık CSS değişkeninden miras alınıyor. */}
+      <OyuncununRenkleri />
+
       {/* Başlık kabuğun içinde: üç durumun üçü de oyunun adını farklı
           yerde söylüyor (kartın tepesinde, oynarken şeritte, sonuçta
           sonuç kartında). Sayfanın da ayrıca söylemesi, oyun adını
@@ -80,8 +83,6 @@ export default async function OyunSayfasi({
         kazandirir={kazandirir}
         bonusMu={bonusMu}
         cafeAdi={masa?.cafeAdi ?? null}
-        avatarRenk={avatarSecimi.renk}
-        avatarAksesuar={avatarSecimi.aksesuar}
         demoKapisi={kodEkrandaGosterilir()}
         /*
           🔴 Varsayılan DOĞRUDAN BAŞLAMAK — Ü167.

@@ -5,13 +5,12 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { OyunEkrani } from "@/oyunlar/arayuz";
 import { KartDokusu, kartStili } from "@/components/oyuncu";
-import { RENK, oyunRengi, type OyuncuRengi } from "@/components/oyuncu-renk";
+import { RENK, oyunRengi } from "@/components/oyuncu-renk";
 import { oyunGorseli } from "@/components/oyuncu-gorsel";
 import { OyunIkonu, HediyeIkonu, TacIkonu } from "@/components/oyuncu-ikon";
 import { Gorsel } from "@/components/oyuncu-gorsel";
 import { SeviyeKutlamasi } from "@/components/seviye-kutlamasi";
 import { RozetKutlamasi } from "@/components/rozet-kutlamasi";
-import type { AvatarAksesuari } from "@/components/avatar";
 import { baslaEylemi, bitirEylemi, type BitirCevabi, teklifAlEylemi } from "./actions";
 
 /**
@@ -54,9 +53,6 @@ type Ayar = {
    * dönüyor. Aynı hata Ü75'te yaşandı.
    */
   kuponEsigi: number;
-  /** Ü148: oyuncunun avatarı — rozet kutlamasında o tebrik ediyor. */
-  avatarRenk: OyuncuRengi;
-  avatarAksesuar: AvatarAksesuari;
   /** Demo ipuçları görünsün mü — canlıda hep false. */
   demoKapisi?: boolean;
   /**
@@ -355,11 +351,9 @@ function SonucEkrani({
       */}
       {yeniRozetler.length > 0 && (
         <div className={seviye ? "mt-3" : ""}>
-          <RozetKutlamasi
-            rozetler={yeniRozetler}
-            renk={ayar.avatarRenk}
-            aksesuar={ayar.avatarAksesuar}
-          />
+          {/* Ü186: renk artık prop değil — sayfanın bastığı CSS
+              değişkeninden miras alınıyor (`LoopyRenkleri`). */}
+          <RozetKutlamasi rozetler={yeniRozetler} />
         </div>
       )}
 

@@ -244,8 +244,11 @@ export function AvatarYuvasi({ ad }: { ad?: string }) {
             </p>
 
             <div className="mt-6 flex flex-col items-stretch gap-2">
+              {/* Ü186: `/profil` değil `/loopy`. Ü172'de özelleştirme
+                  profilden kalkmıştı ve bu düğme o günden beri
+                  tutmadığı bir söz veriyordu. */}
               <Link
-                href="/profil"
+                href="/loopy"
                 className="rounded-2xl bg-yuzey px-8 py-3 text-center text-[15px] font-bold text-yazi"
               >
                 Özelleştir

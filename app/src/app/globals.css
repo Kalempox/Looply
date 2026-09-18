@@ -722,11 +722,17 @@ body {
   place-items: end center;
 }
 
+/* ⚠️ Ü186'dan beri bu bir görsel değil, üç katmanı üst üste tutan
+   SARMALAYICI. Nefes/ezilme buraya uygulanıyor; katmanlara tek tek
+   verilseydi her biri kendi başına oynar ve birbirinden kayardı.
+
+   Kareler kare (1:1) ve katmanlar mutlak konumlu — sarmalayıcının
+   yüksekliği artık içerikten gelmiyor, en-boy oranından geliyor. */
 .loopy-govde {
   position: relative;
   z-index: 2;
   width: 100%;
-  height: auto;
+  aspect-ratio: 1 / 1;
   transform-origin: bottom center;
 }
 

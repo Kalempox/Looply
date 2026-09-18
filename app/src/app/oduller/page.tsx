@@ -9,6 +9,7 @@ import { Gorsel, gorselSec, GORSEL_RENGI } from "@/components/oyuncu-gorsel";
 import { Bilet } from "@/components/bilet";
 import { KazimaKarti } from "@/components/kazima-karti";
 import { LoopyOdullu } from "@/components/loopy-sozu";
+import { OyuncununRenkleri } from "@/components/loopy-renk-kapsami";
 import { kuponuKaz } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -85,6 +86,10 @@ export default async function OdullerSayfasi({
 
   return (
     <OyuncuSayfa aktif="/oduller" yuva={false}>
+      {/* Ü186: oyuncunun seçtiği renkler — bu satırdan sonraki her
+          Loopy o renkte çiziliyor. */}
+      <OyuncununRenkleri />
+
       {/*
         Ü178: başlığa Loopy geldi — ürün sahibi *"Ödüllerim kartının da
         tasarımına bu tarzda elinde ödül tutan Loopy karakterimizi

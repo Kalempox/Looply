@@ -6,7 +6,67 @@
 > Yan dosyalar: neyin **var** olduğu → `21-looply-kapsam-haritasi.md` ·
 > demoda neyin **yapılabildiği** → `22-demo-yapilabilirlik.md`
 
-**Son güncelleme:** 2026-09-17 · **Kararlar:** Ü76 – Ü159
+**Son güncelleme:** 2026-09-18 · **Kararlar:** Ü76 – Ü159, **Ü186**
+
+> ⚠️ **BU LİSTEDE BİR BOŞLUK VAR: Ü160 – Ü185 yazılmadı.**
+> O turlar commit mesajlarında ve kod yorumlarında duruyor (oyun
+> sahneleri, koyu kartlar, koşan Loopy, seri sahnesi, yuva). Buraya
+> dökülmediler. Dökülmeleri ayrı bir iş ve karar sizin.
+
+---
+
+## ⬅️ Ü186 · Loopy'nin rengi oyuncunun oldu — 2026-09-18
+
+**Hangi ekranlara dokundu** (bu satır olmadan liste yanıltır):
+
+| Ekran | Ne değişti |
+|---|---|
+| **`/loopy` — YENİ** | Özelleştirme ekranı. Yapışkan önizleme + 66 bardak, 22 şerit rengi |
+| `/profil` | "Hesabın" listesinin başına *"Loopy'i özelleştir"* satırı |
+| Yuva (tam ekran) | *"Özelleştir"* düğmesi `/profil` yerine `/loopy`ye gidiyor |
+| `/oyna` · `/oduller` · `/oyna/[oyunId]` | Oyuncunun rengi sayfaya basılıyor; oradaki her Loopy o renkte |
+
+- [x] **İki eksen bağımsız** ✅ — göç 0045
+  `avatar_renk` düştü, yerine `avatar_govde` + `avatar_serit`.
+  Ürün sahibinin üç isteği (*"çizgi sabit bardak her renkte · bardak
+  sabit çizgi her renkte · ikisi de ayrı"*) tek arayüzle karşılanıyor:
+  birini değiştirip diğerine dokunmamak zaten o üç hâli veriyor.
+- [x] **Renk dosya olarak ÜRETİLMİYOR** ✅
+  Her kare üç katmana bölündü (`scripts/avatar-katman-uret.py`): sabit
+  (kapak, kol, bacak, yüz) + gövde + şerit. Son ikisi **gri parlaklık**
+  ve renk tarayıcıda `multiply` ile biniyor.
+  🔴 Alternatifi 5 kare × 81 renk = **405 dosya, ~6 MB** idi. Üç katman
+  kare başına ~15 KB — bugünkü tek karenin bile altında.
+  ⚠️ Gölgeler korunuyor: `rgb(h,s,v) = v · rgb(h,s,1)`, yani çarpma
+  matematiksel olarak "her pikseli kendi parlaklığıyla çarp" demek.
+- [x] **Renk prop olarak taşınmıyor** ✅
+  Loopy on beş yerde çiziliyordu; hepsine iki alan eklemek yerine
+  oyuncuyu bilen sayfa bir CSS değişkeni basıyor, altındakiler miras
+  alıyor. Bilmeyen yüzeyler (kafe paneli, vitrin) özgün renge düşüyor.
+- [x] **Maske üç kuralda oturdu** ✅
+  "En büyük parça" ve "gövdeye en çok değen" kuralları ikisi de KALBİ
+  seçti (`keyifli` karesinde tutulan kalp şeride değiyor, tek bileşen
+  oluyorlar). Tutan kural **ton penceresi**: şerit 0,061 · kalp 0,034 ·
+  altın 0,111.
+- [x] **Kayıt ekranı bekletmiyor ama sessiz de değil** ✅
+  Renge dokunan sonucu anında görüyor; kayıt düşerse seçim **geri
+  alınıyor** ve uyarı çıkıyor.
+
+⚠️ **Aksesuar (bere/gözlük/fular) hâlâ KAPALI** ve bayrağın adı değişti:
+`COK_RENKLI` → `AKSESUARLI`. Sebep değişmedi — 3B gövdeye düz vektör
+bere ikisini de bozar; her kare farklı açıda olduğu için ayrı render
+gerekiyor (~15 üretim). Kolon, doğrulama ve testler yerinde bekliyor.
+
+⚠️ **Koşan Loopy (`kacan`) varsayılan renginde kalıyor** — o 100 karelik
+tek bir animasyon dosyası, gövdeyle şerit iç içe. Seri sahnesinde
+oyuncunun rengi geçerli değil.
+
+🧪 **Doğrulama:** 664 test ✅ · tip ✅ · lint ✅ · göç 0045 uygulandı.
+Üç katmanın çarpma/maske/izolasyon zinciri tarayıcıda DOM'dan ölçüldü.
+⚠️ **`/loopy` ekranına gözle BAKILMADI** — oturum kapalıydı ve parola
+girilmedi. Telefonda bir kez bakılmalı.
+
+---
 
 > ⬅️ **DALGA 10 bitti** (Ü151) — mobil vitrinin hareketsiz alt yarısı
 > dolduruldu. ⚠️ **Referans linkleri hâlâ bekleniyor**, aşağıya bak.

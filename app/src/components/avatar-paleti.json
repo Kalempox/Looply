@@ -1,0 +1,52 @@
+{
+  "_": "Loopy'nin özelleştirme paleti — Ü186. Yalnızca arayüz okuyor; katman üreten script (scripts/avatar-katman-uret.py) bu dosyayı GÖRMÜYOR ve görmemeli — ürettiği katmanlar renksiz (gri parlaklık), yani palet büyürken script'in çıktısı hiç değişmiyor. Yeni bir renk eklemek buraya bir satır, başka hiçbir şey.",
+
+  "_tonlar": "Renk çemberi 20 adımda taranıyor; gövdede her ton üç kademede. Kademeyi ekleyen şey çeşitliliğin asıl kaynağı: doygunluk sabitken 20 ton birbirine benziyordu.",
+  "tonlar": [
+    { "ad": "kirmizi", "etiket": "Kırmızı", "h": 0.0 },
+    { "ad": "kiremit", "etiket": "Kiremit", "h": 0.03 },
+    { "ad": "turuncu", "etiket": "Turuncu", "h": 0.06 },
+    { "ad": "kehribar", "etiket": "Kehribar", "h": 0.09 },
+    { "ad": "hardal", "etiket": "Hardal", "h": 0.13 },
+    { "ad": "limon", "etiket": "Limon", "h": 0.17 },
+    { "ad": "fistik", "etiket": "Fıstık", "h": 0.22 },
+    { "ad": "yesil", "etiket": "Yeşil", "h": 0.28 },
+    { "ad": "zumrut", "etiket": "Zümrüt", "h": 0.35 },
+    { "ad": "nane", "etiket": "Nane", "h": 0.42 },
+    { "ad": "turkuaz", "etiket": "Turkuaz", "h": 0.47 },
+    { "ad": "buz", "etiket": "Buz", "h": 0.52 },
+    { "ad": "gok", "etiket": "Gök", "h": 0.56 },
+    { "ad": "mavi", "etiket": "Mavi", "h": 0.6 },
+    { "ad": "lacivert", "etiket": "Lacivert", "h": 0.65 },
+    { "ad": "menekse", "etiket": "Menekşe", "h": 0.7 },
+    { "ad": "mor", "etiket": "Mor", "h": 0.76 },
+    { "ad": "fusya", "etiket": "Fuşya", "h": 0.82 },
+    { "ad": "pembe", "etiket": "Pembe", "h": 0.88 },
+    { "ad": "gul", "etiket": "Gül", "h": 0.94 }
+  ],
+
+  "_kademeler": "s = doygunluk, v = parlaklık çarpanı. Gövde ve şerit aynı kademeleri kullanmıyor: şerit ince, gövdenin soluk tonlarında kaybolur.",
+  "govdeKademeleri": [
+    { "ad": "acik", "etiket": "Açık", "s": 0.18, "v": 1.02 },
+    { "ad": "orta", "etiket": "Orta", "s": 0.34, "v": 0.88 },
+    { "ad": "koyu", "etiket": "Koyu", "s": 0.55, "v": 0.62 }
+  ],
+  "seritKademeleri": [{ "ad": "canli", "etiket": "Canlı", "s": 0.82, "v": 1.0 }],
+
+  "_notrler": "Ton dışı seçenekler. `krem` gövdenin, `turuncu-canli` şeridin varsayılanı — ikisi de karakterin özgün hâli.",
+  "govdeNotrleri": [
+    { "ad": "krem", "etiket": "Krem", "h": 0.09, "s": 0.14, "v": 1.0 },
+    { "ad": "kar", "etiket": "Kar", "h": 0.0, "s": 0.01, "v": 1.08 },
+    { "ad": "sis", "etiket": "Sis", "h": 0.0, "s": 0.01, "v": 0.93 },
+    { "ad": "gri", "etiket": "Gri", "h": 0.0, "s": 0.01, "v": 0.78 },
+    { "ad": "antrasit", "etiket": "Antrasit", "h": 0.62, "s": 0.1, "v": 0.46 },
+    { "ad": "komur", "etiket": "Kömür", "h": 0.0, "s": 0.02, "v": 0.34 }
+  ],
+  "seritNotrleri": [
+    { "ad": "kar", "etiket": "Kar", "h": 0.0, "s": 0.02, "v": 1.05 },
+    { "ad": "komur", "etiket": "Kömür", "h": 0.0, "s": 0.02, "v": 0.32 }
+  ],
+
+  "varsayilanGovde": "krem",
+  "varsayilanSerit": "turuncu-canli"
+}

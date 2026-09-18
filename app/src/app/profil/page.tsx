@@ -16,6 +16,7 @@ import { RENK, type OyuncuRengi } from "@/components/oyuncu-renk";
 import { MadalyaIkonu, OyunIkonu, KupaIkonu } from "@/components/oyuncu-ikon";
 import { LooplyLogo } from "@/components/logo";
 import { LoopySozu } from "@/components/loopy-sozu";
+import { OyuncununRenkleri } from "@/components/loopy-renk-kapsami";
 import { Gorsel } from "@/components/oyuncu-gorsel";
 import { cikisYap } from "../oyna/actions";
 
@@ -67,6 +68,10 @@ export default async function ProfilSayfasi() {
     // `yuva` AÇIK (Ü172): kapalı olmasının tek sebebi sayfanın
     // ortasındaki avatar kopyasıydı, o kalktı.
     <OyuncuSayfa aktif="/profil">
+      {/* Ü186: oyuncunun seçtiği renkler — bu satırdan sonraki her
+          Loopy o renkte çiziliyor. */}
+      <OyuncununRenkleri />
+
       {/*
         🔴 Profil başlığı `SayfaBasi` DEĞİL — Ü175.
 
@@ -289,6 +294,24 @@ export default async function ProfilSayfasi() {
       */}
       <OyuncuBolum baslik="Hesabın">
         <div className="grid gap-2.5">
+          {/*
+            🔴 Özelleştirme LİSTENİN BAŞINDA — Ü186.
+
+            Ü172'de profilin ortasından kaldırılmıştı ve yerine hiçbir
+            şey konmamıştı; oyuncunun renk seçebildiğini öğrenmesinin
+            tek yolu yuvadaki düğmeydi. Yuva ise ancak Loopy'ye
+            dokunan birinin gördüğü bir şey.
+
+            Başta olmasının sebebi: diğer iki satır (davet, veriler)
+            gündelik değil, bu ise ekranı ilk kez gören oyuncunun
+            hemen yapmak isteyeceği şey.
+          */}
+          <HesapSatiri
+            yol="/loopy"
+            baslik="Loopy'i özelleştir"
+            alt="Bardağının ve şeridinin rengini sen seç"
+            renk="menekse"
+          />
           <HesapSatiri
             yol="/davet"
             baslik="Arkadaşını çağır"

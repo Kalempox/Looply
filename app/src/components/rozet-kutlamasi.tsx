@@ -1,5 +1,4 @@
-import { Avatar, type AvatarAksesuari } from "./avatar";
-import type { OyuncuRengi } from "./oyuncu-renk";
+import { Avatar } from "./avatar";
 
 /**
  * Başarım kutlaması — Loopy tebrik ediyor (Ü148).
@@ -11,13 +10,15 @@ import type { OyuncuRengi } from "./oyuncu-renk";
  *
  * ── 🔴 Kutlayan şey oyuncunun KENDİ avatarı ─────────────────
  *
- * Sahnede duran Loopy genel bir maskot değil, oyuncunun profilde
- * seçtiği renk ve aksesuarla duruyor. Ürün sahibinin isteğinin özü bu:
- * tebrik eden karakter tanıdık olmalı. Sabit bir maskot koysaydık
- * kutlama "uygulamadan bir bildirim" gibi okunurdu.
+ * Sahnede duran Loopy genel bir maskot değil, oyuncunun seçtiği
+ * renklerle duruyor. Ürün sahibinin isteğinin özü bu: tebrik eden
+ * karakter tanıdık olmalı. Sabit bir maskot koysaydık kutlama
+ * "uygulamadan bir bildirim" gibi okunurdu.
  *
- * Bu yüzden bileşen seçimi **dışarıdan** alıyor: ekranın hangi
- * oyuncunun avatarını çizeceğini bilmek bu bileşenin işi değil.
+ * ⚠️ Renk Ü186'ya kadar prop olarak taşınıyordu; artık sayfanın bastığı
+ * CSS değişkeninden miras alınıyor (`LoopyRenkleri`). Bileşenin hangi
+ * oyuncuyu çizdiğini bilmesi zaten gerekmiyordu ve iki alan, oyun
+ * kabuğunun ayar nesnesine kadar uzanıyordu.
  *
  * ── Seviye kutlamasından farkı ──────────────────────────────
  *
@@ -31,22 +32,7 @@ import type { OyuncuRengi } from "./oyuncu-renk";
  * Hepsi tek sahnede, alt alta listeleniyor — her biri için ayrı
  * kutlama açsaydık ekran üst üste binen üç tebrikle dolardı.
  */
-export function RozetKutlamasi({
-  rozetler,
-  renk,
-  aksesuar,
-}: {
-  /** Kazanılan rozetlerin **adları** (kod değil). */
-  rozetler: string[];
-  /**
-   * Ü147: tek render varken yok sayılıyor ama **isteğe bağlı olarak
-   * taşınmaya devam ediyor** — ürün sahibi diğer renkleri üretip
-   * `COK_RENKLI` açılınca kutlama oyuncunun kendi rengiyle çalışsın
-   * diye. Kaldırılsaydı o gün üç dosyada yeniden kurulması gerekirdi.
-   */
-  renk?: OyuncuRengi;
-  aksesuar?: AvatarAksesuari;
-}) {
+export function RozetKutlamasi({ rozetler }: { rozetler: string[] }) {
   if (rozetler.length === 0) return null;
 
   return (
@@ -62,7 +48,7 @@ export function RozetKutlamasi({
 
       <div className="relative">
         <div className="rozet-avatar mx-auto w-fit">
-          <Avatar renk={renk} aksesuar={aksesuar} ifade="mutlu" boy={104} />
+          <Avatar ifade="mutlu" boy={104} />
         </div>
 
         <div className="rozet-yazi mt-2">

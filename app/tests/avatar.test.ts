@@ -6,21 +6,31 @@ import { closePools } from "@/db/pool";
 import { kaydet } from "@/domain/player";
 import { normalizePhone } from "@/lib/crypto";
 import * as avatar from "@/domain/avatar";
-import { AVATAR_RENKLERI, AVATAR_AKSESUARLARI } from "@/components/avatar";
+import { AVATAR_AKSESUARLARI } from "@/components/avatar";
+import { GOVDE_RENKLERI, SERIT_RENKLERI } from "@/components/avatar-renkleri";
 import { yoneticiSorgu, benzersizEposta } from "./_yardim";
 
 /**
- * İlmek'in özelleştirmesi — Ü147.
+ * Loopy'nin özelleştirmesi — Ü147, Ü186'da iki renge çıktı.
  *
  * ── Sınanan şey bir çizim değil ─────────────────────────────
  *
  * Maskotun nasıl göründüğü testin işi değil; sınanan şey **seçimin
- * kapalı listeye uyması**. Renk ve aksesuar üç yerde birden yazılı:
- * arayüzde (`AVATAR_RENKLERI`), sunucu doğrulamasında ve veritabanı
- * kısıtında. Üçü ayrışırsa oyuncu seçebildiği bir rengi kaydedemez ya
- * da ekran bilmediği bir değeri çizmeye çalışır.
+ * palete uyması**. Palet iki yerde birden okunuyor: arayüzde
+ * (`avatar-paleti.json` → `GOVDE_RENKLERI`) ve sunucu doğrulamasında.
+ * İkisi ayrışırsa oyuncu seçebildiği bir rengi kaydedemez ya da ekran
+ * bilmediği bir değeri çizmeye çalışır.
  *
- * Testler tam olarak o üç katmanın aynı şeyi söylediğini çiviliyor.
+ * ── 🔴 Kısıt artık listeye değil BİÇİME bakıyor ─────────────
+ *
+ * Ü147'de `avatar_renk` kolonunun CHECK'i altı rengi tek tek sayıyordu
+ * ve bir test o listenin arayüzle aynı kaldığını çiviliyordu. Palet 990
+ * kombinasyona çıkınca o kısıt taşınamaz oldu: her yeni renk bir göç
+ * demekti (göç 0045'te yazılı).
+ *
+ * Kısıt duruyor ama işi değişti — çöp veriyi (boşluk, noktalama, uzun
+ * metin) satıra sokmuyor. **Bilinen renk listesi** artık tek başına
+ * uygulamanın sorumluluğu ve aşağıdaki son test tam onu sınıyor.
  */
 
 const TABAN = 3_000_000 + randomInt(5_000_000);
@@ -52,28 +62,65 @@ describe("avatar seçimi", () => {
     const p = await yeniOyuncu();
     const secim = await avatar.oku(p);
 
-    assert.equal(secim.renk, avatar.VARSAYILAN_AVATAR.renk);
+    assert.equal(secim.govde, avatar.VARSAYILAN_AVATAR.govde);
+    assert.equal(secim.serit, avatar.VARSAYILAN_AVATAR.serit);
     assert.equal(secim.aksesuar, avatar.VARSAYILAN_AVATAR.aksesuar);
   });
 
   test("geçerli seçim kaydediliyor ve geri okunuyor", async () => {
     const p = await yeniOyuncu();
 
-    const yazildi = await avatar.yaz(p, { renk: "pembe", aksesuar: "bere" });
+    const yazildi = await avatar.yaz(p, {
+      govde: "menekse-koyu",
+      serit: "limon-canli",
+      aksesuar: "yok",
+    });
     assert.equal(yazildi, true);
 
     const secim = await avatar.oku(p);
-    assert.equal(secim.renk, "pembe");
-    assert.equal(secim.aksesuar, "bere");
+    assert.equal(secim.govde, "menekse-koyu");
+    assert.equal(secim.serit, "limon-canli");
   });
 
-  test("listede olmayan değer REDDEDİLİYOR, sessizce düzeltilmiyor", async () => {
+  test("iki eksen BAĞIMSIZ: biri değişirken diğeri yerinde kalıyor", async () => {
+    /*
+      🔴 Ürün sahibinin isteğinin özü buydu: *"kahve bardağı sabit çizgi
+      her renkte, ve kahve bardağı ayrı çizgi ayrı her renkte
+      seçeneklerimiz olmalı."* Tek kolonla saklansaydı iki eksen
+      birbirine bağlı kalırdı.
+    */
     const p = await yeniOyuncu();
-    await avatar.yaz(p, { renk: "yesil", aksesuar: "fular" });
+    await avatar.yaz(p, { govde: "gok-orta", serit: "kar", aksesuar: "yok" });
+    await avatar.yaz(p, { govde: "gok-orta", serit: "fusya-canli", aksesuar: "yok" });
 
-    // @ts-expect-error — arayüzün üretemeyeceği bir değer bilerek gönderiliyor.
-    const yazildi = await avatar.yaz(p, { renk: "mavu", aksesuar: "fular" });
-    assert.equal(yazildi, false, "bilinmeyen renk kabul edildi");
+    const secim = await avatar.oku(p);
+    assert.equal(secim.govde, "gok-orta", "şerit değişince gövde kaydı");
+    assert.equal(secim.serit, "fusya-canli");
+  });
+
+  test("palette olmayan değer REDDEDİLİYOR, sessizce düzeltilmiyor", async () => {
+    const p = await yeniOyuncu();
+    await avatar.yaz(p, { govde: "yesil-acik", serit: "komur", aksesuar: "yok" });
+
+    const yazildi = await avatar.yaz(p, {
+      govde: "mavu-acik",
+      serit: "komur",
+      aksesuar: "yok",
+    });
+    assert.equal(yazildi, false, "bilinmeyen gövde rengi kabul edildi");
+
+    /*
+      ⚠️ Şerit paletinin gövde paletiyle aynı OLMADIĞI da burada
+      çiviliyor: `yesil-acik` gövdede geçerli, şeritte değil. Tek bir
+      liste kullanılsaydı ince şerit gövdenin soluk tonlarında
+      kaybolurdu (bkz. `avatar-paleti.json`).
+    */
+    const seritte = await avatar.yaz(p, {
+      govde: "yesil-acik",
+      serit: "yesil-acik",
+      aksesuar: "yok",
+    });
+    assert.equal(seritte, false, "gövde kademesi şeritte kabul edildi");
 
     /*
       ⚠️ Reddetmek yetmiyor: var olan seçimin **bozulmamış** olması da
@@ -81,11 +128,11 @@ describe("avatar seçimi", () => {
       güncellenmiş olurdu.
     */
     const secim = await avatar.oku(p);
-    assert.equal(secim.renk, "yesil");
-    assert.equal(secim.aksesuar, "fular");
+    assert.equal(secim.govde, "yesil-acik");
+    assert.equal(secim.serit, "komur");
   });
 
-  test("veritabanı kısıtı da bilinmeyen rengi reddediyor", async () => {
+  test("veritabanı kısıtı biçimsiz değeri reddediyor", async () => {
     const p = await yeniOyuncu();
 
     /*
@@ -94,28 +141,46 @@ describe("avatar seçimi", () => {
       (betik, göç, yeni bir ekran) kısıt ayakta kalır.
     */
     await assert.rejects(
-      () => yoneticiSorgu("UPDATE players SET avatar_renk = $2 WHERE id = $1", [p, "mavu"]),
-      /avatar_renk/,
-      "veritabanı bilinmeyen rengi kabul etti",
+      () =>
+        yoneticiSorgu("UPDATE players SET avatar_govde = $2 WHERE id = $1", [
+          p,
+          "'; DROP TABLE players; --",
+        ]),
+      /avatar_govde/,
+      "veritabanı biçimsiz değeri kabul etti",
     );
   });
 
-  test("arayüzdeki liste ile veritabanı kısıtı aynı değerleri taşıyor", async () => {
+  test("paletteki HER renk gerçekten kaydedilebiliyor", async () => {
     /*
-      🔴 Bu testin varlık sebebi: listeler üç yerde yazılı ve biri
-      güncellenip diğeri unutulabilir. Arayüzde görünen her renk
-      gerçekten kaydedilebilmeli — yoksa oyuncu bir rengi seçer,
-      ekranda görür, sayfayı yeniler ve seçimi kaybolur.
+      🔴 Bu testin varlık sebebi: arayüzde görünen her renk
+      kaydedilebilmeli — yoksa oyuncu bir rengi seçer, ekranda görür,
+      sayfayı yeniler ve seçimi kaybolur.
+
+      ⚠️ Doğrulama listeyi zaten aynı kaynaktan okuyor, yani bu test
+      kendi kendini onaylıyor gibi görünebilir. Onaylamıyor: yazma
+      gerçekten VERİTABANINA gidiyor ve kolon kısıdından geçiyor. Bir
+      gün palete tire içermeyen ya da 24 karakterden uzun bir ad
+      eklenirse arayüz onu gösterir, kısıt reddeder ve bu test düşer.
     */
     const p = await yeniOyuncu();
 
-    for (const renk of AVATAR_RENKLERI) {
-      const ok = await avatar.yaz(p, { renk, aksesuar: "yok" });
-      assert.equal(ok, true, `arayüzdeki ${renk} kaydedilemedi`);
+    for (const govde of GOVDE_RENKLERI.keys()) {
+      const ok = await avatar.yaz(p, { govde, serit: "kar", aksesuar: "yok" });
+      assert.equal(ok, true, `paletteki gövde rengi ${govde} kaydedilemedi`);
+    }
+
+    for (const serit of SERIT_RENKLERI.keys()) {
+      const ok = await avatar.yaz(p, { govde: "krem", serit, aksesuar: "yok" });
+      assert.equal(ok, true, `paletteki şerit rengi ${serit} kaydedilemedi`);
     }
 
     for (const a of AVATAR_AKSESUARLARI) {
-      const ok = await avatar.yaz(p, { renk: "gok", aksesuar: a.deger });
+      const ok = await avatar.yaz(p, {
+        govde: "krem",
+        serit: "turuncu-canli",
+        aksesuar: a.deger,
+      });
       assert.equal(ok, true, `arayüzdeki ${a.deger} kaydedilemedi`);
     }
   });

@@ -1,5 +1,10 @@
 import Image from "next/image";
-import type { OyuncuRengi } from "./oyuncu-renk";
+import {
+  GOVDE_DEGISKENI,
+  SERIT_DEGISKENI,
+  govdeRengi,
+  seritRengi,
+} from "./avatar-renkleri";
 
 /**
  * Loopy — Looply'nin maskotu (Ü147).
@@ -28,15 +33,19 @@ import type { OyuncuRengi } from "./oyuncu-renk";
  * zıplarken karakterle birlikte havaya çıkardı ve hareket yalan
  * görünürdü. Gölge artık ayrı bir öge ve zıplayınca küçülüp soluyor.
  *
- * ── 🔴 Tek kare: renk ve aksesuar şimdilik KAPALI ───────────
+ * ── 🔴 Renk oyuncunun, aksesuar hâlâ yok ────────────────────
  *
- * Elde tek render var, yani renk değiştirilemiyor ve aksesuar
- * takılamıyor: 3B bir gövdenin üstüne düz vektör bir bere koymak ikisini
- * de bozardı. `players.avatar_renk` ve `avatar_aksesuar` kolonları
- * **yerinde duruyor** (göç 0042) ve doğrulama da çalışıyor — ürün
- * sahibi diğer renkleri üretince `COK_RENKLI` açılıyor ve seçiciler
- * geri geliyor. Göç geri alınmadı çünkü veri kaybı yaratmadan bekleyen
- * bir kolon, sonradan yeniden eklenecek bir kolondan ucuz.
+ * Ü186'ya kadar burada tek bir görsel vardı ve renk değiştirilemiyordu.
+ * Artık her kare **üç katman**: gövde ve şerit oyuncunun seçtiği renkte,
+ * kapak/kol/bacak/yüz sabit. Renk dosya olarak üretilmiyor, tarayıcıda
+ * hesaplanıyor — bkz. `Katman` ve `avatar-renkleri.ts`.
+ *
+ * Aksesuar (bere, gözlük, fular) kapalı ve sebebi değişmedi: 3B bir
+ * gövdenin üstüne düz vektör bir bere koymak ikisini de bozar. Renkten
+ * farkı ölçülebilir — renk tek bir matematikle 990 kombinasyon veriyor,
+ * aksesuar her kare için ayrı bir render istiyor (kareler farklı
+ * açılarda). `players.avatar_aksesuar` kolonu ve `AVATAR_AKSESUARLARI`
+ * listesi o gün için yerinde bekliyor.
  *
  * ── İfade yok, hareket var ──────────────────────────────────
  *
@@ -48,13 +57,14 @@ import type { OyuncuRengi } from "./oyuncu-renk";
  */
 
 /**
- * Renk ve aksesuar seçicileri açık mı?
+ * Aksesuar seçicisi açık mı?
  *
- * Tek render varken `false`. Ürün sahibi altı rengi üretip
- * `public/avatar/loopy-<renk>.webp` olarak koyunca `true` yapmak
- * yetiyor — seçiciler, kayıt ve doğrulama zaten yazılı.
+ * Ü147'de `COK_RENKLI` adıyla renkle birlikte kapalıydı; Ü186'da renk
+ * açıldı, aksesuar kaldı. Ürün sahibi her kare için bere/gözlük/fular
+ * render'larını üretince `true` yapmak yetiyor — kayıt, doğrulama ve
+ * kolon zaten yerinde.
  */
-export const COK_RENKLI = false;
+export const AKSESUARLI = false;
 
 export type AvatarIfadesi =
   | "sakin"
@@ -65,16 +75,7 @@ export type AvatarIfadesi =
   | "kuponlu";
 export type AvatarAksesuari = "yok" | "bere" | "gozluk" | "fular";
 
-/** Özelleştirmede sunulan renkler — `COK_RENKLI` açılınca kullanılıyor. */
-export const AVATAR_RENKLERI: OyuncuRengi[] = [
-  "gok",
-  "menekse",
-  "pembe",
-  "amber",
-  "yesil",
-  "buz",
-];
-
+/** `AKSESUARLI` açılınca sunulacak liste. */
 export const AVATAR_AKSESUARLARI: { deger: AvatarAksesuari; ad: string }[] = [
   { deger: "yok", ad: "Sade" },
   { deger: "bere", ad: "Bere" },
@@ -82,7 +83,6 @@ export const AVATAR_AKSESUARLARI: { deger: AvatarAksesuari; ad: string }[] = [
   { deger: "fular", ad: "Fular" },
 ];
 
-export const VARSAYILAN_RENK: OyuncuRengi = "gok";
 export const VARSAYILAN_AKSESUAR: AvatarAksesuari = "yok";
 
 /**
@@ -183,14 +183,102 @@ const BUHARLAR = [
   { savrul: 10, gecikme: 1700, sol: 58 },
 ] as const;
 
+/**
+ * Tek katman — Ü186.
+ *
+ * `renk` verilirse katman **parlaklık** taşıyan gri bir görsel ve
+ * üstüne o renk çarpma kipinde biniyor. Matematiği:
+ *
+ *     rgb(h, s, v) = v · rgb(h, s, 1)
+ *
+ * Sabit ton ve doygunlukta RGB parlaklıkla doğrusal değişiyor; "her
+ * pikseli kendi parlaklığıyla çarp" demek tam olarak `multiply`.
+ * Gölgeler bu yüzden korunuyor — renk boyanmış gibi değil, o renkte
+ * üretilmiş gibi duruyor.
+ *
+ * ⚠️ `isolation: isolate` ŞART: çarpma kipi normalde ARKASINDAKİ her
+ * şeyle karışır. İzole edilmeseydi Loopy'nin rengi altındaki kartı da
+ * koyulaştırırdı.
+ *
+ * ⚠️ Maske ham dosya yolunu kullanıyor, `next/image` çıktısını değil:
+ * maskeye yalnızca alfa gerekiyor ve iyileştiricinin ürettiği adres
+ * derleme başına değişiyor.
+ */
+function Katman({
+  kare,
+  ad,
+  renk,
+  ad2,
+  oncelik,
+}: {
+  kare: string;
+  ad: "sabit" | "govde" | "serit";
+  renk?: string;
+  /** Ekran okuyucu metni — yalnızca `sabit` katmanında. */
+  ad2?: string;
+  oncelik: boolean;
+}) {
+  const yol = `/avatar/loopy-${kare}-${ad}-512.webp`;
+
+  return (
+    <span className="absolute inset-0 block" style={{ isolation: "isolate" }}>
+      <Image
+        src={yol}
+        alt={ad2 ?? ""}
+        width={512}
+        height={512}
+        className="absolute inset-0 size-full"
+        aria-hidden={ad2 ? undefined : true}
+        priority={oncelik}
+      />
+      {renk && (
+        <span
+          aria-hidden
+          className="absolute inset-0 block"
+          style={{
+            background: renk,
+            mixBlendMode: "multiply",
+            maskImage: `url(${yol})`,
+            WebkitMaskImage: `url(${yol})`,
+            maskSize: "100% 100%",
+            WebkitMaskSize: "100% 100%",
+          }}
+        />
+      )}
+    </span>
+  );
+}
+
+/**
+ * Oyuncunun rengini sayfanın tamamına duyurur — Ü186.
+ *
+ * Oyuncuyu bilen sunucu sayfası bunu bir kez basıyor; altındaki bütün
+ * avatarlar rengi miras alıyor. Gerekçesi `avatar-renkleri.ts`te.
+ *
+ * ⚠️ `<style>` içine giren değer oyuncudan GELMİYOR: `govdeRengi` ve
+ * `seritRengi` ya paletteki `#rrggbb`yi ya da varsayılanı döndürüyor,
+ * bilinmeyen ad sessizce düşüyor. Buraya bir gün ham metin bağlanırsa
+ * enjeksiyon kapısı olur — o yüzden iki çeviriden geçmeden yazılmıyor.
+ *
+ * ⚠️ `:root` seçicisi bilerek: `AvatarYuvasi` tam ekran ve `fixed`,
+ * bir sarmalayıcıya bağlansaydı sayfa ağacında nereye düştüğüne göre
+ * rengi alıp alamaması değişirdi.
+ */
+export function LoopyRenkleri({ govde, serit }: { govde: string; serit: string }) {
+  return (
+    <style>{`:root{--loopy-govde:${govdeRengi(govde)};--loopy-serit:${seritRengi(serit)}}`}</style>
+  );
+}
+
 export function Avatar({
   ifade = "sakin",
   boy = 120,
   ad,
   buhar = false,
+  govde,
+  serit,
 }: {
-  /** Ü147: renk tek render varken yok sayılıyor — bkz. `COK_RENKLI`. */
-  renk?: OyuncuRengi;
+  /** Ü147: aksesuar render'ı olmadığı için yok sayılıyor — bkz. `AKSESUARLI`. */
   aksesuar?: AvatarAksesuari;
   ifade?: AvatarIfadesi;
   boy?: number;
@@ -212,6 +300,17 @@ export function Avatar({
    * buhar çıkar.
    */
   buhar?: boolean;
+  /**
+   * Gövde ve şerit rengini **doğrudan** ver — Ü186.
+   *
+   * ⚠️ Neredeyse hiçbir çağıranın buna dokunması gerekmiyor: renk
+   * normalde `<LoopyRenkleri>`nin bastığı CSS değişkeninden miras
+   * alınıyor (bkz. `avatar-renkleri.ts`). Bu iki alan yalnızca aynı
+   * ekranda **birden çok renk** gösteren yer için var — özelleştirme
+   * seçicisi, her örneği kendi renginde çiziyor.
+   */
+  govde?: string;
+  serit?: string;
 }) {
   const hareket = HAREKET[ifade];
 
@@ -247,15 +346,28 @@ export function Avatar({
         </span>
       )}
 
-      <Image
-        src={`/avatar/loopy-${KARE[ifade]}-512.webp`}
-        alt={ad ?? ""}
-        width={512}
-        height={512}
-        className="loopy-govde"
-        aria-hidden={ad ? undefined : true}
-        priority={boy >= 120}
-      />
+      {/*
+        🔴 Üç katman, tek görsel değil — Ü186.
+
+        Nefes animasyonu (`loopy-govde`) artık SARMALAYICIDA: katmanlara
+        tek tek verilseydi her biri kendi başına nefes alır ve
+        birbirlerinden kayarlardı.
+      */}
+      <div className="loopy-govde">
+        <Katman
+          kare={KARE[ifade]}
+          ad="govde"
+          renk={govde ? govdeRengi(govde) : GOVDE_DEGISKENI}
+          oncelik={boy >= 120}
+        />
+        <Katman kare={KARE[ifade]} ad="sabit" ad2={ad} oncelik={boy >= 120} />
+        <Katman
+          kare={KARE[ifade]}
+          ad="serit"
+          renk={serit ? seritRengi(serit) : SERIT_DEGISKENI}
+          oncelik={boy >= 120}
+        />
+      </div>
 
       {/* Sevinç kıvılcımları — yalnızca zıplarken. */}
       {hareket === "seviniyor" && (
