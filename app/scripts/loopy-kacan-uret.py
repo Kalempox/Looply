@@ -53,9 +53,16 @@ KAYNAK = "A_small_3D_coffee_cup_20260918160753.mp4"
 # Video 240 kare; öncesi boş, sonrası ikinci ve yarım bir geçiş.
 ILK, SON = 17, 116
 
-# Ekranda en fazla ~430 CSS piksel genişliğinde duruyor. 480 onun
-# üstünde ama 640 dosyayı 655 KB'a çıkarıyordu ve fark görünmüyor.
-GENISLIK = 480
+# 🔴 480'den 720'ye çıkarıldı — ürün sahibi *"loopy'miz bulanık
+# gözüküyor"* dedi ve haklıydı. Ölçü: görsel ekran genişliğinde
+# duruyor, telefonda 375-430 CSS piksel ve 3x ekranda 1125-1290 cihaz
+# pikseli. 480'lik kaynak orada 2,3 kat geriliyordu.
+#
+# ⚠️ Bedeli dosya: 480'de 437 KB, 720'de 800 KB. 960 da denendi (1,1 MB)
+# ve kazancı 720'ye göre görünür değil — 720 zaten 2x ekranda birebire
+# yakın. Kalite ayarı işe yaramıyor (68 ve 58 arasında 45 KB fark var):
+# boyutu belirleyen şey duman, her karede değişen geniş bir doku.
+GENISLIK = 720
 KALITE = 68
 KARE_HIZI = 24
 

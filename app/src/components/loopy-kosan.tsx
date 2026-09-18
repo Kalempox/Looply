@@ -68,7 +68,7 @@ export function LoopyKosan() {
     bozardı: dar bir kutuda karakter ekranın ortasında belirip ortasında
     kaybolurdu.
 
-    ⚠️ `width`/`height` öznitelikleri oranı (480×248) baştan veriyor:
+    ⚠️ `width`/`height` öznitelikleri oranı (720×372) baştan veriyor:
     olmasalardı görsel inene kadar satır yer kaplamaz ve indiği anda
     sahne zıplardı.
   */
@@ -77,12 +77,12 @@ export function LoopyKosan() {
       src="/avatar/loopy-kacan.webp"
       alt=""
       aria-hidden
-      width={480}
-      height={248}
+      width={720}
+      height={372}
       /*
         🔴 `unoptimized` ŞART: görsel iyileştirici hareketli WebP'yi
         yeniden kodlarken **tek kareye düşürüyor**. Optimize edilmiş
-        hâli 437 KB yerine 20 KB olurdu ama duran bir resim olurdu.
+        hâli 746 KB yerine 30 KB olurdu ama duran bir resim olurdu.
       */
       unoptimized
       className="pointer-events-none h-auto w-full select-none"
