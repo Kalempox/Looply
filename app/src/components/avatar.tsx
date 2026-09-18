@@ -56,7 +56,13 @@ import type { OyuncuRengi } from "./oyuncu-renk";
  */
 export const COK_RENKLI = false;
 
-export type AvatarIfadesi = "sakin" | "mutlu" | "sasirdi" | "keyifli";
+export type AvatarIfadesi =
+  | "sakin"
+  | "neseli"
+  | "mutlu"
+  | "sasirdi"
+  | "keyifli"
+  | "kuponlu";
 export type AvatarAksesuari = "yok" | "bere" | "gozluk" | "fular";
 
 /** Özelleştirmede sunulan renkler — `COK_RENKLI` açılınca kullanılıyor. */
@@ -93,9 +99,13 @@ export const VARSAYILAN_AKSESUAR: AvatarAksesuari = "yok";
  */
 const HAREKET: Record<AvatarIfadesi, string> = {
   sakin: "durgun",
+  neseli: "durgun",
   keyifli: "seviliyor",
   mutlu: "seviniyor",
   sasirdi: "sasirdi",
+  /* ⚠️ `kuponlu` zaten havada bir poz; üstüne zıplama hareketi
+     eklemek iki zıplamayı üst üste bindirirdi. Nefes yeter. */
+  kuponlu: "durgun",
 };
 
 /**
@@ -113,9 +123,35 @@ const HAREKET: Record<AvatarIfadesi, string> = {
  */
 const KARE: Record<AvatarIfadesi, string> = {
   sakin: "sakin",
+  /*
+    `neseli` — Ü179. `sakin`in aynısı ama ağzı gülüyor.
+
+    🔴 Bu kare 3B kaynaktan gelmedi, `scripts/avatar-neseli.py` ile
+    `sakin`den TÜRETİLDİ ve gerekçesi orada yazılı: elde "gülen yüz +
+    boş eller" olan bir kare yoktu, Ödüllerim başlığındaki elinde kupon
+    tutan Loopy de tam onu istiyordu.
+
+    ⚠️ Geçici. Aynı 3B kaynaktan gülen bir kare gelince script silinir.
+  */
+  neseli: "neseli",
   keyifli: "keyifli",
   mutlu: "mutlu",
   sasirdi: "sakin",
+  /*
+    `kuponlu` — Ü181. Havada zıplayan, göz kırpan, elinde yıldızlı
+    altın ödül tutan Loopy.
+
+    🔴 Bu kare de 3B kaynaktan gelmedi ama `neseli`den farklı yoldan
+    üretildi: fal/kontext **mevcut kareyi referans alıp** yalnızca pozu
+    ve elindeki nesneyi değiştirdi (`scripts/avatar-kuponlu.py`).
+    Karakterin tasarımı, malzemesi ve ışığı korunuyor.
+
+    Ü179'da elinde kupon tutan Loopy, `neseli`nin üstüne çizilmiş
+    vektör bir kartla yapılmıştı; ürün sahibi *"orada hiç olmadı"*
+    dedi ve haklıydı — 3B gövdeye yapıştırılmış düz kart iki ayrı
+    malzeme olarak okunuyordu.
+  */
+  kuponlu: "kuponlu",
 };
 
 /** Kıvılcımların yönü ve uzaklığı — sabit dizi (hidrasyon uyuşmazlığı olmasın). */
@@ -135,10 +171,23 @@ const KALPLER = [
   { x: 74, gecikme: 820 },
 ] as const;
 
+/**
+ * Buhar tutamları — Ü182.
+ *
+ * Üçü de farklı gecikmede ve farklı yana savruluyor. Aynı anda aynı yolu
+ * izleselerdi üç çizgi olurlardı; duman düzensiz olduğu için duman.
+ */
+const BUHARLAR = [
+  { savrul: -7, gecikme: 0, sol: 42 },
+  { savrul: 5, gecikme: 850, sol: 50 },
+  { savrul: 10, gecikme: 1700, sol: 58 },
+] as const;
+
 export function Avatar({
   ifade = "sakin",
   boy = 120,
   ad,
+  buhar = false,
 }: {
   /** Ü147: renk tek render varken yok sayılıyor — bkz. `COK_RENKLI`. */
   renk?: OyuncuRengi;
@@ -152,6 +201,17 @@ export function Avatar({
    * zaten oyuncunun adı yazıyor ve ikisini birden okumak tekrar olurdu.
    */
   ad?: string;
+  /**
+   * Kapaktan yükselen buhar — Ü182.
+   *
+   * ⚠️ Varsayılan KAPALI ve öyle kalmalı: her ekranda tüten bir bardak,
+   * bir süre sonra bakılmayan bir hareket olur. Sıcaklığın anlamı olan
+   * yerde açılıyor (günlük seri sahnesi).
+   *
+   * ⚠️ `keyifli` karesinde buhar zaten GÖMÜLÜ. Orada açılırsa iki kat
+   * buhar çıkar.
+   */
+  buhar?: boolean;
 }) {
   const hareket = HAREKET[ifade];
 
@@ -166,6 +226,26 @@ export function Avatar({
         yalan görünürdü — hareketi bozan en büyük tek şey.
       */}
       <span aria-hidden className="loopy-golge" />
+
+      {/* Buhar gövdenin ARKASINDA (z-1): kapağın önünden geçseydi
+          karakterin üstüne sis çekerdi. */}
+      {buhar && ifade !== "keyifli" && (
+        <span aria-hidden className="loopy-buharlar">
+          {BUHARLAR.map((b, i) => (
+            <span
+              key={i}
+              className="loopy-buhar"
+              style={
+                {
+                  left: `${b.sol}%`,
+                  "--savrul": `${b.savrul}px`,
+                  animationDelay: `${b.gecikme}ms`,
+                } as React.CSSProperties
+              }
+            />
+          ))}
+        </span>
+      )}
 
       <Image
         src={`/avatar/loopy-${KARE[ifade]}-512.webp`}

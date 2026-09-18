@@ -115,6 +115,156 @@ export function LooplyIsaret({
   );
 }
 
+/**
+ * Aynı işaretin canvas'a çizilen hâli — Ü178.
+ *
+ * ── Neden burada, ayrı bir dosyada değil ────────────────────
+ *
+ * Kazıma yüzeyi (`kazima-karti.tsx`) bir canvas ve üstüne Looply
+ * işareti basılıyor — gerçek kazı kartlarında da marka folyonun üstünde
+ * durur ve kazındıkça kaybolur. İşaretin ölçüleri iki yerde ayrı ayrı
+ * yazılsaydı biri güncellenmeden kalırdı; bu projede o hatanın adı var
+ * (Ü71).
+ *
+ * ── 🔴 Neden yalnızca işaret, kelime yok ────────────────────
+ *
+ * `LooplyLogo`daki "looply" kelimesi ürünün yazı tipiyle (Outfit
+ * ExtraBold) diziliyor. Canvas yazısı yazı tipinin **yüklenmiş
+ * olmasını** bekler: web yazı tipi geç gelirse metin ilk karede yedek
+ * yazı tipiyle çizilir ve bir daha güncellenmez. Yeniden çizmek de
+ * çözüm değil — oyuncu o sırada kazımaya başlamışsa `kur()` yüzeyi
+ * sıfırlar ve **kazıdığı yer geri gelir.**
+ *
+ * İşaretin kendisi saf geometri: iki halka, bir artı, dört nokta.
+ * Yazı tipi gerektirmiyor ve zaten logonun *"kelimenin sığmadığı her
+ * yer"* için olan kompakt hâli.
+ *
+ * @param x    çizim kutusunun sol üst köşesi
+ * @param en   işaretin genişliği; yükseklik orandan türüyor (82:41)
+ * @param boya tek renk — gradyan yok, altın folyonun üstünde okunmalı
+ */
+export function cizLooplyIsareti(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  en: number,
+  boya: string,
+) {
+  const k = en / KUTU_EN;
+  const K = (n: number) => n * k;
+
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.strokeStyle = boya;
+  ctx.fillStyle = boya;
+
+  // İki göz — tam teğet iki halka (Ü123: merkez arası = 2R).
+  ctx.lineWidth = K(7);
+  for (const cx of [20.5, 61.5]) {
+    ctx.beginPath();
+    ctx.arc(K(cx), K(20.5), K(17), 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  // Sol göz: yön tuşu.
+  ctx.lineWidth = K(4.4);
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(K(20.5), K(12.5));
+  ctx.lineTo(K(20.5), K(28.5));
+  ctx.moveTo(K(12.5), K(20.5));
+  ctx.lineTo(K(28.5), K(20.5));
+  ctx.stroke();
+
+  // Sağ göz: dört düğme.
+  for (const [dx, dy] of [
+    [61.5, 13.5],
+    [61.5, 27.5],
+    [54.5, 20.5],
+    [68.5, 20.5],
+  ]) {
+    ctx.beginPath();
+    ctx.arc(K(dx), K(dy), K(2.8), 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.restore();
+}
+
+/** İşaretin en/boy oranı — çağıranın yer ayırması için. */
+export const ISARET_ORANI = KUTU_BOY / KUTU_EN;
+
+/**
+ * Tam kilit canvas'ta: `L` + işaret + `ply` — Ü179.
+ *
+ * Ürün sahibi kazıma kartı için *"altında looply yazılı logomuz
+ * olmalı"* dedi. Ü178'de yalnızca işaret çizilmişti çünkü canvas'ta
+ * yazı tipi bir tuzak; tuzak burada **çözülüyor**, atlanmıyor.
+ *
+ * ── 🔴 Yazı tipi tuzağı ve çözümü ───────────────────────────
+ *
+ * Canvas metni, çizildiği anda yüklü olan yazı tipiyle **bir kez**
+ * boyanıyor. Outfit geç gelirse kelime yedek yazı tipiyle çizilir ve
+ * bir daha kendiliğinden düzelmez. Çözüm yüzeyi yeniden çizmek ama
+ * bunun bir bedeli var: yeniden çizim oyuncunun **kazıdığı yeri geri
+ * getirir.**
+ *
+ * O yüzden çağıran taraf iki şeyi birden yapıyor (`kazima-karti.tsx`):
+ * `document.fonts.ready`i bekliyor ve yeniden çizmeden önce yüzeye
+ * dokunulup dokunulmadığına bakıyor. Dokunulduysa çizmiyor — kelimenin
+ * doğru yazı tipinde olması, kazınmış bir yüzeyi sıfırlamaktan önemli
+ * değil.
+ *
+ * ⚠️ Aile adı SABİT YAZILMIYOR: `next/font` gerçek aile adını
+ * (`__Outfit_abc123` gibi) derleme sırasında üretiyor. Çağıran onu
+ * `--font-outfit` değişkeninden okuyup veriyor.
+ *
+ * ── Ölçüler `LooplyLogo` ile aynı ───────────────────────────
+ *
+ * İşaretin boyu büyük harf yüksekliği kadar (0,72 em), iki yanında
+ * 0,045 em pay, harf aralığı −0,04 em. Aynı sayılar iki yerde ayrı
+ * yazılsaydı biri güncellenmeden kalırdı (Ü71).
+ *
+ * @param merkezX kilidin yatay ortası
+ * @param tabanY  harflerin taban çizgisi
+ * @param boyut   kelimenin piksel yüksekliği (font-size)
+ */
+export function cizLooplyKilidi(
+  ctx: CanvasRenderingContext2D,
+  merkezX: number,
+  tabanY: number,
+  boyut: number,
+  boya: string,
+  aile: string,
+) {
+  ctx.save();
+  ctx.font = `800 ${boyut}px ${aile}, ui-sans-serif, system-ui, sans-serif`;
+  ctx.textBaseline = "alphabetic";
+  ctx.textAlign = "left";
+  ctx.letterSpacing = `${-0.04 * boyut}px`;
+  ctx.fillStyle = boya;
+  ctx.strokeStyle = boya;
+
+  const isaretBoy = boyut * 0.72;
+  const isaretEn = isaretBoy / ISARET_ORANI;
+  const pay = boyut * 0.045;
+
+  const lEn = ctx.measureText("L").width;
+  const plyEn = ctx.measureText("ply").width;
+  const toplam = lEn + pay + isaretEn + pay + plyEn;
+
+  let x = merkezX - toplam / 2;
+  ctx.fillText("L", x, tabanY);
+  x += lEn + pay;
+  // İşaret taban çizgisine basıyor — tıpkı bir `o` gibi (Ü123).
+  cizLooplyIsareti(ctx, x, tabanY - isaretBoy, isaretEn, boya);
+  x += isaretEn + pay;
+  ctx.fillText("ply", x, tabanY);
+
+  ctx.letterSpacing = "0px";
+  ctx.restore();
+}
+
 /* ── Hediye ────────────────────────────────────────────────── */
 
 /**

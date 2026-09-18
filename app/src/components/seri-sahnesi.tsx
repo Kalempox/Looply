@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { AlevIkonu } from "./oyuncu-ikon";
+import { LoopyKosan } from "./loopy-kosan";
 import { KartDokusu, kartStili } from "./oyuncu";
 import { RENK } from "./oyuncu-renk";
 
@@ -198,6 +199,33 @@ export function SeriSahnesi({
             ))}
           </div>
 
+          {/*
+            🔴 Loopy sahnenin ÜSTÜNDEN GEÇİYOR — Ü183.
+
+            Ürün sahibi: *"yanıyor sanıp sağdan sola kaçıştıran Loopy
+            karakterimizi ekleyeceğiz sadece."* Anahtar kelime **sadece**:
+            sahne olduğu gibi duruyor, Loopy onun önünde bir şerit
+            olarak geçiyor.
+
+            ⚠️ Kendi kırpma katmanında (`overflow-hidden`): ekranın
+            dışından girip dışına çıkıyor ve kırpılmasaydı sahnenin
+            yatay kaydırma alanını büyütürdü — kıvılcımlarda aynı hata
+            bir kez yapılmış (bkz. yukarısı).
+
+            ⚠️ İçeriğin ARKASINDA (`z-0` ile, sayı 10'un altında):
+            önünden geçseydi "14 gün üst üste" yazısını süpürürdü.
+
+            ⚠️ Kırpma katmanı ŞART: görsel ekran genişliğinde ve
+            karakter kenarların dışına taşıyor. Kırpılmasaydı sahnenin
+            yatay kaydırma alanını büyütürdü.
+          */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 bottom-[6%] z-0 overflow-hidden"
+          >
+            <LoopyKosan />
+          </div>
+
           <button
             type="button"
             onClick={() => setAcik(false)}
@@ -208,6 +236,15 @@ export function SeriSahnesi({
           </button>
 
           <div className="sahne-cark-gel relative z-10 w-full max-w-[380px] text-center text-white">
+            {/*
+              ⚠️ Alev SAHNENİN KENDİSİ ve Ü183'te DEĞİŞTİRİLMEDİ.
+
+              Bir tur önce alevi küçültüp Loopy'yi önüne koymuştum; ürün
+              sahibi *"ortadaki ateş falan, eski streak animasyonunu
+              değiştirmeden sadece Loopy'yi ekleyeceğiz"* dedi. Haklı:
+              sahne Ü66'dan beri bu ve seriyle özdeşleşmiş; Loopy ona
+              eklenen bir şey, onun yerine geçen değil.
+            */}
             <div className="alev-titre mx-auto w-fit">
               <AlevIkonu boy={124} />
             </div>

@@ -285,12 +285,39 @@ export function SayfaBasi({
   baslik,
   renk,
   gorsel,
+  karakter,
+  koyu = false,
   children,
 }: {
   ust: string;
   baslik: string;
   renk: OyuncuRengi;
   gorsel?: GorselAdi;
+  /**
+   * Başlığın sağında duran karakter — Ü178.
+   *
+   * ⚠️ İsteğe bağlı ve bilerek öyle: `SayfaBasi` altı ekranın ortak
+   * başlığı ve karakteri içine gömmek, istenmeyen beş ekrana da
+   * koymak olurdu. Bugün yalnızca Ödüllerim veriyor.
+   *
+   * ⚠️ Karakter varken arka çizim küçülüyor ve soluyor — ikisi aynı
+   * köşede duruyor ve tam boyda çizim karakterin arkasından
+   * taşıyordu.
+   */
+  karakter?: React.ReactNode;
+  /**
+   * Koyu yüzey — Ü182.
+   *
+   * ⚠️ Varsayılan AÇIK ve öyle kalıyor: başlık altı ekranda ortak ve
+   * hepsini koyuya çevirmek ürünün aydınlık tarafını (profil, ödüller,
+   * liderlik, fırsatlar) tek kararda değiştirirdi.
+   *
+   * Bugün yalnızca `/oyunlar` koyu istiyor ve sebebi ölçülebilir:
+   * altındaki karusel kartları Ü181'de koyuya geçti, pastel başlık
+   * onların üstünde yabancı kaldı. Başlık ile içerik aynı ekranda iki
+   * ayrı dil konuşuyordu.
+   */
+  koyu?: boolean;
   /** Başlığın altındaki sayaçlar. */
   children?: React.ReactNode;
 }) {
@@ -298,10 +325,24 @@ export function SayfaBasi({
 
   return (
     <header
-      className="kart-golge kart-gel relative mb-8 overflow-hidden rounded-3xl px-5 py-6"
-      style={kartStili(renk)}
+      className={`kart-golge kart-gel relative mb-8 overflow-hidden rounded-3xl px-5 py-6 ${
+        koyu ? "text-white" : ""
+      }`}
+      style={
+        koyu
+          ? { background: `linear-gradient(115deg, ${r.koyu} 0%, ${r.ana} 100%)` }
+          : kartStili(renk)
+      }
     >
-      <KartDokusu renk={renk} />
+      {koyu ? (
+        <span
+          aria-hidden
+          className="pointer-events-none absolute -top-[240%] left-1/2 size-[300%] -translate-x-1/2"
+          style={{ opacity: 0.08, background: ISIN_DOKUSU }}
+        />
+      ) : (
+        <KartDokusu renk={renk} />
+      )}
       {/*
         Çizim sağ kenarın dışına taşıyor: yalnızca sol yarısı görünüyor
         ve başlığın altına girmiyor. Daha içeride çizildiğinde biletin
@@ -312,18 +353,36 @@ export function SayfaBasi({
         <span
           aria-hidden
           className="pointer-events-none absolute -top-6 -right-16"
-          style={{ color: r.koyu, opacity: 0.24, transform: "rotate(-8deg)" }}
+          style={{
+            // ⚠️ Koyuda çizim BEYAZ: `koyu` tonu koyu zeminde
+            // kayboluyor — koyu rengin üstüne koyu renk (Ü171).
+            color: koyu ? "#fff" : r.koyu,
+            opacity: koyu ? 0.15 : karakter ? 0.14 : 0.24,
+            transform: "rotate(-8deg)",
+          }}
         >
-          <Gorsel ad={gorsel} boy={172} />
+          <Gorsel ad={gorsel} boy={karakter ? 132 : 172} />
         </span>
       )}
 
-      <p className="relative etiket-caps" style={{ color: r.koyu }}>
-        {ust}
-      </p>
-      <h1 className="relative mt-1 font-display text-3xl leading-none font-extrabold tracking-tight">
-        {baslik}
-      </h1>
+      <div className="relative flex items-start gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="etiket-caps" style={{ color: koyu ? r.canli : r.koyu }}>
+            {ust}
+          </p>
+          <h1 className="mt-1 font-display text-3xl leading-none font-extrabold tracking-tight">
+            {baslik}
+          </h1>
+        </div>
+
+        {/*
+          ⚠️ Kolon SABİT genişlikte — Ü174'ün dersi: esnek kolonda
+          karakter metnin yerini yiyor ve 375 pikselde başlık
+          bölünüyor. `-mr-2` ile karakter kartın kendi iç dolgusuna
+          taşıyor, o yer metinden alınmıyor.
+        */}
+        {karakter && <div className="-mr-4 w-[8.5rem] shrink-0">{karakter}</div>}
+      </div>
 
       {children && <div className="relative mt-5">{children}</div>}
     </header>

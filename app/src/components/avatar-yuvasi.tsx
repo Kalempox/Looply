@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Avatar, type AvatarIfadesi } from "./avatar";
 
@@ -32,8 +32,29 @@ import { Avatar, type AvatarIfadesi } from "./avatar";
  * kayıyor (Ü143'ün karusel dersi).
  */
 
-/** Sevme için gereken toplam parmak yolu — Ü147'yle aynı (piksel). */
-const SEVME_ESIGI = 90;
+/**
+ * Sevme için gereken toplam parmak yolu (piksel).
+ *
+ * 🔴 90'dan 260'a çıkarıldı — Ü183.
+ *
+ * 90, avatar 96 piksel genişken doğru sayıydı: onun üstünde bir yandan
+ * bir yana iki geçiş demekti. Ü182'de avatar 220 piksele çıkınca aynı
+ * sayı **tek hamlede** doluyor — ölçüldü, 100 piksellik tek sürükleme
+ * doğrudan "Bayıldı."ya geçiyordu. Ürün sahibi *"dokunduğun anda
+ * direkt sevme hâline geçmemeli"* dedi ve tarif ettiği şey buydu.
+ *
+ * 260 ≈ büyük avatarın üstünde bir buçuk geçiş.
+ */
+const SEVME_ESIGI = 260;
+
+/**
+ * Parmak durunca ilerleme bu sürede eriyor (ms).
+ *
+ * Kalıcı olsaydı ekranı açık unutan oyuncu geri döndüğünde tek
+ * dokunuşla sevmiş olurdu; sıfırlansaydı da elini bir an dinlendiren
+ * herkes baştan başlardı. Erime ikisinin arası.
+ */
+const ERIME = 1400;
 
 export function AvatarYuvasi({ ad }: { ad?: string }) {
   const [disarida, setDisarida] = useState(false);
@@ -44,6 +65,8 @@ export function AvatarYuvasi({ ad }: { ad?: string }) {
   const yolRef = useRef(0);
   const sonRef = useRef<{ x: number; y: number } | null>(null);
   const zamanRef = useRef<number | null>(null);
+  const erimeRef = useRef<number | null>(null);
+  const govdeRef = useRef<HTMLDivElement>(null);
 
   // Sevilme birkaç saniye sonra geçiyor — kalıcı olsaydı tepki değil,
   // yeni bir duruş olurdu.
@@ -57,25 +80,88 @@ export function AvatarYuvasi({ ad }: { ad?: string }) {
     if (zamanRef.current) window.clearTimeout(zamanRef.current);
   }, []);
 
+
+  /**
+   * 🔴 Parmağa CANLI tepki — Ü183.
+   *
+   * Ürün sahibi *"parmağa duyarlı tepki vermeli"* dedi ve eksik olan
+   * buydu: eşiğe kadar hiçbir şey olmuyor, sonra bir anda ifade
+   * değişiyordu. Aradaki okşama sessizdi.
+   *
+   * Şimdi her hareket iki şey yapıyor:
+   *   · gövde parmağın gittiği YÖNE eğiliyor (dx ile orantılı)
+   *   · ilerleme dolduça hafifçe yayılıp basıklaşıyor — okşanan bir
+   *     şeyin altına verişi
+   *
+   * ⚠️ Dönüşüm React durumuna YAZILMIYOR, doğrudan DOM'a. `pointermove`
+   * saniyede onlarca kez geliyor ve her birinde yeniden çizim, okşamayı
+   * takılmalı gösterirdi (parçacıklarda öğrenilen ders, Ü141).
+   *
+   * ⚠️ Geçiş sürerken KAPALI: sürtme sırasında `transition` olsaydı
+   * gövde parmağın arkasından gecikmeli gelir, "duyarlı" olmazdı.
+   * Yalnızca parmak kalkınca açılıyor.
+   */
   const surt = (e: React.PointerEvent) => {
     const son = sonRef.current;
     sonRef.current = { x: e.clientX, y: e.clientY };
+    if (erimeRef.current) {
+      window.clearTimeout(erimeRef.current);
+      erimeRef.current = null;
+    }
     if (!son) return;
-    yolRef.current += Math.hypot(e.clientX - son.x, e.clientY - son.y);
+
+    const dx = e.clientX - son.x;
+    yolRef.current += Math.hypot(dx, e.clientY - son.y);
+    const oran = Math.min(1, yolRef.current / SEVME_ESIGI);
+
+    const govde = govdeRef.current;
+    if (govde) {
+      const egim = Math.max(-10, Math.min(10, dx * 0.7));
+      govde.style.transition = "none";
+      govde.style.transform =
+        `rotate(${egim.toFixed(1)}deg) scale(${(1 + oran * 0.07).toFixed(3)}, ${(1 - oran * 0.05).toFixed(3)})`;
+    }
+
     if (yolRef.current >= SEVME_ESIGI) {
       yolRef.current = 0;
+      birak();
       setIfade("keyifli");
     }
   };
 
-  const yuvayaGonder = () => {
+  /** Parmak kalkınca: gövde yerine dönüyor, ilerleme erimeye başlıyor. */
+  const birak = () => {
+    sonRef.current = null;
+    const govde = govdeRef.current;
+    if (govde) {
+      govde.style.transition = "transform 420ms cubic-bezier(0.2, 0.9, 0.3, 1)";
+      govde.style.transform = "";
+    }
+    if (erimeRef.current) window.clearTimeout(erimeRef.current);
+    erimeRef.current = window.setTimeout(() => {
+      yolRef.current = 0;
+    }, ERIME);
+  };
+
+  const yuvayaGonder = useCallback(() => {
     setDonuyor(true);
     setIfade("sakin");
     zamanRef.current = window.setTimeout(() => {
       setDisarida(false);
       setDonuyor(false);
     }, 420);
-  };
+  }, []);
+
+  // Tam ekran bir katman Escape ile kapanmalı — klavye kullanan oyuncu
+  // için tek çıkış yolu perdeye dokunmak olamaz.
+  useEffect(() => {
+    if (!disarida) return;
+    const tus = (e: KeyboardEvent) => {
+      if (e.key === "Escape") yuvayaGonder();
+    };
+    window.addEventListener("keydown", tus);
+    return () => window.removeEventListener("keydown", tus);
+  }, [disarida, yuvayaGonder]);
 
   return (
     <>
@@ -98,36 +184,76 @@ export function AvatarYuvasi({ ad }: { ad?: string }) {
         </button>
       )}
 
+      {/*
+        🔴 Panel değil TAM EKRAN — Ü182.
+
+        Ürün sahibi: *"sağ alttaki yuvarlağa bastığımızda bu şekilde
+        değil, gerçekten ekranın önüne gelmeli ve insanlar parmağıyla
+        onu kaydırma yapar gibi sevebilmeli."*
+
+        Haklıydı ve sebebi ölçüye dayanıyor: sevme eşiği 90 piksellik
+        parmak yolu, köşedeki panelde avatarın kapladığı alan ise 96
+        pikseldi. Yani sevmek için parmağı avatarın **üstünde bir
+        yandan bir yana** iki kez geçirmek gerekiyordu — okşamak değil,
+        nişan almak. Tam ekranda avatar 3 katı büyük ve ekranın
+        ortasında; jest kendiliğinden oluyor.
+
+        ⚠️ Perde `pointer-events` alıyor ve dokununca kapanıyor, ama
+        sevme alanı onun ÜSTÜNDE: yoksa okşamak için yapılan her
+        hareket perdeye düşüp paneli kapatırdı.
+      */}
       {disarida && (
-        <div className="fixed right-4 bottom-24 z-30 flex flex-col items-end gap-2">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={ad ? `${ad} adlı arkadaşın` : "Arkadaşın"}
+          className="fixed inset-0 z-40 flex flex-col items-center justify-center px-6"
+        >
+          <button
+            type="button"
+            aria-label="Kapat"
+            onClick={yuvayaGonder}
+            className="absolute inset-0 bg-yazi/45 backdrop-blur-sm"
+          />
+
           <div
-            className={`${donuyor ? "avatar-yuvaya" : "avatar-firliyor"} rounded-3xl border border-cizgi bg-yuzey px-5 py-4 shadow-[0_18px_44px_-16px_rgba(16,32,77,0.5)]`}
+            className={`relative flex flex-col items-center ${
+              donuyor ? "avatar-yuvaya" : "avatar-firliyor"
+            }`}
           >
+            {/*
+              ⚠️ `touch-none` YALNIZCA burada: okşarken sayfanın altta
+              kayması jesti bozuyordu. Panelin geri kalanında kısıt yok
+              (Ü143'ün karusel dersi) ama bu alan zaten tam ekran ve
+              altında kaydırılacak bir şey kalmıyor.
+            */}
             <div
+              ref={govdeRef}
               onPointerMove={surt}
-              onPointerLeave={() => {
-                sonRef.current = null;
-              }}
-              className="flex justify-center"
+              onPointerLeave={birak}
+              onPointerUp={birak}
+              onPointerCancel={birak}
+              className="touch-none px-10 py-6"
+              style={{ transformOrigin: "50% 85%" }}
             >
-              <Avatar boy={96} ifade={ifade} ad={ad ?? "Arkadaşın"} />
+              <Avatar boy={220} ifade={ifade} ad={ad ?? "Arkadaşın"} />
             </div>
 
-            <p className="mt-2 text-center text-[12px] leading-snug text-yazi-sonuk">
+            <p className="mt-2 text-center text-[15px] leading-snug font-semibold text-yuzey">
               {ifade === "keyifli" ? "Bayıldı." : "Parmağınla sürt, sevsin."}
             </p>
 
-            <div className="mt-3 flex flex-col gap-1.5">
+            <div className="mt-6 flex flex-col items-stretch gap-2">
               <Link
                 href="/profil"
-                className="rounded-xl border border-cizgi px-4 py-2 text-center text-[13px] font-semibold"
+                className="rounded-2xl bg-yuzey px-8 py-3 text-center text-[15px] font-bold text-yazi"
               >
                 Özelleştir
               </Link>
               <button
                 type="button"
                 onClick={yuvayaGonder}
-                className="rounded-xl px-4 py-2 text-[13px] font-semibold text-yazi-sonuk"
+                className="rounded-2xl px-8 py-3 text-[14px] font-semibold text-yuzey/75"
               >
                 Yuvasına gönder
               </button>

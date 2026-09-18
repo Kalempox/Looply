@@ -910,13 +910,58 @@ body {
   animation: loopy-kalp-suzul 1.5s ease-out infinite;
 }
 
+/* ── Buhar: kapaktan yükselen sıcak (Ü182) ───────────────────
+   Ürün sahibi: *"sıcaktan kahve kapağının üstünden buhar çıksın, çok
+   tatlı olur."*
+
+   ⚠️ Buhar KARENİN İÇİNDE DEĞİL, CSS'te. `keyifli` karesinde gömülü
+   buhar var ama öbürlerinde yok; gömülü olanı kullanmak buharı tek bir
+   ifadeye hapsederdi. Burada her kare buhar tütebiliyor.
+
+   Üç tutam farklı gecikme ve farklı yana savruluyor: aynı anda aynı
+   yolu izleselerdi üç çizgi olurlardı, duman değil. */
+.loopy-buharlar {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+@keyframes loopy-buhar-yuksel {
+  0% {
+    transform: translate(-50%, 0) scale(0.5);
+    opacity: 0;
+  }
+  22% {
+    opacity: 0.75;
+  }
+  100% {
+    transform: translate(calc(-50% + var(--savrul, 0px)), -34px) scale(1.5);
+    opacity: 0;
+  }
+}
+
+.loopy-buhar {
+  position: absolute;
+  /* Kapağın üstü: karakterin tepesi karenin ~%17'sinde başlıyor. */
+  top: 12%;
+  left: 50%;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #fff;
+  filter: blur(2.5px);
+  animation: loopy-buhar-yuksel 2.6s ease-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   /* Tepki duruyor ama hareket durmuyor: yüz değişmediği için hareketi
      tamamen kesmek karakteri cansız bırakırdı. Yine de her şey
      `globals.css` başındaki genel kuralla 0.01ms'ye iniyor — yani
      hareket anında bitmiş hâline geçiyor, göz yorulmuyor. */
   .loopy-kalp,
-  .loopy-kivilcim {
+  .loopy-kivilcim,
+  .loopy-buhar {
     display: none !important;
   }
 }

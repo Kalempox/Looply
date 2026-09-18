@@ -41,13 +41,27 @@ export function LoopySozu({
    * altyazının üstüne biniyordu ve bir satır tamamen kayboluyordu.
    * Tasarımın kendisi ~470 piksel genişliğinde çizilmiş; 375'te aynı
    * yerleşim sığmıyor.
+   *
+   * 🔴 `alt` — Ü179. Balon altta, kuyruk yukarı bakıyor.
+   *
+   * Profil kartında zorunlu oldu: kartın sağ üst köşesinde `size-9`
+   * kalem düğmesi var ve balon üstteyken tam onun üstüne biniyordu.
+   * Karakterin **kafası** balondan dar (kare içinde %45–%67 arası),
+   * yani üstte o duruncaya kalemle çakışmıyor.
    */
-  yon?: "ust" | "sag" | "sol";
+  yon?: "ust" | "alt" | "sag" | "sol";
 }) {
   const balon = (
     <span
       className={`relative inline-block rounded-2xl bg-white px-3 py-2 text-[12px] leading-snug font-semibold text-yazi shadow-sm ${
-        yon === "ust" ? "max-w-[7.5rem] text-center" : "max-w-[9.5rem]"
+        yon === "ust"
+          ? "max-w-[7.5rem] text-center"
+          : yon === "alt"
+            ? // `alt` kolonun tamamını kullanabiliyor: altta çakışacak
+              // bir şey yok, üstteki balon ise karakterin kafasına
+              // göre dar durmalıydı.
+              "max-w-[9rem] text-center"
+            : "max-w-[9.5rem]"
       }`}
     >
       {soz}
@@ -62,19 +76,22 @@ export function LoopySozu({
           // Kuyruk avatara doğru bakıyor.
           yon === "ust"
             ? "absolute -bottom-1 left-1/2 size-3 -translate-x-1/2 rotate-45 bg-white"
-            : `absolute bottom-2 size-3 rotate-45 bg-white ${yon === "sag" ? "-right-1" : "-left-1"}`
+            : yon === "alt"
+              ? "absolute -top-1 left-1/2 size-3 -translate-x-1/2 rotate-45 bg-white"
+              : `absolute bottom-2 size-3 rotate-45 bg-white ${yon === "sag" ? "-right-1" : "-left-1"}`
         }
       />
     </span>
   );
 
-  if (yon === "ust") {
+  if (yon === "ust" || yon === "alt") {
     return (
       <span className="flex shrink-0 flex-col items-center gap-1.5">
-        {balon}
+        {yon === "ust" && balon}
         <span aria-hidden className="block">
           <Avatar ifade={ifade} boy={boy} />
         </span>
+        {yon === "alt" && balon}
       </span>
     );
   }
@@ -126,4 +143,50 @@ export function LoopyPozitif({ boy = 84 }: { boy?: number }) {
       <Avatar ifade="mutlu" boy={boy} />
     </span>
   );
+}
+
+/**
+ * Elinde kupon tutan Loopy — Ü178, Ü179'da düzeltildi.
+ *
+ * Ürün sahibi iki kez istedi: *"elinde ödül tutan Loopy"* ve sonra
+ * *"elinde kupon tutmalı ve daha büyük olmalı"*. Arada bir de
+ * *"mutlu hâline yapmalıydın, burada çok üzgün duruyor"* dedi.
+ *
+ * ── 🔴 İkisini birden veren bir kare YOKTU ──────────────────
+ *
+ * Elde olan üç karenin üçü de birini dışlıyordu:
+ *
+ *   · `sakin`   — eller boş ✅ ama ağız DÜZ BİR ÇİZGİ 🔴
+ *   · `mutlu`   — yüz gülüyor ✅ ama kollar havada yumruk 🔴
+ *   · `keyifli` — yüz gülüyor ✅ ama eller dolu: kalp tutuyor 🔴
+ *
+ * `keyifli`nin kalbini kuponla örtmek denendi ve **ölçüm reddetti**:
+ * kalbin kutusu dikeyde %53,3–81,1, ağız %46,9–48,0. Kalbi örten her
+ * kart gülümsemeyi de örtüyor; kalbin ucunu açıkta bırakmak da çözüm
+ * değil — altın kartın arkasından kırmızı bir çıkıntı, tasarım değil
+ * hata gibi okunuyor.
+ *
+ * ── 🔴 İki çözüm denendi, ikincisi tuttu ───────────────────
+ *
+ * **Ü179:** `sakin`in ağzı gülümsemeye çevrildi (`neseli`) ve eline
+ * vektör bir kupon çizildi. Ürün sahibi *"orada hiç olmadı"* dedi ve
+ * haklıydı: 3B bir gövdeye yapıştırılmış düz bir kart, iki ayrı
+ * malzeme olarak okunuyor — bu projede iki kez reddedilen şeyin ta
+ * kendisi (*"avatar 3D gibi olmalı"*).
+ *
+ * **Ü181:** ürün sahibi doğru yolu söyledi — *"fal ai ile
+ * karakterimizi referans vererek elinde kupon mutlu bir şekilde havaya
+ * sıçrarken çizdirsek mi."* Görsel referanslı üretim (kontext) mevcut
+ * kareyi alıp yalnızca pozu ve elindeki nesneyi değiştiriyor;
+ * karakterin tasarımı, malzemesi ve ışığı korunuyor. Ödül artık
+ * karakterle **aynı render'dan** geliyor, üstüne çizilmiyor.
+ *
+ * Üretim `scripts/avatar-kuponlu.py`.
+ *
+ * ⚠️ `neseli` karesi duruyor ama artık kullanılmıyor. Silinmedi:
+ * "gülen yüz + boş eller" başka bir ekranda gerekebilir ve üretimi
+ * script'te yazılı.
+ */
+export function LoopyOdullu({ boy = 120 }: { boy?: number }) {
+  return <Avatar ifade="kuponlu" boy={boy} />;
 }

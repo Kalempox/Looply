@@ -23,7 +23,7 @@ import { Gorsel, oyunGorseli, type GorselAdi } from "@/components/oyuncu-gorsel"
 import { OyunIkonu, CarkIkonu, KupaIkonu, TacIkonu, MadalyaIkonu } from "@/components/oyuncu-ikon";
 import { LooplyLogo } from "@/components/logo";
 import { LoopySozu, LoopyPozitif } from "@/components/loopy-sozu";
-import { DusenSahnesi } from "@/components/oyun-sahnesi";
+import { OyunSahnesi, sahneVarMi } from "@/components/oyun-sahnesi";
 import { OyuncuNav, NavBosluk } from "@/components/oyuncu-nav";
 import { AvatarYuvasi } from "@/components/avatar-yuvasi";
 import { SeriSahnesi } from "@/components/seri-sahnesi";
@@ -211,8 +211,31 @@ export default async function OynaSayfasi() {
                 <span className="absolute -top-1 -left-2 z-10 flex size-12 items-center justify-center rounded-2xl bg-yuzey shadow-lg">
                   <OyunIkonu oyunId={bonus.id} boy={28} />
                 </span>
-                {bonus.id === "dusen" ? (
-                  <DusenSahnesi boy={112} />
+                {/*
+                  Ü180: üretilmiş neon sahne. Sahnesi olmayan oyunlar
+                  (katalogda bekleyen yedi oyun) eski soluk çizimde
+                  kalıyor — uydurma bir sahne koymaktansa.
+                */}
+                {sahneVarMi(bonus.id) ? (
+                  /*
+                    ⚠️ Sahne MUTLAK konumda ve kutu sabit: akışta
+                    dururken kartın boyunu o belirliyordu ve Düşen'in
+                    sahnesi dikey (267×512) olduğu için kartı 40 piksel
+                    uzatıyordu. Kutu 124'te sabit, sahne 148 — farkı
+                    yukarı taşıyor, kart büyümüyor.
+                  */
+                  /*
+                    ⚠️ Sahne 148'den 190'a çıktı — Ü181: *"kartlarda
+                    yeterli alanı kaplamıyor."* Kutu 124'te sabit
+                    kaldığı için kart büyümüyor, fark yukarı taşıyor ve
+                    parçalar kartın üst kenarından giriyormuş gibi
+                    duruyor.
+                  */
+                  <span className="block h-[124px] w-[124px]">
+                    <span className="absolute -right-3 -bottom-2">
+                      <OyunSahnesi oyun={bonus.id} boy={190} />
+                    </span>
+                  </span>
                 ) : (
                   <span className="flex h-[112px] w-[140px] items-end justify-center text-white/25">
                     <Gorsel ad={oyunGorseli(bonus.id)} boy={104} />
@@ -253,7 +276,7 @@ export default async function OynaSayfasi() {
             baslik="Tüm oyunlar"
             alt={`${acikSayisi} oyun · kategorilere ayrılmış`}
             renk="gok"
-            gorsel="kumanda"
+            sahne="tum-oyunlar"
           />
           {masa && (
             <GecisKarti
@@ -406,25 +429,29 @@ function DurumKarti({
   */
   return (
     <div>
-      <KoyuKart className="pt-5 pb-12">
-        {/*
-          Logo kartın tepesinde — Ü177.
+      {/*
+        🔴 Loopy ARTIK LOGONUN HİZASINDAN başlıyor — Ü179.
 
-          Profil başlığında zaten oradaydı ve ürün sahibi *"Looply
-          logosu Buse isminin üstünde olmalı"* dedi: iki kart aynı
-          tasarım, biri logoluysa öbürü de logolu. Selamlama sırası
-          profildekinin aynısı — logo, küçük etiket, ad.
+        Ürün sahibi: *"kartın böyle uzun olmasına gerek yok, 'bugün
+        harika bir gün oynayalım' yazısının altında bitmeli."*
 
-          ⚠️ Boşluk profildeki `mt-4` değil `mt-5`: orada logonun
-          yanında `size-9` kalem düğmesi var ve satırı 36 piksele
-          çıkarıyor, burada satır logonun kendi 30 pikseli. Aynı sayı
-          farklı görünürdü; asıl istenen aynı *aralık*.
-        */}
-        <LooplyLogo boyut={30} beyaz />
+        Sebep ölçüldü: kartın boyunu metin değil **Loopy'nin kolonu**
+        belirliyor (balon 52 + boşluk 6 + karakter 146 = 204), metin
+        ise 142. Loopy logonun ALTINDAN başlayınca o 204'ün üstüne bir
+        de logo satırı biniyordu ve aradaki fark boş mor olarak
+        kalıyordu. Aynı satıra alınca logo satırı bedava geliyor.
 
-        <div className="mt-5 flex items-start gap-3">
+        ⚠️ Kart yine de metnin bittiği yerde bitmiyor ve bitemez:
+        138 piksellik bir karakter 138 piksellik yer istiyor. Kartı
+        daha da kısaltmanın tek yolu Loopy'yi küçültmek — ürün sahibi
+        iki tur önce büyütülmesini istemişti, o yüzden kısaltma burada
+        duruyor.
+      */}
+      <KoyuKart className="pt-5 pb-9">
+        <div className="flex items-start gap-3">
           <div className="min-w-0 flex-1">
-            <p className="etiket-caps text-white/60">Merhaba</p>
+            <LooplyLogo boyut={30} beyaz />
+            <p className="etiket-caps mt-5 text-white/60">Merhaba</p>
             <h1 className="mt-1.5 font-display text-3xl leading-none font-extrabold tracking-tight">
               {ad}
             </h1>
@@ -445,17 +472,25 @@ function DurumKarti({
             karakter "iyi ki buradasın" demiyor.
           */}
           {/*
-            ⚠️ Kolon SABİT genişlikte (7.5rem) ve Loopy onun içinde
-            büyüyor — Ü174'ün dersi. Esnek kolonda karakteri büyütmek
-            metnin yerini yer ve 375 pikselde başlık dört satıra düşer.
+            ⚠️ Kolon SABİT genişlikte ve Loopy onun içinde büyüyor —
+            Ü174'ün dersi. Esnek kolonda karakteri büyütmek metnin
+            yerini yer ve 375 pikselde başlık dört satıra düşer.
             Profil başlığındaki kardeşiyle aynı boy: iki kart yan yana
             görülüyor.
+
+            🔴 `-mr-3` — Ü178. Ürün sahibi *"çok belli değil"* dedi ve
+            haklıydı, ama kolonu tek başına genişletmek metinden o
+            kadar yer alıyordu. Negatif kenar boşluğu Loopy'yi kartın
+            KENDİ İÇ DOLGUSUNA taşırıyor: 20 piksel oradan geliyor,
+            metinden değil. Kartın `overflow-hidden`ı dış kenarda
+            kırpıyor, dolgunun içi serbest.
           */}
-          <div className="w-[7.5rem] shrink-0">
+          <div className="-mr-3 w-[9rem] shrink-0">
             <LoopySozu
               soz={masada ? "Hedeflerini tamamla!" : "Seni kafede bekliyorum!"}
               ifade="keyifli"
-              boy={106}
+              boy={150}
+              yon="alt"
             />
           </div>
         </div>
@@ -958,13 +993,23 @@ function GecisKarti({
   alt,
   renk,
   gorsel,
+  sahne,
 }: {
   yol: string;
   ust: string;
   baslik: string;
   alt: string;
   renk: OyuncuRengi;
-  gorsel: GorselAdi;
+  gorsel?: GorselAdi;
+  /**
+   * Üretilmiş sahne — Ü180.
+   *
+   * ⚠️ `gorsel` ile birlikte kullanılmıyor: `gorsel` kartın arkasında
+   * %24 opaklıkta **fısıldayan** bir çizim, sahne ise tam renkte
+   * duruyor. İkisi aynı köşede olsaydı biri diğerinin altında gürültü
+   * bırakırdı.
+   */
+  sahne?: string;
 }) {
   const r = RENK[renk];
 
@@ -982,8 +1027,23 @@ function GecisKarti({
       className="block transition-transform hover:-translate-y-0.5 active:scale-[0.99]"
     >
       <BiletYuzeyi renk={renk} gorsel={gorsel} className="px-5 py-4">
-        <div className="etiket-caps text-white/55">{ust}</div>
-        <div className="mt-1 flex items-baseline justify-between gap-3">
+        {/*
+          Sahne sağ kenardan taşıyor ve kırpılıyor — biletin kendi
+          diliyle aynı (Ü72): kutuya sığdırılmış çizim "buraya bir ikon
+          koyduk" diye okunuyor, taşan çizim kartı bir nesneye çeviriyor.
+
+          ⚠️ Metnin sağ ucuna değmemesi için sağa YASLI ve dar: kart
+          iki satır yazı taşıyor ve sahne onların üstüne binerse başlık
+          okunmaz oluyor.
+        */}
+        {sahne && (
+          <span aria-hidden className="pointer-events-none absolute -top-2 -right-5">
+            <OyunSahnesi oyun={sahne} boy={104} />
+          </span>
+        )}
+
+        <div className="relative etiket-caps text-white/55">{ust}</div>
+        <div className="relative mt-1 flex items-baseline justify-between gap-3">
           <span className="font-display text-lg leading-tight font-bold text-white">{baslik}</span>
           {/* Ok biletteki "Kasada göster →"in karşılığı: bu kart da bir
               yere gitmeyi vaat ediyor. Rengi `canli` — koyu zeminde
@@ -992,7 +1052,15 @@ function GecisKarti({
             →
           </span>
         </div>
-        <p className="mt-1 text-[13px] leading-relaxed text-white/65">{alt}</p>
+        {/* ⚠️ Sahne varken metin dar: tam genişlikte alt satır sahnenin
+            altına giriyor ve iki katman üst üste okunmaz oluyor. */}
+        <p
+          className={`relative mt-1 text-[13px] leading-relaxed text-white/65 ${
+            sahne ? "max-w-[62%]" : ""
+          }`}
+        >
+          {alt}
+        </p>
       </BiletYuzeyi>
     </Link>
   );

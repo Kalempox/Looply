@@ -8,6 +8,7 @@ import { OyuncuSayfa, SayfaBasi, Sayac, OyuncuBolum } from "@/components/oyuncu"
 import { Gorsel, gorselSec, GORSEL_RENGI } from "@/components/oyuncu-gorsel";
 import { Bilet } from "@/components/bilet";
 import { KazimaKarti } from "@/components/kazima-karti";
+import { LoopyOdullu } from "@/components/loopy-sozu";
 import { kuponuKaz } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -84,7 +85,22 @@ export default async function OdullerSayfasi({
 
   return (
     <OyuncuSayfa aktif="/oduller" yuva={false}>
-      <SayfaBasi ust="Envanter" baslik="Ödüllerim" renk="amber" gorsel="bilet">
+      {/*
+        Ü178: başlığa Loopy geldi — ürün sahibi *"Ödüllerim kartının da
+        tasarımına bu tarzda elinde ödül tutan Loopy karakterimizi
+        ekleyelim"* dedi.
+
+        ⚠️ Yalnızca BU ekran karakter veriyor. `SayfaBasi` altı ekranın
+        ortak başlığı ve karakteri bileşenin içine gömmek, istenmeyen
+        beş ekrana da koymak olurdu.
+      */}
+      <SayfaBasi
+        ust="Envanter"
+        baslik="Ödüllerim"
+        renk="amber"
+        gorsel="bilet"
+        karakter={<LoopyOdullu boy={134} />}
+      >
         <div className="grid grid-cols-2 gap-2.5">
           <Sayac
             etiket="Kasada gösterebilirsin"

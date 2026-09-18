@@ -90,8 +90,13 @@ export default async function OyunlarSayfasi() {
 
   return (
     <OyuncuSayfa aktif="/oyna" geri={{ href: "/oyna", etiket: "Ana ekran" }} yuva={false}>
-      <SayfaBasi ust="Katalog" baslik="Oyunlar" renk="gok" gorsel="kumanda">
-        <p className="text-[13px] leading-relaxed text-yazi-sonuk">
+      {/*
+        ⚠️ `koyu` yalnızca BU ekranda — Ü182. Karusel kartları Ü181'de
+        koyuya geçti ve pastel başlık onların üstünde yabancı kaldı;
+        aynı ekranda iki ayrı kart dili konuşuluyordu.
+      */}
+      <SayfaBasi ust="Katalog" baslik="Oyunlar" renk="gok" gorsel="kumanda" koyu>
+        <p className="text-[13px] leading-relaxed text-white/75">
           {kazandirir
             ? "Hepsi puan ve XP kazandırıyor. Bugünün oyunu iki katı veriyor."
             : "Konumun doğrulanmadan oynayabilirsin ama puan ve XP yazılmaz."}

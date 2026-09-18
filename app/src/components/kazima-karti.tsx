@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Bilet } from "./bilet";
+import { cizLooplyKilidi } from "./logo";
 import { GORSEL_RENGI, gorselSec } from "./oyuncu-gorsel";
 import type { KuponTuru } from "@/domain/odul";
 import type { KategoriTuru } from "@/domain/kategori-tur";
@@ -139,6 +140,26 @@ export function KazimaKarti({
     const ctx = tuval.getContext("2d", { willReadFrequently: true });
     if (!ctx) return;
 
+    /**
+     * Yüzeye dokunuldu mu — logonun yazı tipi için (Ü179).
+     *
+     * 🔴 `kur()` yüzeyi **sıfırlıyor**: kazınmış bir kartta çağrılırsa
+     * oyuncunun sildiği yer geri gelir. Yazı tipi geç yüklendiğinde
+     * yeniden çizmek gerekiyor ama yalnızca hiç dokunulmamışken.
+     */
+    let dokunuldu = false;
+
+    /**
+     * Outfit'in gerçek aile adı.
+     *
+     * ⚠️ Sabit yazılamıyor: `next/font` adı derleme sırasında üretiyor
+     * (`__Outfit_abc123` gibi). Değişken okunamazsa sistem yazı tipine
+     * düşüyor — logo yanlış yazı tipiyle de olsa çiziliyor.
+     */
+    const yaziAilesi = () =>
+      getComputedStyle(document.body).getPropertyValue("--font-outfit").trim() ||
+      "ui-sans-serif";
+
     /*
       Tuval iki ölçü taşıyor: CSS boyu (ekranda kapladığı yer) ve piksel
       boyu (çizim çözünürlüğü). Cihaz piksel oranıyla çarpılmazsa yüzey
@@ -205,9 +226,45 @@ export function KazimaKarti({
       ctx.letterSpacing = "0.04em";
       ctx.fillText("parmağınla sürt", kutu.width / 2, kutu.height / 2 + 13);
       ctx.letterSpacing = "0em";
+
+      /*
+        Looply logosu — yüzeyin altında, folyonun ÜSTÜNDE (Ü178/Ü179).
+
+        Ürün sahibi: *"kazı ve gör kısmının alt kısmında Looply logosu
+        olmalı"* ve sonra *"altında looply yazılı logomuz olmalı"* —
+        yani işaret değil tam kilit. Gerçek kazı kartlarında da marka
+        folyonun üstünde basılıdır ve kazındıkça kaybolur: ödülün
+        kendisi değil, ödülü veren.
+
+        ⚠️ Sağ alttaki "Kazımadan aç" düğmesiyle çakışmıyor: o düğme
+        sağa yaslı, kilit ortada ve ~50 piksel geniş.
+      */
+      cizLooplyKilidi(
+        ctx,
+        kutu.width / 2,
+        kutu.height - 13,
+        15,
+        "rgba(61,44,4,0.45)",
+        yaziAilesi(),
+      );
     };
 
     kur();
+
+    /*
+      🔴 Yazı tipi gelince BİR KEZ yeniden çiz — Ü179.
+
+      Canvas metni çizildiği anda yüklü olan yazı tipiyle boyanıyor ve
+      bir daha kendiliğinden düzelmiyor. Outfit `display: "swap"` ile
+      geliyor, yani ilk karede hazır olmayabilir.
+
+      ⚠️ `dokunuldu` kontrolü ŞART: `kur()` yüzeyi sıfırlıyor. Oyuncu
+      bu arada kazımaya başladıysa yeniden çizmek sildiği yeri geri
+      getirirdi — doğru yazı tipi, kazınmış bir yüzeyden önemli değil.
+    */
+    void document.fonts?.ready.then(() => {
+      if (!dokunuldu && !istendiRef.current) kur();
+    });
 
     /* ── Kazıma ───────────────────────────────────────── */
 
@@ -225,6 +282,8 @@ export function KazimaKarti({
     const bas = (e: PointerEvent) => {
       if (istendiRef.current) return;
       basiliMi = true;
+      // Bundan sonra yüzey yeniden çizilemez — bkz. `dokunuldu`.
+      dokunuldu = true;
       /*
         İşaretçi yakalanıyor: parmak kartın dışına taşsa da kazıma
         sürüyor. Yakalanmasaydı kenara gelince çizgi kopardı.

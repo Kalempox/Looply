@@ -92,53 +92,101 @@ export default async function ProfilSayfasi() {
           ertelemek olurdu; şimdi gradyan, doku ve gölge tek yerden
           geliyor ve iki kart yapı gereği aynı.
         */}
-        <KoyuKart className="pt-5 pb-12">
-          <div className="flex items-start justify-between gap-3">
-            <LooplyLogo boyut={30} beyaz />
-            {/*
-              Kalem `/verilerim`e gidiyor: hesabın düzenlenebilir tek
-              yeri orası (ad, bildirim tercihi, veri indirme, silme).
-              Tasarımda bir kalem var ve gideceği yer olmayan bir
-              düğme koymak, verilmemiş bir söz olurdu.
-            */}
-            <Link
-              href="/verilerim"
-              aria-label="Hesabını düzenle"
-              className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white/15 text-white transition-colors hover:bg-white/25"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-                <path
-                  d="M4 20h4L19 9a2.8 2.8 0 10-4-4L4 16v4z"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </Link>
-          </div>
+        {/*
+          🔴 Kart kısaldı, Loopy büyüdü — Ü179.
 
-          <div className="mt-4 flex items-start gap-3">
+          Ürün sahibi: *"alt kısımdaki mor alan fazlalık"*, *"Kahveyle
+          daha güzel oyunlar yazısını da kaldır"* ve *"avatarın boyutu
+          biraz daha büyümeli ama kartın kısalmalı."*
+
+          İkisi aynı anda ancak **Loopy'nin kolonu kısalırsa** olurdu,
+          çünkü kartın boyunu metin değil o belirliyor. Üç yerden
+          kazanıldı:
+
+            1. Altyazı gitti (istenen).
+            2. Kalem satırı MUTLAK konuma geçti, logo sol kolona girdi:
+               Loopy artık kartın tepesinden başlıyor, o satırın 40
+               pikselini ödemiyor.
+            3. Balon karakterin ALTINA indi (`yon="alt"`): üstteyken
+               kalem düğmesiyle çakışıyordu ve bu yüzden kolonu aşağı
+               itmek gerekiyordu. Karakterin kafası balondan dar, kalemin
+               yanından geçiyor.
+        */}
+        <KoyuKart className="pt-5 pb-9">
+          {/*
+            Kalem `/verilerim`e gidiyor: hesabın düzenlenebilir tek
+            yeri orası (ad, bildirim tercihi, veri indirme, silme).
+            Tasarımda bir kalem var ve gideceği yer olmayan bir düğme
+            koymak, verilmemiş bir söz olurdu.
+
+            ⚠️ MUTLAK konumda (Ü179): akışta dururken kendi satırını
+            açıyordu ve o satır kartı 40 piksel uzatıyordu. Mutlak
+            konumda kartın köşesinde duruyor, hiçbir şeyi itmiyor.
+
+            ⚠️ `-right-2` NEGATİF ve ölçülerek seçildi. Konumlandıran
+            ata `KoyuKart`ın **iç** sarmalayıcısı, yani sağ kenarı
+            kartın 20 piksellik dolgusunun içinde (335). Loopy'nin
+            karesinde üst %35'lik bant (buhar dahil) 250–303 arasını
+            kaplıyor; sıfır uzaklıkta düğme 299'da başlıyor ve tam
+            buharın üstüne düşüyor. −8 piksel onu dolguya taşırıp 307'ye
+            alıyor: buhardan 4 piksel pay, kartın kenarından 12.
+          */}
+          <Link
+            href="/verilerim"
+            aria-label="Hesabını düzenle"
+            className="absolute top-4 -right-2 z-10 flex size-9 items-center justify-center rounded-full bg-white/20 text-white backdrop-blur-sm transition-colors hover:bg-white/30"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+              <path
+                d="M4 20h4L19 9a2.8 2.8 0 10-4-4L4 16v4z"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </Link>
+
+          {/*
+            🔴 `items-center` — Ü179 ve sebebi ölçüldü.
+
+            Altyazı kalkınca sol kolon kısaldı, Loopy'nin kolonu uzun
+            kaldı. `items-start`te aradaki fark adın ALTINDA tek parça
+            boş mor olarak duruyordu — ürün sahibinin şikâyet ettiği
+            şeyin ta kendisi, üstelik altyazıyı silmek onu büyütmüştü.
+
+            Ortalayınca aynı boşluk adın altına ve üstüne bölünüyor ve
+            hiçbir yerde "burada bir şey eksik" demiyor.
+          */}
+          <div className="flex items-center gap-3">
             <div className="min-w-0 flex-1">
-              <p className="etiket-caps text-white/60">Profil</p>
+              <LooplyLogo boyut={30} beyaz />
+              <p className="etiket-caps mt-5 text-white/60">Profil</p>
               {/* `mt-1.5` — Ü177: ürün sahibi adın biraz daha aşağıda
                   durmasını istedi ve iki kart aynı olmak zorunda. */}
               <h1 className="mt-1.5 font-display text-3xl leading-none font-extrabold tracking-tight text-white">
                 {g.ad}
               </h1>
-              <p className="mt-2 text-[13px] leading-snug text-white/70">
-                Kahveyle daha güzel oyunlar!
-              </p>
+              {/*
+                ⚠️ "Kahveyle daha güzel oyunlar!" KALDIRILDI (Ü179) —
+                ürün sahibinin isteği. `/oyna`daki karşılığı duruyor
+                çünkü orada cümle bilgi taşıyor: kafede olup olmadığına
+                göre değişiyor ve ne yapılacağını söylüyor. Buradaki
+                yalnızca süslemeydi.
+              */}
             </div>
 
             {/*
-              ⚠️ Kolon SABİT genişlikte (7.5rem) ve Loopy onun içinde
-              büyüyor — Ü174'ün dersi. Esnek kolonda karakteri
-              büyütmek metnin yerini yer ve 375 pikselde başlık dört
-              satıra düşer. Sabit kolonda büyüme metne dokunmuyor.
+              ⚠️ Kolon SABİT genişlikte ve Loopy onun içinde büyüyor —
+              Ü174'ün dersi. Esnek kolonda karakteri büyütmek metnin
+              yerini yer ve 375 pikselde başlık dört satıra düşer.
+
+              🔴 `-mr-3` — Ü178: Loopy kartın KENDİ İÇ DOLGUSUNA
+              taşıyor, kazanılan 20 piksel metinden değil oradan
+              geliyor. `/oyna`daki kardeşiyle birebir aynı ölçü.
             */}
-            <div className="w-[7.5rem] shrink-0">
-              <LoopySozu soz="İyi ki buradasın!" ifade="keyifli" boy={106} />
+            <div className="-mr-3 w-[9rem] shrink-0">
+              <LoopySozu soz="İyi ki buradasın!" ifade="keyifli" boy={150} yon="alt" />
             </div>
           </div>
         </KoyuKart>

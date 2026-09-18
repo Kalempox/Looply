@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { RENK, oyunRengi } from "@/components/oyuncu-renk";
+import { RENK, oyunRengi, ISIN_DOKUSU } from "@/components/oyuncu-renk";
 import { Gorsel, oyunGorseli } from "@/components/oyuncu-gorsel";
-import { DusenSahnesi } from "@/components/oyun-sahnesi";
+import { OyunSahnesi, sahneVarMi } from "@/components/oyun-sahnesi";
 import { OyunIkonu } from "@/components/oyuncu-ikon";
 
 /**
@@ -453,13 +453,28 @@ function OyunKapagi({
     <div
       className="kart-golge relative h-[356px] overflow-hidden rounded-3xl"
       style={{
-        // Kartın yüzeyi listedeki hâliyle aynı aileden: açık zeminden
-        // canlı tona. `kartStili` doğrudan kullanılmadı çünkü orada
-        // yükseklik ve köşe yarıçapı listeye göre ayarlı; kapak dikey.
-        background: `linear-gradient(150deg, ${r.zemin} 0%, ${r.canli} 100%)`,
-        border: `1px solid ${r.canli}`,
+        /*
+          🔴 Kart PASTELDEN KOYUYA geçti — Ü181.
+
+          Ürün sahibi: *"kartlarımızın arka planları da çok kötü,
+          kartlarımız da benzer temada olmalı."* Haklıydı ve sebebi
+          ölçülebilir: sahneler neon ve neon **toplamalı ışık**. Açık
+          pastel zeminde parlamanın ekleyecek bir şeyi yok, blok
+          yalnızca renkli bir kare olarak duruyor. Koyu zeminde aynı
+          blok ışık saçıyor.
+
+          Yüzey `BiletYuzeyi` ile aynı formül — ürünün koyu kart dili
+          tek yerden geliyor (Ü171).
+        */
+        background: `linear-gradient(115deg, ${r.koyu} 0%, ${r.ana} 100%)`,
       }}
     >
+      {/* Işın dokusu — koyu zeminde %8 yetiyor (Ü171). */}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute -top-[240%] left-1/2 size-[300%] -translate-x-1/2"
+        style={{ opacity: 0.08, background: ISIN_DOKUSU }}
+      />
       {/*
         Kapak görseli.
 
@@ -483,19 +498,42 @@ function OyunKapagi({
         kaldı. Karusel kartı dikey ve metin alt yarıyı dolduruyor;
         sahneye kalan tek boş alan ikonun sağı.
       */}
-      {oyun.id === "dusen" ? (
-        <span aria-hidden className="pointer-events-none absolute -right-4 top-12">
-          <DusenSahnesi boy={116} />
+      {sahneVarMi(oyun.id) ? (
+        /*
+          🔴 Sahne BÜYÜDÜ ve ÜSTTEN TAŞIYOR — Ü181.
+
+          Ürün sahibi iki şey söyledi: *"sadece simge değil kartta
+          yerleşimi de önemli, gerçekten havadan parçalar düşüyor gibi"*
+          ve *"kartlarda yeterli alanı kaplamıyor, tam kullanılmıyor."*
+
+          132 pikselken kartın (356) yalnızca %37'siydi ve sağ üst
+          köşede duran bir rozet gibi okunuyordu. 215'te kartın üst
+          yarısını dolduruyor; üst kenardan taşması da hareketin
+          kaynağını kartın DIŞINA koyuyor — parçalar bir yerden
+          geliyormuş gibi duruyor, kartın içinde durmuyormuş gibi.
+        */
+        <span aria-hidden className="pointer-events-none absolute -top-5 -right-6">
+          <OyunSahnesi oyun={oyun.id} boy={215} />
         </span>
       ) : (
         <span
           aria-hidden
-          className="pointer-events-none absolute -right-6 -bottom-2 opacity-[0.18]"
-          style={{ color: r.koyu }}
+          className="pointer-events-none absolute -right-6 -bottom-2 text-white opacity-[0.17]"
         >
           <Gorsel ad={oyunGorseli(oyun.id)} boy={190} />
         </span>
       )}
+
+      {/*
+        Perde: sahne metnin üstüne değil ama alt yarıda başlık ve özet
+        var ve koyu zeminde bile parlak bloklar yazıyla yarışıyor.
+        Aşağıdan yukarı açılan perde metnin arkasını koyulaştırıyor.
+      */}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2"
+        style={{ background: `linear-gradient(to top, ${r.koyu} 10%, transparent 100%)` }}
+      />
 
       {/*
         Arkadaki kartın tamamı bir düğme: dokununca öne geliyor, oyunu
@@ -519,7 +557,9 @@ function OyunKapagi({
 
         <div className="mt-auto">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="etiket-caps text-[10px]" style={{ color: r.koyu }}>
+            {/* ⚠️ Etiket `koyu` DEĞİL `canli`: zemin artık koyu ve koyu
+                tonun üstüne koyu ton okunmuyor (Ü171'in aynı dersi). */}
+            <span className="etiket-caps text-[10px]" style={{ color: r.canli }}>
               {oyun.kategori}
             </span>
             {oyun.bugunMu && (
@@ -529,7 +569,7 @@ function OyunKapagi({
             )}
           </div>
 
-          <p className="mt-1.5 font-display text-[27px] leading-tight font-extrabold">
+          <p className="mt-1.5 font-display text-[27px] leading-tight font-extrabold text-white">
             {oyun.ad}
           </p>
 
@@ -538,9 +578,7 @@ function OyunKapagi({
             className="overflow-hidden transition-all duration-300"
             style={{ maxHeight: onde ? 140 : 0, opacity: onde ? 1 : 0 }}
           >
-            <p className="mt-2 text-[14px] leading-relaxed" style={{ color: r.koyu }}>
-              {oyun.ozet}
-            </p>
+            <p className="mt-2 text-[14px] leading-relaxed text-white/80">{oyun.ozet}</p>
 
             {/*
               🔴 Oyunu açan tek şey BU düğme — kartın kendisi bağlantı
