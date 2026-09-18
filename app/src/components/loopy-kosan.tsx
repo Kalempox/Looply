@@ -62,13 +62,13 @@ export function LoopyKosan() {
   /*
     🔴 Genişlik ekranın TAMAMI ve boyut ayarı yok.
 
-    Karakter sağ kenardan girip sol kenardan çıkıyor ve bu hareket
-    videonun İÇİNDE — konumu da, hızı da orada. Bileşene "şu kadar
-    büyük olsun" demek, geçişin nereden başlayıp nerede biteceğini
-    bozardı: dar bir kutuda karakter ekranın ortasında belirip ortasında
-    kaybolurdu.
+    Karakter sağ ÜSTTEN girip sol ALTTAN çıkıyor ve bu hareketin
+    tamamı görselin İÇİNDE — yatayı videodan, dikeyi üretim
+    script'inden geliyor (Ü185). Bileşene "şu kadar büyük olsun"
+    demek, geçişin nereden başlayıp nerede biteceğini bozardı: dar bir
+    kutuda karakter ekranın ortasında belirip ortasında kaybolurdu.
 
-    ⚠️ `width`/`height` öznitelikleri oranı (720×372) baştan veriyor:
+    ⚠️ `width`/`height` öznitelikleri oranı (720×992) baştan veriyor:
     olmasalardı görsel inene kadar satır yer kaplamaz ve indiği anda
     sahne zıplardı.
   */
@@ -78,11 +78,11 @@ export function LoopyKosan() {
       alt=""
       aria-hidden
       width={720}
-      height={372}
+      height={992}
       /*
         🔴 `unoptimized` ŞART: görsel iyileştirici hareketli WebP'yi
         yeniden kodlarken **tek kareye düşürüyor**. Optimize edilmiş
-        hâli 746 KB yerine 30 KB olurdu ama duran bir resim olurdu.
+        hâli 725 KB yerine 30 KB olurdu ama duran bir resim olurdu.
       */
       unoptimized
       className="pointer-events-none h-auto w-full select-none"

@@ -218,10 +218,30 @@ export function SeriSahnesi({
             ⚠️ Kırpma katmanı ŞART: görsel ekran genişliğinde ve
             karakter kenarların dışına taşıyor. Kırpılmasaydı sahnenin
             yatay kaydırma alanını büyütürdü.
+
+            🔴 Şerit ALTA YASLI — Ü185.
+
+            Ürün sahibi *"sağ üstünden girsin, sol altından çıksın"*
+            dedi; şerit 720×992, ekranda ~517 piksel yüksekliğinde.
+
+            Önce ortalanmıştı ve ürün sahibi *"ateş simgemize tam denk
+            gelmeden, birazcık daha aşağıdan başlasın"* dedi. Çakışma
+            rastgele değil, **duraklama anında** oluyor: videoda
+            karakter ortada ~1,3 saniye yerinde sayıyor ve o sırada
+            yatayda tam alevin altında duruyor.
+
+            Ölçü: ortalanmışken şerit 148-664 arasındaydı, alev ise
+            297-400. Duraklama karelerinde karakterin üst kenarı
+            252-353'e denk geliyor, yani alevin tam üstüne. Alta
+            yaslanınca şerit 295-812 oluyor ve aynı karelerde üst kenar
+            400-501 — alevin hemen altı.
+
+            ⚠️ Yüzdeyle değil kenara yaslanarak: ekran boyu
+            değiştiğinde çıkış noktası hep alt kenarda kalıyor.
           */}
           <div
             aria-hidden
-            className="pointer-events-none absolute inset-x-0 bottom-[6%] z-0 overflow-hidden"
+            className="pointer-events-none absolute inset-x-0 bottom-0 z-0 overflow-hidden"
           >
             <LoopyKosan />
           </div>

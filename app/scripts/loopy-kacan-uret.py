@@ -66,6 +66,21 @@ GENISLIK = 720
 KALITE = 68
 KARE_HIZI = 24
 
+# ── 🔴 Çapraz iniş — Ü185 ───────────────────────────────────
+#
+# Ürün sahibi: *"ekranın sağ üstünden girsin, sol altından çıksın."*
+# Videodaki geçiş YATAY; dikey hareket burada karelere işleniyor.
+#
+# ⚠️ CSS'e bırakılmadı ve sebebi teknik: hareketli WebP kendi saatiyle
+# döner, CSS animasyonu başka bir saatle. İkisinin periyodu aynı
+# yazılsa bile zamanla kayarlar ve Loopy bir süre sonra ekranın
+# ortasından girmeye başlar. Kareye işlenen kayma kaymaz.
+#
+# 620 piksel, 720 piksellik yatay yola karşılık ~%41'lik bir eğim
+# veriyor. Daha diki kareyi gereksiz uzatıyor, daha azı çapraz değil
+# "hafifçe alçalan" duruyordu.
+DIKEY_INIS = 620
+
 # Yeşillik eşikleri (0-255): üstü zemin, altı gövde, arası kenar/duman.
 TAM_ZEMIN = 60
 TAM_GOVDE = 18
@@ -118,6 +133,16 @@ def main() -> None:
         )
     if kutu:
         kareler = [k.crop(kutu) for k in kareler]
+
+    # Çapraz iniş: her kare bir öncekinden biraz daha aşağıya yapışıyor.
+    # İlk kare en üstte (sağ üst giriş), son kare en altta (sol alt çıkış).
+    en, boy = kareler[0].size
+    inisli = []
+    for i, k in enumerate(kareler):
+        tuval = Image.new("RGBA", (en, boy + DIKEY_INIS), (0, 0, 0, 0))
+        tuval.alpha_composite(k, (0, round(DIKEY_INIS * i / (len(kareler) - 1))))
+        inisli.append(tuval)
+    kareler = inisli
 
     os.makedirs(CIKTI, exist_ok=True)
     yol = os.path.join(CIKTI, "loopy-kacan.webp")
