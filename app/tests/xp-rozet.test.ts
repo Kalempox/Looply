@@ -11,7 +11,7 @@ import * as xp from "@/domain/xp";
 import * as rozet from "@/domain/rozet";
 import * as acil from "@/domain/acil";
 import { envanter } from "@/domain/odul";
-import { birlestir, karne } from "@/domain/profil";
+import { birlestir, karne, kafeDurumlari } from "@/domain/profil";
 import { yoneticiSorgu, benzersizEposta } from "./_yardim";
 
 /**
@@ -501,6 +501,68 @@ describe("profil karnesi", () => {
     assert.equal(kartlar[0].ilerlemeYuzde, 0);
   });
 
+  test("durum kart AÇMIYOR, yalnızca var olanı dolduruyor", () => {
+    /*
+      Ü188. Puanı olup seviyesi, geçmişi ve rozeti olmayan bir kafe
+      olamaz — puan da XP de aynı oyun turundan doğuyor. Durumdan kart
+      açmak, olmayan bir hâli kurtaran ölü kod olurdu ve yanlışlıkla
+      "adı boş" bir kafe kartı doğururdu.
+    */
+    const yalnizDurum = birlestir(
+      [],
+      [],
+      [],
+      new Map([
+        [
+          "cafe_x",
+          {
+            puan: 500,
+            kuponToplam: 2,
+            kuponElde: 1,
+            kuponKullanilan: 1,
+            seri: { gun: 3, bugunOynadi: true, riskte: false },
+          },
+        ],
+      ]),
+    );
+    assert.equal(yalnizDurum.length, 0, "durum tek başına kafe kartı açtı");
+
+    // Kartı olan kafeye ise işliyor.
+    const dolu = birlestir(
+      [],
+      [{ cafeId: "cafe_x", cafeAdi: "Kafe X", toplamOyun: 4, sonOyunlar: [] }],
+      [],
+      new Map([
+        [
+          "cafe_x",
+          {
+            puan: 500,
+            kuponToplam: 2,
+            kuponElde: 1,
+            kuponKullanilan: 1,
+            seri: { gun: 3, bugunOynadi: true, riskte: false },
+          },
+        ],
+      ]),
+    );
+    assert.equal(dolu[0].puan, 500);
+    assert.equal(dolu[0].kuponElde, 1);
+    assert.equal(dolu[0].seri.gun, 3);
+  });
+
+  test("durum verilmeyen kart sıfırlarla doluyor, undefined kalmıyor", () => {
+    /*
+      Ekran `kafe.puan.toLocaleString()` çağırıyor; alan `undefined`
+      kalsaydı profil çökerdi. Boş kart da tam bir `KafeDurumu` taşımalı.
+    */
+    const k = birlestir([], [], [sahteRozet("cafe_x", "Kafe X")])[0];
+    assert.equal(k.puan, 0);
+    assert.equal(k.kuponElde, 0);
+    assert.equal(k.kuponToplam, 0);
+    assert.equal(k.seri.gun, 0);
+    assert.equal(k.seri.riskte, false);
+  });
+
   test("global rozet kafe kartı açmaz", () => {
     const kartlar = birlestir([], [], [sahteRozet(null, null)]);
     assert.equal(kartlar.length, 0);
@@ -526,6 +588,54 @@ describe("profil karnesi", () => {
     assert.equal(kartlar[0].xp, 300);
     assert.equal(kartlar[0].toplamOyun, 7);
     assert.equal(kartlar[0].rozetler.length, 1);
+  });
+
+  test("kafeDurumlari puanı kafeye göre AYIRIYOR — VERİTABANI", async () => {
+    /*
+      Ü188. Bu testin işi SQL'i sınamak: sorgu üç tabloya birden bakıyor
+      ve hiçbiri tip denetiminden geçmiyor.
+
+      🔴 Veriyi test KENDİSİ kuruyor. İlk yazımda bu dosyadaki oyuncunun
+      mevcut puanına güvenmiştim ve test düştü — haklı olarak: bu dosya
+      *"kafe dışı oturumda hiçbir kazanım kaydı oluşmaz"* kuralını
+      sınıyor (Ü3), yani oyuncunun defteri BİLEREK boş. Var olan veriye
+      yaslanan test, başka bir testin kurduğu duruma bağımlı olur.
+
+      🔴 İki kafeye birden yazılıyor çünkü asıl risk toplamada değil
+      GRUPLAMADA: `GROUP BY cafe_id` unutulsaydı tek bir toplam dönerdi
+      ve iki kafe aynı sayıyı gösterirdi (Ü15, G12'nin ekrandaki
+      karşılığı).
+    */
+    await yoneticiSorgu(
+      `INSERT INTO points_ledger (id, cafe_id, player_id, business_date, delta, reason)
+       VALUES ($1, $2, $3, current_date, 70, 'test'),
+              ($4, $5, $3, current_date, 30, 'test'),
+              ($6, $7, $3, current_date, 11, 'test')`,
+      [
+        `pl_t_${Date.now()}_a`,
+        kafeA,
+        oyuncuId,
+        `pl_t_${Date.now()}_b`,
+        kafeA,
+        `pl_t_${Date.now()}_c`,
+        kafeB,
+      ],
+    );
+
+    const durumlar = await kafeDurumlari(oyuncuId);
+
+    assert.equal(durumlar.get(kafeA)?.puan, 100, "aynı kafenin satırları toplanmadı");
+    assert.equal(durumlar.get(kafeB)?.puan, 11, "kafe B'nin puanı A'ya karıştı");
+
+    /*
+      ⚠️ Kendi çöpünü topluyor. İlk yazımda toplamıyordu ve testler
+      geçtiği hâlde DOSYA düşüyordu: `after` kancası oyuncuyu siliyor,
+      defter satırı yabancı anahtarla buna engel oluyordu. Hata testte
+      değil temizlikte görünüyordu — veri kuran her testin sorumluluğu.
+    */
+    await yoneticiSorgu(`DELETE FROM points_ledger WHERE player_id = $1 AND reason = 'test'`, [
+      oyuncuId,
+    ]);
   });
 
   test("XP'si olmayan ama rozeti olan oyuncunun karnesi gerçekten doluyor", async () => {

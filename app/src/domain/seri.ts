@@ -65,6 +65,35 @@ export type Seri = {
  * satırla sınırlı: iki yıldır her gün gelen bir müşteri için yedi yüz satır
  * okumanın kimseye faydası yok, ekranda gösterilen sayı zaten tavanlı.
  */
+/**
+ * Gün kümesinden seriyi sayar — sorgudan AYRI tutuluyor.
+ *
+ * 🔴 Ü188'de ayrıldı ve sebebi somut: profil, oyuncunun BÜTÜN
+ * kafelerindeki seriyi bir arada gösteriyor. `hesapla` kafe başına bir
+ * sorgu atıyor; profilde bu, kafe sayısı kadar gidiş-dönüş demekti.
+ * Profil tek sorguda bütün günleri çekip her kafe için bunu çağırıyor.
+ *
+ * ⚠️ Kural İKİ YERDE yazılmamalı. `hesapla` da artık bunu çağırıyor —
+ * ayrı yazılsaydı biri düzeltilip diğeri geride kalırdı ve ana ekranla
+ * profil farklı seri gösterirdi. Bu projede o hatanın adı var
+ * (Ü144: ana ekran "2 kupon", Ödüllerim "1").
+ */
+export function seriyiSay(gunler: Set<string>, bugun: string): Seri {
+  const bugunOynadi = gunler.has(bugun);
+
+  // Bugün oynanmadıysa seri dünden geriye sayılıyor ve **kırılmış**
+  // sayılmıyor: gün henüz bitmedi. Kırıldığını söylemek, akşam gelecek
+  // müşteriyi sabahtan kaybetmek olurdu.
+  let imlec = bugunOynadi ? bugun : gunEkle(bugun, -1);
+  let gun = 0;
+  while (gunler.has(imlec) && gun < EN_UZUN_BAKIS) {
+    gun++;
+    imlec = gunEkle(imlec, -1);
+  }
+
+  return { gun, bugunOynadi, riskte: gun > 0 && !bugunOynadi };
+}
+
 export async function hesapla(
   db: Db,
   opts: { playerId: string; cafeId: string; bugun?: string },
@@ -86,20 +115,7 @@ export async function hesapla(
     [opts.playerId, opts.cafeId, bugun, EN_UZUN_BAKIS],
   );
 
-  const gunler = new Set(satirlar.map((r) => r.gun));
-  const bugunOynadi = gunler.has(bugun);
-
-  // Bugün oynanmadıysa seri dünden geriye sayılıyor ve **kırılmış**
-  // sayılmıyor: gün henüz bitmedi. Kırıldığını söylemek, akşam gelecek
-  // müşteriyi sabahtan kaybetmek olurdu.
-  let imlec = bugunOynadi ? bugun : gunEkle(bugun, -1);
-  let gun = 0;
-  while (gunler.has(imlec) && gun < EN_UZUN_BAKIS) {
-    gun++;
-    imlec = gunEkle(imlec, -1);
-  }
-
-  return { gun, bugunOynadi, riskte: gun > 0 && !bugunOynadi };
+  return seriyiSay(new Set(satirlar.map((r) => r.gun)), bugun);
 }
 
 /**

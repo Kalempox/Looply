@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { RENK, oyunRengi, type OyuncuRengi } from "./oyuncu-renk";
 
 /**
@@ -136,21 +137,52 @@ export function DusenIkonu({ boy }: IkonProps) {
   );
 }
 
+/**
+ * 🔴 Üretilmiş ikonu olan oyunlar — Ü187.
+ *
+ * Ü183'te kartlar neon sahnelere geçince aynı kartın üstünde iki ayrı
+ * malzeme kaldı: parlak, hacimli bir sahne ve yanında düz vektör bir
+ * simge. Ürün sahibi *"küçük logoları da değiştirmeliyiz"* dedi ve
+ * haklıydı — aynı yüzeyde iki dil.
+ *
+ * Üretim ve üç turluk arayış `scripts/oyun-ikon-uret.py`de yazılı.
+ */
+const URETILMIS = new Set(["dusen", "blok", "yilan"]);
+
+/**
+ * Elle çizilmiş ikonlar — yalnızca üretilmişi olmayan oyunlar için.
+ *
+ * ⚠️ `dusen` ve `blok`un çizimleri SİLİNMEDİ, listeden çıkarıldı.
+ * Kullanılmıyorlar ama Ü147'den beri ürünün dilini taşıyorlar ve yeni
+ * bir oyunun ikonu üretilene kadar geçici olarak gerekebilirler.
+ */
 const OYUN_IKONU: Record<string, (p: IkonProps) => React.ReactElement> = {
-  blok: BlokIkonu,
   kelime: KelimeIkonu,
-  dusen: DusenIkonu,
 };
 
 /**
  * Oyunun ikonu.
  *
+ * Üç kademeli: üretilmiş görsel → elle çizim → jenerik daire.
  * Tanınmayan oyun için jeneriğe düşüyor: ekranda boşluk kalmıyor,
  * yalnızca oyunun kendine ait çizimi olmuyor. Oyun listesi kodda sabit
  * (`OYUNLAR`) ama ikon eşlemesi ayrı dosyada — biri eklenip diğeri
  * unutulduğunda ekran çökmemeli.
  */
 export function OyunIkonu({ oyunId, boy = 24 }: { oyunId: string; boy?: number }) {
+  if (URETILMIS.has(oyunId)) {
+    return (
+      <Image
+        src={`/oyun/ikon-${oyunId}-256.webp`}
+        alt=""
+        aria-hidden
+        width={256}
+        height={256}
+        style={{ width: boy, height: boy }}
+      />
+    );
+  }
+
   const Ikon = OYUN_IKONU[oyunId];
   if (Ikon) return <Ikon boy={boy} />;
 

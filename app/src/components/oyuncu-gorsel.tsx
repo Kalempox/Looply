@@ -86,7 +86,22 @@ export type KuponGorseli = "icecek" | "soguk" | "tatli" | "yiyecek" | "para";
 const ESLESME: [KuponGorseli, string[]][] = [
   [
     "tatli",
-    ["tatlı", "kek", "cheesecake", "brownie", "kurabiye", "pasta", "waffle", "dondurma", "sufle", "muffin", "tiramisu", "profiterol", "magnolia", "kruvasan", "poğaça", "börek", "simit"],
+    ["tatlı", "kek", "cheesecake", "brownie", "kurabiye", "pasta", "waffle", "dondurma", "sufle", "muffin", "tiramisu", "profiterol", "magnolia", "kruvasan"],
+  ],
+  /*
+    🔴 `yiyecek` metinden ULAŞILAMIYORDU — Ü189.
+
+    Bu listede hiç `yiyecek` satırı yoktu; tür yalnızca kafenin ürüne
+    atadığı kategoriden (`KATEGORI_GORSELI`) gelebiliyordu. Yani
+    kategorisi atanmamış her tuzlu ürün ya tatlı ya da paraya düşüyordu
+    ve `yiyecek` çizimi pratikte hiç görünmüyordu.
+
+    ⚠️ Poğaça, börek ve simit buraya TAŞINDI — `tatli` listesindeydiler
+    ve tuzlu hamur işini pastayla aynı karede göstermek yanlıştı.
+  */
+  [
+    "yiyecek",
+    ["sandviç", "sandwich", "tost", "poğaça", "börek", "simit", "salata", "kumpir", "makarna", "çorba", "wrap", "bagel", "kahvaltı"],
   ],
   /*
     Soğuk, sıcaktan **önce** bakılıyor.
@@ -141,9 +156,30 @@ export function gorselSec(
 ): KuponGorseli {
   if (kategoriTuru && KATEGORI_GORSELI[kategoriTuru]) return KATEGORI_GORSELI[kategoriTuru];
 
-  const m = metin.toLocaleLowerCase("tr");
+  /*
+    🔴 İKİ küçük harf birden — Ü189, ölçülerek bulunan arıza.
+
+    Yalnızca Türkçe küçük harfe bakılıyordu ve "Ice Americano" ekranda
+    BUHARLI FİNCANLA çıkıyordu. Sebep şu: Türkçede `I`nin küçüğü
+    noktasız `ı`, yani
+
+        "Ice Americano".toLocaleLowerCase("tr") === "ıce americano"
+
+    ve listedeki noktalı `ice` hiç tutmuyor. Kupon `soguk`u atlayıp
+    `americano` üzerinden `icecek`e düşüyordu.
+
+    ⚠️ Yukarıdaki sıralama notu (soğuk, sıcaktan önce) bu ihtimali zaten
+    öngörmüş ve sırayı ona göre kurmuş — ama kelime HİÇ eşleşmediği için
+    sıra da işe yaramıyordu. Doğru sıra, yanlış karşılaştırma.
+
+    İkisine birden bakmak ikisini de kurtarıyor: Türkçe küçük harf
+    "TATLI" → "tatlı" için gerekli (değişmez küçük harf "tatli" verir ve
+    `tatlı` tutmaz), değişmez küçük harf ise "ICE" → "ice" için.
+  */
+  const trk = metin.toLocaleLowerCase("tr");
+  const dgz = metin.toLowerCase();
   for (const [ad, kelimeler] of ESLESME) {
-    if (kelimeler.some((k) => m.includes(k))) return ad;
+    if (kelimeler.some((k) => trk.includes(k) || dgz.includes(k))) return ad;
   }
   return tur === "urun" ? "icecek" : "para";
 }

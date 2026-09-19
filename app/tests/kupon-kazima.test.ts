@@ -13,6 +13,7 @@ import * as puan from "@/domain/puan";
 import { envanter, kuponDetayi, kaz } from "@/domain/odul";
 import { isGunu } from "@/lib/tarih";
 import { yoneticiSorgu, benzersizEposta } from "./_yardim";
+import { gorselSec } from "@/components/oyuncu-gorsel";
 
 /**
  * Ü141 — kupon kazınarak açılıyor.
@@ -299,6 +300,37 @@ describe("kazıma", () => {
 
     const d = await kuponDetayi(p, kuponId);
     assert.ok(d!.jeton.length > 0, "açılan kuponun jetonu hâlâ boş — kasada gösterilemez");
+  });
+
+  test("kupon çizimi Türkçe küçük harfte KAYMIYOR — REGRESYON", () => {
+    /*
+      🔴 Ü189'da ekranda yakalandı: "Ice Americano" kuponu buharlı
+      fincanla, yani SICAK içecek olarak çıkıyordu.
+
+      Sebep dil: Türkçede `I`nin küçüğü noktasız `ı`.
+
+          "Ice Americano".toLocaleLowerCase("tr") === "ıce americano"
+
+      Listedeki noktalı `ice` hiç tutmuyor, kupon `soguk`u atlayıp
+      `americano` üzerinden `icecek`e düşüyordu.
+
+      ⚠️ Koddaki sıralama notu bu ihtimali öngörmüştü (soğuk, sıcaktan
+      ÖNCE bakılıyor) ama kelime hiç eşleşmediği için sıra da işe
+      yaramıyordu — doğru sıra, yanlış karşılaştırma. Bu yüzden test
+      sıralamayı değil, İKİ YÖNLÜ eşleşmeyi çiviliyor.
+    */
+    // Türkçe küçük harfin bozduğu hâl — asıl regresyon.
+    assert.equal(gorselSec("Ice Americano", "urun"), "soguk");
+    assert.equal(gorselSec("ICE LATTE", "urun"), "soguk");
+
+    // Değişmez küçük harfin bozacağı hâl — diğer yön de korunmalı.
+    // ("TATLI".toLowerCase() === "tatli", listedeki "tatlı" tutmaz.)
+    assert.equal(gorselSec("TATLIDA %10 İNDİRİM", "yuzde"), "tatli");
+
+    // Sıcak, soğuk ve para olağan hâllerinde kalıyor.
+    assert.equal(gorselSec("Ücretsiz filtre kahve", "urun"), "icecek");
+    assert.equal(gorselSec("Buzlu Kahve", "urun"), "soguk");
+    assert.equal(gorselSec("40 TL indirim", "tutar"), "para");
   });
 
   test("kazınan kupon, hiç kapanmamış kuponla BİREBİR aynı görünüyor", async () => {

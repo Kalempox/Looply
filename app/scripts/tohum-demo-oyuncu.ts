@@ -6,6 +6,7 @@ import { encryptPII, phoneIndex, emailIndex, normalizePhone, sha256 } from "@/li
 import { hashle } from "@/domain/parola";
 import { isGunu, gunEkle } from "@/lib/tarih";
 import { donemAraligi, tabanKurus } from "@/domain/butce";
+import { gorselSec, type KuponGorseli } from "@/components/oyuncu-gorsel";
 
 /**
  * Elle denemek için hazır oyuncu hesabı — Ü144.
@@ -336,13 +337,70 @@ async function main() {
     bakılırsa ekranın gruplama, geçmiş sekmesi ve boş hâl metinleri hiç
     görünmüyor.
   */
-  const oduller = await db.query<{ id: string; cost_kurus: string; title: string }>(
-    `SELECT id, cost_kurus, title FROM rewards
+  /*
+    🔴 Ödüller KATEGORİYE göre seçiliyor, sıraya göre değil — Ü189.
+
+    Önce `ORDER BY sort_order LIMIT 4` vardı ve sort_order'ların hepsi 0
+    olduğu için hangi dördünün geleceği pratikte rastgeleydi. Ürün
+    sahibinin ekranında hep tatlı ve para çıktı: *"hep tatlıyla para
+    eklemişsin, soğuk içecek sıcak içecek her türlü varyasyonu görmek
+    istiyorum."* Haklıydı — kupon kartının beş ayrı çizimi var ve demo
+    verisi üçünü hiç göstermiyordu.
+
+    Artık her kategoriden EN AZ BİRİ aranıyor ve kuponlar onlara
+    dağıtılıyor. Kategoriyi `gorselSec` belirliyor, yani ekranın
+    kullandığı fonksiyonun ta kendisi: burada ikinci bir eşleme tablosu
+    yazılsaydı ekranla ayrışabilirdi.
+  */
+  /*
+    ⚠️ Eksik kategori TAMAMLANIYOR, betik onsuz devam etmiyor.
+
+    `db:seed` "zaten kurulu" deyip atlıyor, yani tohuma sonradan eklenen
+    bir ödül var olan veritabanına hiç girmiyor; `db:reset` ise ürün
+    sahibinin bütün verisini siler. Demo betiği zaten "ekranın her hâli
+    bir arada olsun" diye var — eksik bir kategoriyi kendisi kapatması,
+    o sözün devamı.
+
+    Idempotent: aynı başlık ikinci kez eklenmiyor.
+  */
+  const EKSIK_ODUL: { baslik: string; kurus: number }[] = [
+    { baslik: "Ücretsiz tost", kurus: 3500 },
+    { baslik: "Ice Americano", kurus: 3000 },
+    { baslik: "Ücretsiz tatlı", kurus: 4000 },
+    { baslik: "Ücretsiz filtre kahve", kurus: 4500 },
+  ];
+  for (const e of EKSIK_ODUL) {
+    await db.query(
+      `INSERT INTO rewards (id, cafe_id, kind, reward_type, title, points_price, cost_kurus, min_proof_level)
+       SELECT $1, $2, 'instant', 'product', $3, 0, $4, 2
+        WHERE NOT EXISTS (
+          SELECT 1 FROM rewards WHERE cafe_id = $2 AND title = $3 AND kind = 'instant'
+        )`,
+      [newId("rwd"), cafeId, e.baslik, e.kurus],
+    );
+  }
+
+  const hepsi = await db.query<{ id: string; cost_kurus: string; title: string; reward_type: string }>(
+    `SELECT id, cost_kurus, title, reward_type FROM rewards
       WHERE cafe_id = $1 AND kind = 'instant' AND active
-      ORDER BY sort_order LIMIT 4`,
+      ORDER BY sort_order, title`,
     [cafeId],
   );
-  if (oduller.rowCount === 0) throw new Error("Kafenin anlık ödülü yok — önce: npm run db:seed");
+  if (hepsi.rowCount === 0) throw new Error("Kafenin anlık ödülü yok — önce: npm run db:seed");
+
+  const kategoriler: KuponGorseli[] = ["icecek", "soguk", "tatli", "yiyecek", "para"];
+  const secilen = kategoriler
+    .map((kat) => hepsi.rows.find((o) => gorselSec(o.title, o.reward_type as never) === kat))
+    .filter((o): o is NonNullable<typeof o> => !!o);
+
+  /*
+    ⚠️ Bulunamayan kategori SESSİZCE atlanıyor ama ekrana yazılıyor.
+    Kafenin menüsünde o türden ödül olmayabilir (`yiyecek` tohumda yok)
+    ve betiği patlatmak, olmayan bir veriyi zorunlu kılmak olurdu. Ama
+    sessizce geçmek de ürün sahibini yine eksik ekrana bakmaya
+    gönderirdi — o yüzden sonda hangi kategorilerin geldiği basılıyor.
+  */
+  const oduller = { rows: secilen, rowCount: secilen.length };
 
   const donemSatiri = await db.query<{ id: string }>(
     "SELECT id FROM budget_periods WHERE cafe_id = $1 ORDER BY period_start DESC LIMIT 1",
@@ -408,15 +466,29 @@ async function main() {
       oturumluk deneme için yetiyor ve bitince `npm run db:demo` yine
       tazeliyor.
     */
+    /*
+      ⚠️ Üç kazınacak — Ü189'da beşten üçe indi. Ürün sahibi *"3 adette
+      kazımak için ekle"* dedi. Beş, kazınmamış kartların ekranı
+      doldurup açık kuponları aşağı itmesine yol açıyordu; asıl
+      bakılacak şey olan tür çeşitliliği alt sıralarda kalıyordu.
+    */
     { kod: "DEMO01", durum: "active", kapali: true, aktif: 0, biter: 7, odul: 0 },
-    { kod: "DEMO02", durum: "active", kapali: true, aktif: 0, biter: 5, odul: 1 },
-    { kod: "DEMO10", durum: "active", kapali: true, aktif: 0, biter: 6, odul: 2 },
-    { kod: "DEMO11", durum: "active", kapali: true, aktif: 0, biter: 4, odul: 3 },
-    { kod: "DEMO12", durum: "active", kapali: true, aktif: 0, biter: 9, odul: 0 },
-    // Açılmış, kasada gösterilmeyi bekleyen üçü.
-    { kod: "DEMO03", durum: "active", aktif: 0, biter: 6, odul: 2 },
-    { kod: "DEMO04", durum: "active", aktif: 0, biter: 3, odul: 3 },
-    { kod: "DEMO05", durum: "active", aktif: 0, biter: 1, odul: 0 },
+    { kod: "DEMO02", durum: "active", kapali: true, aktif: 0, biter: 5, odul: 2 },
+    { kod: "DEMO10", durum: "active", kapali: true, aktif: 0, biter: 6, odul: 4 },
+    /*
+      🔴 Açılmış kuponlar: HER KATEGORİDEN BİRER TANE.
+
+      `odul` alanı `secilen` dizisinin sırası, yani kategori sırası:
+      0 sıcak içecek · 1 soğuk · 2 tatlı · 3 yiyecek · 4 para. Bulunmayan
+      kategori listeden düştüğü için indis kayabilir; `% rowCount`
+      taşmayı engelliyor ve en kötü hâlde bir kategori iki kez çıkıyor,
+      hiç çıkmamasındansa.
+    */
+    { kod: "DEMO03", durum: "active", aktif: 0, biter: 6, odul: 0 },
+    { kod: "DEMO04", durum: "active", aktif: 0, biter: 5, odul: 1 },
+    { kod: "DEMO05", durum: "active", aktif: 0, biter: 4, odul: 2 },
+    { kod: "DEMO13", durum: "active", aktif: 0, biter: 3, odul: 3 },
+    { kod: "DEMO14", durum: "active", aktif: 0, biter: 2, odul: 4 },
     // Henüz aktifleşmemiş — "yarın açılıyor" hâli (Ü28'in ertelemesi).
     { kod: "DEMO06", durum: "pending", aktif: 1, biter: 8, odul: 1 },
     // Geçmiş: kullanılmış ikisi ve süresi geçmiş biri.
@@ -492,7 +564,14 @@ async function main() {
   console.log(`  kafe    : ${cafeAdi} · masa oturumu açık (K2), 6 saat`);
   console.log("");
   console.log("  Hazır olanlar:");
-  console.log("    · Ödüllerim → 5 kazınmamış · 3 açık · 1 bekleyen · 2 kullanılmış · 1 süresi geçmiş");
+  console.log(
+    `    · Ödüllerim → 3 kazınmamış · ${secilen.length} açık · 1 bekleyen · 2 kullanılmış · 1 süresi geçmiş`,
+  );
+  // ⚠️ Hangi kategorilerin geldiği YAZILIYOR: eksik bir kategori sessizce
+  // atlanıyor ve bunu görmenin başka yolu, ekranı tek tek saymak olurdu.
+  console.log(
+    `    · Kupon türü → ${secilen.map((o) => gorselSec(o.title, o.reward_type as never)).join(" · ")}`,
+  );
   console.log("    · Profil    → 6 rozet, seviye 5 (2.100 XP)");
   console.log("    · Çark      → hakkı açık, çevrilebilir");
   console.log("    · Seri      → 14 günlük geçmiş; bugün oynanmadı (seri riskte)");

@@ -6,12 +6,59 @@
 > Yan dosyalar: neyin **var** olduğu → `21-looply-kapsam-haritasi.md` ·
 > demoda neyin **yapılabildiği** → `22-demo-yapilabilirlik.md`
 
-**Son güncelleme:** 2026-09-18 · **Kararlar:** Ü76 – Ü159, **Ü186**
+**Son güncelleme:** 2026-09-19 · **Kararlar:** Ü76 – Ü159, **Ü186 – Ü190**
 
 > ⚠️ **BU LİSTEDE BİR BOŞLUK VAR: Ü160 – Ü185 yazılmadı.**
 > O turlar commit mesajlarında ve kod yorumlarında duruyor (oyun
 > sahneleri, koyu kartlar, koşan Loopy, seri sahnesi, yuva). Buraya
 > dökülmediler. Dökülmeleri ayrı bir iş ve karar sizin.
+
+---
+
+## ⬅️ Ü187 – Ü190 · Kartlar referans tasarıma geçti — 2026-09-19
+
+✅ **Commitlendi** — `68e0e74`, 30 dosya.
+
+**Hangi ekranlara dokundu:**
+
+| Ekran | Ne değişti |
+|---|---|
+| `/oyna` | Bugünün oyunu kartı yeniden dizildi (Loopy kalktı) · çark kartı koyu bilete geçti ve çarkı çeviren Loopy geldi · seri kartına ateşte koşan Loopy · karşılama kartına bulutlu zemin |
+| `/oyunlar` | Sahneler 215 → 290 taban · katalog başlığına `tum-oyunlar` sahnesi (Ü180'de üretilmiş ama hiç bağlanmamıştı) |
+| `/oduller` | Kupon kartlarında ödül türüne göre Loopy — beş tür, beş görsel |
+| `/profil` | Kafe kartına puan/kupon/seri sayaçları · üst döşeme dörde çıktı · bulutlu zemin, Loopy bulutun üstünde |
+| Her yerde | Üç oyun ikonu üretildi (Yılan'ın ikonu **hiç yoktu**) |
+
+- [x] **Yedi illüstrasyon üretildi** ✅ — hepsi tek Loopy referansından
+  türedi, karakter değişmedi. Çark bizim çarkımız (ahududu çerçeve,
+  altı pastel dilim) — referanstaki mor-altın çark değil.
+- [x] **🔴 "Ice Americano" SICAK içecek görünüyordu** ✅ — Türkçede `I`nin
+  küçüğü noktasız `ı`, listedeki `ice` hiç tutmuyordu. Koddaki yorum bu
+  sonuçtan korkup sırayı ona göre kurmuştu ama kelime hiç eşleşmediği
+  için sıra da işe yaramıyordu: **doğru sıra, yanlış karşılaştırma.**
+- [x] **🔴 `yiyecek` türü metinden ulaşılamıyordu** ✅ — listede o satır
+  yoktu; poğaça, börek ve simit `tatli` listesindeydi.
+- [x] **Profil "elimde ne var" da diyor** ✅ — puan yalnızca ana ekranda,
+  kupon yalnızca Ödüllerim'de, seri yalnızca kafedeydi. *"B kafesinde ne
+  kadar puanım var"* sorusunun cevabı üründe hiçbir yerde yoktu.
+- [x] **Demo verisi her kupon türünü gösteriyor** ✅ — ödüller kategoriye
+  göre seçiliyor, kazınacak kupon 5 → 3.
+
+⚠️ **İki tur boşa gitti ve ikisinin de dersi aynı:** Ü188'de zemine
+sağ üstten ışık hüzmeleri kondu, ürün sahibi *"her şeye parlaklık
+eklemişsin, kötü duruyor"* dedi ve geri alındı. Doku dikey çizilip yatay
+karta **gerildiği** için yassılıyordu. İlk illüstrasyon partisi de
+hamurumsu geldi çünkü prompt'ta **negatif liste** yoktu — oyun
+sahnelerinin ilk turundaki hatanın aynısı.
+
+⚠️ **Kalan:** `/oyna/[oyunId]` tanıtım ve sonuç kartları hâlâ Ağustos'tan
+kalma pastel `kartStili()`de — ürünün en çok bakılan iki kartı. Ayrıca
+çarkın dilim renkleri ve ateş karesindeki Loopy'nin kol rengi biraz
+kaydı (bilerek kabul edildi).
+
+🧪 **Doğrulama:** 668 test ✅ · tip ✅ · lint ✅ · build ✅. Ölçüler
+tarayıcıda DOM'dan: kalem–balon çakışması 22×16,5 piksel, kart 244×356
+ile 335×96, ikonlar 16–64 piksel aralığında.
 
 ---
 

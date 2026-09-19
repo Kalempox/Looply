@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { RENK, type OyuncuRengi } from "./oyuncu-renk";
-import { DESEN, Sahne } from "./oyuncu-sahne";
+import { DESEN } from "./oyuncu-sahne";
+import { KartResmi, KUPON_GORSELI } from "./kart-gorseli";
 import { type KuponGorseli } from "./oyuncu-gorsel";
 
 /**
@@ -130,9 +131,20 @@ export function Bilet({ veri }: { veri: BiletVerisi }) {
       */}
       <span
         aria-hidden
-        className="pointer-events-none absolute top-1/2 right-1 -translate-y-1/2"
+        className="pointer-events-none absolute top-1/2 -right-6 -translate-y-1/2"
       >
-        <Sahne ad={veri.gorsel} boy={122} />
+        {/*
+          🔴 Ü189: elle çizilen sahnenin yerine ÜRETİLMİŞ illüstrasyon.
+
+          Ürün sahibi referans gönderdi: *"ödül kartlarında Loopy ödül
+          türüne göre kahve içiyor, tatlı yiyor, paralı indirimlerde
+          ödül açıyor."* Yani kartta duran şey artık ödülün çizimi
+          değil, ödülü YAŞAYAN karakter.
+
+          ⚠️ Beş kupon türü, üç görsel — eşleme `KUPON_GORSELI`de ve
+          gerekçesi orada yazılı.
+        */}
+        <KartResmi ad={KUPON_GORSELI[veri.gorsel] ?? "hediye"} boy={150} />
       </span>
 
       {/*
@@ -145,8 +157,11 @@ export function Bilet({ veri }: { veri: BiletVerisi }) {
       <span
         aria-hidden
         className="pointer-events-none absolute inset-0"
+        /* ⚠️ Perde Ü189'da GENİŞLEDİ: üretilmiş illüstrasyon eskisinden
+           büyük (150 vs 122) ve daha parlak; eski perde metnin sağ
+           ucunu açıkta bırakıyordu. */
         style={{
-          background: `linear-gradient(100deg, ${r.koyu} 26%, ${r.koyu}cc 44%, transparent 64%)`,
+          background: `linear-gradient(100deg, ${r.koyu} 30%, ${r.koyu}dd 50%, transparent 72%)`,
         }}
       />
 

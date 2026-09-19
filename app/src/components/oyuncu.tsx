@@ -9,6 +9,8 @@ import {
   type OyuncuRengi,
 } from "./oyuncu-renk";
 import { Gorsel, type GorselAdi } from "./oyuncu-gorsel";
+import { OyunSahnesi, sahneVarMi } from "./oyun-sahnesi";
+import { KartDalgalari } from "./kart-gorseli";
 import { OyuncuNav, NavBosluk, type Durak } from "./oyuncu-nav";
 
 /**
@@ -221,6 +223,35 @@ export function KoyuKart({
         background: "linear-gradient(150deg, #6d28d9 0%, #4c1d95 55%, #3b0f70 100%)",
       }}
     >
+      {/*
+        🔴 Bulutlar ÜRETİLMİŞ görsel — Ü190.
+
+        Ü189'da bunlar SVG ile çizilmişti (üç eğri) ve ürün sahibi
+        *"olmadı, onu da fal ai ile yapalım"* dedi. Haklıydı: referansta
+        bulutlar katmanlı, gölgeli ve iki renk ailesi taşıyor; üç düz
+        eğri onu vermiyor.
+
+        ⚠️ `cover` + `bottom` — GERİLMİYOR, kırpılıyor. Ü188'de ışık
+        hüzmeleri `100% 100%` ile gerildiği için yatay kartlarda
+        yassılıp lekeye dönmüştü. Görsel geniş (16:9) üretildi ve
+        kompozisyonu bulutlar ALTA toplanacak şekilde kuruldu; kart
+        hangi yükseklikte olursa olsun kırpma bulutu altta bırakıyor.
+
+        ⚠️ Gradyan ALTTA DURUYOR ve silinmedi: görsel yüklenmezse kart
+        yine kendi morunda kalıyor, beyaz bir dikdörtgen olmuyor.
+
+        ⚠️ Yalnızca BU kartta. `BiletYuzeyi` kafe kartında seviye
+        kuşağının rengini taşıyor (Ü65: nane/gök/menekşe/altın) ve mor
+        bir bulut görseli oraya konsaydı rengin taşıdığı bilgi
+        silinirdi. Orada dalgalar SVG olarak kalıyor — renge uyum
+        sağlaması gereken tek şey o.
+      */}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-0 bg-cover bg-bottom"
+        style={{ backgroundImage: "url(/kart/zemin-mor.webp)" }}
+      />
+
       {/* Doku da ortak sabitten: iki kart aynı sıklıkta ışınlanmalı. */}
       <span
         aria-hidden
@@ -285,6 +316,7 @@ export function SayfaBasi({
   baslik,
   renk,
   gorsel,
+  sahne,
   karakter,
   koyu = false,
   children,
@@ -318,6 +350,22 @@ export function SayfaBasi({
    * ayrı dil konuşuyordu.
    */
   koyu?: boolean;
+  /**
+   * Üretilmiş sahne — Ü187.
+   *
+   * 🔴 Ü180'de dört sahne üretildi, kesildi ve `public/oyun/`a kondu ama
+   * `tum-oyunlar` yalnızca ana ekrandaki geçiş kartına bağlandı;
+   * kataloğun KENDİ başlığı Ü71'den kalma soluk kumanda çizimiyle kaldı.
+   * Ürün sahibi *"burdaki oyunlar kısmını düzeltmeyi unutmuşsun"* dedi
+   * ve haklıydı — altındaki karusel kartları neon, başlık silik bir
+   * harita deseni.
+   *
+   * ⚠️ `gorsel` ile birlikte kullanılmıyor: `gorsel` kartın arkasında
+   * %15–24 opaklıkta **fısıldayan** bir çizim, sahne ise tam renkte
+   * duruyor. İkisi aynı köşede olsaydı biri diğerinin altında gürültü
+   * bırakırdı (`GecisKarti`de aynı kural yazılı).
+   */
+  sahne?: string;
   /** Başlığın altındaki sayaçlar. */
   children?: React.ReactNode;
 }) {
@@ -325,9 +373,17 @@ export function SayfaBasi({
 
   return (
     <header
-      className={`kart-golge kart-gel relative mb-8 overflow-hidden rounded-3xl px-5 py-6 ${
-        koyu ? "text-white" : ""
-      }`}
+      /*
+        ⚠️ Sahne varken SAĞ DOLGU büyüyor (`pr-28`) ve sebebi ölçüldü.
+        Kart 335 piksel, sahne sağdan taşıyor ve sol kenarı 217'de
+        başlıyor; altyazı ise 20 piksel dolguyla 315'e kadar uzanıyordu,
+        yani son 98 piksel neonun üstünde kalıyordu. Perdeyi
+        güçlendirmek çözüm değil — o zaman da sahne sönüyor. Metni
+        sahnenin başladığı yerde durdurmak ikisini birden koruyor.
+      */
+      className={`kart-golge kart-gel relative mb-8 overflow-hidden rounded-3xl py-6 ${
+        sahne ? "pr-28 pl-5" : "px-5"
+      } ${koyu ? "text-white" : ""}`}
       style={
         koyu
           ? { background: `linear-gradient(115deg, ${r.koyu} 0%, ${r.ana} 100%)` }
@@ -344,12 +400,36 @@ export function SayfaBasi({
         <KartDokusu renk={renk} />
       )}
       {/*
+        Sahne sağdan ve üstten taşıyor — karusel kartlarıyla aynı kural
+        (Ü181): kutuya sığdırılmış çizim "buraya bir ikon koyduk" diye
+        okunuyor, taşan çizim kartı bir nesneye çeviriyor.
+
+        ⚠️ Perde burada SOLDAN SAĞA, karusel kartındaki gibi aşağıdan
+        yukarı değil. Sebep kartın biçimi: başlık kartı yatık ve geniş,
+        metin solda duruyor. Aşağıdan gelen bir perde başlığın altını
+        temizlerdi ama "Oyunlar" yazısı sahnenin tam yanında.
+      */}
+      {sahne && sahneVarMi(sahne) ? (
+        <>
+          <span aria-hidden className="pointer-events-none absolute -top-6 -right-11">
+            <OyunSahnesi oyun={sahne} boy={190} />
+          </span>
+          <span
+            aria-hidden
+            className="pointer-events-none absolute inset-y-0 left-0 w-3/4"
+            style={{
+              background: `linear-gradient(to right, ${koyu ? r.koyu : "transparent"} 40%, transparent 100%)`,
+            }}
+          />
+        </>
+      ) : null}
+      {/*
         Çizim sağ kenarın dışına taşıyor: yalnızca sol yarısı görünüyor
         ve başlığın altına girmiyor. Daha içeride çizildiğinde biletin
         dairesi tam "Ödüllerim" yazısının üstüne oturuyor ve rakam gibi
         okunuyordu.
       */}
-      {gorsel && (
+      {!sahne && gorsel && (
         <span
           aria-hidden
           className="pointer-events-none absolute -top-6 -right-16"
@@ -530,6 +610,12 @@ export function BiletYuzeyi({
       className={`relative overflow-hidden ${yuvarlak ? "kart-golge kart-gel rounded-3xl" : ""} ${className}`}
       style={{ background: `linear-gradient(115deg, ${r.koyu} 0%, ${r.ana} 100%)` }}
     >
+      {/* Ü189: dalgalar artık koyu yüzey ailesinin parçası. Tek tek
+          kartlara eklenseydi biri unutulur ve o kart geride kalırdı —
+          Ü71'in dersi: *"yüzey tek yerden gelmezse her turda bir ekran
+          geride kalıyor."* */}
+      <KartDalgalari vurgu={`${r.canli}38`} />
+
       {/* Işın: pastelde %5'te kayboluyordu, koyu zeminde %8 yetiyor. */}
       <span
         aria-hidden
@@ -635,6 +721,14 @@ export function ArkaCizim({ renk, gorsel }: { renk: OyuncuRengi; gorsel: GorselA
  * gösteren kart (çark hazırsa çark, değilse günün oyunu) dolu, geri
  * kalanı pastel. İki dolu kart yan yana gelirse hangisine dokunulacağı
  * belirsizleşir.
+ */
+/**
+ * ⚠️ Ü188'den beri KULLANILMIYOR.
+ *
+ * Son çağıranı ana ekrandaki çark kartıydı; o da koyu bilet yüzeyine
+ * geçti. Silinmedi çünkü "dolu/sakin" iki durumlu renkli kart fikri
+ * ürünün dilinde duruyor ve pastel bir yüzey gerektiren bir ekran
+ * çıkarsa buradan devam edilir. Bir tur daha kimse çağırmazsa silinmeli.
  */
 export function RenkliKart({
   renk,

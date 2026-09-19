@@ -165,6 +165,18 @@ async function kafeKur(t: KafeTohum, playerId: string) {
      VALUES ($1,$2,'instant','product','Ice Americano',0,3000,2)`,
     [newId("rwd"), cafeId],
   );
+  /*
+    Yiyecek örneği — Ü189, Ü74'ün aynı gerekçesiyle.
+
+    Kupon kartının BEŞ çizimi var ve tohumda `yiyecek` karşılığı yoktu;
+    ürün sahibi *"her çeşitten 1 tane olsun, her türlü varyasyonu görmek
+    istiyorum"* dedi ve ekranda yalnızca üç tür çıkıyordu.
+  */
+  await db.query(
+    `INSERT INTO rewards (id, cafe_id, kind, reward_type, title, points_price, cost_kurus, min_proof_level)
+     VALUES ($1,$2,'instant','product','Ücretsiz tost',0,3500,2)`,
+    [newId("rwd"), cafeId],
+  );
 
   // Ö4 · Ü82: yayında bir yüzde kampanyası.
   //

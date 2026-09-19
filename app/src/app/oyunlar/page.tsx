@@ -95,7 +95,9 @@ export default async function OyunlarSayfasi() {
         koyuya geçti ve pastel başlık onların üstünde yabancı kaldı;
         aynı ekranda iki ayrı kart dili konuşuluyordu.
       */}
-      <SayfaBasi ust="Katalog" baslik="Oyunlar" renk="gok" gorsel="kumanda" koyu>
+      {/* Ü187: `gorsel="kumanda"` yerine üretilmiş `tum-oyunlar` sahnesi —
+          altındaki karusel neon, başlık silik bir harita desenindeydi. */}
+      <SayfaBasi ust="Katalog" baslik="Oyunlar" renk="gok" sahne="tum-oyunlar" koyu>
         <p className="text-[13px] leading-relaxed text-white/75">
           {kazandirir
             ? "Hepsi puan ve XP kazandırıyor. Bugünün oyunu iki katı veriyor."

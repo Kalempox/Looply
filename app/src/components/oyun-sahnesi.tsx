@@ -37,9 +37,27 @@ import Image from "next/image";
  * bilmek zorunda, o yüzden script'in bastığı sayılar buraya elle
  * geçiyor. Sahne değişirse script tekrar çalıştırılıp bu tablo
  * güncellenmeli.
+ *
+ * ── 🔴 `olcek`: dar çizim aynı boyda daha az yer kaplıyor ───
+ *
+ * Ü187'de ürün sahibi *"Düşen ve Yılan'ın kartlarındaki oyun görselimiz
+ * daha büyük olmalı"* dedi ve tek bir `boy` değeri onu veremiyor.
+ * Sebebi ölçülebilir: dört sahnenin oranları çok farklı. Aynı yükseklikte
+ * kartta kapladıkları GENİŞLİK —
+ *
+ *     boy 290'da:   düşen 153   yılan 258   blok 290
+ *
+ * Düşen'in kulesi dikey çizildi; yükseklik eşitlenince o, Yılan'ın
+ * yarısı kadar yer kaplıyor ve kartın sol yarısı boş kalıyor. Ürün
+ * sahibinin şikâyet ettiği boşluk tam olarak bu.
+ *
+ * `olcek` dar sahneye fazladan yükseklik veriyor; çağıran tek bir taban
+ * boy geçiyor ve dördü de kartı benzer oranda dolduruyor. Sayı gözle
+ * seçildi: 290 tabanda düşen 325'te oturuyor, 350'de bloklar sıkışıp
+ * üst sıra tırtıklanıyor.
  */
-const SAHNE: Record<string, { en: number; boy: number }> = {
-  dusen: { en: 270, boy: 512 },
+const SAHNE: Record<string, { en: number; boy: number; olcek?: number }> = {
+  dusen: { en: 270, boy: 512, olcek: 1.12 },
   blok: { en: 512, boy: 512 },
   yilan: { en: 456, boy: 512 },
   "tum-oyunlar": { en: 477, boy: 512 },
@@ -56,8 +74,10 @@ export function sahneVarMi(oyunId: string): boolean {
  * ⚠️ `aria-hidden`: sahne bir süs, bilgiyi kartın metni taşıyor. Ekran
  * okuyucuya "patlayan bloklar" diye okunması kimseye bir şey anlatmazdı.
  *
- * @param boy ekrandaki YÜKSEKLİK; genişlik sahnenin kendi oranından
- *            geliyor, o yüzden dar sahneler (Düşen) dar kalıyor.
+ * @param boy TABAN yükseklik. Sahnenin kendi `olcek`i bunu çarpıyor ve
+ *            genişlik oranından geliyor — yani çağıran "bu kartta
+ *            sahneler şu kadar yer kaplasın" diyor, hangi sahnenin ne
+ *            kadar uzaması gerektiğini bilmek zorunda kalmıyor.
  */
 export function OyunSahnesi({
   oyun,
@@ -71,7 +91,8 @@ export function OyunSahnesi({
   const olcu = SAHNE[oyun];
   if (!olcu) return null;
 
-  const en = Math.round((olcu.en / olcu.boy) * boy);
+  const gercekBoy = Math.round(boy * (olcu.olcek ?? 1));
+  const en = Math.round((olcu.en / olcu.boy) * gercekBoy);
 
   return (
     <Image
@@ -81,7 +102,7 @@ export function OyunSahnesi({
       width={olcu.en}
       height={olcu.boy}
       className={className}
-      style={{ height: boy, width: en }}
+      style={{ height: gercekBoy, width: en }}
     />
   );
 }

@@ -500,20 +500,23 @@ function OyunKapagi({
       */}
       {sahneVarMi(oyun.id) ? (
         /*
-          🔴 Sahne BÜYÜDÜ ve ÜSTTEN TAŞIYOR — Ü181.
+          🔴 Sahne BÜYÜDÜ ve ÜSTTEN TAŞIYOR — Ü181, Ü187'de bir kez daha.
 
-          Ürün sahibi iki şey söyledi: *"sadece simge değil kartta
-          yerleşimi de önemli, gerçekten havadan parçalar düşüyor gibi"*
-          ve *"kartlarda yeterli alanı kaplamıyor, tam kullanılmıyor."*
+          Ürün sahibi üç turda aynı şeyi söyledi: *"sadece simge değil
+          kartta yerleşimi de önemli"* · *"kartlarda yeterli alanı
+          kaplamıyor"* · ve Ü187'de *"Düşen ve Yılan'ın kartlarındaki
+          oyun görselimiz daha büyük olmalı."*
 
-          132 pikselken kartın (356) yalnızca %37'siydi ve sağ üst
-          köşede duran bir rozet gibi okunuyordu. 215'te kartın üst
-          yarısını dolduruyor; üst kenardan taşması da hareketin
-          kaynağını kartın DIŞINA koyuyor — parçalar bir yerden
-          geliyormuş gibi duruyor, kartın içinde durmuyormuş gibi.
+            132 → kartın (356) %37'si, sağ üstte duran bir rozet
+            215 → üst yarı; ama dar çizimler yine kartın solunu boş
+                  bırakıyordu
+            290 → taban; sahnenin kendi `olcek`i ile Düşen 325'e çıkıyor
+
+          Üstten ve sağdan taşması hareketin kaynağını kartın DIŞINA
+          koyuyor — parçalar bir yerden geliyormuş gibi duruyor.
         */
-        <span aria-hidden className="pointer-events-none absolute -top-5 -right-6">
-          <OyunSahnesi oyun={oyun.id} boy={215} />
+        <span aria-hidden className="pointer-events-none absolute -top-9 -right-8">
+          <OyunSahnesi oyun={oyun.id} boy={290} />
         </span>
       ) : (
         <span
@@ -525,14 +528,28 @@ function OyunKapagi({
       )}
 
       {/*
-        Perde: sahne metnin üstüne değil ama alt yarıda başlık ve özet
-        var ve koyu zeminde bile parlak bloklar yazıyla yarışıyor.
-        Aşağıdan yukarı açılan perde metnin arkasını koyulaştırıyor.
+        Perde: aşağıdan yukarı açılan koyu geçiş, metnin arkasını
+        temizliyor.
+
+        🔴 Ü187'de GÜÇLENDİ ve sebebi ölçüldü. Sahne 215'teyken alt
+        kenarı y=195'te bitiyordu, metin ise 240'ta başlıyor — araları
+        vardı ve %50/%10'luk perde yetiyordu. 290'da sahne 254'e iniyor
+        ve **kategori etiketinin üstüne** geliyor.
+
+        Blok'ta ölçüldü: etiket `canli` (#38bdf8) ve arkasına patlamanın
+        beyaz çekirdeği düşüyor. Eski perdede o noktada örtme %44'te
+        kalıyor, bileşik zemin (146,182,201) çıkıyor ve kontrast
+        **1,01 : 1** — yani etiket görünmüyor.
+
+        %64/%52 ile perde metin bloğunun başladığı yerde TAM kapalı:
+        etiket yine düz `koyu` zeminin üstünde ve kontrast 3,52 : 1,
+        sahne büyümeden önceki değerin aynısı. Üstündeki 110 piksellik
+        geçiş de sahneyi kesmiyor, karta gömüyor.
       */}
       <span
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2"
-        style={{ background: `linear-gradient(to top, ${r.koyu} 10%, transparent 100%)` }}
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-[64%]"
+        style={{ background: `linear-gradient(to top, ${r.koyu} 52%, transparent 100%)` }}
       />
 
       {/*

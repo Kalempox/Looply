@@ -12,18 +12,14 @@ import * as challenge from "@/domain/challenge";
 import * as oyunSecimi from "@/domain/oyun-secimi";
 import { withBypass } from "@/db/context";
 import * as happy from "@/domain/happy";
-import {
-  BiletYuzeyi,
-  KoyuKart,
-  SiraJetonu,
-  RenkliKart,
-} from "@/components/oyuncu";
+import { BiletYuzeyi, KoyuKart, SiraJetonu } from "@/components/oyuncu";
 import { RENK, oyunRengi, type OyuncuRengi } from "@/components/oyuncu-renk";
 import { Gorsel, oyunGorseli, type GorselAdi } from "@/components/oyuncu-gorsel";
 import { OyunIkonu, CarkIkonu, KupaIkonu, TacIkonu, MadalyaIkonu } from "@/components/oyuncu-ikon";
 import { LooplyLogo } from "@/components/logo";
-import { LoopySozu, LoopyPozitif } from "@/components/loopy-sozu";
+import { LoopySozu } from "@/components/loopy-sozu";
 import { OyunSahnesi, sahneVarMi } from "@/components/oyun-sahnesi";
+import { KartResmi } from "@/components/kart-gorseli";
 import { OyuncuNav, NavBosluk } from "@/components/oyuncu-nav";
 import { AvatarYuvasi } from "@/components/avatar-yuvasi";
 import { OyuncununRenkleri } from "@/components/loopy-renk-kapsami";
@@ -172,17 +168,76 @@ export default async function OynaSayfasi() {
           Ü176: tasarımdaki hâline getirildi. Bölüm başlığı kartın
           İÇİNE girdi, sahne çizimi geldi, düğme hap biçimini aldı.
 
-          ⚠️ Loopy'nin balonu KALKTI — ürün sahibi *"sadece hadi
-          oynayalım yazmasın"* dedi. Karakter duruyor, sözü gitti:
-          kartta zaten "Oyna" yazan bir düğme var ve balon aynı şeyi
-          ikinci kez söylüyordu.
+          ⚠️ Ü176'da Loopy'nin BALONU kalkmıştı (*"sadece hadi oynayalım
+          yazmasın"*), Ü188'de KARAKTERİN KENDİSİ de kalktı. Ana ekranda
+          Loopy zaten iki yerde: karşılama kartında ve sağ alttaki
+          yuvada. Bu üçüncü kopyaydı.
         */}
         <section className="mb-10">
           <BiletYuzeyi renk={oyunRengi(bonus.id)} className="px-5 pt-5 pb-5">
-            <p className="etiket-caps text-odul">Bugünün oyunu</p>
+            {/*
+              🔴 Sahne kartın ARKASINA geçti — Ü187.
 
-            <div className="mt-2 flex items-start gap-2">
-              <div className="min-w-0 flex-1">
+              Ürün sahibi *"ana ekrandaki kart tasarımı da kötü olmuş"*
+              dedi ve ekran görüntüsünde sebebi görünüyor: sağ üst köşede
+              ÜÇ nesne üst üste duruyordu — beyaz ikon kutusu, 124
+              piksellik kutuya sıkıştırılmış sahne ve hemen altında Loopy.
+              Üçü tek kolonda yarışırken kartın sol alt yarısı boştu.
+
+              Şimdi karusel kartıyla aynı kural (Ü181): sahne kartın
+              kendisinin üstünde, üstten ve sağdan taşıyor. Metin solda,
+              Loopy sol altta — köşegen kuruluyor ve hiçbiri diğerinin
+              üstüne binmiyor.
+
+              ⚠️ Perde SOLDAN SAĞA. Karusel kartı dikey ve metni altta, o
+              yüzden orada perde aşağıdan geliyor; bu kart yatık ve metni
+              solda.
+            */}
+            {sahneVarMi(bonus.id) ? (
+              <>
+                <span aria-hidden className="pointer-events-none absolute -top-7 -right-8">
+                  <OyunSahnesi oyun={bonus.id} boy={250} />
+                </span>
+                {/*
+                  ⚠️ Perde %92 genişlikte ve %46'ya kadar TAM kapalı.
+                  Dar bir perde (%78/%38) Düşen'de yetiyordu çünkü onun
+                  çizimi dikey ve kartın yalnızca sağ üçte birine
+                  giriyor. Blok ve Yılan geniş: 250 boyda sırasıyla 250
+                  ve 223 piksel kaplıyorlar ve sol kenarları 117-144'e
+                  kadar geliyor — yani özet satırının altına. Blok'ta
+                  patlamanın beyaz çekirdeği tam oraya düşüyor.
+                */}
+                <span
+                  aria-hidden
+                  className="pointer-events-none absolute inset-y-0 left-0 w-[92%]"
+                  style={{
+                    background: `linear-gradient(to right, ${RENK[oyunRengi(bonus.id)].koyu} 46%, transparent 100%)`,
+                  }}
+                />
+              </>
+            ) : (
+              /* Sahnesi olmayan oyunlar eski soluk çizimde kalıyor —
+                 uydurma bir sahne koymaktansa. */
+              <span
+                aria-hidden
+                className="pointer-events-none absolute -right-8 -bottom-4 text-white/20"
+              >
+                <Gorsel ad={oyunGorseli(bonus.id)} boy={150} />
+              </span>
+            )}
+
+            <div className="relative">
+              {/* İkon artık sahnenin üstünde değil, etiketin YANINDA:
+                  ikisi aynı şeyi söylüyor (bu hangi oyun) ve yan yana
+                  dururken tek bir satır oluyorlar. */}
+              <div className="flex items-center gap-2.5">
+                <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-yuzey shadow-lg">
+                  <OyunIkonu oyunId={bonus.id} boy={26} />
+                </span>
+                <p className="etiket-caps text-odul">Bugünün oyunu</p>
+              </div>
+
+              <div className="mt-3">
                 <h2 className="font-display text-[34px] leading-none font-extrabold tracking-tight text-white">
                   {bonus.ad}
                 </h2>
@@ -204,65 +259,29 @@ export default async function OynaSayfasi() {
               </div>
 
               {/*
-                Sahne ve ikon: ikon beyaz kutuda, sahne onun arkasında
-                taşıyor. Tasarımdaki katman sırası bu — kutu oyunu
-                tanıtıyor, sahne oyunun ne olduğunu gösteriyor.
+                🔴 Loopy bu karttan KALKTI — Ü188, ürün sahibinin isteği.
+
+                Ü176'da *"sadece hadi oynayalım yazmasın"* denip balonu
+                alınmış, karakter bırakılmıştı. Ü187'de sağ alttan sol
+                alta taşındı çünkü sahnenin altına düşüyordu. Şimdi
+                tamamen çıkıyor.
+
+                ⚠️ Ana ekran Loopy'siz kalmıyor: karşılama kartında
+                (`KoyuKart` + `LoopySozu`) ve sağ alttaki yuvada zaten
+                duruyor. Bu kart onun üçüncü kopyasıydı.
               */}
-              <div className="relative shrink-0">
-                <span className="absolute -top-1 -left-2 z-10 flex size-12 items-center justify-center rounded-2xl bg-yuzey shadow-lg">
-                  <OyunIkonu oyunId={bonus.id} boy={28} />
-                </span>
-                {/*
-                  Ü180: üretilmiş neon sahne. Sahnesi olmayan oyunlar
-                  (katalogda bekleyen yedi oyun) eski soluk çizimde
-                  kalıyor — uydurma bir sahne koymaktansa.
-                */}
-                {sahneVarMi(bonus.id) ? (
-                  /*
-                    ⚠️ Sahne MUTLAK konumda ve kutu sabit: akışta
-                    dururken kartın boyunu o belirliyordu ve Düşen'in
-                    sahnesi dikey (267×512) olduğu için kartı 40 piksel
-                    uzatıyordu. Kutu 124'te sabit, sahne 148 — farkı
-                    yukarı taşıyor, kart büyümüyor.
-                  */
-                  /*
-                    ⚠️ Sahne 148'den 190'a çıktı — Ü181: *"kartlarda
-                    yeterli alanı kaplamıyor."* Kutu 124'te sabit
-                    kaldığı için kart büyümüyor, fark yukarı taşıyor ve
-                    parçalar kartın üst kenarından giriyormuş gibi
-                    duruyor.
-                  */
-                  <span className="block h-[124px] w-[124px]">
-                    <span className="absolute -right-3 -bottom-2">
-                      <OyunSahnesi oyun={bonus.id} boy={190} />
-                    </span>
-                  </span>
-                ) : (
-                  <span className="flex h-[112px] w-[140px] items-end justify-center text-white/25">
-                    <Gorsel ad={oyunGorseli(bonus.id)} boy={104} />
-                  </span>
-                )}
-              </div>
+              <Link
+                href={`/oyna/${bonus.id}`}
+                /*
+                  Hap biçimi ve turuncu gradyan tasarımdan. Karttaki tek
+                  turuncu bu — bakılacak yer tartışmasız.
+                */
+                className="mt-4 flex w-full items-center justify-center gap-2.5 rounded-full py-4 text-center font-display text-[19px] font-bold text-white shadow-lg transition-transform active:scale-[0.99]"
+                style={{ background: "linear-gradient(100deg, #fb923c 0%, #f97316 50%, #ea580c 100%)" }}
+              >
+                <span aria-hidden className="text-[15px]">▶</span> Oyna
+              </Link>
             </div>
-
-            {/* Loopy: balonsuz, hep pozitif (Ü176). */}
-            <div className="pointer-events-none -mt-8 flex justify-end pr-1">
-              <span aria-hidden className="block">
-                <LoopyPozitif boy={96} />
-              </span>
-            </div>
-
-            <Link
-              href={`/oyna/${bonus.id}`}
-              /*
-                Hap biçimi ve turuncu gradyan tasarımdan. Karttaki tek
-                turuncu bu — bakılacak yer tartışmasız.
-              */
-              className="-mt-2 flex w-full items-center justify-center gap-2.5 rounded-full py-4 text-center font-display text-[19px] font-bold text-white shadow-lg transition-transform active:scale-[0.99]"
-              style={{ background: "linear-gradient(100deg, #fb923c 0%, #f97316 50%, #ea580c 100%)" }}
-            >
-              <span aria-hidden className="text-[15px]">▶</span> Oyna
-            </Link>
           </BiletYuzeyi>
         </section>
 
@@ -811,9 +830,31 @@ function CarkKarti({
         ⚠️ Adres çubuğundan `/cark`e giden hâlâ daveti görüyor ve bu
         doğru: oraya niyetle gelen, çevirmeden önce dilimlere bakabilir.
       */}
+      {/*
+        🔴 `RenkliKart dolu` yerine KOYU bilet — Ü188.
+
+        Kart `linear-gradient(140deg, canli, ana)` ile parlak pembeydi.
+        Ana ekranın geri kalanı Ü171–Ü188 arasında koyu bilet ailesine
+        geçince tek başına kaldı; ürün sahibi *"bu ikisinin de kart
+        tasarımını değiştirelim"* dedi.
+
+        ⚠️ Kartın "hazır" hâli yine EN GÖRÜNÜR yüzey — kapalıyken sakin
+        beyaza düşüyor (yukarıda). Değişen şey rengin tonu değil, hangi
+        dili konuştuğu.
+      */}
       <Link href="/cark?cark=1" className="block transition-transform active:scale-[0.99]">
-        <RenkliKart renk="pembe" dolu>
-          <div className="flex items-center gap-4">
+        <BiletYuzeyi renk="pembe" className="px-5 py-5">
+          {/* ⚠️ Dalgalar burada YOK: `BiletYuzeyi` onları kendisi
+              basıyor (Ü189). İkinci bir katman, eğrileri üst üste
+              bindirip zemini kirletirdi. */}
+          <span aria-hidden className="pointer-events-none absolute -top-6 -right-10">
+            <KartResmi ad="cark" boy={184} />
+          </span>
+
+          {/* ⚠️ Metin kolonu DAR (`max-w-[60%]`): görsel sağın üçte
+              birini kaplıyor ve tam genişlikte bir satır onun altına
+              girerdi. */}
+          <div className="relative flex max-w-[60%] items-center gap-4">
             {/*
               🔴 Çark DÖNÜYOR — Ü159.
 
@@ -826,11 +867,8 @@ function CarkKarti({
               Hızlı dönseydi "çevriliyor" sanılır, tıklamadan önce iş
               bitmiş gibi görünürdü.
             */}
-            <span className="cark-donuyor shrink-0">
-              <CarkIkonu boy={54} />
-            </span>
             <span className="min-w-0 flex-1">
-              <span className="block font-display text-xl leading-tight font-extrabold">
+              <span className="block font-display text-xl leading-tight font-extrabold text-white">
                 Çarkın hazır
               </span>
               {/* ⚠️ "Günde bir" DEĞİL: süre Ü158'den beri kafenin ayarı
@@ -849,12 +887,12 @@ function CarkKarti({
               (#ffcf3f). Jeton altını gül zeminin üstünde donuk kalıyor;
               çarkın altını parlıyor. */}
           <div
-            className="mt-4 rounded-xl py-3 text-center font-display text-[15px] font-bold"
+            className="relative mt-4 rounded-xl py-3 text-center font-display text-[15px] font-bold"
             style={{ background: "#ffcf3f", color: "#3d1220" }}
           >
             Çevir
           </div>
-        </RenkliKart>
+        </BiletYuzeyi>
       </Link>
     </section>
   );

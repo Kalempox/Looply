@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { AlevIkonu } from "./oyuncu-ikon";
 import { LoopyKosan } from "./loopy-kosan";
-import { KartDokusu, kartStili } from "./oyuncu";
+import { KartDalgalari, KartResmi } from "./kart-gorseli";
 import { RENK } from "./oyuncu-renk";
 
 /**
@@ -128,36 +128,72 @@ export function SeriSahnesi({
       <button
         type="button"
         onClick={() => setAcik(true)}
-        className="kart-golge kart-gel relative w-full overflow-hidden rounded-3xl px-5 py-5 text-left transition-transform hover:-translate-y-0.5"
+        className={`kart-golge kart-gel relative w-full overflow-hidden rounded-3xl px-5 py-5 text-left transition-transform hover:-translate-y-0.5 ${
+          riskte ? "text-white" : ""
+        }`}
         style={
-          // Riskteyken kartın kendisi renkleniyor, değilken sakin
-          // beyaz kalıyor: rengin işi burada "bugün bir şey yapman
-          // gerekiyor" demek, süs değil.
+          /*
+            🔴 Riskteyken KOYU bilet, değilken sakin beyaz — Ü188.
+
+            İki durumlu olması Ü65'ten beri bilinçli: rengin işi burada
+            "bugün bir şey yapman gerekiyor" demek, süs değil. Değişen
+            şey renkli hâlin DİLİ. Ü171–Ü188 arasında ana ekranın bütün
+            kartları koyu bilet ailesine geçti; bu kart pastel amberde
+            kalınca ürün sahibi *"bu ikisinin de kart tasarımını
+            değiştirelim"* dedi. Aynı ekranda iki dil vardı.
+
+            Sakin hâli beyaz KALIYOR ve bu da bilerek: koyuya çevirmek
+            "bir şey yap" demenin tek işaretini silerdi.
+          */
           riskte
-            ? kartStili("amber")
+            ? { background: `linear-gradient(115deg, ${r.koyu} 0%, ${r.ana} 100%)` }
             : { background: "var(--color-yuzey)", border: "1px solid var(--color-cizgi)" }
         }
       >
-        {riskte && <KartDokusu renk="amber" gorsel="alev" />}
+        {riskte && (
+          <>
+            {/* Ü189: dalgalı zemin + ateşte koşan Loopy. Görsel sağdan
+                ve üstten taşıyor; kartın içine sığdırılmış hâli
+                "buraya bir ikon koyduk" diye okunuyor (Ü181). */}
+            <KartDalgalari vurgu="rgba(239,68,68,.34)" />
+            <span aria-hidden className="pointer-events-none absolute -top-7 -right-8">
+              <KartResmi ad="ates" boy={168} />
+            </span>
+          </>
+        )}
 
-        <span className="relative flex items-center gap-4">
-          <span className="shrink-0">
-            <AlevIkonu boy={40} />
-          </span>
+        {/* ⚠️ Metin kolonu riskteyken DAR: sağın üçte biri görselin ve
+            tam genişlikte bir satır onun altına girerdi. Sakin hâlde
+            görsel yok, kolon tam genişlikte kalıyor. */}
+        <span
+          className={`relative flex items-center gap-4 ${riskte ? "max-w-[64%]" : ""}`}
+        >
+          {/* ⚠️ Alev simgesi yalnızca SAKİN hâlde: riskteyken kartta
+              zaten kocaman bir alev var ve ikisi aynı şeyi iki kez
+              söylüyordu. */}
+          {!riskte && (
+            <span className="shrink-0">
+              <AlevIkonu boy={40} />
+            </span>
+          )}
           <span className="min-w-0 flex-1">
             <span className="block font-display text-lg leading-tight font-bold">
               {gun} gün üst üste
             </span>
             <span
               className="mt-1 block text-[13px] leading-relaxed"
-              style={{ color: riskte ? r.koyu : "var(--color-yazi-sonuk)" }}
+              style={{ color: riskte ? "rgba(255,255,255,.8)" : "var(--color-yazi-sonuk)" }}
             >
               {riskte
                 ? `Bugün oynamazsan seri sıfırlanır. Oynarsan ${bonus} puan bonus.`
                 : `Bugün sayıldı. Yarın da gelirsen ${bonus} puan bonus.`}
             </span>
           </span>
-          <span aria-hidden className="text-[18px] text-yazi-sonuk">
+          <span
+            aria-hidden
+            className="text-[18px]"
+            style={{ color: riskte ? r.canli : "var(--color-yazi-sonuk)" }}
+          >
             →
           </span>
         </span>

@@ -63,6 +63,8 @@ export default async function ProfilSayfasi() {
   const rozetSayisi =
     globalRozetler.length + kafeler.reduce((t, k) => t + k.rozetler.length, 0);
   const toplamOyun = kafeler.reduce((t, k) => t + k.toplamOyun, 0);
+  // Ü188: elde duran kupon — kafe kartlarındaki sayaçla aynı tanım.
+  const kuponElde = kafeler.reduce((t, k) => t + k.kuponElde, 0);
 
   return (
     // `yuva` AÇIK (Ü172): kapalı olmasının tek sebebi sayfanın
@@ -139,7 +141,20 @@ export default async function ProfilSayfasi() {
           <Link
             href="/verilerim"
             aria-label="Hesabını düzenle"
-            className="absolute top-4 -right-2 z-10 flex size-9 items-center justify-center rounded-full bg-white/20 text-white backdrop-blur-sm transition-colors hover:bg-white/30"
+            /*
+              🔴 `top-10` — Ü189, ölçülerek. Balon Ü179'da kalemden
+              kaçmak için Loopy'nin ALTINA inmişti; Ü189'da Loopy bulutun
+              üstüne basmak zorunda kalınca balon yine üste döndü ve aynı
+              çakışma geri geldi.
+
+              Ölçüm (kart koordinatı): balon 201–309 × 20–53,
+              kalem `top-4`te 287–323 × 36–72 → 22×16,5 piksellik
+              örtüşme. Kalemi 24 piksel indirmek boşluğu açıyor
+              (56–92, balonun altından 3 piksel sonra) ve metnin
+              genişliğine hiç dokunmuyor — balonu daraltmak cümleyi üç
+              satıra bölerdi.
+            */
+            className="absolute top-10 -right-2 z-10 flex size-9 items-center justify-center rounded-full bg-white/20 text-white backdrop-blur-sm transition-colors hover:bg-white/30"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
               <path
@@ -190,8 +205,23 @@ export default async function ProfilSayfasi() {
               taşıyor, kazanılan 20 piksel metinden değil oradan
               geliyor. `/oyna`daki kardeşiyle birebir aynı ölçü.
             */}
-            <div className="-mr-3 w-[9rem] shrink-0">
-              <LoopySozu soz="İyi ki buradasın!" ifade="keyifli" boy={150} yon="alt" />
+            {/*
+              🔴 Loopy BULUTUN ÜSTÜNDE — Ü189.
+
+              Ürün sahibi referans gönderdi: *"arka plan bulutlu gibi,
+              bizim Loopy'miz de bulutun üstünde gibi, ondan ilham
+              alarak yapalım."*
+
+              ⚠️ `items-center` yüzünden karakter kartın dikey ortasına
+              hizalıydı ve dalgaların ÜSTÜNDE havada duruyordu.
+              `self-end` onu alta indiriyor, `-mb-9` ise kartın iç
+              dolgusunu yiyip ayaklarını dalganın tepesine bastırıyor.
+              Ölçüldü: dalga tepesi kartın altından ~58 piksel yukarıda,
+              karakterin ayak hizası 36 — aradaki fark negatif kenar
+              boşluğuyla kapanıyor.
+            */}
+            <div className="-mr-3 -mb-9 w-[9rem] shrink-0 self-end">
+              <LoopySozu soz="İyi ki buradasın!" ifade="keyifli" boy={150} yon="ust" />
             </div>
           </div>
         </KoyuKart>
@@ -209,10 +239,23 @@ export default async function ProfilSayfasi() {
           ⚠️ Binme `-mt-8`: `-mt-12` denendi ve fazlaydı, döşemenin
           yarısından çoğu kartın altına giriyordu.
         */}
-        <div className="relative -mt-8 grid grid-cols-3 gap-2 px-2">
-          <ProfilDosem ikon={<Gorsel ad="icecek" boy={22} />} etiket="Kafe" deger={String(kafeler.length)} />
-          <ProfilDosem ikon={<Gorsel ad="kumanda" boy={22} />} etiket="Oyun" deger={toplamOyun.toLocaleString("tr-TR")} />
-          <ProfilDosem ikon={<KupaIkonu boy={22} />} etiket="Rozet" deger={String(rozetSayisi)} vurgu={rozetSayisi > 0} />
+        {/*
+          🔴 Dördüncü döşeme KUPON — Ü188.
+
+          Üç döşeme "kaç kafe, kaç oyun, kaç rozet" diyordu; üçü de
+          **geçmişi** sayıyor. Oyuncunun elinde ne olduğunu söyleyen tek
+          sayı yoktu. Kupon o boşluğu dolduruyor ve profilin tek
+          "şu anda" sayısı o.
+
+          ⚠️ Büyük sayı ELDE DURAN kupon — kafe kartlarındaki sayaçla
+          aynı tanım. İki yerde iki farklı tanım kullanmak, bu projede
+          iki kez yaşanmış bir hata (Ü144).
+        */}
+        <div className="relative -mt-8 grid grid-cols-4 gap-1.5 px-2">
+          <ProfilDosem ikon={<Gorsel ad="icecek" boy={20} />} etiket="Kafe" deger={String(kafeler.length)} />
+          <ProfilDosem ikon={<Gorsel ad="kumanda" boy={20} />} etiket="Oyun" deger={toplamOyun.toLocaleString("tr-TR")} />
+          <ProfilDosem ikon={<Gorsel ad="bilet" boy={20} />} etiket="Kupon" deger={String(kuponElde)} vurgu={kuponElde > 0} />
+          <ProfilDosem ikon={<KupaIkonu boy={20} />} etiket="Rozet" deger={String(rozetSayisi)} vurgu={rozetSayisi > 0} />
         </div>
 
         {globalRozetler.length > 0 && (
@@ -383,6 +426,46 @@ function seviyeRengi(seviye: number): OyuncuRengi {
   return "yesil";
 }
 
+/**
+ * Kafe kartındaki tek sayı — Ü188.
+ *
+ * Zemin `white/10`: kartın kendi koyu gradyanının üstünde duruyor ve
+ * beyaz bir kutu koysaydık üç delik gibi okunurdu. Ayraç yerine boşluk,
+ * çizgi yerine zemin — kart zaten yoğun.
+ */
+function KafeSayaci({
+  etiket,
+  deger,
+  alt,
+  uyari = false,
+}: {
+  etiket: string;
+  deger: string;
+  /** İkincil satır — yoksa yerini kaplamıyor. */
+  alt?: string;
+  /** Dikkat çekmesi gereken hâl (seri riskte). */
+  uyari?: boolean;
+}) {
+  return (
+    <div className="rounded-xl bg-white/10 px-2.5 py-2">
+      <div className="etiket-caps text-[9px] text-white/55">{etiket}</div>
+      <div className="mt-0.5 font-data text-[17px] leading-none font-bold text-white tabular">
+        {deger}
+      </div>
+      {/* ⚠️ Alt satır YOKSA yüksekliği de yok: üç sayaç yan yana ve
+          biri boş satır taşısaydı diğerleriyle hizası kayardı. Boşluğu
+          eşitlemek için `min-h` konmadı — kart zaten alta hizalı. */}
+      {alt && (
+        <div
+          className={`mt-1 text-[10px] leading-tight ${uyari ? "font-semibold text-odul" : "text-white/50"}`}
+        >
+          {alt}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function KafeKarti({ kafe, buradaMi }: { kafe: KafeKarnesi; buradaMi: boolean }) {
   const renk = seviyeRengi(kafe.seviye);
   const r = RENK[renk];
@@ -439,6 +522,49 @@ function KafeKarti({ kafe, buradaMi }: { kafe: KafeKarnesi; buradaMi: boolean })
                 : `Sonraki seviyeye ${(kafe.sonrakiEsik - kafe.xp).toLocaleString("tr-TR")} XP`}
             </div>
           </div>
+        </div>
+
+        {/*
+          🔴 "Nerede duruyorum" şeridi — Ü188.
+
+          Ürün sahibi *"profil kısmını tam işimize yarayacak şekilde
+          yenileyelim"* dedi. Eksik olan şey görsel değildi: profil
+          Ü15'ten beri yalnızca *"ne kadar ilerledim"* diyordu (seviye,
+          XP, rozet, oynadıkların). Oyuncunun asıl merak ettiği üç sayı
+          üç ayrı ekrana dağılmıştı —
+
+            puan   → yalnızca ana ekranda, üstelik yalnızca BULUNDUĞU kafede
+            kupon  → yalnızca Ödüllerim'de, kafeye göre ayrılmadan
+            seri   → yalnızca kafedeyken, ana ekranda
+
+          Yani "B kafesinde ne kadar puanım var" sorusunun cevabı
+          üründe hiçbir yerde yoktu. Artık kafe kartının kendisinde.
+
+          ⚠️ Sıralama tesadüf değil: puan harcanacak şey, kupon elde
+          duran şey, seri kaybedilecek şey. Soldan sağa "neyim var" →
+          "ne yapmalıyım".
+        */}
+        <div className="mt-4 grid grid-cols-3 gap-2">
+          <KafeSayaci etiket="Puan" deger={kafe.puan.toLocaleString("tr-TR")} />
+          <KafeSayaci
+            etiket="Kupon"
+            deger={String(kafe.kuponElde)}
+            /* ⚠️ Büyük sayı ELDE DURAN, kazanılan toplam değil: oyuncunun
+               kasada gösterebileceği şey bu. Toplam alt satırda kalıyor —
+               ikisini yer değiştirmek "3 kuponum var" deyip kasada iki
+               tanesini bulamamak demekti. */
+            alt={
+              kafe.kuponToplam > kafe.kuponElde
+                ? `${kafe.kuponToplam} kazandın`
+                : undefined
+            }
+          />
+          <KafeSayaci
+            etiket="Seri"
+            deger={kafe.seri.gun > 0 ? `${kafe.seri.gun} gün` : "—"}
+            alt={kafe.seri.riskte ? "bugün oyna" : undefined}
+            uyari={kafe.seri.riskte}
+          />
         </div>
 
         {kafe.rozetler.length > 0 && (
