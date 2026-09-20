@@ -583,7 +583,15 @@ async function main() {
 
 main()
   .catch((e) => {
-    console.error(e instanceof Error ? e.message : e);
+    /*
+      ⚠️ TAMAMI basılıyor, yalnızca `message` değil.
+
+      Önce `e.message` yazılıyordu ve betik bir gün boş satırla, çıkış
+      kodu 1 ile düştü: `pg` hatalarında asıl bilgi `detail`, `constraint`
+      ve `where` alanlarında, `message` ise boş olabiliyor. Sessizce
+      düşen bir tohum betiği, hata vermeyen bir tohum betiğinden beter.
+    */
+    console.error(e);
     process.exitCode = 1;
   })
   .finally(closePools);

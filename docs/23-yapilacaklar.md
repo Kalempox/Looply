@@ -6,12 +6,454 @@
 > Yan dosyalar: neyin **var** olduğu → `21-looply-kapsam-haritasi.md` ·
 > demoda neyin **yapılabildiği** → `22-demo-yapilabilirlik.md`
 
-**Son güncelleme:** 2026-09-19 · **Kararlar:** Ü76 – Ü159, **Ü186 – Ü190**
+**Son güncelleme:** 2026-09-19 · **Kararlar:** Ü76 – Ü159, **Ü186 – Ü205**
 
 > ⚠️ **BU LİSTEDE BİR BOŞLUK VAR: Ü160 – Ü185 yazılmadı.**
 > O turlar commit mesajlarında ve kod yorumlarında duruyor (oyun
 > sahneleri, koyu kartlar, koşan Loopy, seri sahnesi, yuva). Buraya
 > dökülmediler. Dökülmeleri ayrı bir iş ve karar sizin.
+
+---
+
+## ⬅️ Ü203 – Ü205 · Ödül ekonomisi, tam ekran ve sesler — 2026-09-20
+
+⚠️ **Commitlenmedi.**
+
+Ürün sahibi oynadı ve altı şey bildirdi; dördü gerçek hataydı.
+
+### Ü203 · Ödül ekonomisi geri alındı
+
+- [x] **🔴 Ü201 kuponun barını düşürmüş** ✅ — parça +120 puan verip
+  eşiğin ALTINDA çıkıyordu; bar fiilen 500'den **380'e** inmişti. Bütçe
+  motoru delinmemişti, delinen şey **eşiğe ulaşma zorluğuydu**.
+  Yeni rol: parça ödül **üretmiyor**, kazanılmış ödülü **teslim
+  ediyor** — eşik geçildikten sonra çıkıyor, **sıfır puan** veriyor,
+  tur başına bir kez. Skor Ü201 öncesiyle birebir aynı.
+  Test `ODUL_BONUSU === 0`'ı kilitliyor.
+- [x] **Kafe dışında paket görünmüyor** ✅ — motor konumu bilemez
+  (bilseydi replay sapardı); gizleyen ekran.
+- [x] **Zorluk sertleşti** ✅ — kademe 8 → **5** turda bir, tavan 3 →
+  **4**, üst kademelerde üç hücrelik parçalar da seyreltiliyor. Kaba
+  kuvvet botuyla ölçüldü: **14–38 hamlede tıkanıyor**, ortanca skor
+  497, 12 turun 5'i 500'ü geçiyor.
+- [x] **Kupon yönlendirmesi** ✅ — *"Tur bitince Ödüllerim'e düşecek."*
+  Gelecek zaman, çünkü kuponu sunucu tur bitiminde yazıyor.
+- [x] **Oyun bitince katalog karuseli** ✅ — "Oyunlara dön" artık
+  `/oyunlar`a gidiyor, bu oyunun tanıtım kartına değil.
+
+### Ü204 · Tam ekran
+
+- [x] **`fixed inset-0` + kaydırma kilidi + "‹ Çık"** ✅
+- [x] **🔴 İki yanlış deneme** ✅ — (1) sabit genişlik: altta ~235
+  piksel boş kaldı. (2) `h-full w-auto max-w-full`: **kare bozuldu**,
+  çünkü `height` kesinleşince `max-width` genişliği kırpıyor ve
+  `aspect-ratio` geri besleme yapmıyor.
+  **Kabul edilen gerçek:** 8×8 kare tahta 375 piksellik telefonda en
+  fazla ~359 olabilir; sınır yükseklik değil genişlik. Çözüm tahtayı
+  büyütmek değil kalan yüksekliği **dağıtmak** — `flex-1` + ortalama,
+  yan dolgu 16 → 8, teklifler kendi "el" panelinde.
+
+### Ü205 · Sesler
+
+- [x] **Dosyasız, WebAudio ile** ✅ — tok · buzz · whoosh · sparkle.
+  Ürüne eklenen bayt **sıfır** (aynı gerekçe Ü56'da Lottie yerine CSS).
+- [x] **🔴 SESSİZ başlıyor** ✅ — burası kafe; habersiz çıkan ses
+  masadaki oyuncuyu da yanındakini de rahatsız eder. Tercih
+  `localStorage`'da.
+- [x] **Otomatik oynatma kısıtı kendiliğinden çözülüyor** ✅ — ses
+  bağlamı oyuncu hoparlöre bastığında kuruluyor, yani zaten bir
+  dokunuşun içinde.
+- [x] **`useSyncExternalStore`** ✅ — `useState` başlatıcısı sunucuda da
+  koşuyor (`localStorage` yok → hidrasyon yanlış değeri sabitliyor,
+  Ü96'nın tuzağı); efekt içinde `setState` ise lint tarafından
+  reddedildi. İkisini birden doğru yapan tek yol bu.
+
+- [ ] **Seslerin kendisi dinlenmedi** — tarayıcıda bağlamın kurulduğu
+  ve çaldığı doğrulandı ama tonları duyan olmadı. Ürün sahibinin
+  kulağı gerekiyor.
+
+---
+
+## ⬅️ Ü202 · Blok'un yüzeyi baştan yazıldı — 2026-09-20
+
+⚠️ **Commitlenmedi.**
+
+Ürün sahibi numaralı ve ölçülü bir tasarım verdi. Uygulananlar:
+
+| İstenen | Yapılan |
+|---|---|
+| Koyu arka plan | Radial gradient, lacivert → mor → siyah; yavaş yıldızlar |
+| Parlak panel | `#5ED6FF → #3A8BFF`, dış parıltı + iç gölge |
+| Şeker bloklar | Altı renk; üstte highlight, ortada gradient, altta gölge, dışta hâle |
+| Yerleştirme | 110% → 95% → 100%, **180 ms** + 2 piksel vuruş + darbe halkası |
+| Satır silme | Önce soldan sağa ışık süpürgesi, **sonra** patlama |
+| Parçacık | Kıvılcım · mücevher · toz; satır başına 20–40 |
+| Kombo | GÜZEL · HARİKA · MUHTEŞEM · ÇILGIN · EFSANE |
+| Sürükleme | `scale 1.15` + altında parıltı; hedef **yeşil hologram** |
+
+- [x] **🔴 Tarifteki iki sayı birlikte çalışmıyordu** ✅ — *"parlak panel"*
+  ve *"boş hücre `rgba(255,255,255,0.12)`"* aynı anda okunur bir ızgara
+  veremiyor: parlak zemine beyazın %12'sini eklemek onu neredeyse hiç
+  değiştirmiyor. Ekranda ölçüldü: **1.06 – 1.17**. Aynı sayı Ü166'da da
+  çıkmıştı ve teşhis aynıydı — *"ızgara değil, üstünde doku olan düz
+  bir levha."*
+  Panel parlak **kaldı** (ürün sahibinin açık tercihi), hücre açık
+  değil **koyu** oldu: `rgba(12,42,99,0.28)`, yani tepside açılmış bir
+  çukur. Alfa ölçülerek seçildi → **1.45 / 1.56 / 1.64**, Ü166 bandının
+  ortası.
+- [x] **Beyaz teklif kartları kalktı** ✅ — referansta parçalar doğrudan
+  sahnenin üstünde. Dokunma alanı korundu, yalnızca kutu görünmez oldu.
+- [x] **HUD koyu sahneye taşındı** ✅ — `text-yazi-sonuk` ve `r.ana` açık
+  zemin için seçilmişti, laciverte geçince ikisi de kayboluyordu.
+- [x] **Sahne yuvarlak panel** ✅ — tam genişlik denendi ve başlık satırı
+  beyazda kalınca ekranın ortasında sert bir sınır çıkıyordu.
+- [x] **Renk motorun durumuna GİRMEDİ** ✅ — skora dokunmadığı için
+  replay sözleşmesinde işi yok; istemcide `Uint8Array(64)`.
+- [x] **Parçacıklarda `Math.random()` yok** ✅ — yön ve mesafe kare
+  indeksinden. Rastgele olsaydı her yeniden çizimde yerinden sıçrardı.
+
+- [ ] **Sesler** — ürün sahibi istedi (yerleştirme "tok", hata "buzz",
+  silme "whoosh", kombo "sparkle"). WebAudio ile dosyasız üretilebilir
+  ama **kafede varsayılan açık ses yanlış**; sessiz başlayıp bir düğmeyle
+  açılması gerekiyor. Ayrı tur.
+- [ ] **Diğer üç oyun** — Düşen, Yılan, Kelime hâlâ `tahta.tsx`te.
+
+---
+
+## ⬅️ Ü201 · Ödül bir nesne oldu — 2026-09-20
+
+⚠️ **Commitlenmedi.**
+
+Ürün sahibi Ü199'un kutlamasını reddetti: *"eşik geçildi tarzı şeyler
+yazmasın… block blastte ödül kaplı parça olsun, ekrana konunca ödül
+kazanılsın."* Haklıydı — Ü199'daki şey oyunun **kenarında** bir
+bildirimdi.
+
+- [x] **🔴 Ödül parçası MOTORDA** ✅ — arayüzde olamazdı: parça puan
+  kazandırıyor ve puanı sunucu aynı girdileri yeniden oynatarak
+  hesaplıyor (S5). Yalnızca ekranda olsaydı istemcinin skoru sapar ve
+  tur reddedilirdi. `blok.ts` · `odulTeklifi`, `ODUL_BONUSU = 120`.
+- [x] **Paketin penceresi: 380 ≤ skor < 500** ✅ — parça **yalnızca
+  eşiği geçirmeye tam yettiği** turda çıkıyor. Koyan oyuncu kuponu
+  kesinlikle alıyor; erken çıksaydı kutlama görülür, sonuç ekranında
+  "kazanım yok" yazardı.
+- [x] **Motor konumu BİLMİYOR** ✅ — bilseydi aynı girdi kaydı iki farklı
+  skor üretirdi. Paket her hâlde çıkıyor; konum doğrulanmamışsa ekran
+  bilet göstermiyor, yalnızca puanı.
+- [x] **Eşik çubuğu ve ortadaki kart kaldırıldı** ✅ — `kuponEsigi`
+  propu da silindi, eşik artık motorun işi.
+- [x] **İki test** ✅ — (a) motorun eşik kopyası `KUPON_ESIGI` ile
+  ayrışmıyor, (b) paket çıktığında onu koymak eşiği **geçiriyor**,
+  (c) paketin yeri tohumdan türüyor (sunucu tekrarında aynı).
+
+- [x] **🔴 Yan etki yakalandı: bir test düştü** ✅ — *"eşiği geçmeyen
+  tur seviye atlama bildirmiyor"*. Sebep: birinci seviye eşiği yalnızca
+  **100 XP** ve testin kaba kuvvet botu zaten ona yakındı; ödül parçası
+  turu "başarılı" yapınca XP çarpanı büyüdü ve eşik geçildi. Testin
+  **iddiası** doğruydu, **kurulumu** kırılgandı — oyuncu artık 5.
+  seviyenin tabanına konuyor (1.500) ve önünde tek turda kapanmayacak
+  1.500 XP boşluk var. Test kurulumun hâlâ geçerli olduğunu da kendisi
+  doğruluyor.
+
+- [ ] **Düşen ve Yılan** — ürün sahibi Düşen'de *"dışı ödül paketli bir
+  parça yukarıdan aşağıya düşsün"* istedi. Aynı kural: motorda,
+  deterministik, eşiği geçirmeye yeten bonusla.
+- [ ] **🔴 Yeni oyun: BBTan** — üstten inen numaralı bloklar, alttan top
+  fırlatan **Loopy**, ödül üstten düşüyor. Mekanik ürün sahibinin
+  gönderdiği kayıttan (`Downloads/gamesvideos/bbtan.mp4`) çıkarıldı;
+  görseller bizim olacak.
+- [ ] **Vitrine daha çok Loopy** — referans HTML'deki gibi.
+
+---
+
+## ⬅️ Ü200 · Vitrine altı bölüm — 2026-09-20
+
+⚠️ **Commitlenmedi.**
+
+Ürün sahibi bir örnek vitrin gönderdi (`CafePlay_Kafe_Landing_Page_example.html`)
+ve *"eksiklerimiz nelerdir"* diye sordu. Metnimiz zayıf değildi —
+simülasyon, dürüstlük bölümü, reklam karşılaştırması örnekte yok. Eksik
+olan altı şeydi ve altısı da eklendi.
+
+| # | Eklenen | Neden |
+|---|---|---|
+| 1 | **Yapışkan alt çağrı** (`vitrin-yapiskan.tsx`) | Sayfa uzun; ikna olan kişi düğmeyi aramak için kaydırıyordu |
+| 2 | **Sorun bölümü** (`vitrin-itiraz.tsx`) | Argüman kafe sahibinin **kendi cevapsız sorularıyla** açılıyor |
+| 3 | **Döngü çizimi** (`vitrin-dongu.tsx`) | Ürünün adı Looply ve döngüyü hiç çizmiyorduk |
+| 4 | **SSS** (`vitrin-sss.tsx`) | Yedi soru, hepsi satış engeli |
+| 5 | **Ek satış** (`vitrin-katmanlar.tsx`) | Ödül kataloğu/kampanya/Happy Hour üründe var, sayfada yoktu |
+| 6 | **Gecikmeli açılış** (`vitrin-katmanlar.tsx`) | Ü97 üründe çalışıyor, sayfada hiç geçmiyordu |
+
+- [x] **🔴 Örnekten bilerek AYRILDIK** ✅ — örnek *"ödül tutarı gizli
+  tutulur"* diyor. Bizde öyle değil: oyuncu ne kazandığını baştan
+  görüyor, TL'yi zaten hiç görmüyor (E9) ve saklanan şey **saat**
+  (Ü97). Örneği kopyalamak yalan olurdu.
+- [x] **🔴 SSS'te üç cevap açıkça "hayır"** ✅ — POS entegrasyonu yok,
+  satış ölçümü yok, mesaj gönderimi şu an kapalı. "Evet" demek kolaydı;
+  kasada karşılığı çıkmayan bir "evet" ilk kafede anlaşılır.
+- [x] **Yapışkan çağrının üç kuralı** ✅ — kahramanda görünmüyor, son
+  çağrıda kayboluyor (`IntersectionObserver`), girişli işletmeciye hiç
+  çizilmiyor.
+- [x] **🔴 `--color-vitrin-altin` jetonu YOKTU** ✅ — palet notu Ü117'den
+  beri dördüncü rengin altın olduğunu yazıyor ama jeton hiç
+  tanımlanmamış, sayfada tek yerde elle `rgba(214,178,94,…)` duruyordu.
+  Tailwind `text-vitrin-altin` sınıfını **üretmiyor** ve yazı sessizce
+  renksiz kalıyordu. Ekranda `rgb(214,178,94)` olarak doğrulandı.
+- [x] **Yatay taşma yok** ✅ — 375 = 375 (Dalga 8'de 390 → 406 olmuştu).
+- [x] **SSS akordeonu JavaScript'siz** ✅ — `<details>/<summary>`:
+  klavye, ekran okuyucu ve arama motoru bedava geliyor.
+
+---
+
+## ⬅️ Ü198 – Ü199 · Çarkın zamanlaması ve Blok'un geri bildirimi — 2026-09-20
+
+⚠️ **Commitlenmedi.**
+
+### Ü198 · Loopy artık doğru anda itiyor
+
+Ürün sahibi: *"çark çevirme animasyonumuz tam oturmamış, Loopy doğru
+zamanda çevirmiyor çarkı, uyuşmuyor."* Ölçüm iki ayrı sebep gösterdi:
+
+| | |
+|---|---|
+| İtişin zirvesi | ham videonun **0.83. saniyesinde** |
+| Çarkın o andaki hâli | dönüşün **%68'i bitmiş** (eğri çok öne yüklü) |
+| Videonun son 1.2 sn'si | **ölü** — kare farkı sıfır, Loopy donuyor |
+
+Baş, itişin hemen öncesinden kesildi ve ölü kuyruk atıldı. Kalan
+malzeme 4.6'dan kısa olduğu için hafifçe **yavaşlatıldı** (hızlandırmak
+değil — itiş daha ağır görünüyor).
+
+- [x] **Zirve 830 ms → 48 ms** ✅ (çark %6'dayken), ölü kuyruk gitti:
+  son yarım saniyede hareket 0.2 → 3.08.
+- [x] **Duruş karesi ayrı** ✅ — video artık itişin içinden başlıyor,
+  yani ilk karesi eğik bir Loopy. `<video poster>` nötr duruşu
+  gösteriyor, dönüş bitince `load()` ona dönüyor.
+
+### Ü199 · Blok'ta artık bir şey oluyor
+
+Ürün sahibi: *"oyunlarımızda animasyon, efekt vb şeyler eksik ve blok
+blastta sıra patlatılınca ödül kazanmalı, oyunla uyumlu animasyonla
+verilmeli."*
+
+- [x] **Satır patlaması** ✅ — temizlenen hücreler soldan sağa dalga
+  hâlinde patlıyor (22 ms kademeli). ⚠️ Altın, beyaz değil: tahtanın boş
+  hücreleri zaten `rgba(255,255,255,.82)` ve beyaz patlama
+  görünmüyordu — Ü194'ün "ikon kendi renginde kartın üstünde" hatasının
+  aynısı.
+- [x] **Kazanılan puan uçuyor** ✅ — temizlenen karelerin ağırlık
+  merkezinden yukarı. Koyu hapın içinde: çıplak beyaz metin soluk mavi
+  tahtada okunmuyordu.
+- [x] **Çoklu temizlik söyleniyor** ✅ — "ÇİFTE!", "3×!". Skor
+  formülünde çizgi sayısının karesi var ama oyuncu neden büyük olduğunu
+  göremiyordu.
+- [x] **Geçersiz hamlede tahta titriyor** ✅ — eskiden hiçbir şey
+  olmuyordu ve oyuncu "dokunmadı mı?" diye tekrar deniyordu.
+- [x] **🔴 Ödül eşiği oyun içinde** ✅ — `puan.KUPON_ESIGI` ürünün en
+  eski kurallarından biri ama yalnızca **tur bittikten sonra**
+  söyleniyordu. Artık çubuk olarak duruyor ("ödüle kalan 497 puan") ve
+  eşik geçildiği anda tahtanın ortasında kutlanıyor.
+  ⚠️ **Uydurma ödül yok**: aynı sayı sunucuda kuponu açan sayı.
+  ⚠️ Konum doğrulanmamışsa çubuk görünüyor ama **kutlama yok** — kupon
+  açılmayacakken kutlamak verilmemiş bir söz olurdu.
+- [x] **`temizlenecekler()` + regresyon testi** ✅ — `uygula` geri
+  döndüğünde temizlenen hücreler çoktan boşalmış oluyor, patlatılacak
+  kare kalmıyor. Motor hangi çizgilerin temizleneceğini önceden
+  söylüyor; test iki fonksiyonun aynı şeyi söylediğini bir tur boyunca
+  hamle hamle doğruluyor.
+- [x] **🔴 `pg` istemci paketine sızdı** ✅ — `KUPON_ESIGI`yi istemci
+  bileşenine import edince `fs`/`dns` çözülemedi ve derleme kırıldı
+  (Ü75'in aynı tuzağı). Sayı sunucu bileşeninden prop olarak geçiyor.
+
+- [ ] **Diğer üç oyun** — Düşen, Yılan, Kelime aynı dili almadı. Blok
+  referans uygulama; beğenilirse taşınacak.
+
+---
+
+## ⬅️ Ü197 · Çarkı çeviren Loopy gerçek animasyon oldu — 2026-09-20
+
+⚠️ **Commitlenmedi.**
+
+- [x] **Ü193'ün CSS itişi yerini videoya bıraktı** ✅ — ürün sahibi
+  animasyonu kendisi ürettirdi. İlk deneme kullanılamadı (çark videonun
+  içindeydi, dilim sayısı kare kare değişiyordu, alfa yoktu, karakterde
+  turuncu şerit yoktu); ikincisi tuttu.
+- [x] **Ham dosya üç adımda ürüne girdi** ✅ — betik
+  `scripts/cark-video-isle.sh`, gerekçeler `cark.tsx`te:
+  - süre **6.0 → 4.6 sn** (`DONUS_MS` ile aynı olmak zorunda),
+  - alfa **luma anahtarıyla** üretildi — riskli görünüyor çünkü uzuvlar
+    da siyah, ama ölçüm ayrımı gösterdi: zemin tam 0, uzuvlar luma 20+,
+    arada boş bant,
+  - kadraj **36 karenin birleşik kutusundan** — tek kareye göre
+    kırpmak hareketin tepesinde kolu kesiyordu.
+- [x] **Ölü CSS silindi** ✅ — `@keyframes cark-loopy-cevir` kaldırıldı,
+  geriye yalnızca konum kaldı.
+- [x] **Hareket kapalıysa video oynamıyor** ✅ — CSS ile yapılamıyor
+  (bir `<video>`nun oynaması animasyon özelliği değil), karar
+  `play()` öncesinde veriliyor.
+
+- [ ] **🔴 iPhone'da DOĞRULANMALI** — VP9 + alfa WebM Chrome'da doğru
+  çiziliyor (ekranda denendi). Safari alfayı yok sayarsa mor sahnenin
+  üstünde **siyah bir kutu** çıkar. Ürün sahibi telefondan bakıyor.
+
+---
+
+## ⬅️ Ü196 · "Bir oyun seç" ana ekranın kartı oldu — 2026-09-19
+
+⚠️ **Commitlenmedi.**
+
+Bu bölüm **üç turda** yerini buldu ve üçü de aynı dersi veriyor: ürün
+sahibi ekranı gösteriyor, tarif etmiyor.
+
+| Tur | Ne yapıldı | Cevap |
+|---|---|---|
+| Ü194 | Elle kurulmuş dört koyu satır | *"Birebir aynı olmalı"* |
+| Ü195 | Katalogun karuseli | *"Hayır carousel şeklinde değil"* |
+| Ü196 | `/oyna`daki yatay `GecisKarti` | ✅ gösterdiği kart buydu |
+
+- [x] **`GecisKarti` ortak dosyaya çıktı** ✅ —
+  `src/components/gecis-karti.tsx`. `app/oyna/page.tsx` içinde yerel bir
+  fonksiyondu, yani yalnızca tek ekran kullanabiliyordu.
+- [x] **Kart hem bağlantı hem düğme olabiliyor** ✅ — ana ekran `yol`
+  veriyor (`<Link>`), misafir `oyna` veriyor (`<button>`;
+  `misafirBasla` tohum üretiyor, oyun sayfada açılıyor).
+- [x] **`BiletYuzeyi` artık `<span>` olarak da çizilebiliyor** ✅ —
+  `govde` alanı. `<button>`ın içerik modeli phrasing içerik istiyor ve
+  `<div>` orada geçersiz; alternatif kartın ikinci bir kopyasını
+  yazmaktı.
+- [x] **Karusel neden yanlıştı** ✅ — 244×356'lık kart tek seferde **bir**
+  oyun gösteriyor, diğerleri için sürüklemek gerekiyor. Masaya yeni
+  oturmuş misafir için "dört oyun var" ilk bakışta görünmeli; burası
+  katalog değil, ilk karar ekranı.
+- [x] **Ü195'in karusel eklentisi geri alındı** ✅ — tek çağıran
+  `/oyunlar` kaldı ve o hep bağlantı. Kullanılmayan `oyna` eklentisi
+  ölü kod olurdu.
+
+⚠️ Ü195'te yapılan iki şey **kaldı** ve doğruydu: katalog sırası ve
+kategoriler `src/oyunlar/katalog.ts`te, misafir de "Düşünerek /
+Yetişerek" ayrımını ve bugünün oyununu görüyor.
+
+---
+
+## ⬅️ Ü195 · Misafir de katalogun kartını görüyor — 2026-09-19
+
+⚠️ **Commitlenmedi.**
+
+- [x] **🔴 "Benzer" yetmedi, "aynı" gerekiyordu** ✅ — Ü194'te misafirin
+  oyun listesi elle kurulmuş dört koyu satırdı. Ürün sahibi: *"birebir
+  aynı olmalı."* Haklı: iki ayrı kart kodu ikinci turda yine ayrışır,
+  bu ekranın o günkü hâli zaten kanıtıydı. Artık **aynı bileşen** —
+  `OyunKaruseli` / `OyunKapagi`. Kart, sahne, ölçüler, kategori
+  etiketi, "bugünün oyunu · ×2" rozeti hepsi tek yerden.
+- [x] **Katalog sırası ortak dosyaya çıktı** ✅ —
+  `src/oyunlar/katalog.ts`. `KATEGORILER` Ü66'dan beri
+  `app/oyunlar/page.tsx`in içindeydi, yani yalnızca tek ekran
+  kullanabiliyordu. Misafir şimdi "Düşünerek / Yetişerek" ayrımını ve
+  bugünün oyununu da görüyor — Ü194'te hiçbiri yoktu.
+- [x] **Kart iki farklı yolla oynatabiliyor** ✅ — `oyna` eylemi
+  verilirse düğme (misafir, `misafirBasla` ile sayfada kalıyor),
+  verilmezse bağlantı (`/oyna/<id>`). Biçim tek sabitten
+  (`OYNA_SINIFI`), iki kopya değil.
+- [x] **Ü194'ün kart denemesindeki iki hata** ✅ — `KartDalgalari` 400×200
+  viewBox'ta ve 335×78'lik kartta **2.16 kat** yatay geriliyordu; köşe
+  aksanı kartın yarısını kaplayan soluk banda dönüşüyordu (Ü188'in
+  aynı tuzağı). Ve ikonun rengi kartın rengiyle aynı kaynaktan
+  geldiği için ikon kartın üstünde kayboluyordu. İkisi de karusel
+  kartına geçince kendiliğinden çözüldü — o kart ikonu **beyaz
+  karoda** taşıyor.
+
+⚠️ **Çark animasyonu ürün sahibinde.** Ona çarkın boş PNG'si verildi
+(`gelen/cark/`, 2048², saydam, `cark.tsx`ten üretildi). İlk denemesi
+kullanılamadı: çark videonun içindeydi ve dilim sayısı kare kare
+değişiyordu, alfa kanalı yoktu, karakterde turuncu şerit yoktu.
+Doğrusu **çarksız, saydam, yalnızca Loopy** — çünkü dilimde durma
+kararını sunucu veriyor.
+
+---
+
+## ⬅️ Ü193 – Ü194 · Çarkta Loopy ve misafirin ilk ekranı — 2026-09-19
+
+⚠️ **Commitlenmedi.**
+
+**Hangi ekranlara dokundu:**
+
+| Ekran | Ne değişti |
+|---|---|
+| Çark sahnesi (`/cark` + `/hemen`) | Çevir'e basılınca Loopy çarkı itiyor, sonuçta zıplıyor · hata kutusunun **kopyası** silindi |
+| `/cark` ve `/hemen` daveti | Pastel krem kutu → koyu bilet + çarkı çeviren Loopy; `MiniCark` silindi |
+| `/hemen` (karekodu okutanın ilk ekranı) | Başlık koyu karta geçti, masa künyesi içine girdi, Loopy geldi · oyun satırları koyu bilete ve üretilmiş ikonlara geçti (emoji gitti) · konum şeridi tek sütuna indi · sonuç kartı koyu bilete geçti |
+
+- [x] **🔴 Çarkı Loopy çeviriyor (Ü193)** ✅ — `/oyna`daki çark kartında
+  bu zaten vardı ama duran bir illüstrasyondu; sahnedeki gerçek çark
+  kendi kendine dönüyordu. Yeni görsel **üretilmedi**: elde uzanan kollu
+  kare yok, illüstrasyondaki Loopy de kendi çarkıyla tek karede pişmiş.
+  İtiş gövde diliyle anlatılıyor (yaylan → savrul → geri tep → heyecan),
+  süre `DONUS_MS` ile aynı.
+- [x] **🔴 Misafir ekranı işletme panelinin takımıyla yazılmıştı** ✅ —
+  `Sayfa`, `Baslik`, `MasaKunyesi` hepsi `components/ui`den geliyordu;
+  oyuncu tarafının kabuğu (`KoyuKart`, `BiletYuzeyi`) burada hiç
+  kullanılmamıştı. **Karekodu okutan müşterinin ürünle ilk karşılaştığı
+  ekran burası.**
+- [x] **🔴 Oyunlar emoji olarak gösteriliyordu** ✅ — 🟦 🐍 🧱. Ü182'de üç
+  oyunun kendi illüstrasyonu üretilmişti ve `OyunIkonu` her ekranda onu
+  kullanıyor; misafir ekranı `oyun.emoji` basıyordu.
+- [x] **Konum şeridi ölçülerek tek sütuna indi** ✅ — başlık, açıklama ve
+  iki düğme aynı satırdaydı; 375 pikselde düğmeler ~190, boşluklar ~30
+  alıyor, metne 110 kalıyordu. Başlık iki, cümle üç satıra bölünüyordu.
+- [x] **Altın düğmenin kontrastı** ✅ — beyaz yazı `--color-odul` üstünde
+  **2.1:1** çıkıyordu (benim koyduğum düğme). Ü191'in altın gradyanı +
+  koyu kahve yazıya çevrildi: 7.07–9.36.
+- [x] **🔴 Hata kutusu iki kez basılıyordu** ✅ — `cark.tsx`te blok
+  kopyalanmış; çevirme reddedildiğinde aynı uyarı alt alta iki kutuda.
+
+- [ ] **⚠️ Demo verisinde masa adı kafe adına eşit** — `/hemen` başlığı
+  *"Kafe A · Kafe A"*, *"Moda Butik · Moda Butik"* yazıyor. Kod doğru
+  basıyor; tohumda `cafe_tables.label` bazı satırlarda kafe adı. Tohum
+  düzeltilmeli.
+- [ ] **⚠️ Kelime'nin ikonu hâlâ üretilmemiş** — Ü192'den devrediyor;
+  burada dört kartın üçü parlak, Kelime düz SVG.
+
+---
+
+## ⬅️ Ü191 – Ü192 · Kalan iki pastel yüzey ve profilin içeriği — 2026-09-19
+
+⚠️ **Commitlenmedi.** Ü191 ve Ü192 birlikte duruyor.
+
+**Hangi ekranlara dokundu:**
+
+| Ekran | Ne değişti |
+|---|---|
+| `/oyna/[oyunId]` | Tanıtım ve sonuç kartları `kartStili()`ten koyu bilete geçti · oyunun sahnesi sağ üstten taşıyor · altın hap "▶ Oyna" düğmesi · skor başarılıyken kuşağın canlı tonunda |
+| `/profil` | Kafe kartının altındaki **beyaz kütük kalktı**, kartın tamamı tek koyu yüzey · son 10 oturum listesi **oyun karnesine** döndü (oyun başına kaç kez · rekor · son tarih) · sayaç ve satır zeminleri `white/10` → `black/25` |
+
+- [x] **🔴 Oyun kabuğundaki iki kart Ağustos'tan beri pastelde kalmıştı**
+  ✅ — ürünün en çok bakılan iki kartıydı: oyuncu katalogdan koyu bir
+  karta basıyor, açılan ekranda pastel bir kart buluyordu. Sonuç
+  kartındaki skor `--color-yazi` idi ve koyu zeminde hiç okunmuyordu.
+- [x] **🔴 Profil "ne oynadım" değil "ne kadar iyiyim" diyor artık** ✅ —
+  18 oyunun 10 satırlık kütüğü kafe kartından uzundu, dördü aynı oyunun
+  tekrarıydı ve oyuncunun bilmediği bir şey söylemiyordu (kendi
+  oynadığı oyunun tarihini zaten biliyor). Aynı 18 oturum oyun başına
+  toplanınca **dört satır** kalıyor: kaç kez, **rekor kaç**, son ne
+  zaman. Gruplama SQL'de (`domain/gecmis.ts`), `KAFE_BASINA = 10`
+  limiti kalktı — karnenin satır sayısını katalog sınırlıyor.
+- [x] **🔴 Satır zeminleri ölçülerek koyulaştırıldı** ✅ — `bg-white/10`
+  **eklemeli**: kart karne satırlarıyla uzayınca `KartDalgalari`nin
+  sağ alt aksanı rekor sütununun altına düştü ve alt iki satırın sayısı
+  gözle görülür soluklaştı. Beyaz metnin kontrastı aynı kart içinde
+  3.17 ↔ 5.79 arasında geziyordu; `black/25` ile taban **5.95**,
+  yayılma kapandı.
+- [x] **Rekor rengi** ✅ — önce kuşağın `canli` tonu denendi, dört
+  kuşakta da kalıyor (2.13–3.06). Altın gök ve amberde kalıyor. Beyaz
+  dördünde de geçiyor.
+- [x] **Regresyon testi** ✅ — `GROUP BY`ın iki tuzağı: rekor `max()`
+  yerine son skor olursa, ve kafe toplamı `count(*) OVER` olursa
+  ("5 oturum" yerine "2 oyun"). İkisi de mutasyonla doğrulandı.
+
+- [ ] **⚠️ Kelime'nin ikonu üretilmemiş** — satırlardaki ikon 18'den
+  30 piksele çıktı ve üç oyunun (Düşen, Blok, Yılan) üretilmiş parlak
+  ikonu var, Kelime'ninki elle çizilmiş düz SVG. 30 pikselde fark
+  görünüyor. **Görsel üretmeden önce sorulacak.**
 
 ---
 
@@ -1594,7 +2036,10 @@ Bunlar yazılım işi değil; bekleme süreleri haftalarla ölçülüyor.
   Temizlik işi yok, gönderim kaydı süresiz birikiyor. Numara açık
   değil (maskeli + kör indeks) ama süre kararı gerekiyor.
   Öneri: **12 ay** (gönderim ispatı + itiraz penceresi), sonra silinsin.
-- [ ] **SMS gönderici başlığı** — yeni isimle, operatör onayı birkaç iş günü
+- [ ] ~~**SMS gönderici başlığı**~~ — ⏸️ **2026-09-20: SMS'ten şimdilik
+  vazgeçildi** (ürün sahibi). Altyapı duruyor ve çalışıyor; sağlayıcı
+  bağlantısı ve başlık başvurusu ertelendi. Buna bağlı maddeler
+  (37 · `sms_outbox` saklama, tavan testleri) da beklemede.
 - [ ] **S17 · Kalan 7 oyunun listesi** → `18-oyun-adaylari.md`
 - [ ] **S6 / H2** · Ad-soyad-telefon için hukuki sebep
 - [ ] **Boost fiyatlandırması** — erişim seviyelerinin satılabilir hâli
