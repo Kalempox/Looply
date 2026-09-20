@@ -583,6 +583,7 @@ export function BiletYuzeyi({
   gorsel,
   className = "",
   yuvarlak = true,
+  govde = "div",
   children,
 }: {
   renk: OyuncuRengi;
@@ -591,23 +592,37 @@ export function BiletYuzeyi({
   /**
    * Köşeler ve gölge — Ü172.
    *
-   * Yüzey her zaman kartın tamamı olmuyor: profildeki kafe kartında
-   * **üst şerit** bu yüzeyde, altındaki oynananlar listesi beyaz
-   * kalıyor. Şerit kendi yuvarlağını taşısaydı beyaz bölümle
-   * birleştiği yerde iki boş köşe kalırdı; yuvarlağı dıştaki
-   * `<section>` veriyor ve `overflow-hidden` ile kırpıyor.
+   * Yüzey her zaman kartın tamamı olmuyor: yuvarlağı ve gölgeyi dıştaki
+   * bir kap veriyorsa (profildeki kafe kartında `<section>`, çünkü
+   * "buradasın" çerçevesi ona ait) yüzeyin kendi yuvarlağını taşıması
+   * köşelerde iki kat eğri bırakır, kendi gölgesi de kartın içinde ikinci
+   * bir kart varmış gibi okunur.
    *
-   * Gölge de aynı sebeple kalkıyor: kartın içindeki bir şeridin
-   * kendi gölgesi olması, iki ayrı kart varmış gibi okunurdu.
+   * ⚠️ Ü192'ye kadar buradaki gerekçe farklıydı: kafe kartının ALT
+   * yarısı beyaz bir liste olduğu için yüzey yalnızca üst şeritti. O
+   * liste kalktı (bkz. `profil/page.tsx`), kartın tamamı bu yüzey —
+   * ama dıştaki kap durduğu için bayrak da duruyor.
    */
   yuvarlak?: boolean;
+  /**
+   * Dış etiket — Ü196.
+   *
+   * ⚠️ Varsayılan `div` ve öyle kalıyor; `span` yalnızca yüzey bir
+   * `<button>`ın İÇİNE giriyorsa gerekiyor. `<button>`ın içerik modeli
+   * **phrasing** içerik istiyor ve `<div>` orada geçersiz. Aynı kartın
+   * bir ekranda bağlantı, başka ekranda düğme olması gerektiğinde
+   * (misafirin oyun seçimi) tek çıkış yolu bu — alternatifi kartın
+   * ikinci bir kopyasını yazmaktı.
+   */
+  govde?: "div" | "span";
   children: React.ReactNode;
 }) {
   const r = RENK[renk];
+  const Govde = govde;
 
   return (
-    <div
-      className={`relative overflow-hidden ${yuvarlak ? "kart-golge kart-gel rounded-3xl" : ""} ${className}`}
+    <Govde
+      className={`relative block overflow-hidden ${yuvarlak ? "kart-golge kart-gel rounded-3xl" : ""} ${className}`}
       style={{ background: `linear-gradient(115deg, ${r.koyu} 0%, ${r.ana} 100%)` }}
     >
       {/* Ü189: dalgalar artık koyu yüzey ailesinin parçası. Tek tek
@@ -648,8 +663,10 @@ export function BiletYuzeyi({
         }}
       />
 
-      <div className="relative">{children}</div>
-    </div>
+      {/* ⚠️ İç sarmalayıcı da dış etiketi takip ediyor: `<span>` gövdenin
+          içinde `<div>` kalsaydı geçersizlik bir katman aşağı kayardı. */}
+      <Govde className="relative block">{children}</Govde>
+    </Govde>
   );
 }
 

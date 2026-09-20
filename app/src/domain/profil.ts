@@ -51,7 +51,7 @@ export type KafeDurumu = {
 export type KafeKarnesi = KafeSeviyesi &
   KafeDurumu & {
     toplamOyun: number;
-    sonOyunlar: KafeGecmisi["sonOyunlar"];
+    oyunlar: KafeGecmisi["oyunlar"];
     rozetler: KazanilmisRozet[];
   };
 
@@ -96,7 +96,7 @@ export function birlestir(
         sonrakiEsik: sonrakiEsik(0),
         ilerlemeYuzde: ilerlemeYuzde(0),
         toplamOyun: 0,
-        sonOyunlar: [],
+        oyunlar: [],
         rozetler: [],
         ...BOS_DURUM,
       };
@@ -110,7 +110,7 @@ export function birlestir(
   for (const g of gecmis) {
     const k = kart(g.cafeId, g.cafeAdi);
     k.toplamOyun = g.toplamOyun;
-    k.sonOyunlar = g.sonOyunlar;
+    k.oyunlar = g.oyunlar;
   }
 
   for (const r of rozetler) {

@@ -12,6 +12,7 @@ import * as rozet from "@/domain/rozet";
 import * as acil from "@/domain/acil";
 import { envanter } from "@/domain/odul";
 import { birlestir, karne, kafeDurumlari } from "@/domain/profil";
+import { kafeBazli } from "@/domain/gecmis";
 import { yoneticiSorgu, benzersizEposta } from "./_yardim";
 
 /**
@@ -530,7 +531,7 @@ describe("profil karnesi", () => {
     // Kartı olan kafeye ise işliyor.
     const dolu = birlestir(
       [],
-      [{ cafeId: "cafe_x", cafeAdi: "Kafe X", toplamOyun: 4, sonOyunlar: [] }],
+      [{ cafeId: "cafe_x", cafeAdi: "Kafe X", toplamOyun: 4, oyunlar: [] }],
       [],
       new Map([
         [
@@ -580,7 +581,7 @@ describe("profil karnesi", () => {
           ilerlemeYuzde: 0,
         },
       ],
-      [{ cafeId: "cafe_x", cafeAdi: "Kafe X", toplamOyun: 7, sonOyunlar: [] }],
+      [{ cafeId: "cafe_x", cafeAdi: "Kafe X", toplamOyun: 7, oyunlar: [] }],
       [sahteRozet("cafe_x", "Kafe X")],
     );
 
@@ -636,6 +637,61 @@ describe("profil karnesi", () => {
     await yoneticiSorgu(`DELETE FROM points_ledger WHERE player_id = $1 AND reason = 'test'`, [
       oyuncuId,
     ]);
+  });
+
+  test("oyun karnesi oyunu TEKLİYOR, kafe toplamı oturum sayısı kalıyor — VERİTABANI", async () => {
+    /*
+      Ü192. Bu sorgu Ü20'den beri son on oturumu satır satır döndürüyordu
+      ve ekran onu kütük gibi basıyordu; artık `GROUP BY game_id` ile
+      oyun başına tek satır dönüyor. Testin işi iki ayrı tuzağı sınamak:
+
+      🔴 1. Rekor SON oyun değil EN İYİ oyun. Gruplama `max()` yerine
+      son satırı alsaydı ekranda "en iyi" yazıp son skoru gösterirdi —
+      oyuncunun rekorunu her kötü turda silen bir sayı.
+
+      🔴 2. Kafe toplamı `sum(count(*)) OVER`, `count(*) OVER` DEĞİL.
+      Gruplamadan sonra ikincisi "kaç FARKLI oyun" der: beş oturum
+      oynamış oyuncuya "burada oynadıkların · 2" yazardı. Bu yüzden
+      aşağıda oyun sayısı (2) ile oturum sayısı (5) bilerek farklı.
+    */
+    const gun = new Date().toISOString().slice(0, 10);
+    const skorlar: Array<[string, number]> = [
+      ["blok", 120],
+      ["blok", 940], // ← rekor ortada, sonda değil
+      ["blok", 310],
+      ["dusen", 70],
+      ["dusen", 55],
+    ];
+
+    for (const [oyunId, skor] of skorlar) {
+      await yoneticiSorgu(
+        `INSERT INTO play_sessions
+           (id, cafe_id, player_id, device_id_hash, game_id, seed,
+            started_at, ended_at, server_score, business_date, status)
+         VALUES ($1,$2,$3,decode(md5($1),'hex'),$4,'tohum',
+                 now(), now(), $5, $6::date, 'completed')`,
+        [`oyn_karne_${sayac++}_${Date.now()}`, kafeA, oyuncuId, oyunId, skor, gun],
+      );
+    }
+
+    const kafeler = await kafeBazli(oyuncuId);
+    const kart = kafeler.find((k) => k.cafeId === kafeA);
+    assert.ok(kart, "oyun oynanan kafe karnede yok");
+
+    assert.equal(kart.oyunlar.length, 2, "aynı oyun birden fazla satır açtı");
+    assert.equal(kart.toplamOyun, 5, "kafe toplamı oturum değil oyun sayısını saydı");
+
+    const blok = kart.oyunlar.find((o) => o.oyunId === "blok");
+    assert.ok(blok, "blok satırı yok");
+    assert.equal(blok.kez, 3);
+    assert.equal(blok.enIyi, 940, "rekor en yüksek skor değil");
+
+    // Çok oynanan önce: ekran sıralamayı SQL'den alıyor.
+    assert.equal(kart.oyunlar[0].oyunId, "blok", "sıralama çok oynanandan aza değil");
+
+    /* ⚠️ Kendi çöpünü topluyor — `after` oyuncuyu siliyor ve yabancı
+       anahtar buna engel olurdu (aynı tuzak Ü188 testinde yaşandı). */
+    await yoneticiSorgu(`DELETE FROM play_sessions WHERE id LIKE 'oyn_karne_%'`);
   });
 
   test("XP'si olmayan ama rozeti olan oyuncunun karnesi gerçekten doluyor", async () => {

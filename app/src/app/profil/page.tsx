@@ -429,9 +429,13 @@ function seviyeRengi(seviye: number): OyuncuRengi {
 /**
  * Kafe kartındaki tek sayı — Ü188.
  *
- * Zemin `white/10`: kartın kendi koyu gradyanının üstünde duruyor ve
- * beyaz bir kutu koysaydık üç delik gibi okunurdu. Ayraç yerine boşluk,
- * çizgi yerine zemin — kart zaten yoğun.
+ * Zemin kartın kendi koyu gradyanının üstünde duruyor; beyaz bir kutu
+ * koysaydık üç delik gibi okunurdu. Ayraç yerine boşluk, çizgi yerine
+ * zemin — kart zaten yoğun.
+ *
+ * 🔴 Zemin `white/10` DEĞİL, `black/25` — Ü192, ölçülerek. Gerekçe
+ * karne satırlarıyla ortak ve orada yazılı: eklemeli bir ton kartın
+ * aydınlandığı yerde kendisi de aydınlanıyor.
  */
 function KafeSayaci({
   etiket,
@@ -447,7 +451,7 @@ function KafeSayaci({
   uyari?: boolean;
 }) {
   return (
-    <div className="rounded-xl bg-white/10 px-2.5 py-2">
+    <div className="rounded-xl bg-black/25 px-2.5 py-2">
       <div className="etiket-caps text-[9px] text-white/55">{etiket}</div>
       <div className="mt-0.5 font-data text-[17px] leading-none font-bold text-white tabular">
         {deger}
@@ -472,22 +476,36 @@ function KafeKarti({ kafe, buradaMi }: { kafe: KafeKarnesi; buradaMi: boolean })
 
   return (
     <section
-      className="kart-golge kart-gel overflow-hidden rounded-3xl bg-yuzey"
-      style={{ border: `1px solid ${buradaMi ? r.ana : "var(--color-cizgi)"}` }}
+      className="kart-golge kart-gel overflow-hidden rounded-3xl"
+      style={{ border: `1px solid ${buradaMi ? r.canli : "transparent"}` }}
     >
       {/*
-        Üst şerit biletin yüzeyinde — Ü172.
+        🔴 Kartın TAMAMI tek koyu yüzey — Ü192.
 
-        Ü67'de pastel zemindi ve ürün sahibi o zaman da *"profil kısmı
-        yine çok sönük"* demişti; gradyan eklenmişti. Şimdi aynı
-        şikâyetin kökü kapandı: ekranın geri kalanıyla (bilet, oyun
-        kartları) aynı koyu yüzey.
+        Ü172'de yalnızca üst şerit biletti; altındaki "burada
+        oynadıkların" listesi beyaz kalıyordu. Ürün sahibi profile bakıp
+        *"içeriğini ve burdaki tasarımı düzeltmemişsin"* dedi ve ekranda
+        gördüğü şey buydu: koyu bir başlık, altına kaynatılmış beyaz bir
+        kütük. Ü171–Ü191 arasında ürünün her yüzeyi koyu bilet ailesine
+        geçti; profildeki kafe kartı aynı kartın içinde iki dil
+        konuşan son yerdi, üstelik beyaz yarı daha uzundu.
 
-        ⚠️ `yuvarlak={false}`: altındaki "burada oynadıkların" listesi
-        beyaz devam ediyor ve şerit kendi yuvarlağını taşısaydı
-        birleşme yerinde iki boş köşe kalırdı.
+        ⚠️ Çerçeve artık yalnızca BURADAYKEN çiziliyor (`transparent`
+        değilse). Eskiden her kartın `cizgi` rengi bir kenarı vardı ve
+        beyaz gövdeyi sayfadan ayırmak için gerekiyordu; koyu gövde
+        zaten ayrılıyor, kalan kenar "buradasın"ın işareti olarak
+        sahiplendi. Rengi `ana` değil `canli`: koyu gövdenin kenarında
+        `ana` tonu gövdeden ayrılmıyordu.
       */}
-      <BiletYuzeyi renk={renk} gorsel="icecek" yuvarlak={false} className="px-5 py-5">
+      {/*
+        ⚠️ `gorsel` KALDIRILDI. Faz boyunca sağda %17 opaklıkta beyaz bir
+        fincan çizimi duruyordu ve `top-1/2` ile ortalanıyordu. Kart
+        karne satırlarıyla uzayınca o orta nokta satırların tam arkasına
+        düştü: `bg-white/10` kutuların kenarlarından sızan bir filigran.
+        Kartın illüstrasyonu artık satırların kendi oyun ikonları — üç
+        dört tanesi, tam da beyaz bloğun durduğu yerde.
+      */}
+      <BiletYuzeyi renk={renk} yuvarlak={false} className="px-5 py-5">
         <div className="flex items-start gap-4">
           <SeviyeHalkasi seviye={kafe.seviye} yuzde={kafe.ilerlemeYuzde} renk={renk} />
 
@@ -567,6 +585,122 @@ function KafeKarti({ kafe, buradaMi }: { kafe: KafeKarnesi; buradaMi: boolean })
           />
         </div>
 
+        {/*
+          🔴 Kütük değil KARNE — Ü192.
+
+          Burada Ü20'den beri son on oturum satır satır duruyordu:
+          `Blok · 16 Eyl · 1172`, `Düşen · 14 Eyl · 1385`, `Yılan · 13
+          Eyl · 1583`… Ürün sahibinin *"içeriğini düzeltmemişsin"*
+          dediği şey buydu ve ekrandaki hâli gerekçeyi kendi veriyordu:
+          18 oyunun 10 satırı kafe kartından uzundu, dördü aynı oyunun
+          tekrarıydı ve hiçbiri oyuncunun bilmediği bir şey söylemiyordu.
+          Kendi oynadığı oyunun tarihini zaten biliyor.
+
+          Aynı 18 oturum oyun başına toplanınca dört satır kalıyor ve her
+          satır bir cevap veriyor: **kaç kez oynadım, rekorum kaç, en son
+          ne zaman.** Gruplama SQL'de (`domain/gecmis.ts`) — ekranda
+          toplamak, 10 satırlık pencereden 18 oyunun rekorunu
+          hesaplamaya çalışmak olurdu.
+
+          ⚠️ Toplam sayı başlıkta KALDI. Satır sayısı artık "kaç oyun
+          oynadım"ı söylemiyor (dört satır, 18 oyun) ve o sayı ortadan
+          kaybolsaydı içerik zenginleşirken bilgi eksilirdi.
+        */}
+        {kafe.oyunlar.length > 0 && (
+          <div className="mt-4">
+            <div className="etiket-caps text-[9px] text-white/55">
+              Burada oynadıkların · {kafe.toplamOyun}
+            </div>
+            <ul className="mt-2 flex flex-col gap-1.5">
+              {kafe.oyunlar.map((oyun) => (
+                /*
+                  🔴 Satır zemini `black/25`, `white/10` DEĞİL — Ü192,
+                  ölçülerek.
+
+                  İlk hâli `white/10` idi (kartın üst yarısındaki
+                  sayaçlarla aynı ton) ve kopyada alt iki satırın rekor
+                  sayısı gözle görülür soluklaştı. Sebep eklemeli ton:
+                  `KartDalgalari`nin üçüncü katmanı kartın SAĞ ALTINA
+                  `canli` renginde bir aksan koyuyor ve kart karne
+                  satırlarıyla uzayınca o aksan tam rekor sütununun
+                  altına düştü. Beyaz tint aydınlanan zeminde daha da
+                  aydınlanıyor, yani satır arkasındaki her şeyi takip
+                  ediyor.
+
+                  Koyulaştıran bir zemin taban veriyor: arkasında ne
+                  olursa olsun satır kendi zemininden daha açık olamaz.
+                  Nötr siyah, mor değil — kart yeşil, gök, menekşe ve
+                  amber kuşaklarının hepsinde aynı bileşen.
+                */
+                <li
+                  key={oyun.oyunId}
+                  className="flex items-center gap-3 rounded-xl bg-black/25 px-3 py-2"
+                >
+                  {/* ⚠️ İkon 18'den 30'a çıktı: `/oyun/ikon-*.webp`
+                      üretilmiş illüstrasyonlar ve 18 pikselde ne
+                      oldukları seçilmiyordu. Satır sayısı ona bölündüğü
+                      için yer de var. */}
+                  <OyunIkonu oyunId={oyun.oyunId} boy={30} />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[13px] leading-tight font-semibold text-white">
+                      {oyun.oyunAdi}
+                    </span>
+                    <span className="mt-0.5 block font-data text-[10px] text-white/55 tabular">
+                      {oyun.kez} oyun · son{" "}
+                      {oyun.son.toLocaleDateString("tr-TR", {
+                        day: "numeric",
+                        month: "short",
+                      })}
+                    </span>
+                  </span>
+                  {/* ⚠️ Rekor yoksa kutu hiç ÇİZİLMİYOR. `0` yazmak
+                      "sıfır puan aldın" demekti; skorsuz bir oyun türü
+                      eklendiğinde `max()` null döner. */}
+                  {oyun.enIyi != null && (
+                    <span className="shrink-0 text-right">
+                      <span className="etiket-caps block text-[8px] text-white/50">
+                        En iyi
+                      </span>
+                      {/*
+                        🔴 Rekor BEYAZ, kuşağın rengi değil — ölçüldü.
+
+                        Önce `canli` tonu denendi: sayı kartın kendi
+                        renk ailesinden gelsin diye. Dört kuşakta da
+                        kalıyor (2.13–3.06), altın da gök ve amberde
+                        kalıyor (2.73 / 2.37 — amberde zaten altının
+                        üstünde altın). Kartın rengi seviyeyi zaten
+                        söylüyor; rekoru da ona boyamak, okunması
+                        gereken tek sayıyı okunmaz yapıyordu.
+
+                        Beyazın satır zemini üstündeki oranları,
+                        dalga aksanının altında kalan en kötü hâl
+                        dahil —
+
+                          kuşak    white/10        black/25
+                                   düz   aksan     düz   aksan
+                          yeşil    5.33   3.97     9.54   7.30
+                          gök      4.56   3.72     8.27   6.87
+                          menekşe  5.79   4.80    10.08   8.62
+                          amber    3.96   3.17     7.36   5.95
+
+                        Asıl mesele ortalama değil YAYILMA: `white/10`
+                        ile aynı kart içinde 3.17'den 5.79'a gidiyor ve
+                        kopyada bu "üst iki satır net, alt iki satır
+                        soluk" olarak görülüyordu. Koyu zeminde taban
+                        5.95'e çıkıyor ve satırlar birbirinin aynı
+                        oluyor.
+                      */}
+                      <span className="mt-0.5 block font-data text-[15px] leading-none font-bold text-white tabular">
+                        {oyun.enIyi.toLocaleString("tr-TR")}
+                      </span>
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         {kafe.rozetler.length > 0 && (
           <ul className="mt-4 flex flex-wrap gap-1.5">
             {kafe.rozetler.map((rz) => (
@@ -575,31 +709,6 @@ function KafeKarti({ kafe, buradaMi }: { kafe: KafeKarnesi; buradaMi: boolean })
           </ul>
         )}
       </BiletYuzeyi>
-
-      {kafe.sonOyunlar.length > 0 && (
-        <div className="px-5 py-4">
-          <div className="etiket-caps text-yazi-sonuk">
-            Burada oynadıkların · {kafe.toplamOyun}
-          </div>
-          <ul className="mt-2.5 flex flex-col gap-2">
-            {kafe.sonOyunlar.map((oyun, i) => (
-              <li
-                key={`${oyun.oyunId}-${i}`}
-                className="flex items-center justify-between gap-3 text-[13px]"
-              >
-                <span className="flex min-w-0 items-center gap-2">
-                  <OyunIkonu oyunId={oyun.oyunId} boy={18} />
-                  <span className="truncate text-yazi">{oyun.oyunAdi}</span>
-                </span>
-                <span className="shrink-0 font-data text-[10px] text-yazi-sonuk tabular">
-                  {oyun.tarih.toLocaleDateString("tr-TR", { day: "numeric", month: "short" })}
-                  {oyun.skor != null && ` · ${oyun.skor}`}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
     </section>
   );
 }
