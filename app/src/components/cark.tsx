@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { OdulAcilisi } from "./odul-acilisi";
 
 /**
@@ -114,6 +114,45 @@ export function Cark({
   const dugmeKapali = kilitli || bekliyor || donuyor || !!sonuc;
 
   /**
+   * Loopy'nin videosu dönüşle birlikte başlıyor — Ü197.
+   *
+   * ⚠️ Kendiliğinden oynamıyor (`autoPlay` yok) ve sebebi ürünle
+   * ilgili: dönüş başlamadan oynasa çark dururken Loopy çoktan
+   * durmuş olurdu. `currentTime = 0` şart — ikinci bir çevirme
+   * (misafirden hesaba geçen oyuncu) videoyu kaldığı yerden
+   * sürdürürdü.
+   *
+   * ⚠️ `play()` bir söz döndürüyor ve reddedilebiliyor (otomatik
+   * oynatma kısıtı, kaynak yüklenmemiş). Yakalanmazsa konsola
+   * yakalanmamış reddetme düşüyor; burada sessizce geçiliyor çünkü
+   * video bir süs ve yokluğunda çark yine dönüyor.
+   */
+  const loopyRef = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    const v = loopyRef.current;
+    if (!v) return;
+    if (!donuyor) {
+      v.pause();
+      /* ⚠️ `currentTime = 0` DEĞİL, `load()` — Ü198. Sıfıra sarmak
+         videonun ilk karesini gösteriyor ve o kare artık itişin
+         ortası. `load()` ögeyi başlangıç hâline döndürüyor, yani
+         `poster`daki nötr duruşa. */
+      v.load();
+      return;
+    }
+    /*
+      ⚠️ Hareketi kapatan kullanıcıda video OYNAMIYOR, ilk karesinde
+      duruyor. CSS ile yapılamıyor: bir `<video>`nun oynaması animasyon
+      özelliği değil, `prefers-reduced-motion` ona dokunmuyor. Karar
+      burada veriliyor ve ekran boş kalmıyor — Loopy duruyor, sadece
+      kıpırdamıyor.
+    */
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    v.currentTime = 0;
+    void v.play().catch(() => {});
+  }, [donuyor]);
+
+  /**
    * Ödül açılışı çarkın YERİNE geçiyor, altına eklenmiyor.
    *
    * ── Düzeltilen hata ─────────────────────────────────────
@@ -220,20 +259,79 @@ export function Cark({
             >
               {donuyor ? "…" : sonuc ? "✓" : "ÇEVİR"}
             </button>
+
+            {/*
+              🔴 Çarkı Loopy çeviriyor — Ü193, **Ü197'de gerçek
+              animasyona geçti.**
+
+              Ürün sahibi: *"çark çevirmede de Loopy çevirsin çarkı."*
+              Ü193'te bu CSS ile anlatılıyordu (yaylan → savrul → geri
+              tep), çünkü elde uzanan kollu bir kare yoktu. Sonra ürün
+              sahibi animasyonu kendisi ürettirdi ve ikinci denemesi
+              tuttu: çarksız, bizim Loopy'miz, turuncu şerit yerinde.
+
+              ── Ham dosyadan buraya nasıl geldi ───────────────
+
+              Video 1920×1080, **6 saniye**, alfa yok, zemin düz siyah
+              (ölçüldü: tam 0,0,0). İşlenmesi gereken üç şey vardı ve
+              betiği `gelen/cark/` yanında değil burada anlatmak daha
+              doğru, çünkü bir daha üretilirse aynı adımlar gerekecek:
+
+                1. **Süre 6.0 → 4.6 sn.** `DONUS_MS` 4600 ve ikisi aynı
+                   olmazsa Loopy çark dururken hâlâ oynuyor olurdu.
+                   `setpts` ile hızlandırıldı, kesilmedi.
+                2. **Alfa luma anahtarıyla üretildi.** Riskli görünüyor
+                   çünkü karakterin kolları ve bacakları da siyah — ama
+                   ölçüm ayrımı gösterdi: zemin luma 0, uzuvlar 20+ ve
+                   arada histogramda neredeyse boş bir bant var.
+                   Eşik 0.015, yumuşaklık 0.12.
+                3. **Kadraj birleşik kutudan.** 36 kare tarandı ve
+                   karakterin bütün turdaki en geniş sınırları bulundu;
+                   tek kareye göre kırpsaydık hareketin tepesinde kol
+                   kesilirdi.
+
+              ⚠️ **iPhone'da doğrulanmalı.** VP9 + alfa WebM'i Chrome ve
+              Firefox çiziyor; Safari'nin alfayı yok sayma ihtimali var
+              ve o durumda mor sahnenin üstünde SİYAH bir kutu çıkar.
+              Ürün sahibi telefondan bakıyor, kontrol oradan gelecek.
+
+              ⚠️ Karakter çarkın ÜSTÜNDE (`z-15` > göbek düğmesinin
+              `z-10`'u) ve sol alt köşede. Altına konsaydı dönen
+              tekerleğin arkasında kalır, "çarkı çeviriyor" değil
+              "çarkın gerisinde duruyor" olurdu.
+
+              ⚠️ `sol-alt` köşe: sağ üstte tepedeki işaret, ortada göbek
+              düğmesi var. Sol alt, dilim yazılarının (yarıçapın %54'ü)
+              dışında kalan tek serbest çeyrek.
+            */}
+            <video
+              ref={loopyRef}
+              src="/cark/loopy-cevirir.webm"
+              /*
+                🔴 Duruş karesi ayrı — Ü198.
+
+                Video itişin İÇİNDEN başlıyor (bkz. betikteki zamanlama
+                notu), yani ilk karesi yana eğilmiş bir Loopy. Çevirmeden
+                önce ekranda o dursaydı karakter sebepsiz yere eğik
+                bekliyor olurdu. `poster` nötr duruşu gösteriyor ve
+                dönüş bitince `load()` ile ona dönülüyor.
+              */
+              poster="/cark/loopy-duruyor.webp"
+              muted
+              playsInline
+              /* ⚠️ `preload="auto"`: sahne zaten **çevirmek için**
+                 açılıyor, yani dosya neredeyse kesin gerekecek. Dönüş
+                 başladığında indirilmeye başlarsa ilk saniye kaçar. */
+              preload="auto"
+              aria-hidden
+              className="cark-loopy"
+              style={{ left: "-6%", bottom: "-2%", width: "44%" }}
+            />
           </div>
 
-          {hata && (
-            <p
-              className={`mt-5 rounded-lg border px-4 py-3 text-center text-[14px] ${
-                koyuZemin
-                  ? "border-white/25 bg-white/10 text-white"
-                  : "border-tehlike/50 bg-cukur text-tehlike"
-              }`}
-            >
-              {hata}
-            </p>
-          )}
-
+          {/* ⚠️ Bu blok Ü193'e kadar İKİ KEZ yazılıydı; çevirme
+              reddedildiğinde (kapalı çark, günlük hak dolmuş) oyuncu
+              aynı hatayı alt alta iki kutuda görüyordu. */}
           {hata && (
             <p
               className={`mt-5 rounded-lg border px-4 py-3 text-center text-[14px] ${

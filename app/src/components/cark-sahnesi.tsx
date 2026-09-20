@@ -2,6 +2,17 @@
 
 import { useEffect, useState } from "react";
 import { Cark, type CarkDilimi, type CevirmeCevabi } from "./cark";
+import { KartDalgalari, KartResmi } from "./kart-gorseli";
+import { RENK } from "./oyuncu-renk";
+
+/**
+ * Davet kartının rengi — `/oyna`daki çark kartıyla AYNI (Ü188, pembe).
+ *
+ * Sabit ve kafeye göre değişmiyor: çark bir ödül türü değil, ürünün tek
+ * bir özelliği. İki ekranda iki ton, aynı şeyin iki farklı nesne
+ * olduğunu söylerdi.
+ */
+const DAVET = RENK.pembe;
 
 /**
  * Çark sahnesi — Ü59.
@@ -99,32 +110,72 @@ export function CarkSahnesi({
   return (
     <>
       {/* ── Sayfadaki davet ───────────────────────────── */}
+      {/*
+        🔴 Davet KOYU bilete geçti — Ü194.
+
+        Bu kart pastel krem bir kutuydu ve içinde `MiniCark` adında
+        sadeleştirilmiş bir çark simgesi duruyordu. Ürün sahibi misafir
+        ekranına bakıp *"buranın arayüzünü de düzeltmemişsin"* dedi.
+
+        🔴 Asıl mesele tek kartın soluk olması değil: çarka üç ayrı
+        kapıdan giriliyor ve **ikisi** zaten koyu bileti konuşuyordu —
+        `/oyna`daki çark kartı (Ü188'de geçti, üstünde Ü189'un
+        illüstrasyonu) ve sahnenin kendisi. Geride kalan bu üçüncüsüydü
+        ve iki ekranda birden görünüyor: `/cark` ile misafirin ilk
+        ekranı `/hemen`.
+
+        ⚠️ `MiniCark` SİLİNDİ, kullanılmıyor diye bırakılmadı. Onun işi
+        "küçük boyutta okunan bir çark" idi; illüstrasyon o işi
+        kendisi yapıyor ve iki çark çizimini birlikte güncel tutmak
+        Ü71'in uyardığı çatlağın ta kendisi.
+
+        ⚠️ Kilitliyken `grayscale`: kapalı çarkta neşeli, renkli bir
+        Loopy kartın söylediğiyle çelişiyordu.
+      */}
+      {/*
+        ⚠️ Yüzey `BiletYuzeyi` ile DEĞİL, gradyanı doğrudan verilerek
+        kuruluyor. Sebep yapısal: `BiletYuzeyi` çocuklarını bir `<div>`e
+        sarıyor ve `<button>`ın içerik modeli yalnızca **phrasing**
+        içerik kabul ediyor. Aynı tercih seri kartında da yapıldı
+        (`seri-sahnesi.tsx`) ve gerekçesi orada da bu.
+      */}
       <button
         type="button"
         onClick={() => !kilitli && setAcik(true)}
         disabled={kilitli}
-        className={`flex w-full items-center gap-4 rounded-2xl border px-5 py-5 text-left transition-all ${
-          kilitli
-            ? "border-cizgi bg-yuzey opacity-60"
-            : "border-odul bg-cukur hover:-translate-y-0.5 hover:shadow-md"
+        className={`kart-golge kart-gel relative w-full overflow-hidden rounded-3xl px-5 py-5 text-left text-white transition-transform active:scale-[0.99] disabled:active:scale-100 ${
+          kilitli ? "opacity-60 grayscale" : ""
         }`}
+        style={{ background: `linear-gradient(115deg, ${DAVET.koyu} 0%, ${DAVET.ana} 100%)` }}
       >
-        <span className="shrink-0">
-          <MiniCark dilimler={dilimler} soluk={kilitli} />
+        <KartDalgalari vurgu={`${DAVET.canli}38`} />
+
+        {/* ⚠️ Görsel sağ üstten TAŞIYOR ve kırpılıyor — `/oyna`daki
+            kardeşiyle birebir aynı ölçü (Ü189). İçine sığdırılmış
+            hâli "buraya bir ikon koyduk" diye okunuyor. */}
+        <span aria-hidden className="pointer-events-none absolute -top-6 -right-10">
+          <KartResmi ad="cark" boy={184} />
         </span>
-        <span className="min-w-0 flex-1">
-          <span className="block font-display text-lg leading-tight font-bold">
+
+        {/* Perde: çizimin metne değdiği yerde zemin koyulaşıyor. */}
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-0"
+          style={{
+            background: `linear-gradient(100deg, ${DAVET.koyu} 30%, ${DAVET.koyu}dd 52%, transparent 74%)`,
+          }}
+        />
+
+        {/* ⚠️ Kolon DAR: görsel sağın üçte birini kaplıyor ve tam
+            genişlikte bir satır onun altına girerdi. */}
+        <span className="relative block max-w-[60%]">
+          <span className="block font-display text-xl leading-tight font-extrabold text-white">
             {davetBaslik}
           </span>
-          <span className="mt-1 block text-[13px] leading-relaxed text-yazi-sonuk">
+          <span className="mt-1 block text-[13px] leading-relaxed text-white/80">
             {kilitli ? kapaliMetin : davetMetin}
           </span>
         </span>
-        {!kilitli && (
-          <span aria-hidden className="text-[18px] text-yazi-sonuk">
-            →
-          </span>
-        )}
       </button>
 
       {/* ── Sahne ─────────────────────────────────────── */}
@@ -200,68 +251,3 @@ export function CarkSahnesi({
     </>
   );
 }
-
-/**
- * Davetteki küçük çark.
- *
- * Gerçek çarkın küçültülmüş hâli değil, sadeleştirilmiş bir simgesi:
- * yazı yok, ampul yok. Küçük boyutta ikisi de okunmuyor ve yalnızca
- * kirletiyor.
- */
-function MiniCark({
-  dilimler,
-  soluk,
-}: {
-  dilimler: CarkDilimi[];
-  soluk: boolean;
-}) {
-  const n = Math.max(1, dilimler.length);
-  const adim = 360 / n;
-
-  return (
-    <svg
-      width="52"
-      height="52"
-      viewBox="0 0 100 100"
-      aria-hidden
-      className={soluk ? "grayscale" : ""}
-    >
-      <circle cx="50" cy="50" r="49" fill="#e5316b" />
-      {Array.from({ length: n }, (_, i) => {
-        const bas = ((i * adim - 90) * Math.PI) / 180;
-        const son = (((i + 1) * adim - 90) * Math.PI) / 180;
-        const r = 44;
-        const x1 = 50 + r * Math.cos(bas);
-        const y1 = 50 + r * Math.sin(bas);
-        const x2 = 50 + r * Math.cos(son);
-        const y2 = 50 + r * Math.sin(son);
-        return (
-          <path
-            key={i}
-            d={`M 50 50 L ${x1.toFixed(2)} ${y1.toFixed(2)} A ${r} ${r} 0 ${adim > 180 ? 1 : 0} 1 ${x2.toFixed(2)} ${y2.toFixed(2)} Z`}
-            fill={MINI_RENKLER[i % MINI_RENKLER.length]}
-            stroke="#fff"
-            strokeWidth="1.5"
-          />
-        );
-      })}
-      <circle
-        cx="50"
-        cy="50"
-        r="11"
-        fill="#ffcf3f"
-        stroke="#fff"
-        strokeWidth="3"
-      />
-    </svg>
-  );
-}
-
-const MINI_RENKLER = [
-  "#8b7cf6",
-  "#fef3c7",
-  "#5eead4",
-  "#fecdd3",
-  "#fde68a",
-  "#a5b4fc",
-];
