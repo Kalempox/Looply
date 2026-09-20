@@ -36,4 +36,28 @@ export type OyunEkraniProps = {
    * ipucu bileşenleri hiç render edilmiyor.
    */
   demoKapisi?: boolean;
+  /**
+   * Bu tur gerçekten kazandırıyor mu (K2 doğrulanmış mı)?
+   *
+   * ── Ü199 → Ü201 ─────────────────────────────────────────────
+   *
+   * Ü199'da bir de `kuponEsigi` vardı: ekran eşiği çubuk olarak
+   * gösteriyor, geçilince kutluyordu. Ürün sahibi *"eşik geçildi tarzı
+   * şeyler yazmasın"* dedi ve ödül oyunun içinde bir **nesne** oldu —
+   * Blok'ta paketli parça (`blok.ts` · `ODUL_BONUSU`). Eşik artık
+   * motorun işi, ekranın değil; o yüzden alan kaldırıldı.
+   *
+   * ⚠️ Bu alan KALDI çünkü motorun bilemeyeceği tek şey bu: konum
+   * doğrulanmadıysa kupon açılmıyor. Paket yine çıkıyor (motor
+   * deterministik olmak zorunda) ama ekran bilet göstermiyor.
+   */
+  kazandirir?: boolean;
+  /**
+   * Tam ekrandan çıkış — Ü203.
+   *
+   * Oyun tam ekrana geçince sayfanın kendi geri bağlantısı görünmez
+   * oluyor ve oyuncu turu bitirmeden çıkamıyordu. Kabuk kendi "geri"
+   * davranışını buraya veriyor; ekran nereye gidileceğini bilmiyor.
+   */
+  cik?: () => void;
 };

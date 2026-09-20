@@ -3,7 +3,7 @@ import * as oturum from "@/domain/session";
 import * as masaOturumu from "@/domain/masa";
 import * as oyunSecimi from "@/domain/oyun-secimi";
 import { K2 } from "@/domain/masa";
-import { type HerhangiOyun } from "@/oyunlar";
+import { katalogSirasi } from "@/oyunlar/katalog";
 import { OyuncuSayfa, SayfaBasi } from "@/components/oyuncu";
 import { OyunKaruseli } from "./karusel";
 
@@ -37,25 +37,6 @@ export const metadata = { title: "Oyunlar · Looply" };
  * ekrana dönüyor.
  */
 
-type Kategori = {
-  ad: string;
-  ozet: string;
-  oyunlar: string[];
-};
-
-const KATEGORILER: Kategori[] = [
-  {
-    ad: "Düşünerek",
-    ozet: "Acele yok, doğru hamle var",
-    oyunlar: ["blok", "kelime"],
-  },
-  {
-    ad: "Yetişerek",
-    ozet: "Hızlanıyor, sen yavaşlayamıyorsun",
-    oyunlar: ["dusen"],
-  },
-];
-
 export default async function OyunlarSayfasi() {
   const o = await oturum.oku();
   if (!o || o.rol !== "oyuncu") redirect("/giris");
@@ -66,27 +47,12 @@ export default async function OyunlarSayfasi() {
   const acik = await oyunSecimi.acikOyunlar(masa?.cafeId ?? null);
   const bugun = await oyunSecimi.gununOyunuKafede(masa?.cafeId ?? null);
 
-  // Kategoriye girmemiş oyun ekrandan düşmemeli: yeni bir oyun
-  // eklendiğinde katalog listesi güncellenmezse oyun kaybolurdu.
-  const yerlesik = new Set(KATEGORILER.flatMap((k) => k.oyunlar));
-  const digerleri = acik.filter((oy) => !yerlesik.has(oy.id));
-
-  /** Karuselin sırası: kategoriler sırayla, sonra kategorisizler. */
-  const karusellListesi = [
-    ...KATEGORILER.flatMap((kat) =>
-      kat.oyunlar
-        .map((id) => acik.find((oy) => oy.id === id))
-        .filter((oy): oy is HerhangiOyun => !!oy)
-        .map((oy) => ({ oy, kategori: kat.ad })),
-    ),
-    ...digerleri.map((oy) => ({ oy, kategori: "Diğer" })),
-  ].map(({ oy, kategori }) => ({
-    id: oy.id,
-    ad: oy.ad,
-    ozet: oy.ozet,
-    kategori,
-    bugunMu: oy.id === bugun.id,
-  }));
+  /*
+    ⚠️ Sıra ve kategoriler `oyunlar/katalog.ts`ten — Ü195. Burada elle
+    kurulduğu sürece yalnızca bu ekran kullanabiliyordu; misafir ekranı
+    (`/hemen`) aynı kartı gösterebilsin diye ortak dosyaya çıktı.
+  */
+  const karusellListesi = katalogSirasi(acik, bugun.id);
 
   return (
     <OyuncuSayfa aktif="/oyna" geri={{ href: "/oyna", etiket: "Ana ekran" }} yuva={false}>

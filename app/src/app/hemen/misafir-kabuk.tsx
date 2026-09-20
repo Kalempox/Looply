@@ -3,6 +3,13 @@
 import Link from "next/link";
 import { useCallback, useState, useTransition } from "react";
 import { OyunEkrani } from "@/oyunlar/arayuz";
+import { OyunIkonu } from "@/components/oyuncu-ikon";
+import { GecisKarti } from "@/components/gecis-karti";
+import { oyunGorseli } from "@/components/oyuncu-gorsel";
+import { sahneVarMi } from "@/components/oyun-sahnesi";
+import { type KatalogKarti } from "@/oyunlar/katalog";
+import { BiletYuzeyi } from "@/components/oyuncu";
+import { RENK, oyunRengi } from "@/components/oyuncu-renk";
 import {
   misafirBasla,
   misafirBitir,
@@ -21,7 +28,12 @@ import {
  * geçince işlenecek."
  */
 
-export type Oyun = { id: string; ad: string; ozet: string; emoji: string };
+/**
+ * ⚠️ Ü195: kendi tipi yok, katalogun tipi. Misafir ekranı `/oyunlar`
+ * ile aynı kartı çiziyor ve kart kategori ile "bugünün oyunu"nu da
+ * istiyor — ayrı bir tip tutmak o iki alanı burada eksik bırakırdı.
+ */
+export type Oyun = KatalogKarti;
 
 type Durum =
   | { tur: "secim" }
@@ -50,17 +62,27 @@ export function MisafirKabugu({
   const [konum, setKonum] = useState(konumBaslangic);
   const [konumNotu, setKonumNotu] = useState<string | null>(null);
 
-  const turBaslat = useCallback((oyun: Oyun) => {
-    setHata(null);
-    basla(async () => {
-      const cevap = await misafirBasla(oyun.id);
-      if (!cevap.ok) {
-        setHata(cevap.hata);
-        return;
-      }
-      setDurum({ tur: "oynuyor", oyun, tohum: cevap.tohum });
-    });
-  }, []);
+  /*
+    ⚠️ Kimlikle çağrılıyor, nesneyle değil — Ü195. Karusel kartı
+    `calistir(oyunId)` diyor; kartın misafir ekranının nesne biçimini
+    bilmesi gerekmiyor ve bilmemeli.
+  */
+  const turBaslat = useCallback(
+    (oyunId: string) => {
+      const oyun = oyunlar.find((o) => o.id === oyunId);
+      if (!oyun) return;
+      setHata(null);
+      basla(async () => {
+        const cevap = await misafirBasla(oyun.id);
+        if (!cevap.ok) {
+          setHata(cevap.hata);
+          return;
+        }
+        setDurum({ tur: "oynuyor", oyun, tohum: cevap.tohum });
+      });
+    },
+    [oyunlar],
+  );
 
   const oyunBitti = useCallback(
     (oyun: Oyun) => (girdiler: unknown[], istemciSkoru: number) => {
@@ -112,6 +134,12 @@ export function MisafirKabugu({
           oyunId={durum.oyun.id}
           tohum={durum.tohum}
           demoKapisi={demoKapisi}
+          /* `kazandirir` konumun doğrulanmış olmasına bağlı. Ü203'ten
+             beri ödül paketi de buna bakıyor: doğrulanmadıysa paket
+             hiç gösterilmiyor, çünkü kupon açılmayacak. */
+          kazandirir={!!konum?.dogrulandi}
+          /* Misafirde katalog sayfası yok; çıkış oyun seçimine dönüyor. */
+          cik={() => setDurum({ tur: "secim" })}
           bitti={oyunBitti(durum.oyun)}
         />
 
@@ -129,7 +157,7 @@ export function MisafirKabugu({
       <SonucEkrani
         oyun={durum.oyun}
         cevap={durum.cevap}
-        tekrar={() => turBaslat(durum.oyun)}
+        tekrar={() => turBaslat(durum.oyun.id)}
         geri={() => setDurum({ tur: "secim" })}
       />
     );
@@ -168,27 +196,48 @@ export function MisafirKabugu({
 
       <h2 className="mt-8 mb-3 etiket-caps text-yazi-sonuk">Bir oyun seç</h2>
 
-      <ul className="flex flex-col gap-2.5">
+      {/*
+        🔴 Ana ekranın YATAY GEÇİŞ KARTI — Ü196.
+
+        Bu bölüm üç tur değişti ve üçüncüsü ürün sahibinin gösterdiği
+        şey oldu:
+
+          Ü194 → elle kurulmuş dört koyu satır. *"Birebir aynı olmalı."*
+          Ü195 → katalogun karuseli. *"Hayır carousel şeklinde değil,
+                 burdaki gibi olacak."* Ekran görüntüsünde `/oyna`daki
+                 "Tüm oyunlar" ve "Buradaki fırsatlar" kartları vardı.
+          Ü196 → tam o kart: `GecisKarti`.
+
+        ⚠️ Karusel yanlış seçimdi ve sebebi ölçülebilir: 244×356'lık
+        kart tek seferde **bir** oyun gösteriyor ve diğerlerine ulaşmak
+        için sürüklemek gerekiyor. Masaya yeni oturmuş, karekodu daha
+        yeni okutmuş bir misafir için "dört oyun var" bilgisi ilk
+        bakışta görünmeli — burası katalog değil, ilk karar ekranı.
+
+        ⚠️ Kart `/oyna`daki ile **aynı bileşen**, kopyası değil. Ü195'te
+        `oyunlar/katalog.ts`e çıkarılan sıra ve kategoriler de yerinde
+        duruyor: üst etiket kategoriyi, bugünün oyununda altın "×2"
+        rozetini taşıyor.
+      */}
+      <div className="grid gap-2.5">
         {oyunlar.map((oyun) => (
-          <li key={oyun.id}>
-            <button
-              type="button"
-              disabled={bekliyor}
-              onClick={() => turBaslat(oyun)}
-              className="flex w-full items-center gap-4 rounded-2xl border border-cizgi bg-yuzey px-5 py-4 text-left disabled:opacity-50"
-            >
-              <span aria-hidden className="text-2xl">
-                {oyun.emoji}
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block font-display text-lg font-bold">{oyun.ad}</span>
-                <span className="mt-0.5 block text-[13px] text-yazi-sonuk">{oyun.ozet}</span>
-              </span>
-              <span className="font-data text-vurgu">→</span>
-            </button>
-          </li>
+          <GecisKarti
+            key={oyun.id}
+            oyna={() => turBaslat(oyun.id)}
+            bekliyor={bekliyor}
+            ust={oyun.bugunMu ? "Bugünün oyunu · ×2 puan" : oyun.kategori}
+            ustVurgulu={oyun.bugunMu}
+            baslik={oyun.ad}
+            alt={oyun.ozet}
+            renk={oyunRengi(oyun.id)}
+            /* ⚠️ Sahnesi olmayan oyun eski soluk çizimde kalıyor —
+                uydurma bir sahne koymaktansa (aynı kural katalog
+                kartında da yazılı). */
+            sahne={sahneVarMi(oyun.id) ? oyun.id : undefined}
+            gorsel={sahneVarMi(oyun.id) ? undefined : oyunGorseli(oyun.id)}
+          />
         ))}
-      </ul>
+      </div>
 
       <p className="mt-8 text-[13px] leading-relaxed text-yazi-sonuk">
         Hesabın zaten var mı?{" "}
@@ -239,15 +288,28 @@ function KonumSeridi({
   const cikmaz = !dogrulandi && !kafeKonumuVar;
 
   return (
+    /*
+      🔴 Şerit TEK SÜTUNA indi — Ü194, ekrandan ölçüldü.
+
+      Başlık, açıklama ve iki düğme aynı `flex` satırındaydı. 375
+      piksellik telefonda düğmeler ("Doğrula" + "Kafedeyim") ~190
+      piksel yiyor, nokta ve boşluklar ~30; metne kalan 110 piksel.
+      Ekran görüntüsünde sonuç şu: *"ÖDÜL İÇİN KONUM GEREKİYOR"* iki
+      satıra, altındaki cümle üç satıra bölünüyor ve kutu üç katına
+      çıkıyor — hepsi yan yana duran iki düğme uğruna.
+
+      Düğmeler alta inince metin tam genişliğe kavuşuyor ve dokunma
+      hedefleri de büyüyor.
+    */
     <div
       className={`rounded-2xl border px-4 py-3.5 ${
         dogrulandi ? "border-vurgu bg-cukur" : cikmaz ? "border-cizgi bg-yuzey" : "border-odul/60 bg-yuzey"
       }`}
     >
-      <div className="flex items-center gap-3">
+      <div className="flex items-start gap-3">
         <span
           aria-hidden
-          className={`size-2.5 shrink-0 rounded-full border ${
+          className={`mt-1 size-2.5 shrink-0 rounded-full border ${
             dogrulandi ? "border-vurgu bg-vurgu" : cikmaz ? "border-cizgi" : "border-odul nabiz"
           }`}
         />
@@ -263,7 +325,7 @@ function KonumSeridi({
                 ? "Bu kafede ödül dağıtılmıyor"
                 : "Ödül için konum gerekiyor"}
           </div>
-          <div className="mt-0.5 text-[12px] leading-relaxed text-yazi-sonuk">
+          <div className="mt-1 text-[13px] leading-relaxed text-yazi-sonuk">
             {(cikmaz ? null : not) ??
               (dogrulandi
                 ? `${kafeAdi}${konum?.mesafeM != null ? ` · ${konum.mesafeM} m` : ""} — kazandığın ödül hesabına işlenecek`
@@ -272,32 +334,42 @@ function KonumSeridi({
                   : "Doğrulamazsan oynayabilirsin ama ödül açılmaz")}
           </div>
         </div>
-        {/* Çıkmazda düğme yok: basılınca hiçbir şey olmayacak bir düğme,
-            oyuncuyu kendi hatasını aramaya iter. */}
-        {!dogrulandi && !cikmaz && (
-          <div className="flex shrink-0 items-center gap-1.5">
+      </div>
+
+      {/* Çıkmazda düğme yok: basılınca hiçbir şey olmayacak bir düğme,
+          oyuncuyu kendi hatasını aramaya iter. */}
+      {!dogrulandi && !cikmaz && (
+        <div className="mt-3 flex items-center gap-2">
+          {/* ⚠️ Yazı KOYU, beyaz değil — ölçüldü. İlk hâlinde altın
+              zeminde (`--color-odul`, #d4af37) beyaz yazıyordu ve
+              kontrast 2.1:1 çıkıyordu. Altın gradyan + koyu kahve yazı
+              oyun kabuğundaki "▶ Oyna" düğmesinin aynısı (Ü191): ürünün
+              tek altın düğme dili o. */}
+          <button
+            type="button"
+            onClick={iste}
+            disabled={bekliyor}
+            className="flex-1 rounded-xl px-4 py-2.5 text-center font-display text-[14px] font-bold disabled:opacity-50"
+            style={{
+              background: "linear-gradient(180deg, #ffd45e 0%, #f7b02a 100%)",
+              color: "#4a2708",
+            }}
+          >
+            {bekliyor ? "…" : "Konumumu doğrula"}
+          </button>
+          {demo && (
             <button
               type="button"
-              onClick={iste}
+              onClick={demo}
               disabled={bekliyor}
-              className="etiket-caps rounded border border-current px-3 py-1.5 text-odul-koyu disabled:opacity-50"
+              className="etiket-caps shrink-0 rounded-xl border border-odul px-3 py-2.5 text-odul-koyu disabled:opacity-50"
+              title="Yalnızca geliştirmede görünür"
             >
-              {bekliyor ? "…" : "Doğrula"}
+              Kafedeyim
             </button>
-            {demo && (
-              <button
-                type="button"
-                onClick={demo}
-                disabled={bekliyor}
-                className="etiket-caps rounded border border-odul px-2.5 py-1.5 text-odul-koyu disabled:opacity-50"
-                title="Yalnızca geliştirmede görünür"
-              >
-                Kafedeyim
-              </button>
-            )}
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -330,26 +402,45 @@ function SonucEkrani({
     );
   }
 
+  const r = RENK[oyunRengi(oyun.id)];
+
   return (
     <div>
-      <div
-        className={`rounded-2xl border bg-yuzey px-6 py-7 ${
-          cevap.basarili ? "border-vurgu" : "border-cizgi"
-        }`}
-      >
-        <div className="etiket-caps text-yazi-sonuk">{oyun.ad}</div>
-        <h2 className="mt-2 font-display text-3xl leading-none font-extrabold">
+      {/*
+        🔴 Sonuç kartı koyu bilete geçti — Ü194.
+
+        Ü191'de girişli oyuncunun sonuç kartı taşınmıştı; misafirinki
+        aynı anın **aynı ekranı** ve geride kalmıştı. Aynı oyunu aynı
+        masada oynayan iki kişi, sonucu iki farklı dilde görüyordu.
+
+        Yerleşim de oradan birebir alındı: oyun adı üstte kuşağın canlı
+        tonunda, başlık, skor ortada tek büyük sayı olarak.
+      */}
+      <BiletYuzeyi renk={oyunRengi(oyun.id)} className="px-6 py-7">
+        <div className="relative flex items-center gap-2">
+          <OyunIkonu oyunId={oyun.id} boy={18} />
+          <span className="etiket-caps" style={{ color: r.canli }}>
+            {oyun.ad}
+          </span>
+        </div>
+        <h2 className="relative mt-1.5 font-display text-3xl leading-none font-extrabold tracking-tight text-white">
           {cevap.basarili ? "İyi tur" : "Tur bitti"}
         </h2>
 
-        <div className="mt-6">
-          <div className="etiket-caps text-yazi-sonuk">Skor</div>
-          <div className="mt-1 font-data text-4xl leading-none font-bold text-vurgu tabular">
+        {/* Skor tek başına ortada: ekranın tek büyük sayısı o. */}
+        <div className="relative mt-6 text-center">
+          <div className="etiket-caps text-white/55">Skor</div>
+          {/* ⚠️ Başarılı tur `canli` ile parlıyor, başarısız beyaz
+              kalıyor — koyu zeminde `--color-vurgu` hiç okunmuyordu. */}
+          <div
+            className="patla mt-1 font-data text-6xl leading-none font-bold tabular"
+            style={{ color: cevap.basarili ? r.canli : "#ffffff" }}
+          >
             {cevap.skor.toLocaleString("tr-TR")}
           </div>
-          <div className="mt-1.5 font-data text-[9px] text-yazi-sonuk">sunucuda doğrulandı</div>
+          <div className="mt-2 font-data text-[9px] text-white/45">sunucuda doğrulandı</div>
         </div>
-      </div>
+      </BiletYuzeyi>
 
       {/*
         Buradaki söz dikkatle kuruluyor: ödül HENÜZ YOK. Sunucu yalnızca

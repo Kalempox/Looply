@@ -6,6 +6,7 @@ import { RENK, oyunRengi, ISIN_DOKUSU } from "@/components/oyuncu-renk";
 import { Gorsel, oyunGorseli } from "@/components/oyuncu-gorsel";
 import { OyunSahnesi, sahneVarMi } from "@/components/oyun-sahnesi";
 import { OyunIkonu } from "@/components/oyuncu-ikon";
+import { type KatalogKarti } from "@/oyunlar/katalog";
 
 /**
  * Oyun karuseli — üç boyutlu, parmakla çevrilen katalog (Ü143).
@@ -54,14 +55,7 @@ import { OyunIkonu } from "@/components/oyuncu-ikon";
  * o bir hareket değil, derinlik işareti.
  */
 
-export type KarusellOyun = {
-  id: string;
-  ad: string;
-  ozet: string;
-  /** "Düşünerek" · "Yetişerek" · "Diğer" */
-  kategori: string;
-  bugunMu: boolean;
-};
+export type KarusellOyun = KatalogKarti;
 
 /** Kartın genişliği (piksel). Yan kartların payı buna oranlı. */
 const KART_EN = 244;

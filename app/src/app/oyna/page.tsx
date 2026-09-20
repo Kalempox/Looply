@@ -13,8 +13,9 @@ import * as oyunSecimi from "@/domain/oyun-secimi";
 import { withBypass } from "@/db/context";
 import * as happy from "@/domain/happy";
 import { BiletYuzeyi, KoyuKart, SiraJetonu } from "@/components/oyuncu";
+import { GecisKarti } from "@/components/gecis-karti";
 import { RENK, oyunRengi, type OyuncuRengi } from "@/components/oyuncu-renk";
-import { Gorsel, oyunGorseli, type GorselAdi } from "@/components/oyuncu-gorsel";
+import { Gorsel, oyunGorseli } from "@/components/oyuncu-gorsel";
 import { OyunIkonu, CarkIkonu, KupaIkonu, TacIkonu, MadalyaIkonu } from "@/components/oyuncu-ikon";
 import { LooplyLogo } from "@/components/logo";
 import { LoopySozu } from "@/components/loopy-sozu";
@@ -1029,83 +1030,3 @@ function saatBicim(d: Date): string {
  * dışındaki bir listeye götürüyor. Farklı görünmeleri için bir sebep
  * yok; arkalarındaki çizim hangisine gittiğini söylüyor.
  */
-function GecisKarti({
-  yol,
-  ust,
-  baslik,
-  alt,
-  renk,
-  gorsel,
-  sahne,
-}: {
-  yol: string;
-  ust: string;
-  baslik: string;
-  alt: string;
-  renk: OyuncuRengi;
-  gorsel?: GorselAdi;
-  /**
-   * Üretilmiş sahne — Ü180.
-   *
-   * ⚠️ `gorsel` ile birlikte kullanılmıyor: `gorsel` kartın arkasında
-   * %24 opaklıkta **fısıldayan** bir çizim, sahne ise tam renkte
-   * duruyor. İkisi aynı köşede olsaydı biri diğerinin altında gürültü
-   * bırakırdı.
-   */
-  sahne?: string;
-}) {
-  const r = RENK[renk];
-
-  /*
-    Ü171: bu kart da biletin yüzeyinde.
-
-    ⚠️ `KoyuKart` bir `<div>`; bağlantı onu SARIYOR, içine girmiyor.
-    Tersi denendi ve olmuyor: kartın kendi `overflow-hidden`ı ve
-    yuvarlak köşeleri bağlantının dışında kalırsa tıklama alanı
-    köşelerden taşıyor.
-  */
-  return (
-    <Link
-      href={yol}
-      className="block transition-transform hover:-translate-y-0.5 active:scale-[0.99]"
-    >
-      <BiletYuzeyi renk={renk} gorsel={gorsel} className="px-5 py-4">
-        {/*
-          Sahne sağ kenardan taşıyor ve kırpılıyor — biletin kendi
-          diliyle aynı (Ü72): kutuya sığdırılmış çizim "buraya bir ikon
-          koyduk" diye okunuyor, taşan çizim kartı bir nesneye çeviriyor.
-
-          ⚠️ Metnin sağ ucuna değmemesi için sağa YASLI ve dar: kart
-          iki satır yazı taşıyor ve sahne onların üstüne binerse başlık
-          okunmaz oluyor.
-        */}
-        {sahne && (
-          <span aria-hidden className="pointer-events-none absolute -top-2 -right-5">
-            <OyunSahnesi oyun={sahne} boy={104} />
-          </span>
-        )}
-
-        <div className="relative etiket-caps text-white/55">{ust}</div>
-        <div className="relative mt-1 flex items-baseline justify-between gap-3">
-          <span className="font-display text-lg leading-tight font-bold text-white">{baslik}</span>
-          {/* Ok biletteki "Kasada göster →"in karşılığı: bu kart da bir
-              yere gitmeyi vaat ediyor. Rengi `canli` — koyu zeminde
-              beyazdan ayrılıyor ama başlığı bastırmıyor. */}
-          <span aria-hidden className="text-[15px]" style={{ color: r.canli }}>
-            →
-          </span>
-        </div>
-        {/* ⚠️ Sahne varken metin dar: tam genişlikte alt satır sahnenin
-            altına giriyor ve iki katman üst üste okunmaz oluyor. */}
-        <p
-          className={`relative mt-1 text-[13px] leading-relaxed text-white/65 ${
-            sahne ? "max-w-[62%]" : ""
-          }`}
-        >
-          {alt}
-        </p>
-      </BiletYuzeyi>
-    </Link>
-  );
-}
-

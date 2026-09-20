@@ -9,7 +9,11 @@ import * as cark from "@/domain/cark";
 import { kodEkrandaGosterilir } from "@/sms";
 import * as oyunSecimi from "@/domain/oyun-secimi";
 import { withBypass } from "@/db/context";
-import { Sayfa, Baslik, MasaKunyesi } from "@/components/ui";
+import { Sayfa } from "@/components/ui";
+import { KoyuKart } from "@/components/oyuncu";
+import { LooplyLogo } from "@/components/logo";
+import { LoopySozu } from "@/components/loopy-sozu";
+import { katalogSirasi } from "@/oyunlar/katalog";
 import { MisafirKabugu } from "./misafir-kabuk";
 import { MisafirCarki } from "./cark-kabuk";
 
@@ -92,12 +96,65 @@ export default async function HemenSayfasi({
   // girişli ekranları süzseydik karekodu okutan misafir kapalı bir oyunu
   // seçer, `basla` onu reddeder ve ilk deneyimi bir hata ekranı olurdu.
   const acikOyunlar = await oyunSecimi.acikOyunlar(masaBilet.cafeId);
+  // Ü195: bugünün oyunu misafirde de işaretleniyor — kart onu gösteriyor
+  // ve girişli oyuncuyla aynı kart olmasının şartı bu alanın dolu olması.
+  const gununOyunu = await oyunSecimi.gununOyunuKafede(masaBilet.cafeId);
 
   return (
     <Sayfa>
-      <MasaKunyesi kafe={masa.cafe_adi} masa={masa.masa_adi} />
+      {/*
+        🔴 Başlık KOYU KART — Ü194.
 
-      <Baslik ust="Hoş geldin">Önce çevir</Baslik>
+        Burası **karekodu okutan müşterinin ürünle ilk karşılaştığı
+        ekran** ve Ü171–Ü192 arasında oyuncu tarafının her yüzeyi koyu
+        bilete geçerken bu ekrana hiç dokunulmadı. Ürün sahibi
+        *"buranın arayüzünü de düzeltmemişsin"* dedi.
+
+        Eskiden üç ayrı parça vardı: `MasaKunyesi` (mavi çerçeveli beyaz
+        kutu), `Baslik` ve bir paragraf. Üçü de `components/ui`den, yani
+        **işletme panelinin** takımından geliyordu — oyuncu tarafının
+        kendi kabuğu (`KoyuKart`, `SayfaBasi`) burada hiç
+        kullanılmamıştı. Ekran o yüzden ürünün geri kalanına değil,
+        yönetim ekranlarına benziyordu.
+
+        ⚠️ Masa künyesi SİLİNMEDİ, kartın içine girdi. Misafirin ilk
+        sorusu "neredeyim" ve cevabın ayrı bir kutuda durması için bir
+        sebep yok; kartın söylediği şeyin parçası.
+
+        ⚠️ Loopy ilk kez BURADA görünüyor. Karekodu okutan kişi
+        maskotla bu ekranda tanışıyor — `/oyna`daki karşılama kartının
+        misafir karşılığı, birebir aynı ölçülerle.
+      */}
+      <div className="mb-7">
+        <KoyuKart className="pt-5 pb-9">
+          <div className="flex items-center gap-3">
+            <div className="min-w-0 flex-1">
+              <LooplyLogo boyut={30} beyaz />
+              <p className="etiket-caps mt-5 text-white/60">Hoş geldin</p>
+              <h1 className="mt-1.5 font-display text-3xl leading-none font-extrabold tracking-tight text-white">
+                Önce çevir
+              </h1>
+              {/* ⚠️ Kafe ve masa aynı satırda: karekodun hangi masadan
+                  okutulduğu, ödülün hangi kafeye yazılacağını belirleyen
+                  şey (Ü35). Küçük ama gizlenecek bir bilgi değil. */}
+              <p className="mt-2.5 text-[13px] leading-relaxed text-white/70">
+                {masa.cafe_adi} · {masa.masa_adi}
+              </p>
+            </div>
+
+            {/* ⚠️ Kolon SABİT genişlikte, `-mr-3 -mb-9` ile kartın kendi
+                iç dolgusuna taşıyor — `/oyna` ve `/profil`deki
+                kardeşleriyle birebir aynı ölçü (Ü178, Ü189). */}
+            <div className="-mr-3 -mb-9 w-[9rem] shrink-0 self-end">
+              {/* ⚠️ Balon "Hoş geldin!" DEMİYOR: üstteki etiket zaten
+                  onu söylüyordu ve ekranda aynı cümle iki kez
+                  duruyordu. Balonun işi bilgi taşımak — sıradaki adımı
+                  gösteriyor. */}
+              <LoopySozu soz="Önce çarkı çevir!" ifade="neseli" boy={150} yon="ust" />
+            </div>
+          </div>
+        </KoyuKart>
+      </div>
 
       <p className="mb-7 text-[15px] leading-relaxed text-yazi-sonuk">
         Hesap açmadan çevirebilir, oynayabilirsin. Kazandığın ödül sonucunla birlikte saklanır;
@@ -117,14 +174,14 @@ export default async function HemenSayfasi({
         </section>
       )}
 
+      {/*
+        ⚠️ Liste `katalogSirasi()`den — Ü195. Misafir ekranı burada kendi
+        listesini kuruyordu: kategori yoktu, bugünün oyunu yoktu, sıra
+        `acikOyunlar`ın kendi sırasıydı. Karta *"birebir aynı"* demek,
+        kartın beslendiği veriyi de aynı yerden almak demek.
+      */}
       <MisafirKabugu
-        oyunlar={acikOyunlar.map((o) => ({
-          id: o.id,
-          ad: o.ad,
-          ozet: o.ozet,
-          emoji: o.emoji,
-
-        }))}
+        oyunlar={katalogSirasi(acikOyunlar, gununOyunu.id)}
         kafeAdi={masa.cafe_adi}
         kafeKonumuVar={masa.kafe_konumu_var}
         konumBaslangic={konum ? { dogrulandi: konum.k2, mesafeM: konum.mesafeM } : null}
