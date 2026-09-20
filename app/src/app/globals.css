@@ -105,6 +105,17 @@
   --color-vitrin-lacivert: #10204d; /* koyu bölüm — siyahın yerine */
   --color-vitrin-lacivert-acik: #1b3272; /* lacivert üstünde kutu */
   --color-vitrin-mavi-sis: #dbe9ff; /* açık mavi — görsel kutusu */
+  /* 🔴 Altının jetonu Ü200'de eklendi. Palet notunun kendisi dördüncü
+     rengin altın olduğunu Ü117'den beri söylüyordu ama jeton hiç
+     yazılmamış; sayfada tek bir yerde `rgba(214,178,94,…)` olarak
+     elle duruyordu. Jetonsuz kalması sessiz bir tuzak: Tailwind
+     `text-vitrin-altin` gibi bir sınıfı ÜRETMİYOR ve yazı renksiz
+     kalıyor — hata vermeden.
+
+     ⚠️ Ton `--color-odul`dan (#d4af37) biraz açık: lacivert zeminin
+     üstünde okunması gerekiyor, uygulamadaki altın ise açık zeminde
+     çalışıyor. */
+  --color-vitrin-altin: #d6b25e; /* dördüncü renk — lacivert üstünde vurgu */
 
   /* İki aile: Outfit her şeyde, JetBrains Mono yalnızca sayıda.
      `font-display` ve `font-body` aynı aileye bakıyor — ayrım artık
@@ -236,6 +247,299 @@ body {
   -webkit-user-select: none;
   -webkit-touch-callout: none;
   touch-action: manipulation;
+}
+
+/* ── Blok'un geri bildirimi (Ü199) ───────────────────────────
+   Ürün sahibi: *"oyunlarımızda animasyon, efekt vb şeyler eksik ve
+   blok blastta sıra patlatılınca ödül kazanmalı, oyunla uyumlu
+   animasyonla verilmeli."*
+
+   Oyun çalışıyordu ama hiçbir şey **olmuyordu**: satır temizlenince
+   hücreler bir kare sonra yok oluyor, kazanılan puan üstteki sayıya
+   sessizce ekleniyordu. Oyuncunun yaptığı en iyi şeyin ekranda hiçbir
+   karşılığı yoktu.
+
+   ⚠️ Hepsi **süs katmanı**. Oyunun durumu anında güncelleniyor;
+   patlama, temizlenmiş hücrelerin üstüne çizilen ayrı bir katman.
+   Durum güncellemesini animasyon kadar geciktirmek, hızlı oynayan
+   oyuncuda hamleleri kuyruğa sokardı. */
+
+/* Temizlenen hücre: beyaza patlayıp büyüyerek siliniyor. */
+@keyframes blok-patla {
+  0% {
+    opacity: 0;
+    transform: scale(1);
+  }
+  18% {
+    opacity: 1;
+    transform: scale(1.14);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.55);
+  }
+}
+
+.blok-patla {
+  animation: blok-patla 420ms cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+
+/* Kazanılan puan temizliğin ortasından yukarı uçuyor.
+   ⚠️ `translate(-50%, …)` animasyonun İÇİNDE: yerleşim de `translate`
+   ile yapılsaydı animasyon onu ezerdi ve sayı sola kayardı. */
+@keyframes blok-puan {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 8px) scale(0.7);
+  }
+  22% {
+    opacity: 1;
+    transform: translate(-50%, -6px) scale(1.14);
+  }
+  70% {
+    opacity: 1;
+    transform: translate(-50%, -28px) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -46px) scale(0.95);
+  }
+}
+
+.blok-puan {
+  animation: blok-puan 950ms cubic-bezier(0.2, 0.75, 0.3, 1) both;
+}
+
+/* Sığmayan yere bırakma: tahta kısa ve sert titriyor.
+   ⚠️ Kırmızı bir uyarı metni yerine hareket — oyunun ortasında okunacak
+   bir cümle, okunmayan bir cümledir. */
+@keyframes blok-sars {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  15% {
+    transform: translateX(-6px);
+  }
+  32% {
+    transform: translateX(5px);
+  }
+  50% {
+    transform: translateX(-4px);
+  }
+  68% {
+    transform: translateX(3px);
+  }
+  85% {
+    transform: translateX(-2px);
+  }
+}
+
+.blok-sars {
+  animation: blok-sars 340ms ease-in-out both;
+}
+
+/* Kupon eşiği geçildi — turun en büyük anı, tahtanın ortasında. */
+@keyframes blok-odul {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.55) rotate(-6deg);
+  }
+  16% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.08) rotate(2deg);
+  }
+  26% {
+    transform: translate(-50%, -50%) scale(1) rotate(0deg);
+  }
+  80% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1) rotate(0deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.06) rotate(0deg);
+  }
+}
+
+.blok-odul {
+  animation: blok-odul 2200ms cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+
+/* ── Ü202: ürün sahibinin ölçülü tarifi ──────────────────────
+   *"Blok bırakılınca 110% → 95% → 100% bounce, 180ms. Küçük ekran
+   sarsıntısı 2px. Impact ring."* Üçü de aşağıda, verilen sayılarla. */
+
+/* Yerleşen blok: büyük gelip oturuyor. Ağırlık hissi bu üç durakta. */
+@keyframes blok-otur {
+  0% {
+    transform: scale(1.1);
+  }
+  55% {
+    transform: scale(0.95);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.blok-otur {
+  animation: blok-otur 180ms cubic-bezier(0.3, 0.9, 0.4, 1) both;
+}
+
+/* Yerleşme sarsıntısı — 2 piksel.
+   ⚠️ Geçersiz hamledeki `blok-sars`tan AYRI ve olması gereken de bu:
+   biri "oldu" diyor, öteki "olmadı". Aynı hareketle söylenselerdi
+   oyuncu ikisini ayırt edemezdi. Bu küçük ve dikey, öteki geniş ve
+   yatay. */
+@keyframes blok-vurus {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  35% {
+    transform: translateY(2px);
+  }
+  70% {
+    transform: translateY(-1px);
+  }
+}
+
+.blok-vurus {
+  animation: blok-vurus 180ms ease-out both;
+}
+
+/* Darbe halkası — bloğun düştüğü yerden yayılan tek halka. */
+@keyframes blok-halka {
+  0% {
+    opacity: 0.9;
+    transform: translate(-50%, -50%) scale(0.35);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(2.6);
+  }
+}
+
+.blok-halka {
+  animation: blok-halka 420ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+
+/* Satır silme: önce ışık soldan sağa SÜPÜRÜYOR, sonra bloklar patlıyor.
+   ⚠️ Süpürge patlamadan ÖNCE bitiyor (260 ms + 60 ms gecikme): ikisi
+   aynı anda olsaydı ışık patlamanın içinde kaybolurdu. Sıra, ürün
+   sahibinin tarifindeki gibi — *"sweep ışık geçsin, sonra bloklar
+   patlasın."* */
+@keyframes blok-supurge {
+  0% {
+    opacity: 0;
+    transform: translateX(-30%);
+  }
+  18% {
+    opacity: 1;
+  }
+  82% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(130%);
+  }
+}
+
+.blok-supurge {
+  animation: blok-supurge 300ms cubic-bezier(0.35, 0.1, 0.25, 1) both;
+}
+
+/* Parçacık — kıvılcım, mücevher, toz. Yönü `--u`/`--v` ile geliyor. */
+@keyframes blok-parcacik {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) scale(0.4) rotate(0deg);
+  }
+  15% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--u), var(--v)) scale(0.9) rotate(var(--d));
+  }
+}
+
+.blok-parcacik {
+  animation: blok-parcacik 620ms cubic-bezier(0.15, 0.7, 0.35, 1) both;
+}
+
+/* Kombo yazısı — ortada, büyük, kısa. */
+@keyframes blok-kombo {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.5) rotate(-5deg);
+  }
+  20% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.15) rotate(2deg);
+  }
+  32% {
+    transform: translate(-50%, -50%) scale(1) rotate(0deg);
+  }
+  72% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1) rotate(0deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -84%) scale(1.05) rotate(0deg);
+  }
+}
+
+.blok-kombo {
+  animation: blok-kombo 1100ms cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+
+/* Sahnedeki yavaş yıldızlar — arka planın ölü durmaması için. */
+@keyframes blok-yildiz {
+  0%,
+  100% {
+    opacity: 0.18;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 0.55;
+    transform: translateY(-6px);
+  }
+}
+
+.blok-yildiz {
+  animation: blok-yildiz 6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .blok-patla,
+  .blok-puan,
+  .blok-sars,
+  .blok-odul,
+  .blok-otur,
+  .blok-vurus,
+  .blok-halka,
+  .blok-supurge,
+  .blok-parcacik,
+  .blok-kombo,
+  .blok-yildiz {
+    animation: none !important;
+  }
+  /* ⚠️ Patlama ve ödül GÖRÜNMEZ kalıyor, donmuş hâlde değil: animasyon
+     kapatılınca `both` son kareyi bırakır ve ödül kutlaması ekranın
+     ortasında kalıcı olarak asılı kalırdı. */
+  .blok-patla,
+  .blok-puan,
+  .blok-odul,
+  .blok-halka,
+  .blok-supurge,
+  .blok-parcacik,
+  .blok-kombo {
+    opacity: 0;
+  }
 }
 
 /* ── Ödül açılışı (Ü56) ──────────────────────────────────────
@@ -1573,6 +1877,26 @@ body {
   .cark-donuyor {
     animation: none !important;
   }
+}
+
+/* ── Çarkı Loopy çeviriyor (Ü193 → Ü197) ────────────────────
+   Ü193'te itiş CSS ile anlatılıyordu (yaylan → savrul → geri tep),
+   çünkü elde uzanan kollu bir kare yoktu. Ü197'de yerini gerçek
+   animasyona bıraktı: ürün sahibinin ürettirdiği çarksız, saydam
+   zeminli video (`/cark/loopy-cevirir.webm`).
+
+   ⚠️ Geriye YALNIZCA konum kaldı; hareketin tamamı videonun içinde.
+   Eski `@keyframes cark-loopy-cevir` silindi — duran ama çağrılmayan
+   bir animasyon, bir sonraki okuyucuya "bu neden kullanılmıyor" diye
+   sorduracak ölü koddu.
+
+   ⚠️ `prefers-reduced-motion` burada CSS ile kapatılamıyor: bir
+   `<video>`nun oynaması animasyon özelliği değil. Karar `cark.tsx`te,
+   `play()` çağrılmadan önce veriliyor. */
+.cark-loopy {
+  position: absolute;
+  z-index: 15;
+  pointer-events: none;
 }
 
 /* ── Avatar yuvadan fırlıyor (Ü159) ──────────────────────────

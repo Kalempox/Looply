@@ -8,6 +8,11 @@ import { KahramanBaslik } from "./vitrin-kahraman";
 import Image from "next/image";
 import { Karekod } from "@/components/karekod";
 import { YaklasanSahne, TelefonCercevesi } from "./vitrin-yaklasma";
+import { YapiskanCagri } from "./vitrin-yapiskan";
+import { VitrinItiraz } from "./vitrin-itiraz";
+import { VitrinDongusu } from "./vitrin-dongu";
+import { VitrinGizliAcilis, VitrinEkSatis } from "./vitrin-katmanlar";
+import { VitrinSSS } from "./vitrin-sss";
 
 export const dynamic = "force-dynamic";
 
@@ -598,6 +603,26 @@ export default async function Vitrin() {
         </div>
       </section>
 
+      {/*
+        ═══ Sorun → döngü ════════════════════════════
+
+        🔴 Ü200. Bu iki bölüm birbirine bağlı ve SIRALARI önemli:
+        itiraz bölümü soruları soruyor, döngü bölümü cevabı veriyor.
+        Araya başka bir şey girerse soru havada kalıyor.
+
+        Yerleri de tesadüf değil — "neden Looply" ve "nasıl çalışıyor"
+        anlatıldıktan SONRA geliyorlar. Sayfanın başına konsalardı
+        henüz ne sattığımızı bilmeyen kişiye dert anlatmış olurduk.
+      */}
+      <VitrinItiraz />
+      <VitrinDongusu />
+
+      {/* ═══ Gizli açılış — üründe var, sayfada yoktu (Ü200) ══ */}
+      <VitrinGizliAcilis />
+
+      {/* ═══ Ek satış — üründe var, sayfada yoktu (Ü200) ═════ */}
+      <VitrinEkSatis />
+
       {/* ═══ Kimler için — düz beyaz ════════════════ */}
       <section className="py-20 sm:py-28">
         <div className="mx-auto w-full max-w-6xl px-5">
@@ -807,7 +832,12 @@ export default async function Vitrin() {
         "Hiçbir şey kaybetmezsiniz" bir satış vaadi olurdu ve vaat,
         sorunun kendisinden zayıf.
       */}
-      <section className="relative overflow-hidden bg-vitrin-lacivert py-20 text-yuzey sm:py-28">
+      {/* ═══ SSS — son çağrıdan hemen önce (Ü200) ════
+          Satış engelleri burada kapanıyor; cevaplanmamış bir soruyla
+          son düğmeye gelen kişi tıklamıyor. */}
+      <VitrinSSS />
+
+      <section id="son-cagri" className="relative overflow-hidden bg-vitrin-lacivert py-20 text-yuzey sm:py-28">
         {/*
           Yavaşça gezen ışık — Dalga 10.
 
@@ -915,6 +945,24 @@ export default async function Vitrin() {
           </Link>
         </nav>
       </footer>
+
+      {/*
+        ═══ Yapışkan çağrı (Ü200) ════════════════════
+
+        ⚠️ Girişli kullanıcıya GÖSTERİLMİYOR: zaten müşterimiz olan
+        işletmeciye "hemen dene" demek, ona başvuru formu göstermek
+        olurdu. Karar burada, bileşende değil — bileşenin oturumdan
+        haberi yok ve olmasına gerek de yok.
+
+        ⚠️ Alt boşluk: şerit `fixed` ve sayfanın son satırını örtüyordu.
+        Alt şeridin altına şeridin yüksekliği kadar pay bırakılıyor.
+      */}
+      {!o && (
+        <>
+          <div aria-hidden className="h-20" />
+          <YapiskanCagri sonBolumId="son-cagri" />
+        </>
+      )}
     </main>
   );
 }
