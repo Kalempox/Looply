@@ -2,13 +2,14 @@
 
 import { beklemeMetni } from "@/domain/bekleme-metni";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { OyunEkrani } from "@/oyunlar/arayuz";
-import { KartDokusu, kartStili } from "@/components/oyuncu";
+import { BiletYuzeyi } from "@/components/oyuncu";
+import { OyunSahnesi, sahneVarMi } from "@/components/oyun-sahnesi";
 import { RENK, oyunRengi } from "@/components/oyuncu-renk";
-import { oyunGorseli } from "@/components/oyuncu-gorsel";
 import { OyunIkonu, HediyeIkonu, TacIkonu } from "@/components/oyuncu-ikon";
-import { Gorsel } from "@/components/oyuncu-gorsel";
+import { Gorsel, oyunGorseli } from "@/components/oyuncu-gorsel";
 import { SeviyeKutlamasi } from "@/components/seviye-kutlamasi";
 import { RozetKutlamasi } from "@/components/rozet-kutlamasi";
 import { baslaEylemi, bitirEylemi, type BitirCevabi, teklifAlEylemi } from "./actions";
@@ -74,6 +75,7 @@ export function OyunKabugu(ayar: Ayar) {
   const [durum, setDurum] = useState<Durum>({ tur: "secim" });
   const [hata, setHata] = useState<string | null>(null);
   const [bekliyor, basla] = useTransition();
+  const router = useRouter();
   const otomatikBasladi = useRef(false);
   const r = RENK[oyunRengi(ayar.oyunId)];
 
@@ -130,6 +132,10 @@ export function OyunKabugu(ayar: Ayar) {
           oyunId={ayar.oyunId}
           tohum={durum.tohum}
           demoKapisi={ayar.demoKapisi}
+          kazandirir={ayar.kazandirir}
+          /* Ü203: tam ekran oyunda sayfanın geri bağlantısı görünmüyor;
+             çıkış oyuncuyu katalog karuseline götürüyor. */
+          cik={() => router.push("/oyunlar")}
           bitti={oyunBitti(durum.oturumId)}
         />
 
@@ -148,7 +154,6 @@ export function OyunKabugu(ayar: Ayar) {
         ayar={ayar}
         cevap={durum.cevap}
         tekrar={turBaslat}
-        geri={() => setDurum({ tur: "secim" })}
       />
     );
   }
@@ -171,28 +176,54 @@ export function OyunKabugu(ayar: Ayar) {
         </div>
       )}
 
-      <div
-        className="kart-golge kart-gel relative overflow-hidden rounded-3xl px-5 py-6"
-        style={kartStili(oyunRengi(ayar.oyunId))}
-      >
-        <KartDokusu renk={oyunRengi(ayar.oyunId)} gorsel={oyunGorseli(ayar.oyunId)} />
+      {/*
+        🔴 Ü191: kart pastelden KOYU BİLETE geçti.
 
-        <div className="relative flex items-start gap-3.5">
-          <span className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-yuzey shadow-sm">
+        Ü71'de (Ağustos) bütün kartlar `kartStili()` ile pastel yapılmıştı.
+        Ü171–Ü190 arasında ana ekran, katalog, profil ve Ödüllerim koyu
+        bilet ailesine taşındı; bu iki kart (tanıtım ve sonuç) geride
+        kaldı. Sonuç: oyuncu katalogdan KOYU bir karta basıyor, açılan
+        ekranda PASTEL bir kart buluyordu — aynı yolculukta iki dil.
+
+        ⚠️ Ürünün en çok bakılan iki kartı burası; en son taşınmaları
+        sıralama hatasıydı, tercih değil.
+      */}
+      <BiletYuzeyi renk={oyunRengi(ayar.oyunId)} className="px-5 py-6">
+        {/* Sahne sağdan ve üstten taşıyor — katalog kartıyla aynı kural
+            (Ü181). Sahnesi olmayan oyunlar eski soluk çizimde kalıyor. */}
+        {sahneVarMi(ayar.oyunId) ? (
+          <span aria-hidden className="pointer-events-none absolute -top-8 -right-10">
+            <OyunSahnesi oyun={ayar.oyunId} boy={210} />
+          </span>
+        ) : (
+          <span
+            aria-hidden
+            className="pointer-events-none absolute -right-8 -bottom-6 text-white/15"
+          >
+            <Gorsel ad={oyunGorseli(ayar.oyunId)} boy={150} />
+          </span>
+        )}
+        {/* Perde: sahne parlak ve metin onun üstünde. */}
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-y-0 left-0 w-[88%]"
+          style={{ background: `linear-gradient(to right, ${r.koyu} 44%, transparent 100%)` }}
+        />
+
+        <div className="relative flex max-w-[72%] items-start gap-3.5">
+          <span className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-yuzey shadow-lg">
             <OyunIkonu oyunId={ayar.oyunId} boy={34} />
           </span>
           <div className="min-w-0 flex-1">
-            <h1 className="font-display text-2xl leading-tight font-extrabold tracking-tight">
+            <h1 className="font-display text-2xl leading-tight font-extrabold tracking-tight text-white">
               {ayar.ad}
             </h1>
-            <p className="mt-1 text-[13px] leading-relaxed" style={{ color: r.koyu }}>
-              {ayar.ozet}
-            </p>
+            <p className="mt-1 text-[13px] leading-relaxed text-white/75">{ayar.ozet}</p>
           </div>
         </div>
 
         {ayar.bonusMu && ayar.kazandirir && (
-          <div className="relative mt-4 inline-block rounded-full border border-odul bg-yuzey px-3 py-1 etiket-caps text-[10px] text-odul-koyu">
+          <div className="relative mt-4 inline-block rounded-full bg-yuzey px-3 py-1 etiket-caps text-[10px] text-odul-koyu shadow-lg">
             Bugünün oyunu · ×2 puan
           </div>
         )}
@@ -203,19 +234,23 @@ export function OyunKabugu(ayar: Ayar) {
           type="button"
           disabled={bekliyor}
           onClick={turBaslat}
-          className="relative mt-6 w-full rounded-2xl py-4 font-display text-[17px] font-bold text-white transition-transform active:scale-[0.99] disabled:opacity-40"
-          style={{ background: r.ana }}
+          /* Ü191: hap biçimi ve altın gradyan — ana ekrandaki "Oyna"
+             düğmesiyle aynı dil. Kartın tek sıcak rengi bu, yani
+             bakılacak yer tartışmasız. */
+          className="relative mt-6 flex w-full items-center justify-center gap-2.5 rounded-full py-4 font-display text-[18px] font-bold transition-transform active:scale-[0.99] disabled:opacity-40"
+          style={{
+            background: "linear-gradient(180deg, #ffd45e 0%, #f7b02a 100%)",
+            color: "#4a2708",
+            boxShadow: "0 5px 0 rgba(209,137,22,.5), 0 8px 16px -6px rgba(0,0,0,.35)",
+          }}
         >
-          {bekliyor ? "Basliyor" : "Oyna"}
+          {bekliyor ? "Basliyor" : <><span aria-hidden className="text-[15px]">▶</span> Oyna</>}
         </button>
 
-        <p
-          className="relative mt-3 text-center text-[12px] leading-relaxed"
-          style={{ color: r.koyu }}
-        >
+        <p className="relative mt-3 text-center text-[12px] leading-relaxed text-white/65">
           Kaybedene kadar sürüyor. İlerledikçe zorlaşıyor.
         </p>
-      </div>
+      </BiletYuzeyi>
     </div>
   );
 }
@@ -226,12 +261,10 @@ function SonucEkrani({
   ayar,
   cevap,
   tekrar,
-  geri,
 }: {
   ayar: Ayar;
   cevap: BitirCevabi;
   tekrar: () => void;
-  geri: () => void;
 }) {
   if (!cevap.ok) {
     return (
@@ -249,7 +282,7 @@ function SonucEkrani({
             )}
           </p>
         </div>
-        <Dugmeler tekrar={tekrar} geri={geri} oyunId={ayar.oyunId} />
+        <Dugmeler tekrar={tekrar} oyunId={ayar.oyunId} />
       </div>
     );
   }
@@ -357,35 +390,35 @@ function SonucEkrani({
         </div>
       )}
 
-      <div
-        className="parilti kart-golge kart-gel relative mt-3 overflow-hidden rounded-3xl px-5 py-6"
-        style={kartStili(oyunRengi(ayar.oyunId))}
-      >
-        <KartDokusu renk={oyunRengi(ayar.oyunId)} gorsel={oyunGorseli(ayar.oyunId)} />
-
+      {/* Ü191: sonuç kartı da koyu bilete geçti — tanıtım kartıyla aynı
+          gerekçe. Aynı turun iki ekranı farklı dil konuşamaz. */}
+      <BiletYuzeyi renk={oyunRengi(ayar.oyunId)} className="parilti mt-3 px-5 py-6">
         <div className="relative flex items-center gap-2">
-          <OyunIkonu oyunId={ayar.oyunId} boy={16} />
-          <span className="etiket-caps" style={{ color: r.koyu }}>
+          <OyunIkonu oyunId={ayar.oyunId} boy={18} />
+          <span className="etiket-caps" style={{ color: r.canli }}>
             {ayar.ad}
           </span>
         </div>
         {/* Ü83: her tur kaybederek bitiyor, o yüzden başlık "bitti mi" değil
             **ne kadar iyi bitti** diyor. Eşiği geçen tur kupon düşürüyor
             (puan.KUPON_ESIGI) ve ekranın dili bunu yansıtıyor. */}
-        <h1 className="relative mt-1.5 font-display text-3xl leading-none font-extrabold tracking-tight">
+        <h1 className="relative mt-1.5 font-display text-3xl leading-none font-extrabold tracking-tight text-white">
           {basarili ? "İyi tur" : "Tur bitti"}
         </h1>
 
         {/* Skor tek başına ortada: ekranın tek büyük sayısı o. */}
         <div className="relative mt-6 text-center">
-          <div className="etiket-caps text-yazi-sonuk">Skor</div>
+          <div className="etiket-caps text-white/55">Skor</div>
+          {/* ⚠️ Başarılı tur `canli` ile parlıyor, başarısız beyaz kalıyor.
+              Koyu zeminde `ana` tonu zeminden ayrılmıyor (Ü171) ve
+              `--color-yazi` (koyu gri) hiç okunmuyordu. */}
           <div
             className="patla mt-1 font-data text-6xl leading-none font-bold tabular"
-            style={{ color: basarili ? r.ana : "var(--color-yazi)" }}
+            style={{ color: basarili ? r.canli : "#ffffff" }}
           >
             {skor.toLocaleString("tr-TR")}
           </div>
-          <div className="mt-2 font-data text-[9px] text-yazi-sonuk">sunucuda doğrulandı</div>
+          <div className="mt-2 font-data text-[9px] text-white/45">sunucuda doğrulandı</div>
         </div>
 
         <div className="relative mt-6 flex flex-col gap-2">
@@ -499,13 +532,9 @@ function SonucEkrani({
             <TeklifKarti teklif={teklif} gecikme={290 + satirlar.length * 90} />
           )}
         </div>
-      </div>
+      </BiletYuzeyi>
 
-      <Dugmeler
-        tekrar={tekrar}
-        geri={geri}
-        oyunId={ayar.oyunId}
-      />
+      <Dugmeler tekrar={tekrar} oyunId={ayar.oyunId} />
     </div>
   );
 }
@@ -539,15 +568,13 @@ function KazanimSatiri({
   );
 }
 
-function Dugmeler({
-  tekrar,
-  geri,
-  oyunId,
-}: {
-  tekrar: () => void;
-  geri: () => void;
-  oyunId: string;
-}) {
+/*
+  ⚠️ `geri` propu Ü203'te KALKTI. İkinci düğme artık bir davranış
+  değil bir adres (`/oyunlar`); kabuğun "turu sıfırla" işlevine
+  ihtiyacı kalmadı. Prop bırakılsaydı hiçbir şey yapmayan bir alan
+  olurdu.
+*/
+function Dugmeler({ tekrar, oyunId }: { tekrar: () => void; oyunId: string }) {
   const r = RENK[oyunRengi(oyunId)];
 
   return (
@@ -562,9 +589,21 @@ function Dugmeler({
       >
         Tekrar oyna
       </button>
-      <button type="button" onClick={geri} className="py-2 text-[14px] text-yazi-sonuk underline">
+      {/*
+        🔴 Katalog KARUSELİNE gidiyor — Ü203.
+
+        Ürün sahibi: *"oyun bitince bu ekran açılmamalı, oyunlar
+        ekranımız açılmalı, carousel'li olan."* Eskiden `geri` turu
+        sıfırlayıp bu oyunun tanıtım kartını gösteriyordu; oyuncu
+        başka bir oyuna geçmek isterse bir tık daha atmak zorundaydı.
+        Tur bitti demek "bu oyunla işim bitti" demeye en yakın an.
+      */}
+      <Link
+        href="/oyunlar"
+        className="py-2 text-center text-[14px] text-yazi-sonuk underline"
+      >
         Oyunlara dön
-      </button>
+      </Link>
     </div>
   );
 }

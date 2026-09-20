@@ -62,22 +62,39 @@ export const PARCA_HUCRELERI: readonly (readonly (readonly [number, number])[])[
 /**
  * Kaç teklif turunda bir zorluk kademesi artıyor.
  *
- * Bir tur üç parça demek, yani her kademe ~24 yerleştirme sürüyor. Daha
- * sık artırmak ilk dakikayı cezalandırırdı: yeni oyuncunun ilk turu
- * öğrenme turu (docs/03 · *"ilk oyun kesinlikle kolay olmalı"*).
+ * ── 🔴 8 → 5 ve tavan 3 → 4 (Ü203) ──────────────────────────
+ *
+ * Ürün sahibi oynadı: *"oyun çok kolay, gitgide zorluk artmıyor mu,
+ * kaybedemedim bir türlü."* Sayılar onu doğruluyordu — eski ayarla en
+ * yüksek kademeye **24. turda**, yani ~72 yerleştirmeden sonra
+ * geliniyordu. O noktaya gelen oyuncu zaten tahtayı yönetmeyi öğrenmiş
+ * oluyor ve oyun hiç sıkışmıyordu.
+ *
+ * Şimdi en yüksek kademe 20. turda (~60 yerleştirme) ve bir kademe
+ * daha var. `docs/03`ün kuralı korunuyor — *"ilk oyun kesinlikle kolay
+ * olmalı"*: ilk kademe hâlâ 5 tur, yani 15 yerleştirme boyunca sürüyor.
+ * Değişen şey başlangıç değil, **tavan**.
  */
-const KADEME_TUR = 8;
+const KADEME_TUR = 5;
 
 /** Zorluk en fazla bu kademeye çıkıyor. */
-const EN_YUKSEK_KADEME = 3;
+const EN_YUKSEK_KADEME = 4;
 
 /**
- * Kolay parçalar — iki hücre ve altı.
+ * Parçaların hücre sayısı — "kolay mı" kararı buradan.
  *
- * Bunlar tahtayı doldurmuyor, tıkanmayı açıyor. Zorluk kademesi tam
- * olarak bunların ne sıklıkta geleceğini kısıyor.
+ * ⚠️ Ü203'e kadar sabit bir `KOLAY` dizisiydi (iki hücre ve altı).
+ * Artık eşik **kademeye göre** değişiyor: üst kademelerde üç hücrelik
+ * parçalar da kurtarıcı sayılıyor ve seyreltiliyor. Sabit eşikle en
+ * yüksek kademede bile üçlü parçalar bol geliyordu ve tahta bir türlü
+ * dolmuyordu.
  */
-const KOLAY = PARCA_HUCRELERI.map((h) => h.length <= 2);
+const HUCRE_SAYISI = PARCA_HUCRELERI.map((h) => h.length);
+
+/** O kademede hangi parça "kurtarıcı" sayılıyor. */
+function kolayMi(parca: number, zorluk: number): boolean {
+  return HUCRE_SAYISI[parca] <= (zorluk >= 3 ? 3 : 2);
+}
 
 export type BlokDurumu = {
   /**
@@ -103,6 +120,49 @@ export type BlokDurumu = {
    * 500/1500/2500 eşiklerini ayıran şey bu.
    */
   zincir: number;
+  /**
+   * Ödül paketli parça hangi teklifte — yoksa `-1`. Ü201.
+   *
+   * ── 🔴 Neden MOTORDA, arayüzde değil ────────────────────────
+   *
+   * Ürün sahibi: *"block blastte ödül kaplı parça olsun, ekrana
+   * konunca ödül kazanılsın; 'eşik geçildi' tarzı şeyler yazmasın."*
+   *
+   * Ü199'da bu bir arayüz süsüydü: skor eşiği geçilince ekranın
+   * ortasında bir kart çıkıyordu. Ürün sahibi haklı olarak reddetti —
+   * ödül oyunun içinde bir **nesne** olmalı, kenarda bir bildirim
+   * değil.
+   *
+   * Nesne olunca arayüzde kalamıyor: parça puan kazandırıyor, puanı
+   * sunucu aynı girdileri **yeniden oynatarak** hesaplıyor (S5). Ödül
+   * parçası yalnızca ekranda olsaydı istemcinin skoru sunucununkinden
+   * sapardı ve tur reddedilirdi.
+   *
+   * ⚠️ Hangi teklifin paketli olduğu **tohumdan** türüyor, rastgele
+   * değil. Aynı tohum + aynı girdiler her yerde aynı skoru vermek
+   * zorunda.
+   *
+   * ⚠️ Konum doğrulanmış mı, kupon bütçesi var mı — motor bunların
+   * hiçbirini BİLMİYOR ve bilmemeli. Bilseydi aynı girdi kaydı iki
+   * farklı skor üretirdi.
+   *
+   * 🔴 Ü203: parça artık puan da VERMİYOR (`ODUL_BONUSU = 0`). Eşiği
+   * oyuncu kendi oyunuyla geçiyor; paket yalnızca kazanılmış ödülü
+   * teslim ediyor. Kuponu yine sunucu, kafenin günlük bütçesinden
+   * veriyor.
+   *
+   * ⚠️ Motor konumu bilmediği için paket kafe DIŞINDA da çıkıyor.
+   * Onu gizlemek ekranın işi (`blok-ekran.tsx` · `kazandirir`) —
+   * motora taşınsaydı replay bozulurdu.
+   */
+  odulTeklifi: number;
+  /**
+   * Ödül paketi bu turda teslim edildi mi — Ü203.
+   *
+   * Eşik geçildikten sonra skor hep eşiğin üstünde kalıyor; bu bayrak
+   * olmasaydı paket her yeni teklif turunda yeniden çıkardı.
+   */
+  odulVerildi: boolean;
   /** Hiçbir parça sığmadığı için bitti — turun tek bitiş yolu. */
   tikandi: boolean;
 };
@@ -119,6 +179,81 @@ export type BlokGirdisi = {
 /** Bu turda kaçıncı zorluk kademesindeyiz — 0 en kolay. Ekran da okuyor. */
 export function kademe(tur: number): number {
   return Math.min(Math.floor(tur / KADEME_TUR), EN_YUKSEK_KADEME);
+}
+
+/**
+ * Ödül parçası PUAN VERMİYOR — Ü203.
+ *
+ * ── 🔴 Ü201'in ekonomi hatası ───────────────────────────────
+ *
+ * Ü201'de parça +120 puan veriyordu ve **yalnızca eşiği geçirmeye
+ * yettiği anda** (380 ≤ skor < 500) teklif ediliyordu. Mantık tutarlı
+ * görünüyordu ama sonucu şuydu: kuponun barı fiilen 500'den **380'e
+ * indi.** Ürün sahibi oynayıp gördü — *"oyun çok ödül dağıtıyor…
+ * kafenin belirlediği günlük bütçeye göre çok doğru ayarlanmalı."*
+ *
+ * Bütçe motoru (`odul-motoru.ts`) zaten kuponu kafenin günlük
+ * bütçesinden veriyor ve o kural hiç delinmemişti; delinen şey
+ * **eşiğe ulaşma zorluğuydu.** Daha çok tur eşiği geçince daha çok
+ * kupon talebi doğuyor ve bütçe daha hızlı bitiyor.
+ *
+ * ── Yeni rol: ödül ÜRETMİYOR, TESLİM ediyor ─────────────────
+ *
+ * Parça artık oyuncu eşiği **kendi oyunuyla geçtikten sonra** çıkıyor
+ * ve sıfır puan veriyor. Yani skor tam olarak Ü201 öncesindeki skor;
+ * ekonomiye dokunan hiçbir şey kalmadı. Parçanın işi kazanılmış
+ * ödülü ekranda bir **nesne** hâline getirmek — ürün sahibinin
+ * istediği şey de buydu (*"ödül kaplı parça olsun, ekrana konunca
+ * ödül kazanılsın"*), ödülün daha kolay kazanılması değil.
+ *
+ * ⚠️ Sıfır kalması ŞART. Bir daha puana bağlanırsa aynı ekonomi
+ * kayması geri gelir ve bu kez sessizce.
+ */
+export const ODUL_BONUSU = 0;
+
+/**
+ * Kupon eşiği — motorun kopyası.
+ *
+ * 🔴 `domain/puan.KUPON_ESIGI` ile **aynı olmak zorunda** ve bunu bir
+ * test koruyor (`oyun-motoru.test.ts`).
+ *
+ * Neden kopya: asıl sabit `domain/puan.ts`te ve o dosya `@/db/context`
+ * import ediyor. Motor hem sunucuda hem tarayıcıda koşuyor; buradan
+ * `domain/puan` import etmek `pg`yi istemci paketine çeker ve derleme
+ * kırılır (Ü75, Ü199'da iki kez yaşandı). Sayıyı taşımak yerine
+ * kopyalayıp **ayrışmasını imkânsız kılmak** daha ucuz.
+ */
+export const ODUL_ESIGI = 500;
+
+/**
+ * Bu teklif turunda ödül parçası var mı, varsa hangi sırada.
+ *
+ * ── Kural — Ü203 ────────────────────────────────────────────
+ *
+ * Parça, oyuncu eşiği **kendi oyunuyla geçtikten sonra** çıkıyor ve
+ * bir kez teslim ediliyor:
+ *
+ *     skor >= 500   ve   henüz teslim edilmedi
+ *
+ * Ü201'de tam tersiydi (eşiğin altında çıkıp puanla geçiriyordu) ve
+ * ekonomiyi kaydırıyordu — bkz. `ODUL_BONUSU`.
+ *
+ * ⚠️ Tek sefer: `odulVerildi` olmasaydı eşik geçildikten sonra HER
+ * turda paket çıkardı ve oyuncu her seferinde bir kupon kazandığını
+ * sanardı.
+ *
+ * ⚠️ Yer tohumdan: aynı tohum her yerde aynı sırayı veriyor, sunucunun
+ * tekrarında da.
+ */
+function odulSlotu(
+  tohum: string,
+  tur: number,
+  skor: number,
+  verildi: boolean,
+): number {
+  if (verildi) return -1;
+  if (skor < ODUL_ESIGI) return -1;
+  return tohumla(`${tohum}:blok-odul:${tur}`).tamsayi(TEKLIF);
 }
 
 /**
@@ -139,7 +274,7 @@ function turunParcalari(tohum: string, tur: number): number[] {
 
   for (let i = 0; i < TEKLIF; i++) {
     let p = r.tamsayi(PARCA_HUCRELERI.length);
-    for (let d = 0; d < zorluk && KOLAY[p]; d++) {
+    for (let d = 0; d < zorluk && kolayMi(p, zorluk); d++) {
       p = r.tamsayi(PARCA_HUCRELERI.length);
     }
     out.push(p);
@@ -173,8 +308,8 @@ function hamleVarMi(durum: BlokDurumu): boolean {
 
 const DOLU_SATIR = (1 << EN) - 1;
 
-/** Dolan satır ve sütunları temizler, kaç tanesinin temizlendiğini döner. */
-function temizle(izgara: number[]): number {
+/** Dolan satır ve sütunları BULUR — silmez. */
+function dolanlar(izgara: number[]): { satirlar: number[]; sutunlar: number[] } {
   const satirlar: number[] = [];
   const sutunlar: number[] = [];
 
@@ -192,12 +327,52 @@ function temizle(izgara: number[]): number {
     if (dolu) sutunlar.push(k);
   }
 
+  return { satirlar, sutunlar };
+}
+
+/** Dolan satır ve sütunları temizler, kaç tanesinin temizlendiğini döner. */
+function temizle(izgara: number[]): number {
+  const { satirlar, sutunlar } = dolanlar(izgara);
+
   for (const s of satirlar) izgara[s] = 0;
   for (const k of sutunlar) {
     for (let s = 0; s < EN; s++) izgara[s] &= ~(1 << k);
   }
 
   return satirlar.length + sutunlar.length;
+}
+
+/**
+ * Bir yerleştirmenin hangi satır ve sütunları temizleyeceği — Ü199.
+ *
+ * 🔴 **Yalnızca ARAYÜZ için.** Oyunun kuralına hiç dokunmuyor, hiçbir
+ * durum üretmiyor; `uygula` ne yapacaksa onu önceden söylüyor.
+ *
+ * Neden gerekli: ekran temizlik anını canlandırmak istiyor (hücreler
+ * parlayıp patlıyor, kazanılan puan oradan yukarı uçuyor) ama `uygula`
+ * geri döndüğünde o hücreler **çoktan boşalmış** oluyor — patlatılacak
+ * kare kalmıyor.
+ *
+ * ⚠️ Kural burada YENİDEN YAZILMIYOR: yerleştirme `sigar` ile, dolan
+ * çizgiler `dolanlar` ile bulunuyor; ikisi de `uygula`nın kullandığı
+ * fonksiyonlar. Ekranın kendi "satır doldu mu" hesabını yapması, aynı
+ * kuralın ikinci kopyası olurdu ve biri değişince öteki sessizce
+ * yalan söylerdi.
+ */
+export function temizlenecekler(
+  durum: BlokDurumu,
+  girdi: BlokGirdisi,
+): { satirlar: number[]; sutunlar: number[] } | null {
+  const parca = durum.teklifler[girdi.t];
+  if (parca === undefined || parca < 0) return null;
+  if (!sigar(durum.izgara, parca, girdi.s, girdi.k)) return null;
+
+  const izgara = durum.izgara.slice();
+  for (const [ds, dk] of PARCA_HUCRELERI[parca]) {
+    izgara[girdi.s + ds] |= 1 << (girdi.k + dk);
+  }
+
+  return dolanlar(izgara);
 }
 
 export const blok: Oyun<BlokDurumu, BlokGirdisi> = {
@@ -215,6 +390,10 @@ export const blok: Oyun<BlokDurumu, BlokGirdisi> = {
       skor: 0,
       temizlenen: 0,
       zincir: 0,
+      // Sıfır skorda çıkmıyor; yine de elle `-1` yazmak yerine kural
+      // çağrılıyor — eşik değişirse burası da uyar.
+      odulTeklifi: odulSlotu(tohum, 0, 0, false),
+      odulVerildi: false,
       tikandi: false,
     };
   },
@@ -247,8 +426,16 @@ export const blok: Oyun<BlokDurumu, BlokGirdisi> = {
     // oyunda tur 12 satırda kesiliyordu ve Ü48'in 1500/2500 eşiklerine
     // hiç ulaşılamıyordu — 611 gerçek turda en yüksek skor 1200'dü.
     const zincirCarpani = Math.min(zincir, 3);
+    /* ⚠️ Ü203: paketli parça skora HİÇBİR ŞEY eklemiyor
+       (`ODUL_BONUSU = 0`). Toplamada duruyor çünkü sıfır olduğu
+       görünsün — silinseydi bir sonraki okuyucu "acaba unutuldu mu"
+       diye sorardı. */
+    const odulMu = durum.odulTeklifi === t;
     const kazanc =
-      PARCA_HUCRELERI[parca].length + cizgi * cizgi * 35 + (cizgi > 0 ? zincirCarpani * 20 : 0);
+      PARCA_HUCRELERI[parca].length +
+      cizgi * cizgi * 35 +
+      (cizgi > 0 ? zincirCarpani * 20 : 0) +
+      (odulMu ? ODUL_BONUSU : 0);
 
     const teklifler = durum.teklifler.slice();
     teklifler[t] = -1;
@@ -256,14 +443,29 @@ export const blok: Oyun<BlokDurumu, BlokGirdisi> = {
     const bittiTeklif = teklifler.every((p) => p < 0);
     const tur = bittiTeklif ? durum.tur + 1 : durum.tur;
 
+    const yeniSkor = durum.skor + kazanc;
+
     const sonraki: BlokDurumu = {
       tohum: durum.tohum,
       izgara,
       teklifler: bittiTeklif ? turunParcalari(durum.tohum, tur) : teklifler,
       tur,
-      skor: durum.skor + kazanc,
+      skor: yeniSkor,
       temizlenen: durum.temizlenen + cizgi,
       zincir,
+      /*
+        Yeni teklif turunda ödül YENİDEN hesaplanıyor; tur içindeyse
+        yalnızca "kullanıldı mı" bakılıyor.
+
+        ⚠️ Hesap YENİ skorla: eski skorla yapılsaydı parça, kendisinin
+        geçirdiği eşiğin ardından bir kez daha teklif edilirdi.
+      */
+      odulTeklifi: bittiTeklif
+        ? odulSlotu(durum.tohum, tur, yeniSkor, durum.odulVerildi || odulMu)
+        : odulMu
+          ? -1
+          : durum.odulTeklifi,
+      odulVerildi: durum.odulVerildi || odulMu,
       tikandi: false,
     };
 

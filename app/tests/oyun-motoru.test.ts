@@ -19,7 +19,13 @@ import {
   basariliMi,
   esikBul,
 } from "@/domain/puan";
-import { blok, kademe as blokKademe } from "@/oyunlar/blok";
+import {
+  blok,
+  kademe as blokKademe,
+  temizlenecekler,
+  ODUL_BONUSU,
+  ODUL_ESIGI,
+} from "@/oyunlar/blok";
 import { kelime, kurulabilir, kucult, turSuresi } from "@/oyunlar/kelime";
 import { dusen, dusmeTickiHesapla } from "@/oyunlar/dusen";
 import { yilan, YILAN_EN, adimTickiHesapla, ODUL_OMRU_ADIM, type Yon } from "@/oyunlar/yilan";
@@ -370,11 +376,225 @@ describe("sonsuz mod (Ü83)", () => {
     assert.ok(yl.durum.carpti, "yılan çarpmadan bitti");
   });
 
+  test("temizlenecekler, uygula ile AYNI çizgileri söylüyor — REGRESYON", () => {
+    /*
+      Ü199. `temizlenecekler` yalnızca arayüz için var: satır patlarken
+      hangi hücrelerin parlayacağını söylüyor. `uygula` geri döndüğünde
+      o hücreler çoktan boşalmış oluyor, bu yüzden önceden soruluyor.
+
+      🔴 Testin işi iki fonksiyonun **aynı şeyi** söylediğini garanti
+      etmek. Ayrışırlarsa ekran yanlış kareleri patlatır ve hata
+      görünmez olur — kimse "yanlış hücre parladı" diye bildirmez, oyun
+      sadece bozuk hissettirir.
+
+      Yol: rastgele bir tur oynanıyor, her hamlede önce tahmin alınıyor,
+      sonra `uygula` çağrılıp temizlenen çizgi SAYISI (`temizlenen`
+      farkı) ile karşılaştırılıyor.
+    */
+    let d = blok.baslat("temizlik-testi");
+    let hamle = 0;
+    let temizlikGorulen = 0;
+
+    dis: for (let adim = 0; adim < 400 && !blok.bittiMi(d); adim++) {
+      for (let t = 0; t < 3; t++) {
+        for (let s = 0; s < 8; s++) {
+          for (let k = 0; k < 8; k++) {
+            const girdi = { t, s, k };
+            const tahmin = temizlenecekler(d, girdi);
+            const y = blok.uygula(d, girdi);
+
+            // İkisi de aynı hamleyi geçersiz saymalı.
+            assert.equal(
+              tahmin === null,
+              y === null,
+              `hamle ${hamle}: biri geçerli dedi öteki geçersiz (t${t} s${s} k${k})`,
+            );
+            if (!y || !tahmin) continue;
+
+            const beklenen = tahmin.satirlar.length + tahmin.sutunlar.length;
+            const gercek = y.temizlenen - d.temizlenen;
+            assert.equal(
+              beklenen,
+              gercek,
+              `hamle ${hamle}: tahmin ${beklenen} çizgi dedi, uygula ${gercek} temizledi`,
+            );
+
+            // Söylenen satır gerçekten boşalmış olmalı.
+            for (const sa of tahmin.satirlar) {
+              assert.equal(y.izgara[sa] & 0xff, 0, `satır ${sa} temizlenmedi`);
+            }
+            for (const su of tahmin.sutunlar) {
+              for (let x = 0; x < 8; x++) {
+                assert.equal(
+                  y.izgara[x] & (1 << su),
+                  0,
+                  `sütun ${su} temizlenmedi (satır ${x})`,
+                );
+              }
+            }
+
+            if (beklenen > 0) temizlikGorulen++;
+            d = y;
+            hamle++;
+            continue dis;
+          }
+        }
+      }
+      break;
+    }
+
+    assert.ok(hamle > 20, `tur çok kısa sürdü (${hamle} hamle) — test bir şey sınamadı`);
+    assert.ok(
+      temizlikGorulen > 0,
+      "hiç çizgi temizlenmedi — testin asıl sınadığı yol hiç koşmadı",
+    );
+  });
+
+  test("ödül parçası ekonomiyi DEĞİŞTİRMİYOR — Ü203", () => {
+    /*
+      🔴 Ü201'de bu parça +120 puan veriyordu ve eşiğin ALTINDA
+      çıkıyordu; sonucu kuponun barının 500'den fiilen 380'e inmesiydi.
+      Ürün sahibi oynayıp gördü: *"oyun çok ödül dağıtıyor… kafenin
+      belirlediği günlük bütçeye göre çok doğru ayarlanmalı."*
+
+      Ü203'te rol tersine döndü: parça ödül ÜRETMİYOR, kazanılmış ödülü
+      TESLİM ediyor. Bu testin işi o sözü kilitlemek.
+    */
+    assert.equal(
+      ODUL_ESIGI,
+      KUPON_ESIGI,
+      "motorun eşik kopyası `domain/puan.KUPON_ESIGI` ile ayrışmış",
+    );
+    assert.equal(
+      ODUL_BONUSU,
+      0,
+      "ödül parçası yine puan vermeye başlamış — kupon barı düşer (Ü203)",
+    );
+
+    let paketGorulen = 0;
+    let paketKonulan = 0;
+
+    /*
+      ⚠️ Tohum listesi GENİŞ ve bu bilinçli. Paket yalnızca eşiği geçen
+      turlarda çıkıyor; Ü203'te zorluk sertleşince kaba kuvvet botunun
+      turlarının yaklaşık yarısı 500'ün altında bitmeye başladı ve beş
+      sabit tohumla test hiç paket görmedi. Az tohum, testi oyunun
+      zorluk ayarına bağımlı kılıyor — ayar her değiştiğinde test
+      "bir şey sınamadı" diye düşer.
+    */
+    for (let n = 0; n < 40; n++) {
+      const tohum = `odul-${n}`;
+      let d = blok.baslat(tohum);
+      let teslimSayisi = 0;
+
+      for (let adim = 0; adim < 700 && !blok.bittiMi(d); adim++) {
+        if (d.odulTeklifi >= 0) {
+          paketGorulen++;
+          // 🔴 Paket eşiğin ALTINDA asla çıkmamalı.
+          assert.ok(
+            d.skor >= ODUL_ESIGI,
+            `${tohum}: paket eşik geçilmeden çıktı (skor ${d.skor} < ${ODUL_ESIGI})`,
+          );
+        }
+
+        const sira = d.odulTeklifi >= 0 ? [d.odulTeklifi, 0, 1, 2] : [0, 1, 2];
+        let kondu: typeof d | null = null;
+        let konanTeklif = -1;
+
+        dis: for (const t of sira) {
+          for (let sa = 0; sa < 8; sa++) {
+            for (let su = 0; su < 8; su++) {
+              const y = blok.uygula(d, { t, s: sa, k: su });
+              if (y) {
+                kondu = y;
+                konanTeklif = t;
+                break dis;
+              }
+            }
+          }
+        }
+        if (!kondu) break;
+
+        if (konanTeklif === d.odulTeklifi && d.odulTeklifi >= 0) {
+          paketKonulan++;
+          teslimSayisi++;
+          // Paket puan eklemiyor: kazanç yalnızca parçanın kendi
+          // hücreleri + varsa temizlik. Bonus olsaydı fark açılırdı.
+          assert.equal(kondu.odulTeklifi, -1, `${tohum}: paket kullanıldıktan sonra duruyor`);
+          assert.ok(kondu.odulVerildi, `${tohum}: teslim bayrağı yazılmadı`);
+        }
+
+        d = kondu;
+      }
+
+      // 🔴 Tur başına EN FAZLA bir kupon paketi.
+      assert.ok(
+        teslimSayisi <= 1,
+        `${tohum}: aynı turda ${teslimSayisi} paket teslim edildi`,
+      );
+    }
+
+    assert.ok(paketGorulen > 0, "hiçbir turda paket çıkmadı — test bir şey sınamadı");
+    assert.ok(paketKonulan > 0, "paket hiç konulmadı");
+  });
+
+  test("ödül parçası TOHUMDAN türüyor — aynı tohum aynı yer", () => {
+    /*
+      Paket durumun parçası olduğu için sunucunun tekrarında da aynı
+      yerde çıkmak zorunda; ayrışırsa iki taraf farklı durum üretir.
+    */
+    for (const tohum of ["tekrar-1", "tekrar-2"]) {
+      const a: number[] = [];
+      const b: number[] = [];
+
+      for (const kayit of [a, b]) {
+        let d = blok.baslat(tohum);
+        for (let adim = 0; adim < 400 && !blok.bittiMi(d); adim++) {
+          kayit.push(d.odulTeklifi);
+          let y: typeof d | null = null;
+          dis: for (let t = 0; t < 3; t++) {
+            for (let sa = 0; sa < 8; sa++) {
+              for (let su = 0; su < 8; su++) {
+                const z = blok.uygula(d, { t, s: sa, k: su });
+                if (z) {
+                  y = z;
+                  break dis;
+                }
+              }
+            }
+          }
+          if (!y) break;
+          d = y;
+        }
+      }
+
+      assert.deepEqual(a, b, `${tohum}: iki koşuda paket dizisi farklı çıktı`);
+      assert.ok(a.length > 20, `${tohum}: tur çok kısa, dizi anlamsız`);
+    }
+  });
+
+  test("zorluk tavanı daha erken ve daha sert — Ü203", () => {
+    /*
+      Ürün sahibi: *"oyun çok kolay, gitgide zorluk artmıyor mu,
+      kaybedemedim bir türlü."*
+
+      ⚠️ Bu test "oyun zor mu" diye SORMUYOR — onu ancak insan
+      söyleyebilir. Sınadığı şey eğrinin şekli: tavana ne zaman
+      çıkılıyor ve tavanda kaç kademe var. Sayılar sessizce eski hâline
+      dönerse test düşer.
+    */
+    assert.equal(blokKademe(0), 0, "ilk tur kolay başlamıyor");
+    // İlk kademe 5 tur sürüyor — öğrenme turu korunuyor (docs/03).
+    assert.equal(blokKademe(4), 0, "ilk kademe beş turdan kısa");
+    assert.equal(blokKademe(5), 1, "kademe beşinci turda artmıyor");
+    // Tavan: 20. turda ve dört kademe var (eskiden 24. tur, üç kademe).
+    assert.equal(blokKademe(20), 4, "tavana 20. turda çıkılmıyor");
+    assert.equal(blokKademe(500), blokKademe(20), "tavan sabitlenmiyor");
+  });
+
   test("zorluk tur içinde artıyor", () => {
-    // Blok: kademe tur ilerledikçe yükseliyor ve üçte duruyor.
-    assert.equal(blokKademe(0), 0);
-    assert.ok(blokKademe(8) > blokKademe(0), "blok zorluğu artmıyor");
-    assert.equal(blokKademe(200), blokKademe(24), "blok zorluğu tavana oturmuyor");
+    // ⚠️ Blok'un kendi eğrisi ayrı testte (Ü203) — orada tavanın yeri
+    // ve kademe sayısı da sınanıyor.
 
     // Düşen: temizlenen satır arttıkça parça hızlanıyor (tick azalıyor).
     assert.ok(
@@ -1042,15 +1262,53 @@ describe("seviye atlama", () => {
       ⚠️ Bu test ilkinin aynadaki hâli ve gerekli: yalnızca "atladı"
       sınanırsa, her turda seviye atladığını söyleyen bozuk bir kod da
       testten geçerdi.
+
+      🔴 Ü201'de DÜŞTÜ ve kurulumu düzeltildi.
+
+      Eskiden taze bir oyuncu tek tur oynuyor ve "seviye atlamadı"
+      bekleniyordu. Bu, iki sayının arasındaki ince boşluğa
+      yaslanıyordu: birinci seviye eşiği yalnızca **100 XP**
+      (`SEVIYE_ESIKLERI[1]`) ve testin kaba kuvvet botu zaten ona yakın
+      XP topluyordu. Ödül parçası turun skorunu yükseltince tur
+      "başarılı" sayıldı, XP çarpanı büyüdü ve bot eşiği geçti.
+
+      Testin **iddiası** doğruydu, **kurulumu** kırılgandı. Artık
+      oyuncu bir eşiğin hemen üstüne konuyor ve önünde tek turda
+      kapanamayacak kadar geniş bir boşluk bırakılıyor: 5. seviye
+      1.500'de başlıyor, 6. seviye 3.000'de. Aradaki 1.500 XP'yi hiçbir
+      tur tek başına veremez.
+
+      ⚠️ Sayı elle yazılmıyor, `SEVIYE_ESIKLERI`den okunuyor — eşikler
+      değişirse test kurulumu da değişsin, sessizce yanlış yere
+      oturmasın.
     */
     const p = await yeniOyuncu();
     await dogrulanmisOturum(p);
+
+    const taban = xp.SEVIYE_ESIKLERI[4];
+    const sonraki = xp.SEVIYE_ESIKLERI[5];
+    const oncekiSeviye = xp.seviye(taban);
+
+    await xp.yaz({
+      playerId: p,
+      cafeId: kafeA,
+      delta: taban,
+      kaynak: "ADJUSTMENT",
+    });
 
     const { cevap } = await tamOyun(p, "blok");
     assert.ok(cevap.ok, "tur reddedildi");
     if (!cevap.ok) return;
 
+    // Kurulumun hâlâ geçerli olduğunu test kendisi doğruluyor: turun
+    // kazandırdığı XP boşluktan küçük olmalı, yoksa test bir şey
+    // sınamıyor demektir.
+    assert.ok(
+      cevap.xp < sonraki - taban,
+      `tur ${cevap.xp} XP verdi, boşluk ${sonraki - taban} — kurulum artık sınamıyor`,
+    );
     assert.equal(cevap.seviye, null, "seviye atlamadan atladı denildi");
+    assert.equal(xp.seviye(taban + cevap.xp), oncekiSeviye, "seviye beklenmedik yerde");
   });
 });
 
