@@ -6,7 +6,7 @@
 > Yan dosyalar: neyin **var** olduğu → `21-looply-kapsam-haritasi.md` ·
 > demoda neyin **yapılabildiği** → `22-demo-yapilabilirlik.md`
 
-**Son güncelleme:** 2026-09-19 · **Kararlar:** Ü76 – Ü159, **Ü186 – Ü205**
+**Son güncelleme:** 2026-09-22 · **Kararlar:** Ü76 – Ü159, **Ü186 – Ü242**
 
 > ⚠️ **BU LİSTEDE BİR BOŞLUK VAR: Ü160 – Ü185 yazılmadı.**
 > O turlar commit mesajlarında ve kod yorumlarında duruyor (oyun
@@ -15,9 +15,2014 @@
 
 ---
 
-## ⬅️ Ü203 – Ü205 · Ödül ekonomisi, tam ekran ve sesler — 2026-09-20
+## ⬅️ Ü242 · Kılavuz tek çizgiye indi, Loopy büyüdü — 2026-09-22
 
 ⚠️ **Commitlenmedi.**
+
+Ü241'de kılavuz gerçek yörüngeye geçmişti — duvar sekmeleri dahil.
+Ürün sahibi ekranda görünce **geri aldırdı**: *"sekeceği alanı
+göstermesine gerek yok, tek çizgi halinde topun ilk çarpacağı alanı
+göstermeli, ve sonunda bu yuvarlak şey olmasın."*
+
+Haklı: sekmeyi göstermek oyunu hesap makinesine çeviriyordu — Ü217'de
+yazılan çekince tam olarak buydu ve Ü241'de göz ardı edilmişti.
+
+### Ne kaldı, ne gitti
+
+| | Ü241 | Ü242 |
+|---|---|---|
+| yol | tüm yörünge, sekmelerle | **ilk temasa kadar tek düz çizgi** |
+| uçta nokta | var | **yok** |
+| kaynak | `atisIzi` | `atisIzi` (aynı) |
+
+Ü241'in işi boşa gitmedi: çizginin **nerede biteceğini** hâlâ o hesap
+söylüyor. Kılavuz kendi çarpışma hesabını yapmıyor; izde **yönün ilk
+değiştiği** kareyi arıyor. Motorun hızı sekmeler arasında sabit, yani
+ardışık farklar birebir aynı; fark değiştiği an top bir şeye değmiştir
+— duvara ya da bloğa.
+
+Ekranda iki hâl de ölçüldü: duvara giden atışta çizgi x=96,8'de
+(sağ kenar), bloğa giden atışta y=13,9'da (blok sırasının altı)
+bitiyor.
+
+### Loopy 50 → 82
+
+*"Loopymiz daha büyük olsun, gerçekten o fırlatıyor gibi."* 50
+pikselde topun çıktığı yerin altında küçük bir rozet gibi duruyordu;
+top ondan çıkmıyor, üstünden geçiyor gibi görünüyordu. Yukarı da
+kaydırıldı, başı tahtanın alt kenarına değiyor.
+
+⚠️ Kutu yüksekliği başın taşan kısmını saymıyor (`-top-3`), yoksa
+tahta yukarı itilirdi.
+
+---
+
+## ⬅️ Ü241 · Sekme'nin kılavuzu gerçek yörüngeye geçti — 2026-09-22
+
+⚠️ **Commitlenmedi.**
+
+Ürün sahibi: *"bu isabet için olan çizgi çizgi olan tüm yol boyunca
+ilerlemeli, yarıda kesilmemeli ve tam topun gideceği doğru noktayı
+göstermeli."*
+
+Kılavuz üç turda buraya geldi ve üçü de farklı bir sorundu:
+
+| tur | sorun | çözüm |
+|---|---|---|
+| Ü217 | yalnızca çıkış yönü, çok soluk | — |
+| Ü236 | **hiç görünmüyordu** (5×5 piksel; `* 0.02` çarpanı `uzunluk`u işlevsiz bırakıyordu) | çarpan kalktı, 62 birim |
+| Ü241 | düz ışın sekmeleri göstermiyor | **gerçek yörünge** |
+
+### Yol motordan geliyor
+
+🔴 Dosyanın kuralı: *"ekran kendi fiziğini yazsaydı ekrandaki iz ile
+sunucunun gördüğü sonuç ayrışırdı."* Kılavuz bu yüzden kendi yansıma
+hesabını yapmıyor — `atisIzi` ile **motorun kendi izini** alıyor.
+Uçuş animasyonu da aynı kaynaktan besleniyor, yani kılavuz ile topun
+gittiği yol **tanım gereği** aynı; ayrışması mümkün değil.
+
+Maliyet ölçüldü: `atisIzi` çağrısı **0,04–0,12 ms**. Nişan alırken her
+açı değişiminde çağrılabilir; `useMemo` aynı açıda tekrar
+hesaplamıyor.
+
+### Nerede duruyor
+
+İlk çarpmada, ve oraya bir nokta konuyor — ürün sahibinin istediği
+"gideceği doğru nokta" o. Duvar sekmeleri **yolun içinde** çünkü
+çarpmadan önce oluyorlar; kesilen tek şey çarpma sonrası.
+
+🔴 İlk yazımda çarpma tespiti `durum.nesneler` ile karşılaştırıyordu
+ve **kılavuz hiç çizilmedi**: `simule` daha başlarken diziyi
+kopyalıyor, yani ilk kare zaten farklı bir dizi; döngü tek noktada
+kırılıyor ve bileşen `null` dönüyordu. Kıyas kareden kareye alındı.
+
+Ekranda ölçüldü: iki ayrı açıda 49 ve 65 noktalı yol, ikisi de duvardan
+sekip vuracağı bloğun üstünde bitiyor.
+
+### `aciYonu` silindi
+
+Ekranın düz ışını yön vektörünü oradan alıyordu; gerçek yörüngeye
+geçilince tek çağıranı kalmadı. Çağrılmayan kod bırakılmıyor.
+
+---
+
+## ⬅️ Ü240 · Oyun yalan söylüyordu: kural çizimle uyuşmuyordu — 2026-09-22
+
+⚠️ **Commitlenmedi.**
+
+Ürün sahibi iki şey söyledi: *"bazen bıçağı tahtaya gönderecek gibi
+olmama rağmen bıçağa çarpıyor"* ve *"bıçaklarımız oyun için çok
+kalın."* **İkisi aynı sebebe çıktı.**
+
+### 🔴 Ölçüm
+
+Motor 20°'de çarpışma sayıyordu (`CAKISMA` = 200). Bıçak ise ekranda
+o kadar yer kaplamıyordu; çizim ölçülerinden (en 6,4%, ucun yarıçapı
+23%) açısal genişliği **13,8°** çıkıyordu.
+
+| | derece |
+|---|---|
+| bıçağın görünür genişliği | 13,8° |
+| motorun çarpışma kuralı | 20,0° |
+| **fark** | **6,2°** |
+
+Sonucu asıl gösteren hesap şu: iki bıçak arasına atabilmek için
+**40°'lik** aralık gerekiyordu, o aralıkta **26°'lik görünür boşluk**
+oluyordu ve oyuncu oraya **14°'lik** bıçağı sokamıyordu. Gözle rahat
+sığan yer motorda doluydu.
+
+### Kural artık çizimden türüyor
+
+Bıçak inceltildi (6,4% → 4,6%) ve `CAKISMA` ona eşitlendi:
+
+```
+2 · atan((en/2) / (KUTUK_R − BATMA + BICAK_BOY·0,62·0,26)) = 9,96°
+CAKISMA = 100  (10,00°)
+```
+
+Çalışan uygulamadan ölçüldü: bıçak 14,5 piksel = kutunun %4,60'ı,
+açısal genişlik **9,96°**, kural **10,00°** — **fark 0,04°**.
+
+🔴 İki sayı birlikte değişmek zorunda ve bu iki dosyaya da yazıldı.
+Ayrışırlarsa aynı yalan geri gelir.
+
+### Zincirleme: pencere yarıya inince üç şey daha değişti
+
+**1 · Bölüm başına bıçak** (`tur*2` → `tur*5`). Bıçak incelince
+çembere iki katı sığıyor; eski artışla duvar 7. bölümden **15**'e
+kaymıştı (ölçüldü, tavan 10.930 puan).
+
+**2 · Puan** (`10 + tur*2` → `7 + tur`). Bölüm başına bıçak
+katlanınca puan da katlanıyordu ve kupon eşiği çöktü: **±2 tick
+sapmayla oynayan bot %100 kupon alıyordu.** Ü234'ün derdi tam buydu.
+⚠️ İlk düzeltme fazla sertti (`5 + tur`): tavan 1.577'ye düşüp ilk
+bonus kademesi (1.500) ancak kusursuz oyunla geliniyordu.
+
+**3 · Hız** (tavan 60 → 34). Kayma penceresinin dörtte birini
+geçmemeli: `1,5 tick × hız ≤ 50`.
+⚠️ Ölçüm, hızın eğriyi **az** oynattığını gösterdi (tavan 30↔40
+arasında iyi oyuncunun kupon oranı %47↔%30). Belirleyici olan hız
+değil geometri.
+
+**4 · Atış anı `floor` yerine `round`.** `floor` atışı hep geriye
+yuvarlıyordu — sistematik tek yönlü gecikme. `round` ile kayma
+±yarım tick ve simetrik. Sunucunun saat denetimi bozulmuyor:
+`saatTutarliMi` yalnızca **az** süre bildirmeye bakıyor.
+
+### Ölçülen yeni eğri (200 tur, zamanlama sapmasına göre)
+
+| oyuncu | ortalama | eşiği geçen |
+|---|---|---|
+| ±4 tick (özensiz) | 453 | %12 |
+| ±2 tick (orta) | 588 | %49 |
+| ±1 tick (iyi) | 637 | %61 |
+| sapmasız | 1.822 | %100 |
+
+Duvar **6. bölümde** (40 tohumun hepsinde), tavan **1.911** — Ü235'te
+ölçülen 1.916 ile neredeyse aynı.
+
+⚠️ **Oyun artık daha hassas ve bu kaçınılmaz.** Bıçak yarı kalınlıkta
+olunca açısal tolerans da yarıya iniyor; iyi oyuncunun kupon oranı
+%84'ten %61'e indi. Eski oran, kuralın çizimden geniş olmasından
+geliyordu — yani oyunun yalanından. Ürün sahibi fazla zor bulursa
+çözüm bıçağı biraz kalınlaştırmak (ve `CAKISMA`yı onunla büyütmek).
+
+### ⚠️ Yapılamayan ölçüm
+
+Bıçak'ın tavanını öbür oyunlarınkiyle kıyaslamak için dört oyuna
+hızlı bot yazıldı ve **sonuç kullanılamadı**: botların kalitesi
+birbirini tutmuyordu (Sekme botu 1,2 milyon, Düşen botu 0 puan).
+Oyunlar değil botlar ölçülmüş oldu. Çapa olarak ürünün kendi puan
+eşikleri (1.500 · 2.500) kullanıldı. Oyunlar arası denge karşılaştırması
+hâlâ **ölçülmemiş bir varsayım**.
+
+---
+
+## ⬅️ Ü239 · Bir koşu geçip bir koşu düşen test — 2026-09-22
+
+⚠️ **Commitlenmedi.**
+
+`hatirlatma.test.ts` · *"son kullanıma 24 saatten az kalınca ayrı bir
+hatırlatma gidiyor"* dönüşümlü davranıyordu: bir tam koşu yeşil, bir
+sonraki kırmızı. Ü230'da aynı dosyadaki bir belirsizlik SMS tavanına
+bağlanmıştı; **bu ondan başka bir şey çıktı.**
+
+### Mekanizma
+
+Hatırlatma adayları şöyle seçiliyor (`domain/hatirlatma.ts`):
+
+```
+ORDER BY c.activates_at    -- en eski kupon önce
+LIMIT 50                   -- KOSU_TAVANI
+```
+
+Fikstür kuponu `activates_at = now() - 1 dakika` ile yazılıyordu, yani
+**sıranın en sonundaydı**. Testler ile uygulama aynı veritabanını
+paylaşıyor; demo tohumu ve simülasyon bekleyen kupon biriktiriyor.
+Kuyruk elliyi geçtiği anda testin kendi kuponuna sıra hiç gelmiyor ve
+test 1 beklerken 0 buluyor — **koda hiç dokunulmadan.**
+
+Dönüşümlü olmasının sebebi de bu: her koşu kuyruktan elli tane
+eritiyor, kuyruk ellinin altına inince test yeşile dönüyordu.
+
+Ölçüldü: kuyruk **340** kupondu, koşu tavanı 50.
+
+### A/B ile kanıtlandı
+
+Kuyruk 80'e sabitlenip iki fikstür de denendi:
+
+| fikstür | kuyruk | sonuç |
+|---|---|---|
+| `now() - 1 dakika` (eski) | 80 | ✖ düştü |
+| `now() - 90 gün` (yeni) | 80 | ✔ geçti |
+
+Doksan gün önce açılmış, yarın süresi dolan bir kupon gerçekçi bir
+satır ve sıralamada hep başta. Test artık veritabanındaki birikime
+bakmıyor.
+
+⚠️ **Ürün hatası değil.** Köprü dakikada bir koşuyor: 50/dk ile
+340'lık kuyruk yedi dakikada eriyor ve sıralama doğru — en eski kupon
+önce gider. Kırılgan olan testti.
+
+⚠️ Aynı kırılganlığı taşıyan iki test daha var (`reminder_active` = 1
+bekleyenler); fikstür ortak olduğu için onlar da düzeldi.
+
+**Üç tam koşu üst üste yeşil: 690 test, 0 düşen, 0 atlanan.**
+
+---
+
+## ⬅️ Ü238 · İkonlar referanstan yeniden: neon karo — 2026-09-22
+
+⚠️ **Commitlenmedi.**
+
+Ü237'nin altı turu ürün sahibini tatmin etmedi (*"hepsi berbat oldu"*).
+Önce eskiye dönüldü — Blok Blast ve Tetris'in ikonları `git checkout`
+ile geri alındı, yılan ve bıçak yeni hâliyle kaldı. Sonra ürün sahibi
+bir **referans görsel** verdi ve iş oradan yürüdü.
+
+### Referans zinciri ilk turda tuttu
+
+Referans tek görselde beş ikon taşıyordu: koyu lacivert zemin, neon
+çerçeveli yuvarlak kare karo, canlı renkler, hareket ve kıvılcım.
+Karolar kesildi, kareye tamamlandı ve her biri fal'a **görsel
+referans** olarak verildi (`flux/dev/image-to-image`, strength 0,42).
+
+🔴 **Ders:** Ü237'de aynı iş metinle tarif edilerek altı tur denendi ve
+tutmadı. Referans görselle **tek tur** yetti. [[gorsel-uretim-dersleri]]
+bunu zaten yazıyordu; sıra ona en sonda geldi.
+
+### ⚠️ `blok` iş ortasında krediye takıldı, sonra tamamlandı
+
+`{"detail":"User is locked. Reason: TOP_UP."}` — dördü geçmiş,
+beşincisi düşmüştü. Geçici çözüm olarak `blok` doğrudan referans
+karosundan alındı (325→256, küçültme olduğu için kayıpsız). Ürün
+sahibi kredi yükleyince öbür dördü gibi üretildi: **beşi de fal
+çıktısı**, hiçbiri referansın kendisi değil.
+
+### İkonların saydamlığı kalktı, kartın beyaz kutusu da
+
+Her ikon artık kendi zemini ve çerçevesiyle gelen bir uygulama ikonu.
+Kartta 64 piksellik **beyaz** kutunun ortasında 36 piksel duruyorlardı;
+karo hem küçülüyor hem kendi neon çerçevesi beyazın içinde
+kayboluyordu — kutunun içinde kutu. Beyaz zemin kaldırıldı, karo
+kutunun kendisi oldu (`karusel.tsx`).
+
+⚠️ `overflow-hidden` şart: karonun köşeleri görselin içinde yuvarlak
+ama dışında koyu lacivert alan var; kırpılmazsa köşelerde o lacivert
+görünür.
+
+⚠️ Üretim betiği de ikiye ayrıldı: alfası olan kaynak eskisi gibi
+kırpılıp paylanıyor, **tamamı opak** olan karo olduğu gibi
+ölçekleniyor. Karoya pay eklenseydi çerçevesinin etrafında boşluk
+kalırdı.
+
+---
+
+## ⬅️ Ü237 · Oyun ikonları tek dile geçti — 2026-09-22
+
+⚠️ **Commitlenmedi.**
+
+*"Tüm oyun ikonlarını da fal ai'ye tasarlat, ortak bir dil olsun."*
+`FAL_KEY` ortamda hazırdı. Beş oyunun beşi de artık üretilmiş ikonla
+geliyor; elle çizilmiş SVG oyun ikonları silindi.
+
+### 🔴 Altı tur boşa gitti, sonra yöntem değişti
+
+| tur | model | sonuç |
+|---|---|---|
+| 1 | flux/dev | en tutarlı set; `dusen` bot, `sekme` ay gibi |
+| 2 | flux/dev | beyaz çıkartma kenarı; `blok` artı işaretine döndü |
+| 3 | flux/dev | 36 pikselde yalnızca `yilan` okunuyor |
+| 4 | recraft · 2d_art_poster | ikon değil **poster** üretti |
+| 5 | recraft · roundish_flat + handmade_3d | biri arka planlı illüstrasyon, diğeri oyun hamuru |
+| 6 | flux/dev, 1. turun stili | 3/5 iyi; `sekme` ve `bicak` yine yanlış |
+
+Ürün sahibi 6. turu görüp *"bıçak olmuş ancak bu iki ikon olmamış"*
+dedi ve doğru iki ikonu işaret etti.
+
+**Bulgu:** `sekme` ve `dusen` metinden üretime direniyor çünkü ikisi de
+bir **uzamsal ilişki** anlatıyor — "topun üstünde tuğla sırası",
+"duvarın üstünde düşen parça". Model nesneleri kusursuz çiziyor ama
+ilişkiyi kurmuyor: tuğlalar topun tepesine taç oluyor, düşen parça
+duvara karışıyordu. Kaç tur denenirse denensin aynı yere düşüyor.
+
+**Çözüm — ilişkiyi model değil kod kuruyor.** Küp ve top *tek tek*
+üretildi (aynı stil cümlesiyle, saydam zeminde), yerleşim Python'da
+yapıldı. `bicak`ta gerekmedi: orada tek nesne var.
+
+### 🔴 İlk dizilim de yetmedi — ürün sahibi haklıydı
+
+*"Yine bu ikisi olmamış, berbat olmuş. Ne olduğunu bile anlamadım,
+clock mu Tetris mi? Daha oyunu anlatan olmalı."*
+
+Doğruydu. İlk dizilimde üç ikon da **aynı malzemeden** (tek renk küp
+öbeği) kuruluyordu ve hiçbiri kendi oyununu söylemiyordu. Ürün sahibi
+ne istediğini tarif etti ve birebir uygulandı:
+
+| oyun | istenen | işareti |
+|---|---|---|
+| blok | *"renkli bloklar"* | dokuz tonlu küp kümesi |
+| dusen | *"havadan gelen bir blok"* | havadaki tek parça + hız çizgileri |
+| sekme | *"küpler ve top oraya gidiyor gibi"* | küp duvarı + top + topun yolu |
+
+**Renkler üretilmedi, türetildi.** Dokuz küp tek bir küpün tonu
+kaydırılarak yapıldı (`renkli-kup.py`): model her üretimde biraz başka
+bir küp çiziyor ve beş ikonun küpleri birbirini tutmuyordu. Parlama
+(düşük doygunluk) dokunulmadan bırakıldı — ton kaydırılsaydı beyaz
+parlama da renklenir, küp plastik olmaktan çıkardı.
+
+⚠️ Küpler arasındaki adım küpten **küçük**: bindirme olmadan ekranda
+ayrı zarlar duruyordu, tek parça okunmuyordu.
+🔴 Hız çizgileri ve topun yolu önce düz beyazdı ve **açık zeminde
+kayboldu** — ikon kartta beyaz yuvarlak kutunun içinde duruyor.
+Küpler iki zeminde de okunuyor çünkü koyu konturları var; çizgiler de
+aynı reçeteye geçti: koyu kontur + nane çekirdek. İki zeminde de
+ölçüldü.
+
+### Ölçüm: 36 pikselde okunuyor mu
+
+Asıl soru buydu ve her turda 36 piksele rasterlenip bakıldı. Ürünün
+ikonu **en fazla 36 pikselde** çiziliyor; büyük boyda güzel duran
+yumuşak 3B render orada lapa oluyor. Beş ikonun beşi de artık ayrı
+siluete sahip: küme · parça+duvar · sıra+top · yılan+elma · bıçak+kütük.
+
+### Elle çizilmiş ikonlar silindi
+
+`oyuncu-ikon.tsx` içinde dört SVG bileşen duruyordu. Ü187'de ikisi
+listeden çıkarılmış ama *"yeni bir oyunun ikonu üretilene kadar
+gerekebilirler"* diye bırakılmıştı — ve Ü221'de bu sığınak gerçekten
+işe yaradı. Artık beş oyunun beşinin de üretilmiş ikonu var: sığınağın
+koruduğu durum yok, dördü de çağrılmıyordu. Depo kuralı gereği
+silindiler (~5.000 karakter).
+
+⚠️ `URETILMIS` kümesi kaldı ve yeni oyun eklenince **oraya da bir
+satır** gerekiyor; Ü221'de unutulan yer orası.
+
+---
+
+## ⬅️ Ü236 · Bıçak elle oynandı, Sekme'nin kılavuzu bulundu — 2026-09-22
+
+⚠️ **Commitlenmedi.**
+
+Ürün sahibi Bıçak'ı ilk kez ekranda görüp altı madde saydı. Beşi
+yapıldı, biri açık kaldı.
+
+### Bıçak — yerleşim baştan yanlıştı
+
+*"Bıçaklar çok daha aşağıdan gelmeli, kullanıcı her ekrana
+dokunduğunda bıçak fırlamalı."* Haklıydı: kutu ekranın ortasındaydı ve
+sıradaki bıçak kütüğün **2 piksel** altında duruyordu. Fırlatma diye
+bir şey görünmüyordu; üstte de dev bir boşluk vardı.
+
+Referansın yerleşimine geçildi: kütük sahnenin %36'sında, bıçak
+ekranın dibinde (`HAZIR_UZAK`), arada gerçek bir yol var. Uçuş mesafesi
+**elle yazılmıyor**, yerleşim sabitlerinden türüyor (`UCUS`) — kütüğün
+yeri değişirse bıçak yolun ortasında belirmesin.
+
+⚠️ Uçan bıçak ayrı bir öge değil, **saplanan bıçağın kendisi**: ayrı
+bir "uçan bıçak" ögesi motorun saplanma anı ile ekrandaki varış anını
+iki ayrı gerçeğe bölerdi.
+
+### Bıçak — bölüme göre malzeme
+
+*"İleri bölümlerde tahta, bıçak türü değişmeli."* Dört kütük (meşe ·
+ceviz · buz · obsidiyen) ve üç bıçak (çelik · bakır · gece). Döngüler
+farklı uzunlukta, yani aynı ikili on iki bölümde bir tekrarlıyor.
+
+⚠️ Tamamen sunum: motor bölümü biliyor, malzemeyi bilmiyor.
+⚠️ Altın yok — ödül her yerde altın (Ü203 · Ü207) ve altın bir kütük
+üstündeki paketi yutardı.
+🔴 Buz kütüğü ekranda sınanıp **koyultuldu**: 7. bölümde çelik bıçakla
+eşleşiyor (4 ve 3'lük döngülerin kesişimi) ve açık mavi kütükte açık
+gri bıçak, tam duvarın geldiği bölümde okunmuyordu.
+
+### Bıçak — hız rampası dikleştirildi
+
+*"Zorluk arttıkça tahtanın dönme hızı da artmalı."* Artıyordu ama
+hissedilmiyordu: `18 + tur*3` ile tur boyunca hız ancak bir buçuk
+katına çıkıyordu. `20 + tur*4` oldu — iki katından fazla.
+⚠️ Duvarı değiştirmiyor (hızın duvarla ilgisi olmadığı Ü235'te
+ölçülmüştü); değişen şey turun hissi. Ölçüm tekrarlandı: duvar yine
+7. bölümde, tavan yine ~2.270.
+
+### 🔴 Sekme'nin nişan çizgisi hiç görünmüyordu
+
+*"Kullanıcı parmağını geri çekerek yönünü belirtiyor ya, o çizgi çizgi
+olacak şekilde belli olmalı."*
+
+Kesik çizgi ilk günden beri vardı. Önce "ince" sanıldı: boy 44'ten
+92'ye çıkarıldı, kalınlaştırıldı — **ekranda hiçbir şey değişmedi.**
+
+DOM'dan ölçüldü: çizginin uzunluğu **1,84 viewBox birimi**, yani
+ekranda **5×5 piksel**. Sebep hesapta duran bir `* 0.02` çarpanıydı;
+`olcek` zaten vektörü `uzunluk` birime normalleştiriyor, sonraki
+çarpan onu elliye bölüyordu. `uzunluk` sabiti **hiçbir zaman işe
+yaramamıştı.**
+
+Şimdi 62 birim, 2,4 px kalınlık, altında parıltı, ucunda nokta —
+ölçüldü: 178×164 piksel.
+
+**Ders: "ince duruyor" diye kalınlaştırmadan önce ölç. Sayıyı
+büyütmek, sayının hiç kullanılmadığı bir hatayı gizler.**
+
+---
+
+## ⬅️ Ü235 · Beşinci oyun: Bıçak — 2026-09-22
+
+⚠️ **Commitlenmedi.**
+
+Ürün sahibinin istediği beş oyunun ilki. Referans: Ketchapp'in **Knife
+Hit**'i (`play.google.com/store/apps/details?id=com.ketchapp.knifehit`).
+Sıra ürün sahibinin seçimi: *"Önce ödül, sonra teker teker."* Ödül
+Ü234'te bitmişti.
+
+### Neden bu oyun determinizme uygun
+
+Sekme'de (Ü217) `Math.cos`/`sin` sorunu gömülü yön tablosuyla
+çözülmüştü. Burada sorun hiç doğmuyor: oyunun tamamı **açı**. Kütüğün
+yeri bir sayı, bıçakların yeri birer sayı, çarpışma iki açının farkı.
+Trigonometri yalnızca **çizimde** var ve çizim tekrar oynatılmıyor.
+
+Açı birimi **onda bir derece** (0–3599): saniyede 20 tick ve tur başına
+900 birim hızda derece kesirli olurdu.
+
+### Girdi: sözleşmenin beşinci biçimi
+
+| oyun | girdi | zaman |
+|---|---|---|
+| blok | (teklif, satır, sütun) | yok |
+| düşen | (tick, hareket) | var |
+| sekme | (atış no, açı) | motorun içinde |
+| yılan | (tick, yön) | var + ödül işareti |
+| **bıçak** | **(tick)** | **girdinin tamamı zaman** |
+
+Oyuncunun yaptığı tek şey *ne zaman* dokunduğu; nereye dokunduğu oyunda
+yok. Sözleşmeye hiçbir şey eklenmedi.
+
+### 🔴 Duvarın sebebi iki kez yanlış teşhis edildi
+
+Ü83'ün kuralı: *"kazanarak biten bir tur yok."* İlk yazımda bölüm
+başına bıçak `min(12, 4 + tur*2)` idi ve **mükemmel oynayan bot hiç
+ölmüyordu** — 24–30 bin puan. Sebebi sırayla iki şeye yüklendi,
+ikisi de ölçümle çürüdü:
+
+| teşhis | ölçüm | sonuç |
+|---|---|---|
+| *"`CAKISMA` 130, kapasite 27"* | 130 ile de duvar **b7**'de | ✗ |
+| *"hız büyüyor, tick ızgarası kabalaşıyor"* | `EN_HIZLI` 22 ile de **b7** | ✗ |
+| **bölüm başına bıçak tavanı** | `min(12,…)` → bot **b68** | ✓ |
+
+Bağlayıcı olan **paketleme**: bıçak dönen kütüğe tick ızgarasından
+atılıyor, boşluğun tam ortasına konamıyor. Boşluklar her atışta biraz
+daha bozuk bölünüyor; ölçülen pratik sınır **16–17 bıçak**. Tavan
+(`KAPASITE` = 18) o sınırın üstünde kaldığı sürece duvar geliyor.
+
+Ölçülen ritim (40 tohum, tam tur tarayan bot): duvar **7. bölümde**
+(kırk tohumun kırkında da), tavan **~2.270 puan** — öbür oyunlarla aynı
+mertebede. Kupon eşiği (500) 3. bölümün bitiş primiyle geçiliyor
+(122 + 172 + 230 = 524), yani paket 4. bölümde beliriyor.
+
+**Beceri eğrisi** (200 tur, zamanlama sapmasına göre eşiği geçen oran):
+
+| oyuncu | ortalama | eşiği geçen |
+|---|---|---|
+| ±6 tick | 408 | %10 |
+| ±3 tick | 538 | %30 |
+| ±1 tick | 841 | %84 |
+| sapmasız | 1.916 | %98 |
+
+### 🔴 Test yanlış yeşil yandı — bekçi düzeltildi
+
+İlk yazdığım duvar testi 30 tick ileri bakan bir botla çalışıyordu ve
+bozuk sürümde de **geçti**: zayıf bot zaten 5. bölümde ölüyor, duvara
+hiç varmıyordu. Bot bir **tam tura** (200 tick — en yavaş bölümde bir
+devir) çıkarıldı; artık `min(12,…)` regresyonunda tur bitmiyor ve test
+düşüyor. Doğrulandı: bozuk sürümde kırmızı, doğru sürümde yeşil.
+
+### 🔴 Beşinci oyun görev rotasyonunu bozdu — test öngörmüştü
+
+`challenge.ts`teki not aynen şunu diyordu: *"Beşinci oyun eklendiğinde
+bu sessizce bozulur — `tests/challenge.test.ts` onu bekliyor."* Öyle
+oldu: havuz 5, oyun 5, OBEB 5. Ekranda hiçbir şey görünmezdi; yalnızca
+her oyun sonsuza kadar aynı görevle eşleşirdi.
+
+Havuz altıya çıktı (`cesit3` · 100 XP): OBEB(6, 5) = 1, döngü 30 gün.
+
+⚠️ **Kalan dört oyunda yeniden bakılacak:** 6 oyunda OBEB 6, 8'de 2,
+9'da 3 — üçü de bozuk.
+
+### Yan bulgu: "çeşit" görevi imkânsız olabiliyordu
+
+Kafe oyun kapatabiliyor ve tek sınır *"en az bir oyun açık kalmalı"*.
+İki oyun bırakan bir kafede *"3 farklı oyun"* tamamlanamazdı — ilerleme
+2'de kalır, XP hiç yazılmazdı. Delik `cesit3` ile açılmadı, `cesit2`
+ile zaten vardı (tek oyunlu kafede). Hedef artık kafenin **açık oyun
+sayısıyla** sınırlanıyor.
+
+### Dokunulan yüzeyler
+
+| yüzey | ne oldu |
+|---|---|
+| `oyunlar/bicak.ts` | motor (yeni) |
+| `arayuz/bicak-ekran.tsx` · `bicak-yuzey.ts` | ekran ve yüzey (yeni) |
+| `oyunlar/index.ts` · `arayuz/index.tsx` | iki kayıt defteri |
+| `oyunlar/katalog.ts` | "Yetişerek" kategorisi |
+| `components/oyuncu-renk.ts` | palet **nane** ile genişledi |
+| `components/oyuncu-ikon.tsx` · `oyuncu-gorsel.tsx` | ikon ve kart çizimi |
+| `app/globals.css` | `bicak-sapla` · `bicak-hazir` |
+| `domain/challenge.ts` | havuz 6, çeşit hedefi sınırlandı |
+| `scripts/simulasyon-botlar.ts` | bot |
+| `tests/oyun-motoru.test.ts` | duvar · paket · girdi · saat |
+
+### Palet çarktan genişledi
+
+Yedi tonun hepsi tutuluydu: beşi oyunlarda, ikisi (kahve, amber) kupon
+kategorilerinde — `oyuncu-renk.ts` bunları oyun rengi olarak kullanmayı
+açıkça yasaklıyor. Yeni ton uydurulmadı, **çarkın dilim listesinden**
+alındı (nane `#5eead4`). Kalan dört oyun için çarkta krem, sarı ve
+lavanta duruyor; beşincisi için çarkın kendisi büyümek zorunda.
+
+### Açık kalanlar
+
+- Ekran **hiç gerçek cihazda oynanmadı** ve tarayıcıda da görülmedi
+  (oyun ekranı giriş istiyor). Dönüş geometrisi ölçülmedi.
+- Katalog sahnesi (`public/oyun/bicak-512.webp`) yok — görsel üretimi
+  ürün sahibinin onayına bağlı. Sekme'de de aynı boşluk duruyor.
+- Sesler duyulmadı.
+
+---
+
+## ⬅️ Ü234 · Ödül dağıtımı tek kurala indi — 2026-09-21
+
+⚠️ **Commitlenmedi.**
+
+Ürün sahibi beş yeni oyun isterken şunu ekledi: *"bunların da ödül
+dağıtma algoritmasını tüm oyunlarla birlikte eksiksiz ve doğru
+kurmalıyız."* Denetim **iki ayrı ekonomi** buldu.
+
+### 🔴 Bulgu: Yılan ötekilerden kolay kupon veriyordu
+
+| oyun | ödül yolu | eşiği atlıyor mu | düşme şansı payı |
+|---|---|---|---|
+| blok · dusen · sekme | paket (`odul.ts`) | hayır | — |
+| **yilan** | `odulIsareti` (Ü91) | **evet** | **+0,35** |
+
+Yani aynı kafede Yılan oynayan müşteri **480 puanla** kupon alabiliyor,
+Blok oynayan 500'e ulaşmak zorunda kalıyordu. Üstüne düşme şansı 0,35
+puan artıyordu.
+
+### Karar: tek kural — eşik
+
+- [x] **`basariliMi` kısayolu kalktı** ✅ — `odulIsareti` parametresi
+  **silindi**, varsayılanla bırakılmadı: `basariliMi(skor, 1)` yazan
+  bir çağrı sessizce eski davranışa dönerdi, şimdi derlenmiyor.
+- [x] **`ODUL_ISARETI_PAYI` 0,35 → 0** ✅ — sabit kayıt için duruyor.
+- [x] **🔴 Yılan'ın altın yemi artık EŞİKTEN SONRA beliriyor** ✅ —
+  kapıyı kapatmak tek başına yetmezdi: eşiğin altında beliren ama
+  hiçbir şey kazandırmayan bir altın yem **yalan söyleyen** bir nesne
+  olurdu (Ü91'in *"mekaniği yalan çıkarır"* uyarısı bu kez ters
+  yönden). Ötekilerle aynı: ödül bir **teslimat anı**, tur başına bir
+  kez (`odulSirasiGeldi`).
+  ⚠️ `ODUL_ILK_YEM` ve `ODUL_YUZDE` korundu: eşik geçilse bile ödül
+  hemen çıkmıyor. Anında çıksaydı "teslimat" değil "otomatik ödeme"
+  gibi okunurdu.
+
+### Testler
+
+- [x] **Dört oyun da kare kare sınanıyor** ✅ — her adımda "ekranda ödül
+  varken skor eşiğin altında mı" sorusu. Tek kare bile öyleyse o oyun
+  ötekilerden kolay demektir.
+- [x] **Kaynak taraması** ✅ — `basariliMi`nin gövdesinde `odulIsareti`
+  geçerse test düşüyor. Parametre silindiği için yanlış çağrı zaten
+  derlenmiyor ama biri parametreyi geri koyarsa derleme yine geçerdi.
+- [x] **`dusmeSansi` işareti görmüyor** ✅
+
+⚠️ **Kendi testimde hata buldum ve düzelttim:** okuyucular `!= null`
+ile yazılmıştı, oysa `odulParcasi` bir **boolean** — `false != null`
+doğru döndüğü için her kare "ödül var" sayılıyordu. Test 1543 hatalı
+kare bildirdi, ürün hatasızdı. Yanlış okuyucu yeşil yanan testten daha
+kötü: var olmayan bir hatayı kovalatıyor.
+
+**686 test · 686 geçti** (iki ardışık koşu) · tsc/eslint/derleme temiz.
+
+### Beş yeni oyun — durum
+
+Ürün sahibinin sırası: **önce ödül, sonra teker teker.**
+
+- [x] **Balon patlatma** — referans açıldı
+  (`sites.google.com/view/ooyna/oyun/balon-patlatma`): bubble shooter.
+  ⚠️ Mekanik olarak **Sekme'ye çok yakın** — ikisinde de aşağıdan
+  yukarı nişan alıp ızgaraya atılıyor; farkı, blok canı yerine üç aynı
+  rengin patlaması. Katalogda yan yana "aynı oyun" gibi okunabilir.
+- [x] **Hafıza oyunu** — ürün sahibinin gönderdiği karede duruyor
+  (Google'ın hafıza oyunu, deniz canlıları).
+- [ ] **Knife hit** — referans yok
+- [ ] **Blok kırıcı** — referans yok
+- [ ] **Bahçe cüceleri** — referans yok
+
+⚠️ Verilen üç Google bağlantısı **birbirinin aynısı** ve Google bot
+koruması veriyor (HTTP 429). CAPTCHA aşılmadı. Bu üç oyun için doğrudan
+bağlantı gerekiyor.
+
+---
+
+## ⬅️ Ü233 · Damga ve itiraz bölümleri mobilde düzenlendi — 2026-09-21
+
+⚠️ **Commitlenmedi.**
+
+Ürün sahibi: *"bu kısım mobilde çok düz duruyor, çok görselsiz, sadece
+yazı ve karmaşık."* Ü232 bu iki bölüme masaüstünde görsel eklemişti;
+**dar ekranda ikisi de hâlâ yazı duvarıydı.**
+
+### Damga karşılaştırması · tekrar eden etiketler simgeye döndü
+
+Dar ekranda her satır şuna dönüşüyordu: konu → **DAMGA KARTI** → cümle
+→ ayraç → **LOOPLY** → cümle. Altı satır = on iki metin bloğu ve
+aralarında yirmi dört kez tekrar eden iki etiket.
+
+- [x] **Etiketler simgeye çevrildi** ✅ — kâğıt kart ve telefon. İkisi
+  de bölümün başındaki görselde duran nesnelerin küçüğü; okuyucu
+  bağlantıyı kendiliğinden kuruyor.
+- [x] **Ayraç çizgisi kalktı** ✅ — iki simge zaten iki tarafı
+  ayırıyordu; çizgi altı satırda tekrar eden fazladan bir yatay
+  çizgiydi.
+- [x] **🔴 ✓/− KULLANILMADI** ✅ — sayfanın reklam karşılaştırmasında o
+  işaretler var ama orada iddia "öteki daha kötü". Burada bölümün
+  kendi cümlesi *"doğru bir araç ve çalışıyor"*; kâğıt kartın yanına
+  eksi koymak bölümü görselle yalanlamak olurdu. Simgeler **tarif
+  ediyor**, hüküm vermiyor.
+- [x] **Etiket metni `sr-only` olarak duruyor** ✅ — simge
+  `aria-hidden` ve ekran okuyucuda iki cümlenin hangisine ait olduğu
+  belli olmalı.
+
+Ölçüldü: aynı ekranda önce iki satır görünüyordu, şimdi dört.
+
+### Kafenin aklından geçenler · dev tırnak
+
+- [x] **Her karta soluk dev tırnak** ✅ — altı kart tek sütuna dizilince
+  hepsi birbirinin aynısıydı (beyaz kutu, kalın soru, gri cevap) ve göz
+  tutunacak yer bulamıyordu.
+- [x] ⚠️ Tırnak **süs değil işaret**: kartlardaki cümleler işletmecinin
+  ağzından çıkan itirazlar ve metin zaten tırnak içinde yazılı.
+- [x] ⚠️ İlk denemede %7'ydi ve ekranda görünmüyordu; %11'e çıkarıldı.
+- [x] ⚠️ **İkon uydurulmadı** — altı itirazın her birine ayrı simge
+  çizmek soruların kendisini süse çevirirdi.
+
+**684 test · 684 geçti** · tsc/eslint/derleme temiz · 390 pikselde
+yatay taşma yok.
+
+---
+
+## ⬅️ Ü232 · Orta bölümler görselleştirildi — 2026-09-21
+
+⚠️ **Commitlenmedi.**
+
+Ürün sahibi *"Nasıl çalışır"*tan *"Ölçüm"*e kadarki bloğu gösterip
+*"bu kısmı görselleştir"* dedi. Ortak kusur aynıydı: **hepsi yalnızca
+yazıydı** ve birkaçı kendi iddiasını görselle çürütüyordu.
+
+### Nasıl çalışır · yedi adım
+
+- [x] **Her adıma kendi simgesi** ✅ — kartları ayırt eden tek şey
+  numaraydı; göz bir duvar görüyordu.
+- [x] Simgeler ürünün kendi setinden: gerçek karekod, kumanda, çark,
+  bilet, hediye. **İkisi burada çizildi** çünkü sette yoktu —
+  bekleme (kadran) ve hatırlatma (zil), aynı düz konturlu dilde.
+- [x] ⚠️ Numara **kaldırılmadı**, simge yanına geldi: numara sırayı,
+  simge adımın ne olduğunu söylüyor. Bölümün tek iddiası zaten o sıra.
+- [x] ⚠️ Karekod 26 değil 30 piksel: yoğun bir desen, aynı boyda öbür
+  simgelerden optik olarak küçük duruyordu.
+
+### Damga kartı · iki araç yan yana
+
+- [x] **Kâğıt damga kartı ile gerçek kupon kartı yan yana** ✅ — altı
+  satır karşılaştırma yapan bölüm hiçbirini göstermiyordu.
+- [x] ⚠️ Damga kartı **kötülenmedi**: dolu, düzgün, işleyen bir kart
+  çizildi (on kutucuk, altısı damgalı). Yarım yamalak bir kart,
+  bölümün *"doğru bir araç ve çalışıyor"* cümlesini görselle
+  yalanlardı.
+- [x] ⚠️ Kâğıt kart ürünün kart dilini (koyu zemin, desen,
+  illüstrasyon) **kullanmıyor**: kâğıt kâğıt gibi duruyor. Damga
+  simgesi ürünün kendi fincan çizimi (`Gorsel ad="icecek"`).
+
+### Ek satış · üç gerçek kupon
+
+- [x] **Üç kartın üçünde de ürünün gerçek kupon kartı** ✅ — metin
+  *"ürün müşterinin baktığı ekranda duruyor"* diyordu ve o ekranı
+  göstermiyordu.
+- [x] ⚠️ Kupon türü uydurulmadı: cheesecake → `tatli`, yeni içecek →
+  `soguk`, happy hour → `icecek`. Renk ve illüstrasyon türden türüyor.
+- [x] ⚠️ Kart `scale` ile küçültülüyor, yükseklik zorlanarak değil:
+  `Bilet` sabit 124 piksel ve illüstrasyonun taşma kadrajı ona ayarlı.
+
+### Ölçüm · panelin kendisi
+
+- [x] **Gerçek panel raporu, listeden ÖNCE** ✅ — *"cevabı panelde
+  duruyor"* diyen bölüm paneli göstermiyordu. Önce "işte o panel",
+  sonra "içinde şunlar var".
+- [x] **🔴 Altın çerçeve ilk denemede BASILMADI** — `overflow-hidden`
+  çocuğun gölgesini kırpıyor. Çerçeve dış kaba alındı. Aynı tuzağa
+  Ü218'de üçgen bloklarda düşülmüştü (`clip-path` gölgeyi kırpar).
+
+### Dokunulmayan
+
+**"Kafenin aklından geçenler"** metin olarak bırakıldı: altı itirazın
+her birine simge uydurmak, soruların kendisini süse çevirirdi. Cevaplar
+zaten açıkta ve okunuyor.
+
+**684 test · 684 geçti** · tsc/eslint/derleme temiz · 390 · 820 · 1440
+piksellerde sayfa baştan sona gezildi, yatay taşma yok.
+
+---
+
+## ⬅️ Ü231 · "Dürüst olalım" bölümü tamamen kaldırıldı — 2026-09-21
+
+⚠️ **Commitlenmedi.**
+
+Ürün sahibi: *"bu kısım hiç olmasın, kaldır bunu, bu çok saçma bir
+başlık."*
+
+- [x] **`vitrin-kanit.tsx` SİLİNDİ** ✅ — dosya bırakılmadı (deponun
+  kuralı: çağrısız kod bırakılmıyor). Üç görsel — yelpaze ekranlar,
+  simülasyon çubukları, dört alan → karekod → onay — git geçmişinde
+  Ü229 turunda duruyor.
+- [x] Üst menüde bu bölümün durağı zaten yoktu; **kırık çapa yok**
+  (altı durağın hepsi DOM'dan doğrulandı).
+- [x] **684 test · 684 geçti** · tsc/eslint/derleme temiz · yatay taşma
+  yok.
+
+### Bu bölümün geçmişi — üç turda üç karar
+
+| tur | karar |
+|---|---|
+| Dalga 8 | sosyal kanıt yuvası olarak açıldı: gerçek müşteri yok, uydurma referans yerine "doğrulanabilir olan" üç madde |
+| Ü228 | kaldırıldı |
+| Ü229 | görselleştirilerek geri geldi |
+| **Ü231** | **başlığı yüzünden tamamen çıktı** |
+
+⚠️ **Yuva boş.** İlk gerçek kafeler geldiğinde asıl sosyal kanıt
+buraya gelecek; uydurma referans / şişirilmiş sayı yasağı (Dalga 8) o
+gün de geçerli.
+
+⚠️ Bölümün taşıdığı **kural** kaldırılmadı: *"söylediğimiz her şey
+üründe doğrulanabilir"* Ü228'de `vitrin-olcum.tsx`e taşınmıştı ve
+orada duruyor. Sayfanın dört dosyası ona atıf yapıyor.
+
+---
+
+## ⬅️ Ü230 · Test paketi kendini zehirlemeyi bıraktı — 2026-09-21
+
+⚠️ **Commitlenmedi.**
+
+Ürün sahibi: *"SMS tavanı dediğin ne? Biz SMS göndermeyeceğiz, artık
+SMS sistemden kalktı."*
+
+### 🔴 İki şey karışmıştı, ikisi de düzeltildi
+
+**1 · SMS sistemden kalkmadı.** 2026-09-20'de ertelenen şey
+**sağlayıcı bağlantısı** ve başlık başvurusuydu; altyapı (giden mesaj
+defteri, hatırlatma seçimi, tavan) kodda duruyor ve SSS bunu vitrinde
+açıkça söylüyor: *"Şu an hayır. Hatırlatma altyapısı üründe hazır ama
+gönderim kanalı henüz açılmadı."*
+
+**2 · "Tavan" bir ürün özelliği değil, emniyet.** G14: günde en fazla
+2000 gönderim. Bir hata ya da saldırı binlerce mesaj attıramasın diye
+var; %90'da yeni kayıt durur, giriş devam eder.
+
+### Asıl kusur: testler kendi tavanlarını dolduruyordu
+
+Tavan şunu sayıyor:
+
+```sql
+SELECT count(*) FROM sms_outbox
+ WHERE status = 'sent' AND created_at > now() - interval '1 day'
+```
+
+Paketteki **her** giriş/kayıt testi gerçek bir satır yazıyor; tohum ve
+simülasyon da yazıyor. `hatirlatma.test.ts` yalnızca kendi
+satırlarını (`sms_htr_%`) siliyordu, geri kalanlar birikiyordu. Paket
+birkaç kez koşturulunca sayaç 2000'e dayanıyor, hatırlatma
+yazılamıyor ve testler 1 beklerken 0 buluyor — **koda hiç dokunmadan.**
+
+- [x] **`beforeEach` artık sayılan pencereyi de sıfırlıyor** ✅ —
+  yalnızca son bir günün `sent` satırları; tablo temizlenmiyor.
+  Kapsam dışı satır silmek bu pakette zaten kurulu bir kalıp (bir
+  satır yukarıda `rate_limits` tamamen siliniyor).
+- [x] **İki ardışık tam koşu: 684/684 · 0 düştü** ✅ — önceki hâlinde
+  ikinci koşu 3 düşüyordu.
+- [x] Ü227'de açılan *"testler ayrı veritabanı istiyor"* maddesi
+  **kapandı** — asıl sorun paylaşılan veritabanı değil, testin kendi
+  bıraktığı artıktı.
+
+⚠️ Madde 37 (`sms_outbox` saklama süresi) **açık kalıyor**: tabloda
+7.500'den fazla satır var ve genel temizlik kararı hâlâ verilmedi. Bu
+düzeltme yalnızca testin saydığı pencereyi ilgilendiriyor.
+
+---
+
+## ⬅️ Ü229 · "Dürüst olalım" görselleştirilerek geri geldi — 2026-09-21
+
+> ⏸️ **Ü231'de GEÇERSİZ:** bölüm tamamen kaldırıldı. Aşağısı kayıt için duruyor.
+
+⚠️ **Commitlenmedi.**
+
+Ürün sahibi bölümü tekrar göndererek *"bu kısmı da daha da
+görselleştirmeliyiz"* dedi. Bölüm bir tur önce (Ü228) yine onun
+kararıyla kaldırılmıştı; geri getirildi ve **kaldırılmadan önceki
+hâlinden farklı** döndü.
+
+### 🔴 Kanıt bölümünün kanıtı yoktu
+
+Üç iddia ediyordu ve üçünü de yalnızca **yazıyordu** — yani
+*"ekranlarımız gerçek"* diyen bir bölüm hiçbir ekran göstermiyordu.
+Bir kanıt bölümünün kanıtsız olması, bölümün kendi iddiasına düşen en
+kötü hata.
+
+Her kartın üstünde artık iddiasının karşılığı duruyor
+(`vitrin-kanit.tsx`):
+
+- [x] **"Ekranların hepsi gerçek"** → yelpaze gibi açılmış üç gerçek
+  ekran görüntüsü (çark · oyuncu paneli · Ödüllerim). Ü221'de hepsi
+  çalışan uygulamadan yeniden çekilmişti; burada aynı dosyalar.
+- [x] **"Hesabı sen yapıyorsun"** → simülasyonun **kendi** oynayan
+  çubukları (`sim-cubuk`, `sim-yuzde`) ve kendi etiketleri. Yeni bir
+  animasyon yazmak, aynı şeyin ikinci bir taklidini üretmek olurdu.
+  ⚠️ Yüzde yerine *"•••"* duruyor ve bu tasarımın kendisi: rakam
+  yazmama kararı Ü142'den geliyor.
+- [x] **"Sözümüz dar"** → dört alan → **gerçek** karekod → kasada onay.
+  Karekod `Karekod` bileşeninin ürettiği okunabilir bir kod, dokuz
+  kutucuklu soyut desen değil (aynı karar Ü154'te kaydırmalı sahne
+  için verilmişti).
+
+⚠️ Görsel **kartın üstünde ve kendi bandında**: metnin yanına
+sıkıştırılsaydı *"buraya bir ikon koyduk"* diye okunurdu (Ü181).
+Bant sabit 132 piksel — üç kart farklı türde görsel taşıyor ve doğal
+boyları tutmuyor.
+
+⚠️ Bölüm `page.tsx`in içinden çıkıp **kendi dosyasına** taşındı; diğer
+vitrin bölümleriyle aynı düzen.
+
+⚠️ Ü228'de kural `vitrin-olcum.tsx`e taşınmıştı; orada kalıyor. İki
+bölüm de aynı şeyi söylüyor ve tekrar değil: biri sayfanın söylediği
+her şeyin doğrulanabilir olduğunu, öteki ürünün **ölçmediği** şeyi.
+
+**684 test · 681 geçti · 3 düştü** — üçü de Ü227'de yazılı SMS tavanı
+(kod değil, veritabanı durumu). Mobil ve masaüstünde yatay taşma yok.
+
+---
+
+## ⬅️ Ü228 · İki bölüm kaldırıldı — 2026-09-21
+
+⚠️ **Commitlenmedi.**
+
+Ürün sahibi iki bölümü göstererek *"bunu kaldıralım / bunu da
+kaldıralım"* dedi.
+
+### 1 · *"Sorun — Kafenin müşterisi geliyor. Ama sonra ne oluyor?"*
+
+- [x] **`vitrin-itiraz.tsx` SİLİNDİ** ✅ — dosya bırakılmadı. Bu deponun
+  kendi kuralı: *"çağrısız kod bırakmak dört kez düşülen tuzağın ta
+  kendisi — duruyor, derleniyor, kimse çalışmadığını fark etmiyor."*
+  Geri gerekirse git geçmişinde duruyor.
+- [x] **Üst menüden *"Sorun"* durağı çıktı** ✅ — hedefi olmayan bir
+  bağlantı tıklayanı sayfanın ortasına atardı. Altı durak kaldı;
+  hepsinin hedefi DOM'da doğrulandı (kırık çapa yok).
+- [x] **Ü200'ün soru–cevap çifti kaygısı kendiliğinden çözüldü** ✅ —
+  soru bölümü gidince `VitrinDongusu` havada kalan bir cevabı değil,
+  kendi başına duran bir anlatıyı taşıyor. (Ü227'de maskot araya
+  girdiği için bu kaygı açık bir bedeldi; artık yok.)
+- [x] **Argüman tamamen kaybolmadı** ✅ — *"reklamdan sonra ne oluyor"*
+  reklam karşılaştırması bölümünde, indirim ölçümü **Ölçüm**
+  bölümünde duruyor.
+
+### 2 · *"Dürüst olalım — Burada müşteri yorumu görmeyeceksin."*
+
+- [x] **`SosyalKanit` ve `Kanit` `page.tsx`ten silindi** ✅
+- [x] **🔴 Bölümün taşıdığı KURAL kaldırılmadı, taşındı** ✅ —
+  *"söylediğimiz her şey üründe doğrulanabilir"* cümlesi Dalga 8'den
+  beri o bölümün başındaydı ve sayfanın dört ayrı dosyası ona atıf
+  yapıyordu (`vitrin-loopy`, `vitrin-itirazlar`, `vitrin-yaklasma`,
+  `vitrin-olcum`). Kural artık `vitrin-olcum.tsx`te yazılı — ürünün
+  sınırını (ciro ölçülmüyor) söyleyen bölüm, kuralın doğal evi.
+  Dört atıf da güncellendi; silinen bir şeye işaret eden yorum
+  kalmadı.
+- [x] ~~**Sosyal kanıt yuvası boş kaldı**~~ — ⏸️ **Ü229'da GERİ ALINDI:**
+  ürün sahibi bölümü görselleştirerek geri istedi. Uydurma
+  referans/şişirilmiş sayı yasağı (Dalga 8) hâlâ geçerli; yuva ilk
+  gerçek kafeler gelince asıl sosyal kanıtla dolacak.
+
+⚠️ Referans dosyasında (`CafePlay_…_Final.html`) iki bölümün de
+karşılığı vardı (`problem` ve `section dark`). Ü220'de içerik listesi
+ona göre kurulmuştu; bu iki madde artık listeden ayrılıyor — sonraki
+karar ürün sahibinin.
+
+**684 test · 681 geçti · 3 düştü** — üçü de `hatirlatma` tarafında ve
+sebebi Ü227'de yazılı SMS tavanı (kod değil, veritabanı durumu). tsc,
+eslint ve derleme temiz.
+
+---
+
+## ⬅️ Ü227 · Maskot ile Sorun yer değiştirdi — 2026-09-21
+
+⚠️ **Commitlenmedi.**
+
+Ürün sahibi: *"bunlar yer değiştirsin."* Yeni sıra:
+
+> Bir kere gelen müşteri → **Sorun** → **Maskot** → Nasıl çalışır
+
+- [x] **Takas uygulandı** ✅
+- [x] **`VitrinItiraz` zemini fildişi → cukur** ✅ — üstündeki *"Bir kere
+  gelen müşteri"* fildişi ve ikisi arka arkaya gelince tek bölüm gibi
+  okunuyordu. (Ü219'da maskot tam bu ikisini ayırmak için oraya
+  konmuştu; taşınınca ayırma işi zemine kaldı.) Kartları beyaz olduğu
+  için bölüm renksiz zemine konamıyor.
+- [x] Yeni ritim ölçüldü: `#f7f2e8` → `#f2f2f2` → beyaz → beyaz. Son iki
+  beyaz yan yana ama maskot bölümünün içi kocaman bir lacivert kart,
+  sınır görünüyor.
+
+### ⚠️ Ü200'ün kuralı bilerek çiğnendi
+
+Ü200 şunu yazmıştı: *"itiraz bölümü soruları soruyor, döngü bölümü
+cevabı veriyor; araya başka bir şey girerse soru havada kalıyor."*
+Yeni sırada maskot tam ikisinin arasında. Karar ürün sahibinin; bedeli
+şu: *"Sorun her zaman kafenin kendisi değil…"* cümlesiyle biten bölümün
+cevabı bir bölüm sonra geliyor.
+
+### 🔴 Test paketi kendi veritabanını kirletiyor
+
+Bu turda 3 test düştü ve **sebebi kod değil**:
+
+```
+"sms global tavan engeli","gonderilen":1800,"tavan":2000
+```
+
+Global günlük SMS tavanı (G14) `sms_outbox` içindeki son 24 saatlik
+`sent` satırlarını sayıyor. Hatırlatma testleri gerçekten satır
+yazıyor, yani **paketi her tam koşuş tavanı tüketiyor**; bugün beş kez
+koşturuldu ve 1800/2000'e gelindi. Tavan dolunca hatırlatma
+yazılamıyor, testler 1 beklerken 0 buluyor.
+
+- [x] ~~**Testler ayrı veritabanı istiyor**~~ ✅ **Ü230'da ÇÖZÜLDÜ** —
+  asıl sorun paylaşılan veritabanı değil, testin kendi bıraktığı
+  artıktı. `hatirlatma.test.ts` artık sayılan pencereyi de
+  sıfırlıyor; iki ardışık tam koşu 684/684.
+- [ ] Madde 37 (`sms_outbox` saklama süresi) ile aynı tabloya bakıyor —
+  tabloda 7.579 satır birikmiş.
+
+---
+
+## ⬅️ Ü226 · Sahne kutusuna altın çerçeve — 2026-09-21
+
+⚠️ **Commitlenmedi.**
+
+Ürün sahibi: *"dışına çerçeve ekle ve daha dikkat çekici yap."*
+
+- [x] **Çift katlı altın çerçeve** ✅ — 2,5 piksellik altın sınır ve onun
+  **dışında** 11 piksellik soluk altın hale; altta derinleşen düşme
+  gölgesi. Üçü de tek `box-shadow` zincirinde.
+- [x] **🔴 `border` KULLANILMADI, `box-shadow` kullanıldı** ✅ — kenarlık
+  kutunun ölçüsünü büyütür ve Ü225'te dört evrede ölçülen
+  "telefonla çakışma yok" sonucu bozulurdu. Gölge yayılması düzeni hiç
+  etkilemiyor; kutu 460×386'da kaldı.
+- [x] **Altın tesadüf değil** ✅ — lacivert üstünde sayfanın kurulu
+  eşleşmesi (`--color-odul`); üst etiketler, ölçüm kutusu ve maskot
+  bölümü de bu çiftte.
+
+İki zeminde de doğrulandı: bulanık kafe fotoğrafının üstünde (1. adım)
+ve lacivert alanda (4. adım).
+
+---
+
+## ⬅️ Ü225 · Kaydırmalı sahne büyütüldü — 2026-09-21
+
+⚠️ **Commitlenmedi.**
+
+Ürün sahibi: *"bu ekranlarda çıkan görseller ve bilgiler daha dikkat
+çekici, daha büyük, daha müşteriyi okutacak şekilde olsun."*
+
+### 🔴 Sorun boyut değil, KONTRAST'tı
+
+Yan kutu `bg-vitrin-fildisi/95` idi ve sahnenin zemini de fildişi —
+**kutu zeminle aynı renkteydi.** Arkadaki bulanık kafe fotoğrafı da açık
+tonlu. Kutuyu büyütmek tek başına çözmezdi; görünmemesinin sebebi
+kontrastın yokluğuydu.
+
+- [x] **Kutu lacivert oldu** ✅ — hem fotoğrafın üstünde hem fildişi
+  zeminde ayrılıyor. Sayfanın başka yerlerinde (simülasyon, maskot)
+  zaten kullanılan cihaz; yeni bir dil icat edilmedi.
+- [x] **Genişlik 370 → 460, dolgu 7/6 → 9/8** ✅ — 1440'ta telefonla
+  çakışma yok (dört evrede de ölçüldü).
+- [x] **Başlık 23 → 31, gövde 15 → 17 piksel** ✅ — üç kademeli
+  (`sm`/`lg`), çünkü aynı bileşen mobildeki dar adım kartında da
+  kullanılıyor.
+- [x] **Adım numarası** ✅ — altın rozet. Numara boyut değil **beklenti**
+  veriyor: *"dört tane var, biri bu"* diyen bir kutu bitirilmek
+  isteniyor; numarasız kutu ne kadar büyük olursa olsun atlanabiliyor.
+  ⚠️ Mobilde `sira` VERİLMİYOR: adım yolunun kendi rozeti zaten var ve
+  ikisi birden basılınca aynı sayı kartta iki kez göründü (ilk denemede
+  oldu, ekran görüntüsünde yakalandı).
+
+### Mobildeki mini sahneler de büyüdü
+
+Asıl küçük kalan yer orasıydı: 58 piksellik bantta telefonun içindeki
+oyun ekranı seçilmiyordu.
+
+- [x] **Bant 58 → 92 px** ✅
+- [x] **Mini telefon 38×68 → 58×104 px** ✅
+- [x] **Mini karekod 44 → 66 px** ✅
+- [x] **Kazıma kartı 44×112 → 64×160 px** ✅ (içindeki "25 TL" 11 → 15 px)
+- [x] **Sonsuz ilmeği 40×76 → 56×108 px** ✅
+
+**684 test · 684 geçti** · tsc/eslint/derleme temiz · 390 · 820 · 1440
+piksellerde sayfa baştan sona gezildi, yatay taşma yok.
+
+---
+
+## ⬅️ Ü224 · Seri kartı her zaman koyu — 2026-09-21
+
+⚠️ **Commitlenmedi.**
+
+Ürün sahibi yeni çekilen vitrin karesine bakıp *"biz streak kartımızı da
+güncellemiştik, neden eski duruyor"* dedi.
+
+### 🔴 Kart eski değildi — YANLIŞ HÂLİ yakalanmıştı
+
+Ü188'den beri kartın **iki hâli** var: bugün oynanmışsa sakin beyaz,
+oynanmamışsa koyu kart + ateşte koşan Loopy (Ü189). Karede beyaz hâl
+vardı.
+
+⚠️ **Sebebi ölçüm hatası değil, benim hatam:** giriş yapmadan önce
+misafir olarak Yılan ve Sekme oynadım; giriş yapınca o turlar hesaba
+işlendi (*"kazandığın ödül sonucunla birlikte saklanır"*) ve seri bugüne
+düştü, kart sakin hâle geçti. Demo tohumu zaten **bilerek** "bugün
+oynanmamış" kuruyor (`tohum-demo-oyuncu.ts`: *"seri risk altında, bugün
+oyna"*). `npm run db:demo` ile hesap tazelendi.
+
+### Karar: *"her zaman böyle olsun"*
+
+- [x] **Kart her iki hâlde de koyu** ✅ — Ü188'in *"sakin hâli beyaz
+  KALIYOR"* kararı geri alındı. Gerekçe ürün sahibinin okuması: beyaz
+  kart **güncellenmemiş** gibi görünüyor. Kullanıcının kartı nasıl
+  okuduğu, bizim ona yüklediğimiz anlamdan önce gelir.
+- [x] **Risk işareti silinmedi, TAŞINDI** ✅ — Ü188'in kaygısı
+  (*"koyuya çevirmek 'bir şey yap' demenin tek işaretini silerdi"*)
+  gerçekti. İşaret artık kartın renginde değil: **dalga vurgusu**
+  (riskte kırmızı · sakinde altın), **cümle** ve **okun parlaklığı**
+  söylüyor.
+- [x] **Küçük alev simgesi kalktı** ✅ — kartta zaten kocaman bir alev
+  var; Ü188'de yalnızca sakin hâlde duruyordu çünkü o hâlde büyük görsel
+  yoktu.
+- [x] **`oyuncu-panel.png` yeniden çekildi** ✅ — 14 günlük seri, risk
+  hâli, ateşte koşan Loopy karede.
+
+---
+
+## ⬅️ Ü221–Ü223 · Vitrinin görselleri güncellendi — 2026-09-21
+
+⚠️ **Commitlenmedi.**
+
+Ürün sahibi: *"sitemizde görseller hatalı, biz oyun kısmımızın
+görsellerini arayüzünü falan güncelledik ya, şu an öyle değil… bu
+landing page'de kullandığımız tüm görsellerden, havadan uçan kuponlar
+falan da dahil."*
+
+### Vitrindeki beş ekran görüntüsünün BEŞİ DE eskiydi
+
+Hepsi 16 Eylül'den kalmaydı; aradaki turlar (Loopy'nin çarkı çevirmesi,
+Yılan'ın baştan yazılması, Loopy'nin oyuncu ekranlarına girmesi) hiçbiri
+vitrine yansımamıştı.
+
+- [x] **`cark.png`** ✅ — Loopy çarkı itiyor (Ü193/197/198 vitrinde yoktu)
+- [x] **`oyun-yilan.png`** ✅ — nane yeşili ızgara ve ok tuşları gitti;
+  çim tahtası, mavi yılan, elma, neon duvarlar (Ü215)
+- [x] **`oyuncu-panel.png`** ✅ — kalp tutan Loopy, konuşma balonu,
+  avatar yuvası düğmesi
+- [x] **`oduller.png`** ✅ — göz kırpan Loopy + iki gerçek kupon kartı
+- [x] **`rapor.png`** ✅ — yeni menü (Kampanyalar · Çark · Şubeler) ve
+  logo; eskisinde düz yazı "Looply" vardı
+
+Beşi de **misafir akışından ya da gerçek oturumdan**, 390×844 (rapor
+1320×880), geliştirme rozeti gizlenerek çekildi.
+
+⚠️ **Ad "Buse" çıktı, "Abdulkadir" değil.** Vitrin görsellerinde
+Abdulkadir kullanma kuralı var ama demo hesabının adı tohumda sabit
+(`tohum-demo-oyuncu.ts` → `const AD = "Buse"`) ve üründe adı
+değiştirecek bir ekran yok. Ürün sahibi isterse tohum adı değiştirilip
+iki kare yeniden çekilir.
+
+⚠️ **Çekim için demo hesabına giriş yapıldı** (ürün sahibi bu iş için
+izin verdi). Oyuncu girişi telefon + **parola** istiyor; kafe yöneticisi
+girişi telefon + tek kullanımlık kod (kod uygulamanın kendi geliştirme
+defterinden okundu).
+
+### 🔴 Bir tur, Next'in görsel önbelleğine gitti
+
+Dosyalar değişti, ham `fetch` yeni baytları verdi, sayfa hâlâ eskisini
+gösterdi. Sebep: **`.next/dev/cache/images`** — `.next/cache/images`
+değil (Next 16 · Turbopack). Üstelik her genişlik varyantı ayrı anahtar:
+`?w=640` bayatken `?w=750` yeni geliyordu, yani "ham dosya yeni" kanıt
+değil.
+
+### Ü221 · Sekme'nin hiç görseli yokmuş
+
+- [x] **`sekme` çizimi** ✅ — Ü217'de oyun eklendi, çizimi eklenmedi ve
+  `oyunGorseli` tanımadığı kimliği **sessizce `blok`a düşürüyor**:
+  katalogda, oyun kabuğunda ve misafir ekranında Sekme **Blok'un
+  çizimiyle** duruyordu. Üstte sıra + bir üçgen (Ü218), sağ duvardan
+  sekerek çıkan top; sekme yönü gerçek yansıma.
+- [x] **`SekmeIkonu`** ✅ — jenerik daireye düşüyordu. `OYUN_IKONU`
+  haritası tam bu durum için duruyordu ve ilk kez gerçekten gerekti.
+- [ ] **Sekme'nin üretilmiş sahnesi yok** — diğer üç oyunun katalog
+  kartında parlak neon sahne var (`public/oyun/*-512.webp`), Sekme'de
+  yok. Görsel üretimi ürün sahibinin onayına bağlı.
+
+### Ü222 · "Kafe A · Kafe A"
+
+- [x] **Künye kuralı tek yerde** ✅ — `masaKunyesi()`. Bu bir veri
+  hatası değil: göç 0038 kafenin **kendi** karekodunun etiketini bilerek
+  kafe adı yapıyor (`domain/masa-yonetim.ts`); ekran onu ikinci kez
+  basıyordu. İki yerde geçiyordu: `/hemen` künyesi ve `/oyna` durum
+  şeridi.
+
+### Ü223 · Havada uçan kuponlar gerçek kupon kartı oldu
+
+- [x] **`<Bilet sus>`** ✅ — kaydırmalı sahnedeki yağan kartlar biletin
+  **taklidiydi**: beyaz kutu, altın simge, tek satır yazı. Ürünün
+  gerçek kuponu Ü72'den beri koyu doygun zeminli, desenli ve üstünde
+  **Loopy ödülü yaşıyor** (Ü189). Vitrin, sayfanın kendi kuralını
+  çiğniyordu: *"ekranların hepsi gerçek"*.
+- [x] **Süs kipi neden gerekti** ✅ — `Bilet` bir `<Link>`; yağmurda 14
+  tıklanabilir bağlantı olurdu. `sonuk` kipi bağlantısız ama yanında
+  siyah perde ve doygunluk düşüşü getiriyor — taze kuponu sönük
+  göstermek yanlış olurdu.
+- [x] **Kupon türü uydurulmadı** ✅ — her başlığa ürünün kendi beş
+  türünden biri (`KuponGorseli`); renk ve illüstrasyon ondan türüyor.
+- [x] **Uydurma kafe adı yok** ✅ — kartta "Kafende", tarih yerine
+  "yarın kullan".
+
+**684 test · 684 geçti · 0 düştü** · tsc/eslint temiz · mobil ve
+masaüstünde yatay taşma yok (sayfa baştan sona gezilerek ölçüldü).
+
+---
+
+## ⬅️ Ü220 · Vitrinin içerik listesi referansa çekildi — 2026-09-21
+
+⚠️ **Commitlenmedi.**
+
+Ürün sahibi kendi hazırladığı `CafePlay_Kafe_Landing_Page_Mobil_First_Final.html`
+dosyasını verdi: *"landing pagemizdeki içerik listesi bunun gibi olsun,
+başlıklar da böyle."*
+
+Referansın yapısı çıkarıldı (13 bölüm, 28 başlık) ve bizimkiyle
+karşılaştırıldı. **Omurga zaten aynı sıradaydı** — sorun → çözüm → merak
+→ ek satış → sosyal kanıt → SSS → kapanış. Üç bölüm ve üst menü eksikti.
+
+### Eklenenler
+
+- [x] **Üst menüye bölüm bağlantıları** ✅ — `vitrin-ust.tsx`, yedi durak.
+  ⚠️ Adresler `/#...` ile **mutlak**: şerit simülasyon sayfasında da
+  duruyor ve oradaki `#sorun` hiçbir yere gitmez.
+  ⚠️ Dar ekranda gizli (`hidden lg:flex`) — referansın mobil hâli de
+  aynı kararı vermiş; 1024 pikselde ölçüldü, taşma yok.
+- [x] **`vitrin-damga.tsx` · *"Biz zaten damga kartı veriyoruz."*** ✅ —
+  altı satırlık karşılaştırma. Bizde **hiç yoktu** ve eksikliği ciddi:
+  Türkiye'de kafenin sadakat aracı büyük ölçüde damga kartı, işletmeci
+  Looply'yi elindeki kartla karşılaştırarak değerlendiriyor.
+  ⚠️ Her satırın bir **konusu** var; referans iki sütunu yan yana dizip
+  bırakıyordu ve konu yazılmayınca karşılaştırma iki ayrı iddia gibi
+  okunuyordu.
+  ⚠️ Sağ hücre **vurgulu değil** — birini kutulayıp öbürünü açıkta
+  bırakmak, kararı bizim verdiğimizi söylerdi.
+- [x] **`vitrin-itirazlar.tsx` · *"Peki bunu benim kafede kullanırlar
+  mı?"*** ✅ — altı itiraz, cevapları açıkta.
+  ⚠️ SSS ile **birleştirilmedi**: SSS bilgi sorusu soruyor ("POS
+  gerekiyor mu"), burası satın alma itirazı ("kârım düşmez mi"). Ayrıca
+  itiraz kapalı akordeonda dururken hiç açılmaz — okuyucu onu henüz
+  dile getirmemiş.
+- [x] **`vitrin-olcum.tsx` · *"Looply bana ne kazandırdı?"*** ✅ — altı
+  ölçülen + **ölçmediğimiz şey** kutusu.
+  🔴 Asıl mesele buydu: *"satışını otomatik ölçmüyoruz"* cümlesi SSS'in
+  **kapalı** bir akordeonunun içindeydi. İşletmeci bunu bizden duymazsa
+  ilk ay sonunda kendisi fark ediyor ve güven bir kez kırılıyor.
+
+### Başlıklar referansın ifadesine çekildi
+
+- [x] "Müşterin geliyor" → **"Kafenin müşterisi geliyor. Ama sonra ne
+  oluyor?"** ✅
+- [x] "…için sebep bırak" → **"…için bir sebep oluştur."** ✅ · etiket
+  "Looply döngüsü" → **"Nasıl çalışır"** (menüyle aynı ad)
+- [x] "Aklındaki soruyu şimdi" → **"Aklındaki itirazları daha baştan
+  cevaplayalım."** ✅
+- [x] Merak bölümüne kapanış cümlesi: **"Merak, müşterinin yarınını
+  düşünmesini sağlar."** ✅ — referansta vardı, bizde mekanizma
+  anlatılıyor ama **neden önemli olduğu** yazılmıyordu.
+
+### Kahraman — ürün sahibi *"ikisi birden"* dedi
+
+- [x] Dev başlık **"Oyna. Kazan. Geri gel."** kaldı; altına referansın
+  H1'i ikinci satır olarak girdi ✅. Üçlü yapı:
+  slogan (ne yapıyoruz) → **soru** (işletmecinin derdi) → cevap (nasıl
+  çözüyoruz). Soru cevaptan **önce**: sloganın ardından vaat okumak,
+  sorulmamış bir soruya cevap vermek olurdu.
+
+### Değişmeyenler ve sebebi
+
+Referansta olmayan bölümler **kaldı** (ürün sahibi: *"uygunluğa göre
+ekleyelim veya bazılarıyla değiştirelim"*): kaydırmalı QR sahnesi,
+simülasyon çağrısı (Ü156'da *"en önemli araçlarımızdan biri"*), "Kimler
+için", reklam karşılaştırması, "Kullanmazsan ne kaybedersin" (Dalga 8'de
+ürün sahibinin verdiği sıranın son maddesi).
+
+Sosyal kanıt başlığı da bizimki kaldı: referanstaki *"Rakamları
+kazandıkça buraya koy"* müşteriye değil kendine yazılmış bir not.
+
+⚠️ **Damga kartı bölümünde hatırlatma satırı ürünün BUGÜNKÜ hâline göre
+yazıldı.** Referans *"dijital hatırlatmalar gönderilebilir"* diyordu;
+bizde altyapı hazır ama **kanal kapalı** (2026-09-20) ve SSS bunu açıkça
+söylüyor. Vitrinde olmayan bir kanalı anlatmak, üç bölüm aşağıda SSS'in
+"hayır" demesi demekti.
+
+---
+
+## ⬅️ Ü219 · Vitrine Loopy — 2026-09-21
+
+⚠️ **Commitlenmedi.**
+
+Ürün sahibinin sıralı planının son maddesi: *"landing pageye loopy
+ekleyelim."* Vitrinde maskot **hiç yoktu** — altı ürün görüntüsü, iki
+fotoğraf, bir logo; ürünün müşteriye gösterdiği tek yüz sayfanın
+hiçbir yerinde görünmüyordu.
+
+- [x] **`vitrin-loopy.tsx` · maskot bölümü** ✅ — *"Kafende bir de Loopy
+  çalışıyor."* Üç karşılaşma anı (masada karşılar · çarkı o çeviriyor ·
+  kuponu onun elinden alır) ve altısı farklı renkte Loopy şeridi.
+  Üç iddia da üründe doğrulanabilir: `/hemen`, `components/cark.tsx`,
+  `/oduller`.
+- [x] **Kombinasyon sayısı SAYILIYOR, yazılmıyor** ✅ —
+  `GOVDE_RENKLERI.size × SERIT_RENKLERI.size` = 1.452. Elle yazılan her
+  sayı, palet büyüdüğü gün yalan oluyor.
+- [x] **Kahramanda, kapanışta ve yapışkan şeritte Loopy** ✅
+- [x] **Yeri iki fildişi bölümün arası** ✅ — *"Bir kere gelen müşteri"*
+  ve `VitrinItiraz` arka arkaya fildişiydi; göz onları tek bölüm olarak
+  okuyordu.
+- [x] **🔴 Zemin lacivert KART** ✅ — karakterin buharı ve gölgesi koyu
+  ekranlar için üretildi; `loopy-golge` tam olarak
+  `--color-vitrin-lacivert` tonunda (rgba(16,32,77,.3)), yani koyu
+  kartta kayboluyor ve karakter havada duruyor.
+
+### Ürün sahibi: *"Loopy'mizin daha mutlu olması lazım, şu an hepsinde dümdüz duruyor"*
+
+- [x] **Kareler değişti** ✅ — kusurun adı zaten kodda yazılıydı:
+  `sakin`in **ağzı düz bir çizgi** (`loopy-sozu.tsx`). Kahraman ve
+  kapanış artık `kuponlu` (göz kırpıyor, ağzı açık gülüyor, elinde
+  yıldız), maskot portresi `keyifli`, küçükler `neseli`.
+- [x] **⚠️ `mutlu` kullanılamadı ve sebebi ölçüldü** — kıvılcımları sabit
+  piksel (±78) ve karakterin boyuyla ölçeklenmiyor; 104 pikselde
+  karakterin iki katı uzağa saçılıyor. Kare ayrıca ~22° eğik ve sabit
+  dururken devrilme okunuyor (Ü176).
+- [x] **56 pikselde yalnızca `durgun` kareler** ✅ — aynı sebep.
+
+### `Avatar`da iki düzeltme
+
+- [x] **`oncelik` propu** ✅ — "büyükse ekranın üstündedir" tahmini
+  vitrinde **iki yönden birden** yanılıyordu: kahramandaki 104 piksellik
+  Loopy sayfanın ilk boyası, maskot bölümündeki 236 piksellik olan
+  ekranlarca aşağıda.
+- [x] **🔴 Buhar geometrisi — Ü182'den beri YANLIŞTI** ✅ — `buhar` propunu
+  bugüne kadar hiçbir ekran açmamıştı, yani hiç görülmemişti. Yorumda
+  *"karakterin tepesi karenin ~%17'sinde"* yazıyordu; alfa ölçüldü ve
+  ilk dolu satır **%20,9**. Kutu ayrıca kareden uzun ve resim alta
+  yaslı → kapak kutunun %25,4'ünde. Buhar 13 puan yukarıda doğuyordu:
+  228 pikselde 31 piksel, bardakla arasında boşluk olan iki nokta gibi.
+  `top: 12%` → `25%`.
+- [x] **Buharın ölçüleri orana çevrildi** ✅ — 9px tutam, 2.5px
+  bulanıklık, −34px yükseliş yalnızca ~228 pikselde doğruydu. Oranlar
+  (0.04 · 0.011 · 0.15) o boyda birebir aynı pikselleri veriyor, yani
+  görüntü değişmiyor; `--loopy-boy` ile ölçeklenebilir oluyor.
+- [x] **Buhar tutamları yatayda 2,6 puan sağa kaçıyordu** ✅ — kapağın
+  yatay ortası karenin %50'si değil **%47,4'ü** (ölçüldü).
+
+⚠️ **Kıvılcım ve kalp ölçüleri BİLEREK ellenmedi.** Aynı sabit-piksel
+kusuru onlarda da var ama `mutlu` ve `keyifli` oyuncu ekranlarında
+**kullanımda**: oranlamak, ürün sahibinin onayladığı ekranları
+görmeden değiştirmek olurdu. Hangi boya göre ayarlandıkları belli değil
+ve bu ayrı bir iş.
+
+---
+
+## ⬅️ Ü218 · Sekme: geri çekme, üçgenler, tam cam — 2026-09-21
+
+⚠️ **Commitlenmedi.**
+
+Ürün sahibi Sekme'yi görünce üç şey söyledi.
+
+### 1 · *"Parmağıyla geri çekerek kullanıcı isabet almalı"*
+
+- [x] **Nişan artık sürüklemenin TERSİ** ✅ — parmak aşağı çekildikçe
+  top yukarı gidiyor. İlk sürüm "nereye dokunursan oraya gider"di ve
+  iki sebeple yanlıştı: **sapan metaforu yok** (geri çekmek atışı
+  bedende hissettiriyor) ve **parmak hedefi kapatıyor** (işaret
+  ederken parmak tam nişan aldığın bloğun üstünde duruyor).
+
+### 2 · *"Bazı küpler yarım olmalı üçgen şeklinde"*
+
+- [x] **Üçgen bloklar** ✅ — hücrenin yarısını kaplıyor, dört yönde.
+  Gerçek oyunda da var ve oyunun asıl derinliği orada: köşeye sıkışmış
+  blokları ancak köşegenden sektirerek vurabiliyorsun.
+- [x] **🔴 Yansıma bileşen takası** ✅ — `/` için `(vx,vy) → (−vy,−vx)`,
+  `\` için `(vy,vx)`. 45°'lik bir yüzeyin yansıması tam olarak budur ve
+  **saf tam sayı işlemi**; kök ya da trigonometri gerekmiyor,
+  determinizm bozulmuyor (Ü217'nin kuralı).
+- [x] **Hipotenüse uzaklık kök almadan** ✅ — `|d|/√2 ≤ TOP_R` yerine
+  `d² ≤ 2·TOP_R²`. Tam sayıda birebir aynı karar.
+- [x] **Boş yarıda çarpışma YOK** ✅ — üçgenin olmayan tarafından
+  sektirmek oyunu yalan söylerdi.
+- [x] **İlk üç turda üçgen yok** ✅ — öğrenme turu (docs/03). Oran
+  sonra sabit %28; artan bir oran tahtayı köşegene çevirip nişan
+  almayı kumara dönüştürürdü.
+- [x] **Kırpma yolu motorun "dolu taraf" tanımıyla birebir** ✅ —
+  ayrışsa oyuncu boşluğa vurur ya da görünmeyen yüzeyden sekerdi.
+
+### 3 · *"Küp assetlerimiz tam camsı olmalı"*
+
+- [x] **Ü210'un cam reçetesi uygulandı** ✅ — merkezde yoğun, kenarda
+  saydam. Koyu zeminde düz düşük alfa rengi soldurur.
+- [x] **🔴 Üçgene kenar çizgisi ayrı katmanla** ✅ — `clip-path`
+  `box-shadow`u da kırpıyor, yani üçgene `inset` kenar verilemiyor;
+  ilk sürümde üçgenler kare bloklardan gözle görülür biçimde **daha
+  düz** duruyordu. İki kırpılmış katman: dışta parlak üçgen, içinde
+  1,5 piksel içeri çekilmiş cam gövde.
+- [x] **Sayı kırpılan kutunun dışında** ✅ — `clip-path` çocukları da
+  kırpıyor, üçgenin dar köşesine düşen rakam yarım kalırdı. Üçgende
+  sayı dik açının köşesine kayıyor: orası en geniş yer.
+
+**Determinizm korundu:** 25 tohumda 0 ayrışma, 0 tekrar reddi, 0 skor
+farkı. Tahtanın ~%25'i üçgen.
+
+684 test · 677 geçti · 0 düştü. Derleme temiz.
+
+---
+
+## ⬅️ Ü217 · Dördüncü oyun: Sekme (BBTan) — 2026-09-21
+
+⚠️ **Commitlenmedi.**
+
+Ürün sahibinin istediği: *"bbtan oyununu da ekleyelim, topu fırlatan
+karakter bizim loopymiz olsun, diğer oyunlardaki gibi ödül dağıtsın,
+bbtanda [ödül] üstten düşsün."* Mekanik `gamesvideos/bbtan.mp4`ten
+çıkarıldı — **video önce izlendi.**
+
+### Ad: Sekme
+
+Ü22'nin kuralı: mekanik tanıdık olabilir, **kimlik bizim.** Blok,
+Düşen, Yılan — dördüncüsü Sekme. Hem hukuki mesafe hem de ürünün dili
+tek parça kalıyor.
+
+### 🔴 En zor kısım: sekme fiziği determinist olmalı
+
+Sunucu turu yeniden oynatıp aynı skoru bulmak zorunda (S5). Top
+sekmesi sürekli bir hareket; en ufak sayısal ayrışma birkaç sekme
+sonra topu bambaşka yere götürür ve **dürüst oyuncunun turu
+reddedilir.** Üç önlem:
+
+- [x] **Kayan nokta yok — sabit noktalı tam sayı** ✅ (`BIRIM` 1000)
+- [x] **🔴 `Math.cos`/`Math.sin` kullanılmıyor** ✅ — bunlar JS
+  standardında *"implementation-approximated"*; V8, JavaScriptCore ve
+  SpiderMonkey son bitlerde ayrışabiliyor. Yön tablosu **kaynağa
+  gömülü tam sayı sabiti**, çalışma zamanında hesaplanmıyor. En büyük
+  yuvarlama sapması %0,28.
+- [x] **Açı ayrık** ✅ — 61 kademe; girdi kaydına giden şey bir indeks.
+  `atan2` yalnızca ekranda nişan için, sonucu asla girdiye yazılmıyor.
+- [x] **Adım sınırı** ✅ — top iki duvar arasında neredeyse yatay
+  sekebiliyor; sınır olmasaydı **sunucu tek girdiyle sonsuz döngüye
+  girerdi.**
+
+**Ölçüldü:** 25 tohumda 0 ayrışma, 0 tekrar reddi, 0 skor farkı ·
+atış başına **0,03 ms**.
+
+### Fizik tek gövdede
+
+- [x] **`simule` hem sonucu hem izi üretiyor** ✅ — ilk yazımda iki
+  ayrı kopya vardı. Ekran kendi fiziğini oynatsaydı oyuncu bloğu
+  kırdığını görür, skoru tutmazdı. Test bunu kilitliyor.
+
+### Oyun
+
+- [x] 7×9 ızgara, numaralı bloklar, `+` top hediyeleri ✅
+- [x] **Ödül paketi üstten iniyor** ✅ — ürün sahibinin bu oyun için
+  özel isteği ve burada bedava geliyor: zaten her şey üstten iniyor.
+  Kural `odul.ts`te ortak — eşik geçilmeden çıkmıyor, sıfır puan,
+  tur başına bir kez. **60 tohumda 0 erken çıkış, 0 çifte teslim.**
+- [x] **Fırlatıcı Loopy** ✅ — mevcut `<Avatar>`, yeni görsel
+  üretilmedi.
+- [x] Kimlik rengi **menekşe** — Ü208'de Kelime'den boşalmıştı.
+- [x] Kategori **"Düşünerek"** — önce yanlışlıkla "Yetişerek"e kondu;
+  oyunda hiç zaman baskısı yok, zorluk açıyı kestirmekte.
+
+### Yol boyunca yakalanan hata
+
+- [x] **🔴 Yüzdeli dolgu blokları eziyordu** ✅ — `padding: 6%`,
+  **kapsayan bloğun genişliğine** göre çözülüyor. Sarmalayıcı mutlak
+  konumlu olduğu için kapsayan blok tahtanın kendisi: 6% × 353 = 21
+  piksel, oysa hücre 50. İki yandan 42 piksel gidince bloktan geriye
+  **8 piksel** kalıyor ve ekranda ince birer pil gibi duruyorlardı.
+  `inset` yüzdesi doğru kapsayan bloğa bakıyor; ölçüldü, 43,4×43,5.
+
+### Testler
+
+- [x] **Altı yeni test** ✅ — en önemlisi **kaynağı okuyan** biri:
+  `sekme.ts` içinde `Math.cos`/`sin`/`tan`/`atan`/`random` geçmiyor.
+  Davranış testiyle yakalanamaz (aynı makinede iki koşu da aynı sonucu
+  verir); yakalanacağı tek yer kaynak.
+
+683 test · 676 geçti · 0 düştü. Derleme temiz.
+
+> ⚠️ **Oynanmadı.** Nişan alma hissi, atış animasyonunun hızı ve
+> zorluk eğrisi telefonda denenmeli. Rastgele açı atan bot ortanca
+> 445 puan / 10 atış yapıyor; gerçek oyuncu çok daha iyisini yapmalı.
+
+---
+
+## ⬅️ Ü216 · Hareket akıcı oldu — 2026-09-21
+
+⚠️ **Commitlenmedi.**
+
+Ürün sahibi: *"Daha akıcı ilerlemeli, çok takılarak ilerliyor, fps
+düşük gibi."*
+
+### 🔴 Bu FPS değildi
+
+Ü214'te render sayısı zaten %91–96 düşürülmüştü. Kalan sorun başka:
+oyunlar hücreden hücreye **ışınlanıyordu.**
+
+| | adım aralığı (başlangıç) |
+|---|---|
+| Yılan | 11 tick = **550 ms** |
+| Düşen | 28 tick = **1.400 ms** |
+
+Saniyede bir-iki kez yer değiştiren bir şey, kare hızı ne olursa olsun
+takılır. Eksik olan şey **ara değerleme**ydi.
+
+### Çözüm: motor ayrık, ekran kayıyor
+
+- [x] **CSS geçişi, React değil** ✅ — React yine saniyede bir-iki kez
+  render ediyor; aradaki ~30 kareyi tarayıcı çiziyor. Ü214'te
+  kazanılan render tasarrufu olduğu gibi duruyor.
+- [x] **`transform`, `left/top` DEĞİL** ✅ — ikisi de animasyonlanıyor
+  ama `left/top` her karede **düzen** hesabı tetikliyor. Akıcılığı
+  isteyip 160 ögeyi her karede yeniden yerleştirmek kendi kendini yer.
+- [x] **Yılan: anahtar `sira`, hücre değil** ✅ — hücre anahtarıyla
+  React her adımda ögeleri yok edip yeniden yaratıyordu; yok edilen
+  ögenin geçişi olmaz. Sıra anahtarıyla segment ömrü boyunca aynı DOM
+  ögesi kalıyor.
+- [x] **Düşen: parça ızgaradan çıkıp kendi katmanına geçti** ✅ —
+  ızgara hücresinin içindeyken kayamıyordu.
+- [x] **Yatay ve dikey AYRI katman** ✅ — iniş yerçekimi kadar yavaş
+  (1,4 s), yana hamle parmak kadar hızlı (70 ms). Tek katmanda
+  olsalardı sağa basmak parçayı 1,4 saniyede kaydırır, oyun cevapsız
+  hissettirirdi.
+- [x] **Katmanın `key`i `parcaNo`** ✅ — yoksa yeni parça, öncekinin
+  kilitlendiği yerden yukarı doğru süzülürdü.
+
+### Yol boyunca yakalanan hizalama hatası
+
+- [x] **🔴 Izgara boşluğu hesaba katılmamıştı** ✅ — parça katmanı
+  ızgaranın dışında ve hücre yerlerini kendi hesaplıyor. Boşluğu
+  saymayınca hücre genişliğini `%100/10` sanıyordu; gerçeği
+  `(%100 − 9×2px)/10`. Fark sütun başına ~1,8 piksel, onuncu sütunda
+  **16 piksel** — parça ızgaradan kopardı. `calc` ile düzeltildi ve
+  tarayıcıda ölçüldü: 7. sütun 11. satırda sapma **0,00 piksel**.
+
+677 test · 670 geçti · 0 düştü. Derleme temiz.
+
+> ⚠️ Akıcılığın kendisi **telefonda denenmeli** — hizalama ve süreler
+> ölçüyle doğrulandı ama "akıcı hissettiriyor mu" sorusunu ancak sen
+> cevaplayabilirsin.
+
+---
+
+## ⬅️ Ü214 – Ü215 · FPS düzeltildi, Yılan yeni referansa geçti — 2026-09-21
+
+⚠️ **Commitlenmedi.**
+
+### 🔴 Ü214 · *"FPS çok düşük"* — sebebi ölçüldü
+
+Ürün sahibi oynadı ve bildirdi. Tahmin etmek yerine sayıldı:
+
+| | render | gerçek değişim | boşa |
+|---|---|---|---|
+| Yılan | 88 | 8 | **%91** |
+| Düşen | 599 | 21 | **%96** |
+
+Sebep: motor her `bekle` çağrısında **yeni bir durum nesnesi**
+döndürüyor, yani saat her 50 ms'de render tetikliyor — ekranda hiçbir
+şey değişmese bile. Düşen'de her boş render **160 hücrenin
+uzlaştırılması** demek.
+
+- [x] **Tick render'dan çıkarıldı** ✅ — artık `useRef`te. Girdi
+  kaydının tick'e ihtiyacı var, render'ın yok.
+- [x] **Sıradaki adım/iniş gelmediyse motor HİÇ çağrılmıyor** ✅ —
+  güvenli, çünkü motor kaba tick'e göre tasarlandı: `zamaniIlerlet`
+  0→100'ü tek adımda da aynı tahtaya götürüyor.
+- [x] **Tick'ten türeyen efektler zamanlayıcıya geçti** ✅ — patlama ve
+  ödül kartı. Tick donunca o hesaplar da donacaktı.
+
+**Sonuç:** Yılan 88 → **8** render · Düşen 599 → **21**. Düşen'de öge
+uzlaştırması 95.840 → **3.360** (%96,5 azalma).
+
+### Ü215 · Yeni referans: `gamesvideos/snake.png`
+
+Ürün sahibi *"tam burdaki gibi bir oyun arayüzü istiyorum"* dedi.
+Görsel `sharp` ile piksel piksel ölçüldü:
+
+çimen `#88B64F`/`#7BAA48` · taş `#A4AAB2`/`#6F808E` · gövde `#1E51FA` ·
+parlama `#69FCFD` · elma `#FE4D3A` · HUD hapı `#2A4972` · taç `#FDDF3A`
+
+- [x] **Taş duvarlı arena** ✅ — üstten ışık, altta gölge, kenarların
+  ortasında ışıklı neon şeritler.
+- [x] **Solucan halkalı oldu** ✅ — Google'ın düz borusu gitti.
+  🔴 İlk deneme 1,06 örtüşmeyle yapıldı ve 21,7 piksellik hücrede
+  halkalar yalnızca 1,3 piksel örtüşüyordu: ekranda **boncuk dizisi**
+  gibi, kopuk. 1,34'te örtüşme 7,6 piksel ve zincir birleşiyor.
+- [x] **HUD üç yuvarlak hap** ✅ — elma+sayı · taç+SKOR · ses/çıkış.
+  ⚠️ Referanstaki **duraklat** düğmesi yok: duraklatma mekaniği yok ve
+  olmayan bir düğme çizmek verilmemiş bir söz olurdu.
+- [x] **Gökyüzü sade** ✅ — referansın uçan adaları, şelaleleri ve
+  kaleleri CSS'le üretilebilecek şeyler değil, çizim işi. Uydurma bir
+  doku koymaktansa yumuşak bir gök dürüst.
+
+677 test · 670 geçti · 0 düştü. Derleme temiz.
+
+> ⚠️ **Telefonda denenmedi.** FPS düzeltmesi sayıyla kanıtlı ama asıl
+> kanıt senin ekranın.
+
+---
+
+## ⬅️ Ü212 – Ü213 · Yılan referanstan yeniden yazıldı — 2026-09-21
+
+⚠️ **Commitlenmedi.**
+
+### 🔴 Ü212'de referansa BAKMADAN yaptım
+
+Ürün sahibi *"referanstaki gibi snakeyi yap"* dedi. Yılan referansı
+daha önce verilmiş bir linkti: **Google'ın Yılan oyunu**
+(`google.com/search?q=snake+game`). Linke bakmadım; Düşen'e kurduğumuz
+koyu/neon/cam dili buraya taşıdım. Ürün sahibi sordu: *"o linki mcp
+ile bağlanıp bakacaktın, ona göre yapıyorsun değil mi?"* Cevap hayırdı.
+
+**Ders:** referans bir link olarak verildiyse iş, o linki açmadan
+başlamaz. Aynı hata Ü202'de `block blast.mp4` ile de yapılmıştı.
+
+### Referans açıldı, oynandı, canvas'ı ölçüldü
+
+Tarayıcıdan iframe'in canvas'ına erişilip piksel sayımı yapıldı —
+tahmin yok:
+
+| | |
+|---|---|
+| çimen açık / koyu | `#AAD751` (%41,1) · `#A2D149` (%40,6) |
+| dış zemin | `#578A34` (%17,1) |
+| elma | `#E7471D` · gövde `#426FE3` · baş `#4E7CF6` |
+| gövde gölgesi | `#94BD46` (çimenin üstüne düşüyor) |
+| hücre | 35 px · dama **tek hücre** |
+| gövde kalınlığı | 25/35 = **%71** — hücreyi doldurmuyor |
+| alan | **çerçevesiz**, dış zemin her yanda ~28 px |
+
+Ürün sahibine iki yol sunuldu (karakteri al–paleti bizde kalsın ·
+tamamen referans gibi); **"tamamen referans gibi"** seçildi. Yılan
+artık Blok ve Düşen'den bilerek ayrı bir dilde.
+
+### Yapılanlar
+
+- [x] **`yilan-yuzey.ts` referans ölçüleriyle yeniden yazıldı** ✅ —
+  parlak çimen, düz renkler, sıfır parıltı, neon çerçeve yok.
+- [x] **Gövde tek dikdörtgenle çiziliyor** ✅ — segment hücrenin
+  ortasında kalın bir şerit, komşusu olan yönde kenara kadar uzuyor.
+  Dönüşte iki bandın birleşimi de bir dikdörtgen olduğu için üç parça
+  çizmeye gerek yok. Serbest köşelere `9999px` veriliyor; tarayıcı onu
+  kısa kenarın yarısına kırpıyor ve boru ucu çıkıyor.
+- [x] **Gölge katmanın TAMAMINA** ✅ — segment başına verilseydi iç
+  eklem yerlerinde de görünür, yılan ayrı parçalar gibi dururdu.
+- [x] **Gözler** ✅ — referansın en karakterli detayı. Yöne göre yer
+  değiştiriyor, bebekler ileri bakıyor.
+- [x] **225 DOM ögesi silindi** ✅ — dama zemini tek bir
+  `repeating-conic-gradient`; hücre başına `<span>` gereksizdi.
+- [x] **Ödül altın kaldı** ✅ — referansta ödül yok, bu bizim
+  mekaniğimiz ve ödül ürünün her yerinde altın.
+- [x] **`tahta.tsx` SİLİNDİ** ✅ — son sakini de taşındığı için dosya
+  tamamen ölü koda dönmüştü.
+
+### Yol boyunca bulunan iki sessiz hata
+
+- [x] **🔴 Aynı adla iki `@keyframes nabiz`** ✅ — CSS'te sonuncusu
+  kazanıyor. `.nabiz` kullanan her öge (yem, ödül, misafir ekranındaki
+  ipucu, konum bekleme noktası) opaklık nabzı yerine **mavi bir halka**
+  koşuyordu ve animasyon `box-shadow`u sürdüğü için o ögelerin **kendi
+  parıltısı siliniyordu.** Ölçüldü: `rgba(37,99,235,.18) 0 0 0 10px`.
+  Düğmeninki `nabiz-halka` oldu.
+- [x] **`drop-shadow(0 4% 0 …)`** ✅ — `drop-shadow()` yüzde kabul
+  etmiyor; geçersiz değer filtrenin tamamını düşürüyor ve gölge hiç
+  çıkmıyordu. Tarayıcı uyarmıyor.
+- [x] **Kuyruk kontrastı 1,4** ✅ — Ü212'nin cam gövdesinde ölçüldü,
+  Ü166'nın okunabilirlik sınırı olan 1,45'in altındaydı. Estetik değil
+  **oynanış** hatası: yılanın tek ölüm sebebi kendine çarpmak. (Palet
+  Ü213'te tamamen değiştiği için sorun kendiliğinden kalktı.)
+- [x] **Ödülün beyaz halkası** ✅ — açık yeşil çimenin üstünde altın
+  solgun bir noktaya dönüşüyordu. Halka koyulaştı.
+
+677 test · 670 geçti · 0 düştü · 7 atlandı. Derleme temiz.
+
+> ⚠️ **Gerçek ekranda oynanmadı** — oyun girişin arkasında. Görünüm,
+> yüzey fonksiyonlarının gerçek çıktılarıyla kurulan birebir kopyayla
+> 375×812'de doğrulandı. Kaydırma hissi telefonda denenmeli.
+
+---
+
+## ⬅️ Ü211 · HUD referanstaki düzene geçti — 2026-09-21
+
+⚠️ **Commitlenmedi.**
+
+Ürün sahibi: *"Ekran ayarlaman yanlış, sıradakiler hiç belli değil,
+referans görseldeki gibi de değil skor level ve sıradaki kısımları."*
+
+Haklıydı, ikisi de. Ü209'da üç paneli üst şeride sıkıştırmıştım ve
+gerekçem şuydu: *"375 pikselde yan sütuna yer yok."* Doğru olan, yerin
+**nereden** açılacağıydı.
+
+### Ne değişti
+
+- [x] **SIRADAKİ tahtanın sağına, dikey sütuna taşındı** ✅ —
+  referanstaki yer orası. Üst şeritte üç panel yan yana sıkışınca
+  parçalara **7 piksellik hücre** kalıyordu; şimdi ilki 12, sonrakiler
+  9 piksel ve dördü birden okunuyor.
+- [x] **SKOR referanstaki gibi iki satırlı** ✅ — etiket, 28 piksellik
+  rakam, altında ikinci bir sayı. ⚠️ O sayı referanstaki **BEST
+  değil, SATIR**: kişisel rekor bu ekrana gelmiyor ve uydurulmuş bir
+  sayı yazmaktansa gerçek bir sayı yazmak doğru.
+- [x] **SEVİYE ayrı rozet** ✅ — 74 piksellik köşeli panel, sağ üstte.
+- [x] **Önizlemeler tahtadaki camın küçük hâli** ✅ — aynı merkez-yoğun
+  degrade. Düz renk olsaydı önizleme tahtadaki parçaya benzemez,
+  oyuncu ikisini eşleştirmek için biçime bakmak zorunda kalırdı.
+
+### Boşluk sorunu — üç düzen ölçüldü
+
+Yan sütun tahtanın genişliğini kısıyor (359 → 287) ve genişlik
+yüksekliği belirlediği için (oran 10/16) tahta 459 pikselde kalıyor;
+orta banda ise 638 piksel düşüyor. **Aradaki 179 piksel bir yere gitmek
+zorunda.**
+
+| düzen | üst boşluk | alt boşluk | sonuç |
+|---|---|---|---|
+| `items-center` | 96 | 96 | HUD ile tahta arasında sebepsiz uçurum |
+| `items-start` | 8 | 170 | tahta HUD'a yapışıyor, düğmeler dipte yalnız |
+| **üçü tek grup, grup ortalı** | 82 | 91 | 10'ar piksel aralık, boşluk nefes payı |
+
+- [x] **Sonuncusu seçildi** ✅ — HUD, tahta ve düğmeler birbirine ait
+  görünüyor; artan boşluk ekranın üstüne ve altına dağılıyor.
+- [x] **Sütun tahtanın üst kenarına hizalı** ✅ — ilk denemede
+  `items-stretch` yüzünden sütun 622 piksele uzuyor, altında 176
+  piksellik boş kutu kalıyordu. `items-start` ile satırın yüksekliğini
+  tahta belirliyor, sütun kendi içeriği kadar oluyor.
+
+> ⚠️ Boşluğun kendisi **kaçınılmaz**: tahta 10 hücre geniş ve hücre
+> kare olmak zorunda. Ortadan kaldırmanın tek yolu yan sütunu silmek
+> olurdu — o da istenen düzenin kendisi. Bedeli ölçüldü: hücre 35 → 29
+> piksel (%18 küçülme).
+
+677 test · 670 geçti · 0 düştü · 7 atlandı. Derleme temiz.
+
+---
+
+## ⬅️ Ü210 · Cam gerçekten cam oldu, kontroller parmağa geçti — 2026-09-21
+
+⚠️ **Commitlenmedi.**
+
+Ürün sahibi Ü209'u gördü ve iki şey söyledi.
+
+### 1 · *"Bloklarımız daha şeffaf cam gibi olmalı, bunu yanlış yapmışsın"*
+
+Haklıydı. Ü209'da *"camsı"* isteğine **opak şeker** yapmıştım: degrade
+gövde, parlama, pah — hepsi vardı ama küpün **ardı görünmüyordu.**
+Parlak bir plastik, cam değil.
+
+- [x] **🔴 Düz saydamlık da yanlış çıktı — ölçüldü** ✅ — gövdeyi düz
+  %56 alfaya almak renkleri **soldurdu.** Tahta neredeyse siyah
+  (`#0B1338`) olduğu için saydamlık doğrudan parlaklık yiyor.
+  375×812'de bileşik renk ölçümü:
+
+  | | camgöbeği parlaklık | doygunluk |
+  |---|---|---|
+  | opak (Ü209) | 175 | 0,86 |
+  | düz %56 | **107 (−%39)** | 0,85 |
+  | açık ton %72 | 151 | **0,62 (−%28)** |
+
+  Yani alfa doygunluğu koruyup **parlaklığı**, açık ton parlaklığı
+  koruyup **doygunluğu** öldürüyor. İkisi de ürün sahibinin önceki
+  isteğine — *"daha canlı renkteki küpler"* — aykırı.
+
+- [x] **Çözüm: alfa düz değil, merkezden kenara** ✅ — üç aday tahtada
+  yan yana çizilip bakıldı. Kazanan: merkezde neredeyse opak (%92),
+  kenara doğru saydam (%42). Renk merkezde duruyor, arkadaki ızgara
+  küpün kenarından okunuyor, parlak iç kenar cam levhanın kalınlığını
+  veriyor. **Camı cam yapan şey gövdenin soluk olması değil, ardının
+  görünmesi ve kenarının ışığı kırması.**
+- [x] **Renk sabitleri kanal kanal** ✅ — `"34 211 238"`, `#22D3EE`
+  değil: saydamlık çalışma zamanında alfa eklemeyi gerektiriyor.
+
+### 2 · *"Butonlar olmasın, parmakla oynansın"*
+
+*"Kullanıcı parmağını basılı tuttuğunda daha hızlı aşağı insin,
+parmağını sağa kaydırdığında sağa sola kaydırdığında sola gitsin;
+sadece en aşağı bırak ve çevir butonları olsun."*
+
+- [x] **◀ ↻ ▶ kalktı** ✅ — geriye iki düğme kaldı: **Çevir** (dar,
+  solda) ve **Bırak** (geniş, sağda). Eşit olsalardı en sık basılan
+  hangisi görünmezdi; ayrıca yanlışlıkla bırakmak turu bitirebilir,
+  yanlışlıkla çevirmek bir hamle kaybettirir.
+- [x] **Yana kaydırma** ✅ — parmağın gittiği yol **hücre genişliği**
+  kadar olunca bir hamle. Sabit piksel eşiği dar ekranda aşırı hassas,
+  geniş ekranda tembel olurdu. Çapa taşınıyor (sıfırlanmıyor), yani
+  yavaş sürüklemede hareket birikerek doğru yere varıyor.
+- [x] **🔴 Basılı tutunca hızlanma motorun `in` girdisiyle** ✅ —
+  yerçekimini yerel olarak hızlandırarak DEĞİL. Düşme hızı durumdan
+  türüyor ve sunucu onu kendisi hesaplıyor; istemci yerel hızlandırsa
+  tekrar ayrışır ve **tur reddedilirdi.** Her iniş bir girdi, kayıtta
+  duruyor.
+- [x] **180 ms gecikme** ✅ — hızlı bir yana kaydırmada parmak da
+  basılı oluyor; gecikme olmasaydı her kaydırma parçayı bir de aşağı
+  indirirdi.
+- [x] **Etkisiz `in` kaydedilmiyor** ✅ — parça dibe değdiğinde motor
+  durumu aynen geri veriyor; o girdiler kayda hiçbir şey katmadan yer
+  kaplardı ve sınır 5.000 (`EN_FAZLA_GIRDI`).
+- [x] **Olaylar sabit kapsayıcıda** ✅ — tahtanın `key`i dört satır
+  silinince değişiyor (sarsıntı için) ve React o anda ögeyi
+  değiştiriyor: işaretçi yakalaması hamlenin ortasında kopardı.
+- [x] **İlk turda tek satırlık ipucu** ✅ — parmakla oynanacağını kimse
+  bilmiyor. Yalnızca hiç parça konmadıysa görünüyor; oynadıktan sonra
+  kalıcı ipucu gürültü olurdu.
+
+677 test · 670 geçti · 0 düştü · 7 atlandı. Derleme temiz.
+
+> ⚠️ **Parmak hareketleri gerçek cihazda denenmedi** — oyun ekranı
+> girişin arkasında. Görünüm birebir kopyayla 375×812'de doğrulandı
+> ama *hissi* ancak sen söyleyebilirsin: kaydırma hassasiyeti
+> (hücre genişliği), basılı tutma gecikmesi (180 ms) ve iniş hızı
+> (140 ms/satır) ayarlanabilir sayılar.
+
+---
+
+## ⬅️ Ü209 · Düşen'in yüzeyi baştan yazıldı — 2026-09-21
+
+⚠️ **Commitlenmedi.**
+
+Ürün sahibi: *"Tetris daha çok burdaki görsele benzesin, daha camsı ve
+parlak, daha canlı renkteki parçalar küpler, daha fütüristik bir
+scoreboard ve next parçaların gösterimi."*
+
+İki kaynak vardı ve **ikisine de bakıldı** — `tetris.png` (tanıtım
+render'ı, hedef görünüm) ve `tetris.mp4` (gerçek oyun kaydı). Video iki
+mekanik ayrıntı verdi: **hayalet parça** ve zeminde **dama deseni**.
+
+### Yüzey
+
+- [x] **`dusen-yuzey.ts`** ✅ — yedi camsı küp rengi, uzay sahnesi, neon
+  degrade çerçeve, köşeli (`clip-path`) HUD panelleri, hayalet hücre.
+  `tahta.tsx` artık **yalnızca Yılan'ın**.
+- [x] **Camsı küp dört katmandan** ✅ — sol üstte noktasal parlama,
+  degrade gövde, içeride pah, dışarıda renkli parıltı. Parlama ayrı bir
+  DOM ögesi değil zeminin katmanı: 160 hücreye çocuk eklemek 320 düğüm
+  demekti.
+- [x] **İnen parça parıltıyla ayrılıyor** ✅ — eskiden inen parça altındı
+  ve ayıran şey renkti; artık her parçanın kendi rengi var, o yüzden
+  "elimdeki hangisi" sorusunu **parıltı** cevaplıyor.
+- [x] **SKOR · SEVİYE · SIRADAKİ** ✅ — referansta tahtanın yanındalar;
+  375 pikselde yan sütuna yer yok (tahta 10 hücre geniş, hücre kare
+  olmak zorunda), üst şeride alındılar.
+
+### Ölçülerek düzeltilenler (375×812, 1:1)
+
+- [x] **Çerçeve 2→3 piksel** ✅ — tahta ekranı neredeyse doldurduğu için
+  dışa taşan parıltının yarısı ekranın dışında kalıyordu; geriye ince,
+  sönük bir çizgi kalmıştı. İçe doğru bir parıltı da eklendi.
+- [x] **Hayalet belirginleşti** ✅ — ilk hâli koyu tahtanın üstünde
+  **bir delik** gibi okunuyordu, "buraya düşecek" demiyordu.
+- [x] **Dama deseni 0,028 → 0,055** ✅ — ilk değerde ekranda hiç
+  görünmüyordu; yazılmış ama işe yaramayan bir katmandı.
+- [x] **SIRADAKİ 5/4 → 7/5 piksel** ✅ — parçalar okunmuyordu, üç renkli
+  leke gibi duruyorlardı. Yer SKOR panelinden alındı.
+
+### Motor: arayüzün ihtiyaçları, durumu büyütmeden
+
+- [x] **`sigarMi` · `hayaletSatiri` · `siradakiParcalar`** ✅ — üçü de
+  saf, hiçbiri duruma bir şey eklemiyor. Arayüz kuralı **tahmin
+  etmemeli**; Ü199'un `temizlenecekler`iyle aynı gerekçe.
+- [x] **🔴 `uygulaVeKilitler`** ✅ — renk motorun durumunda değil
+  (Ü202), ama Düşen'de satır silinince üstündeki her şey kayıyor ve
+  renk ızgarası da kaymak zorunda. O kaymayı ekranda yeniden yazmak
+  `kilitle`nin ikizini üretirdi; motor artık hangi karelerin dolduğunu
+  ve hangi satırların silindiğini **kendisi** söylüyor.
+- [x] **Kural tek gövdede** ✅ — `uygula` ve `uygulaVeKilitler` aynı
+  `ilerlet`ten geçiyor. İki kopya olsaydı istemcinin gördüğü tahta ile
+  sunucunun hesapladığı skor ayrışır ve **dürüst oyuncunun turu
+  reddedilirdi.**
+
+### Testler ve yol boyunca bulunanlar
+
+- [x] **Dört yeni test** ✅ — iki giriş aynı durumu veriyor · renk
+  ızgarası tahtadan ayrışmıyor (ekranın hesabının birebir aynısı) ·
+  hayalet gerçekten en alta iniyor · SIRADAKİ'nin söylediği parça
+  geliyor.
+- [x] **🔴 Ü208'de kırılgan bıraktığım testi düzelttim** ✅ — DB
+  testleri turun `basarili` olmasını şart koşuyor ve Kelime'nin yerine
+  koyduğum bot **80 tohumun 14'ünde** eşiği geçemiyordu; test tohum
+  piyangosuna bağlıydı. Sezgiye **delik** ve **doğum bölgesi** cezası
+  eklendi: 200 tohumda 200 başarı, en düşük skor 525.
+- [x] **Sentinel hatası** ✅ — yeni sezgi yalnızca ceza döndürüyor, yani
+  puan hep negatif; `?? -1` ile karşılaştırınca hiçbir aday
+  seçilemiyordu ve bot ilk parçada duruyordu.
+- [x] **Hücre stilleri modül düzeyine alındı** ✅ — 160 hücre × saniyede
+  20 çizim = saniyede 3.200 stil nesnesi kuruluyordu. Renk sayısı yedi.
+- [x] **`blok-ses.ts` → `oyun-ses.ts`** ✅ — Düşen de aynı beş sesi
+  kullanıyor. ⚠️ `localStorage` anahtarı **değişmedi**: değiştirmek
+  sesi bir kez açmış her oyuncunun tercihini sıfırlardı.
+
+### Bilerek yapılmayanlar
+
+- **HOLD paneli yok** — parça saklamak bir mekanik, süs değil; motora ve
+  replay sözleşmesine girer. Boş duran bir HOLD kutusu verilmemiş bir
+  söz olurdu.
+- **BEST (rekor) yok** — kişisel rekor bu ekrana gelmiyor; uydurulmuş
+  bir sayı yazmaktansa hiç yazmamak doğru.
+
+677 test · 670 geçti · 0 düştü · 7 atlandı. Derleme temiz.
+
+> ⚠️ **Gerçek ekranda görülmedi.** Oyun ekranı girişin arkasında ve ben
+> parola girmiyorum; doğrulama, yüzey fonksiyonlarının **gerçek
+> çıktılarıyla** kurulan birebir bir kopyayla 375×812'de yapıldı.
+> Telefonda bir kez bakılmalı.
+
+---
+
+## ⬅️ Ü208 · Kelime sistemden kaldırıldı — 2026-09-21
+
+⚠️ **Commitlenmedi.**
+
+Ürün sahibinin kararı. Sıra da onun: **önce Kelime kalkacak**, sonra
+Düşen ve Yılan'ın arayüzü, sonra BBTan, en son vitrine Loopy.
+
+### Kaldırılanlar
+
+- [x] `oyunlar/kelime.ts` · `arayuz/kelime-ekran.tsx` ·
+  `veri/kelimeler.json` + `LISANS.md` · `scripts/kelime-listesi-uret.ts`
+  · `package.json`'daki `kelime:uret` ✅
+- [x] İki kayıt defterinden birer satır ✅ — `OYUNLAR` dizisi ve ekran
+  `switch`i. 🔴 **Faz 5'in sözü ters yönde de tuttu**: motor, oturum
+  akışı, sunucu doğrulaması ve kabuk hiç değişmedi. Oyun eklemek kadar
+  oyun çıkarmak da dosya işi.
+- [x] Renk, ikon ve çizim defterleri ✅ — menekşe artık boşta.
+  `OYUN_IKONU` haritası boşaldı ama **silinmedi**: yeni bir oyunun
+  görseli üretilene kadar tek sığınak orası.
+- [x] Simülasyon botu ve demo tohumu ✅
+
+### Karar: geçmiş turlar SİLİNMEDİ
+
+- [x] **352 tamamlanmış Kelime turu duruyor** ✅ — oyuncunun oynadığı
+  tur, oyun listeden çıktı diye olmamış sayılamaz; skoru, XP'si ve
+  kuponu gerçekti.
+- [x] **Emekli oyun haritası** (`domain/gecmis.ts`) ✅ — `oyunBul` o
+  kimliği artık tanımıyor ve yedek ham kimliğe düşüyordu: profil
+  karnesinde oyunun adı **"kelime"** diye küçük harfle, ürünün dilinin
+  dışında görünecekti. Harita o tek satırı kurtarıyor.
+
+### Yan etki: testlerin "kesin başarılı" oyunu kayboldu
+
+- [x] **🔴 Ölçüldü, tahmin edilmedi** ✅ — bazı DB testleri turun
+  `basarili` olmasını (skor ≥ 500) şart koşuyor ve bunu hep Kelime
+  botu sağlıyordu. Kalan botlar yetmedi: **Blok botu 60 tohumun
+  yalnızca 26'sında** eşiği geçiyor (ortanca 430), Düşen'in basit botu
+  on beş parçada tıkanıp 100'ün altında kalıyor. Biri seçilseydi
+  testler tohum piyangosuna dönerdi.
+- [x] **Ü207'nin açgözlü botu girdi kaydı da tutuyor** ✅ — 582–691
+  arası bitiriyor, yani sunucuya gönderilebilir bir tur üretiyor.
+  Testler ona bağlandı.
+
+### Yol boyunca düzeltilenler
+
+- [x] **Katalogda Yılan yerine oturdu** ✅ — Kelime çıkınca
+  "Düşünerek" tek oyunla kalıyordu ve Yılan hâlâ "Diğer"deydi;
+  `katalog.ts`in kendi notu bunu zaten bir gözden kaçma olarak
+  yazıyordu. Yılan refleks oyunu → "Yetişerek". Artık "Diğer" boş.
+- [x] **Kelime'den bahseden yorumlar** ✅ — kaldırılmış bir oyunu
+  şimdiki zamanda anlatan on bir yorum düzeltildi; geçmişi doğru
+  anlatanlar (Ü67 ikon dili, Ü84 saat dersi, Ü166 kontrast ölçümü)
+  olduğu gibi bırakıldı.
+- [x] **README'den bir yayın engeli kalktı** ✅ — *"kelime listesinin
+  küfür süzgeci insan gözünden geçmeli"*. Çözülerek değil, konu
+  ortadan kalkarak.
+- [x] **Kelime'nin ikonu artık gerekmiyor** ✅ — Ü192'den beri açık
+  duran madde kapandı.
+
+**Ekranda doğrulandı** (`/hemen`, misafir katalogu): Düşünerek → Blok ·
+Yetişerek → Düşen, Yılan. Kelime yok.
+
+673 test · 666 geçti · 0 düştü · 7 atlandı. Derleme temiz.
+
+> ⚠️ `docs/21`deki ölçüm tablosu ve `docs/22`deki demo listesi Kelime'yi
+> hâlâ anıyor — onlar **o günün kaydı**, bilerek değiştirilmedi.
+
+---
+
+## ⬅️ Ü207 · Düşen'de de ödül bir nesne — 2026-09-21
+
+⚠️ **Commitlenmedi.**
+
+Ürün sahibinin isteği Ü201'den beri duruyordu: *"tetriste mesela dışı
+ödül paketli bir parça yukarıdan aşağıya düşsün."* Blok'ta yapılmıştı,
+Düşen'de yapılmamıştı.
+
+### Kural iki motorda ortaklaştı
+
+- [x] **`oyunlar/odul.ts` açıldı** ✅ — eşik, sıfır bonus ve "sırası
+  geldi mi" kuralı tek yerde. Blok sabitleri buradan dışa veriyor;
+  ayrışmaları artık mümkün değil.
+- [x] **🔴 `odulIsareti` kancasına BAĞLANMADI** ✅ — kasten. O kanca
+  (Ü91, Yılan'ın altın kuponu) iki şey yapıyor: `basariliMi` eşiği
+  **tamamen atlıyor** ve `dusmeSansi`ya pay ekliyor. Paket oraya
+  takılsaydı Ü201'in ekonomi kayması ikinci kez, daha büyük ölçekte
+  geri gelirdi. Paket eşik zaten geçildikten sonra çıktığı için
+  kancaya ihtiyacı da yok.
+- [x] **Motor: `odulParcasi` + `odulVerildi`** ✅ — Blok'ta paket üç
+  teklifin biri (oyuncu seçiyor), Düşen'de **inen parçanın kendisi**
+  (seçim yok, teslim garanti). Parçanın **biçimi değişmiyor**, yalnızca
+  kaplanıyor: sıra bozulsaydı skor da değişirdi.
+- [x] **Tahta doluysa paket yok** ✅ — ölü tahtaya paket çizmek,
+  kazanılmayacak bir şeyi göstermek olurdu.
+
+### Ekran
+
+- [x] **Kafe dışında paket ÇİZİLMİYOR** ✅ — `kazandirir` false ise
+  parça normal altın kalıyor. Motor paketi yine üretiyor ve üretmek
+  zorunda (determinizm); gizleyen şey ekran. Aynı hatayı ürün sahibi
+  Blok'ta yakalamıştı.
+- [x] **Teslim kartı Blok'takiyle birebir aynı** ✅ — *"Ödülün
+  kazanıldı · Tur bitince Ödüllerim'e düşecek."* İki oyunda aynı şey
+  oluyor, farklı anlatmak iki ayrı kural varmış gibi gelirdi.
+- [x] **Kart artık kendini KALDIRIYOR** ✅ — eskiden yalnızca animasyon
+  onu görünmez yapıyordu ve bu yüzden `prefers-reduced-motion`da CSS
+  kartı tamamen gizliyordu: o cihazlarda oyuncu **ödülünü kazandığını
+  hiç görmüyordu.** Blok zamanlayıcıyla, Düşen tick sayacıyla kaldırıyor;
+  gizleme kuralı kalktı.
+
+### Görsel — ölçülerek elendi (375×812, 1:1)
+
+- [x] **Çapraz kurdele şeridi + nabız** ✅ — Düşen'de inen parça zaten
+  altın (`tahta.tsx` · "aktif"), paketi renkle ayırmak imkânsızdı.
+  Ayıran şey doku.
+- [x] **🎁 rozeti ELENDİ** ✅ — 13, 14 ve 17 pikselde de kırmızımsı bir
+  lekeye dönüştü; koyu disk üstünde daha da kötü. 29 piksellik hücrede
+  hediye emojisi çözünmüyor.
+- [x] **Hücre başına kurdele haçı ELENDİ** ✅ — paketi hücrelerine
+  ayırdı, beş hücreli parça beş ayrı kutu gibi okundu. Parçanın biçimi
+  oyunun kendisi.
+
+### Testler
+
+- [x] **İki yeni test** ✅ — paket eşik altında çıkmıyor, tur başına bir
+  kez teslim ediliyor, sıfır puan veriyor; ve **parça sırasını
+  bozmuyor** (aynı tohum farklı oynanınca aynı sıradaki parça aynı
+  biçim). İkincisinin karşılaştırması paketin düştüğü ana kadar
+  uzanıyor — bunu da ayrı bir assert koruyor.
+- [x] **Düşen için gerçek oynayan bot** ✅ — eski bot on beş parçada
+  tıkanıyor ve skor 100'ü geçmiyordu; paket 500'den sonra çıktığı için
+  **hiç görülemiyordu**. Yeni bot dört dönüş × on sütunu deniyor.
+
+675 test · 668 geçti · 0 düştü · 7 atlandı. Derleme temiz.
+
+---
+
+## ⬅️ Ü203 – Ü205 · Ödül ekonomisi, tam ekran ve sesler — 2026-09-20
+
+✅ Commitlendi (2026-09-20).
 
 Ürün sahibi oynadı ve altı şey bildirdi; dördü gerçek hataydı.
 
@@ -76,7 +2081,7 @@
 
 ## ⬅️ Ü202 · Blok'un yüzeyi baştan yazıldı — 2026-09-20
 
-⚠️ **Commitlenmedi.**
+✅ Commitlendi (2026-09-20).
 
 Ürün sahibi numaralı ve ölçülü bir tasarım verdi. Uygulananlar:
 
@@ -112,17 +2117,15 @@
 - [x] **Parçacıklarda `Math.random()` yok** ✅ — yön ve mesafe kare
   indeksinden. Rastgele olsaydı her yeniden çizimde yerinden sıçrardı.
 
-- [ ] **Sesler** — ürün sahibi istedi (yerleştirme "tok", hata "buzz",
-  silme "whoosh", kombo "sparkle"). WebAudio ile dosyasız üretilebilir
-  ama **kafede varsayılan açık ses yanlış**; sessiz başlayıp bir düğmeyle
-  açılması gerekiyor. Ayrı tur.
+- [x] **Sesler** ✅ — Ü205'te yapıldı; bkz. yukarıdaki bölüm. (Tonları
+  hâlâ kimse **dinlemedi**, o madde açık.)
 - [ ] **Diğer üç oyun** — Düşen, Yılan, Kelime hâlâ `tahta.tsx`te.
 
 ---
 
 ## ⬅️ Ü201 · Ödül bir nesne oldu — 2026-09-20
 
-⚠️ **Commitlenmedi.**
+✅ Commitlendi (2026-09-20).
 
 Ürün sahibi Ü199'un kutlamasını reddetti: *"eşik geçildi tarzı şeyler
 yazmasın… block blastte ödül kaplı parça olsun, ekrana konunca ödül
@@ -155,9 +2158,16 @@ bildirimdi.
   1.500 XP boşluk var. Test kurulumun hâlâ geçerli olduğunu da kendisi
   doğruluyor.
 
-- [ ] **Düşen ve Yılan** — ürün sahibi Düşen'de *"dışı ödül paketli bir
-  parça yukarıdan aşağıya düşsün"* istedi. Aynı kural: motorda,
-  deterministik, eşiği geçirmeye yeten bonusla.
+- [x] **Düşen** ✅ — Ü207'de yapıldı; kural `oyunlar/odul.ts`te
+  ortaklaştı. (Bonus **yok**: Ü203 onu sıfırladı.)
+- [x] **Yılan'da zaten VAR** ✅ — Ü91'den beri: yemin yerine gelen altın
+  kupon, ömür çubuğuyla. ⚠️ Ama **başka bir mekanik** ve öyle kalmalı —
+  orada ödül bir **hedef** (oyuncu ona ulaşmak için yön değiştiriyor,
+  `odulIsareti` kancasına bağlı), Blok/Düşen'de bir **teslimat**
+  (kazanılmış ödülü gösteriyor, kancaya bağlı değil). İkisini tek
+  kancada toplamak kupon ekonomisini kaydırır.
+- [ ] **Kelime'de ödül nesnesi yok** — istenmedi de. Karşılığı bir altın
+  harf olurdu; **karar ürün sahibinde**.
 - [ ] **🔴 Yeni oyun: BBTan** — üstten inen numaralı bloklar, alttan top
   fırlatan **Loopy**, ödül üstten düşüyor. Mekanik ürün sahibinin
   gönderdiği kayıttan (`Downloads/gamesvideos/bbtan.mp4`) çıkarıldı;
@@ -168,7 +2178,7 @@ bildirimdi.
 
 ## ⬅️ Ü200 · Vitrine altı bölüm — 2026-09-20
 
-⚠️ **Commitlenmedi.**
+✅ Commitlendi (2026-09-20).
 
 Ürün sahibi bir örnek vitrin gönderdi (`CafePlay_Kafe_Landing_Page_example.html`)
 ve *"eksiklerimiz nelerdir"* diye sordu. Metnimiz zayıf değildi —
@@ -207,7 +2217,7 @@ olan altı şeydi ve altısı da eklendi.
 
 ## ⬅️ Ü198 – Ü199 · Çarkın zamanlaması ve Blok'un geri bildirimi — 2026-09-20
 
-⚠️ **Commitlenmedi.**
+✅ Commitlendi (2026-09-20).
 
 ### Ü198 · Loopy artık doğru anda itiyor
 
@@ -272,7 +2282,7 @@ verilmeli."*
 
 ## ⬅️ Ü197 · Çarkı çeviren Loopy gerçek animasyon oldu — 2026-09-20
 
-⚠️ **Commitlenmedi.**
+✅ Commitlendi (2026-09-20).
 
 - [x] **Ü193'ün CSS itişi yerini videoya bıraktı** ✅ — ürün sahibi
   animasyonu kendisi ürettirdi. İlk deneme kullanılamadı (çark videonun
@@ -300,7 +2310,7 @@ verilmeli."*
 
 ## ⬅️ Ü196 · "Bir oyun seç" ana ekranın kartı oldu — 2026-09-19
 
-⚠️ **Commitlenmedi.**
+✅ Commitlendi (2026-09-20).
 
 Bu bölüm **üç turda** yerini buldu ve üçü de aynı dersi veriyor: ürün
 sahibi ekranı gösteriyor, tarif etmiyor.
@@ -337,7 +2347,7 @@ Yetişerek" ayrımını ve bugünün oyununu görüyor.
 
 ## ⬅️ Ü195 · Misafir de katalogun kartını görüyor — 2026-09-19
 
-⚠️ **Commitlenmedi.**
+✅ Commitlendi (2026-09-20).
 
 - [x] **🔴 "Benzer" yetmedi, "aynı" gerekiyordu** ✅ — Ü194'te misafirin
   oyun listesi elle kurulmuş dört koyu satırdı. Ürün sahibi: *"birebir
@@ -373,7 +2383,7 @@ kararını sunucu veriyor.
 
 ## ⬅️ Ü193 – Ü194 · Çarkta Loopy ve misafirin ilk ekranı — 2026-09-19
 
-⚠️ **Commitlenmedi.**
+✅ Commitlendi (2026-09-20).
 
 **Hangi ekranlara dokundu:**
 
@@ -417,7 +2427,7 @@ kararını sunucu veriyor.
 
 ## ⬅️ Ü191 – Ü192 · Kalan iki pastel yüzey ve profilin içeriği — 2026-09-19
 
-⚠️ **Commitlenmedi.** Ü191 ve Ü192 birlikte duruyor.
+✅ Commitlendi (2026-09-20). Ü191 ve Ü192 birlikte duruyor.
 
 **Hangi ekranlara dokundu:**
 

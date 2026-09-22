@@ -162,9 +162,11 @@ Ayrıca **Ü32 onaylanmadı:** davet XP'si niteliklenen kafeye yazılıyor.
 
 **Devreden açık maddeler — hiçbiri kodla kapatılamıyor:** S20 (aydınlatma metni hukuk
 incelemesi) · G32 (platform ikinci faktör) · iOS'te tarayıcıdan QR okunamıyor, akış koda
-düşüyor · kupon bakımı için gerçek zamanlanmış iş (köprü çalışıyor) · kelime listesinin
-küfür süzgeci insan gözünden geçmeli · düşen-blok mekaniğinin hukuki sınırı (G6) · D11
-masa karekodları ekranı yazılmadı.
+düşüyor · kupon bakımı için gerçek zamanlanmış iş (köprü çalışıyor) · düşen-blok
+mekaniğinin hukuki sınırı (G6) · D11 masa karekodları ekranı yazılmadı.
+
+> Ü208'de bir madde **kapandı, çözülerek değil kalkarak**: *"kelime listesinin küfür
+> süzgeci insan gözünden geçmeli."* Kelime oyunu sistemden çıkarıldı, liste de onunla.
 
 Kod dışı bekleme süreleri: `docs/07` BÖLÜM 4.
 
