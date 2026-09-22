@@ -61,6 +61,27 @@ const SAHNE: Record<string, { en: number; boy: number; olcek?: number }> = {
   blok: { en: 512, boy: 512 },
   yilan: { en: 456, boy: 512 },
   "tum-oyunlar": { en: 477, boy: 512 },
+  ayir: { en: 433, boy: 512 },
+  /*
+    Ü265 · beş sahne daha. Hepsi ürün sahibinin gönderdiği kart
+    referanslarından **kesildi**: illüstrasyon bandı kırpıldı, kartın
+    kendi koyu zemini yumuşak eşikle saydama çevrildi (glow korunsun
+    diye sert maske değil).
+
+    ⚠️ Köşedeki uygulama ikonu kırpmanın dışında bırakıldı. Bir turda
+    silinerek denendi ve **iz bıraktı**: silinen dikdörtgen tam saydam
+    oluyor, çevresinde ise zeminin kalıntısı duruyor ve aradaki fark
+    kartta dikdörtgen bir yama gibi görünüyordu.
+
+    ⚠️ Bıçak ve Tuğla Kırıcı'nın referansında illüstrasyonun içine
+    "BÖLÜM 1 / SKOR 0" yazıları gömülüydü; kırpma onların altından
+    başlıyor.
+  */
+  sekme: { en: 423, boy: 512 },
+  ikibin: { en: 425, boy: 512 },
+  bagla: { en: 523, boy: 512 },
+  bicak: { en: 554, boy: 512 },
+  kirici: { en: 626, boy: 512 },
 };
 
 /** Bu oyunun üretilmiş sahnesi var mı? Çağıran yoksa eski çizime düşüyor. */

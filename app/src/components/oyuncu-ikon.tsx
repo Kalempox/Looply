@@ -84,7 +84,30 @@ function Kutu({ boy = 24, children }: IkonProps & { children: React.ReactNode })
  *
  * Üretim ve turların tamamı `scripts/oyun-ikon-uret.py`de yazılı.
  */
-const URETILMIS = new Set(["blok", "dusen", "sekme", "yilan", "bicak"]);
+/*
+  Üretilmiş ikonu olan oyunlar. Listede olmayan oyun genel daireye
+  düşüyor — kimliksiz ama renksiz değil.
+
+  ⚠️ Ü264'te dördü eklendi. İkonlar ürün sahibinin gönderdiği
+  referanslardan kırpıldı (`docs/tasarim/oyun-kartlari-referans/`),
+  üretilmedi: Ü254'te referanssız üretilen dokuz görselin hiçbiri
+  tutmamıştı.
+
+  ⚠️ `kirici`nin ikonu ürün sahibinin *"blok kırıcı"* dediği görsel —
+  ama görselde **palet** var, yani paletli oyun. Ü263'te o oyunun adı
+  "Tuğla Kırıcı" olmuştu; eski adıyla anılması karışıklık değil, alışkanlık.
+*/
+const URETILMIS = new Set([
+  "blok",
+  "dusen",
+  "sekme",
+  "yilan",
+  "bicak",
+  "ikibin",
+  "ayir",
+  "bagla",
+  "kirici",
+]);
 
 /**
  * Oyunun ikonu.
