@@ -340,9 +340,12 @@ function bolumKur(tohum: string, tur: number, skor: number, odulVerildi: boolean
 
 export const bicak: Oyun<BicakDurumu, BicakGirdisi> = {
   id: "bicak",
-  ad: "Bıçak",
-  ozet: "Dönen kütüğe sapla, bıçağa değme",
+  ad: "Bıçak Ustası",
+  ozet: "Hedefe nişan al, bıçakları sapla",
   emoji: "🔪",
+  /* Ölçülen tavan 1.911 (40 tohum, tam tur tarayan bot); iyi oyuncu
+     oraya yaklaşamıyor. 1.200 zorlayıcı ama ulaşılabilir. */
+  gunlukHedef: 1200,
 
   baslat(tohum) {
     const kurulum = bolumKur(tohum, 1, 0, false);

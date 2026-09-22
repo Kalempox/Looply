@@ -57,7 +57,10 @@ export type ChallengeTuru = "skor" | "tur" | "cesit";
 type Tanim = {
   id: string;
   tur: ChallengeTuru;
-  hedef: number;
+  /** `tur` ve `cesit` görevlerinde sabit hedef. */
+  hedef?: number;
+  /** `skor` görevinde oyunun `gunlukHedef`inin yüzdesi — Ü245. */
+  oran?: number;
   xp: number;
 };
 
@@ -78,20 +81,76 @@ type Tanim = {
  *
  * Havuz altıya çıktı (`cesit3`): OBEB(6, 5) = 1, döngü 30 gün.
  *
- * ⚠️ Kalan dört oyun eklenirken bu **her seferinde** yeniden bakılacak:
- * 6 oyunda OBEB 6, 8 oyunda 2, 9 oyunda 3 — üçü de bozuk. Sabit bir
- * havuz boyu bu sorunu çözmüyor; testi görmezden gelmemek çözüyor.
+ * ── 🔴 Ü244: ikinci kez, tam da öngörüldüğü gibi ────────────
+ *
+ * Yukarıdaki not *"6 oyunda OBEB 6"* diyordu ve Blok Kırıcı eklenince
+ * tam o oldu. Havuz yediye çıktı (`tur4`): OBEB(7, 6) = 1, döngü 42
+ * gün.
+ *
+ * ── 🔴 Ü259: ÜÇÜNCÜ kez, yine öngörüldüğü gibi ─────────────
+ *
+ * Yukarıdaki not *"7 oyunda OBEB 7"* diyordu ve 2048 eklenince tam o
+ * oldu. Havuz sekize çıktı (`cesit4`): OBEB(8, 7) = 1, döngü 56 gün.
+ *
+ * ⚠️ Kalan iki oyun eklenirken bu **yine** bakılacak: 8 oyunda OBEB 8,
+ * 9'da 1. Sabit bir havuz boyu bu sorunu çözmüyor; testi görmezden
+ * gelmemek çözüyor — üç kez o test yakaladı.
  */
 const HAVUZ: readonly Tanim[] = [
-  { id: "skor1200", tur: "skor", hedef: 1200, xp: 60 },
+  { id: "skorIyi", tur: "skor", oran: 60, xp: 60 },
   { id: "tur2", tur: "tur", hedef: 2, xp: 60 },
   { id: "cesit2", tur: "cesit", hedef: 2, xp: 75 },
-  { id: "skor2000", tur: "skor", hedef: 2000, xp: 90 },
+  { id: "skorZor", tur: "skor", oran: 100, xp: 90 },
   { id: "tur3", tur: "tur", hedef: 3, xp: 90 },
   /* Beş oyunla "üç farklı oyun" rahat bir hedef; dört oyunluk katalogda
      havuzun dörtte üçünü istemek olurdu. Oyun sayısı arttıkça yeri var. */
   { id: "cesit3", tur: "cesit", hedef: 3, xp: 100 },
+  /* Ü244: yedinci görev **OBEB için** eklendi, denge için değil —
+     altı oyunla altı görev OBEB 6 demekti. Dört tur, altı oyunluk bir
+     katalogda hâlâ tek oturumda yapılabilecek bir şey.
+
+     ⚠️ XP 110 yazılmıştı ve `challenge.test.ts` düşürdü: tavan 100 ve
+     gerekçesi ayrı bir kural — bir bonuslu oyun 100 XP veriyor,
+     görev ondan fazla verirse oynamak yerine **görevi beklemek**
+     kârlı olur. Dört turluk görev havuzun en uzunu ama tavan tavandır. */
+  /* Ü262: onuncu görev, yine **OBEB için** — Bağla ile oyun dokuza
+     çıktı ve havuz da dokuzdu. Onda OBEB(10,9) = 1, döngü 90 gün.
+
+     ⚠️ Oran 80: `skorIyi` (60) ile `skorZor` (100) arasındaki boşluğa
+     oturuyor, yani yeni bir zorluk kademesi değil eksik olan basamak.
+     XP 75 — aynı aralıkta (60 ve 90 arasında). */
+  { id: "skorOrta", tur: "skor", oran: 80, xp: 75 },
+  { id: "tur4", tur: "tur", hedef: 4, xp: 100 },
+  /* Ü259: sekizinci görev, yine **OBEB için**. 2048 eklenince oyun
+     yedi oldu ve havuz da yediydi: OBEB 7. Sekizde OBEB(8,7) = 1,
+     döngü 56 gün.
+
+     ⚠️ Yedi oyunluk katalogda "dört farklı oyun" havuzun yarısından
+     az; `cesit3` ile arası bir adım. */
+  /* Ü261: dokuzuncu görev, yine **OBEB için**. Ayır eklenince oyun
+     sekiz oldu ve havuz da sekizdi: OBEB 8 — yani her oyuna hep aynı
+     görev düşerdi. Dokuzda OBEB(9,8) = 1, döngü 72 gün.
+
+     ⚠️ Neden yine bir **skor** görevi: havuzdaki sekiz görevin altısı
+     birden fazla tur istiyor (`tur*`, `cesit*`), yalnızca ikisi tek
+     turda bitiyor. Kafede oturan insanın her gün üç tur oynayacak
+     vakti yok; tek turluk görevlerin payı üçte bire çıktı.
+
+     ⚠️ Oran 130 — `skorZor`un (100) bir adım üstü. Ölçülen tavanlarla
+     uyumlu: Ayır'da iyi oyuncu 540, kusursuz 700 alıyor ve 130% = 702
+     tam o sınırda duruyor. XP yine 100, tavan (bkz. `tur4` notu). */
+  { id: "skorUsta", tur: "skor", oran: 130, xp: 100 },
+  { id: "cesit4", tur: "cesit", hedef: 4, xp: 100 },
 ];
+
+/**
+ * Skor görevinin varsayılan ölçeği — oyun `gunlukHedef` vermezse.
+ *
+ * ⚠️ 2.000, bugüne kadarki sabit hedefin kendisi: tanımlamayan
+ * oyunlar için davranış **değişmiyor**. Bugün Blok, Düşen ve Yılan
+ * bu durumda ve üçünün tavanı ölçülmedi (`docs/23`, açık madde).
+ */
+export const VARSAYILAN_HEDEF = 2000;
 
 export const HAVUZ_BOYU = HAVUZ.length;
 
@@ -129,18 +188,31 @@ export function gununGorevi(
   const oyun = gununOyunu(gunIso, havuz);
 
   switch (t.tur) {
-    case "skor":
+    case "skor": {
+      /*
+        🔴 Hedef oyunun kendi ölçeğinden türüyor — Ü245.
+
+        Sabit sayı bazı oyunlarda imkânsız, bazılarında bedavaydı;
+        gerekçesi ve ölçümü `sozlesme.gunlukHedef`te yazılı. Sayı
+        okunabilir olsun diye 50'nin katına yuvarlanıyor —
+        *"1.140 skor"* diyen bir görev uydurulmuş görünür.
+      */
+      const taban = oyun.gunlukHedef ?? VARSAYILAN_HEDEF;
+      const hedef = Math.round((taban * (t.oran ?? 100)) / 100 / 50) * 50;
       return {
         ...t,
+        hedef,
         oyunId: oyun.id,
-        baslik: `${oyun.ad}'da ${t.hedef.toLocaleString("tr-TR")} skor`,
-        aciklama: `Bugün ${oyun.ad} oynayıp ${t.hedef.toLocaleString(
+        baslik: `${oyun.ad}'da ${hedef.toLocaleString("tr-TR")} skor`,
+        aciklama: `Bugün ${oyun.ad} oynayıp ${hedef.toLocaleString(
           "tr-TR",
         )} skora ulaş.`,
       };
+    }
     case "tur":
       return {
         ...t,
+        hedef: t.hedef ?? 1,
         oyunId: null,
         baslik: `${t.hedef} tur oyna`,
         aciklama: `Bugün bu kafede ${t.hedef} oyun tamamla. Hangi oyun olduğu fark etmiyor.`,
@@ -168,7 +240,7 @@ export function gununGorevi(
         başka bir şey yok.
       */
       const acik = havuz && havuz.length > 0 ? havuz.length : OYUNLAR.length;
-      const hedef = Math.min(t.hedef, acik);
+      const hedef = Math.min(t.hedef ?? 1, acik);
       return {
         ...t,
         hedef,

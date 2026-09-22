@@ -41,7 +41,9 @@ export type OyuncuRengi =
   | "menekse"
   | "amber"
   | "gok"
-  | "nane";
+  | "nane"
+  | "lavanta"
+  | "krem";
 
 /**
  * Oyuncu tarafındaki kartın yüzeyi — Ü67, Ü70, Ü71.
@@ -130,6 +132,33 @@ export const RENK: Record<OyuncuRengi, RenkTonu> = {
     okunmuyor. `canli` çarkın kendi tonu, `ana` onun okunabilir eşi.
   */
   nane: { zemin: "#dcfaf4", ana: "#0f766e", koyu: "#134e4a", canli: "#5eead4" },
+  /*
+    Ü261 · Ayır lavanta. Yukarıdaki not son iki oyun için çarkta krem ve
+    lavantanın beklediğini yazıyordu; ikisinden lavanta seçildi.
+
+    ⚠️ Krem alınmadı çünkü okunabilir eşi kehribara (Kırıcı) düşüyor —
+    iki oyun aynı sarı-kahve ailesinde kalırdı. Lavanta menekşeye
+    (Sekme) komşu ama `ana` çivit-700'e çekilerek ayrıldı: menekşenin
+    `ana`sı mor (#7c3aed), bunun ki mavi tarafta.
+
+    ⚠️ Çarkta artık **yalnızca krem** kaldı. Sekizinci oyun eklenirken
+    çarkın kendisi büyümek zorunda.
+  */
+  lavanta: { zemin: "#eceefe", ana: "#4338ca", koyu: "#312e81", canli: "#a5b4fc" },
+  /*
+    Ü262 · Bağla krem — çarkın dilim listesinde kalan **son** ton
+    (#f0d9a8). `ana` da çarkın kendi koyu tonundan (#8a7145) geliyor ve
+    beyaz üstünde 4,63 kontrast veriyor, yani ikon/sayı okunuyor.
+
+    ⚠️ Kehribara (Kırıcı) yakın bir aile ve bu bilerek kabul edildi:
+    palet gerçekten tükendi. Ayıran şey `canli` — kehribarınki parlak
+    altın (#fbbf24), bunun ki soluk kum (#f0d9a8) ve kartta görünen o.
+
+    🔴 **Onuncu oyun için çarkın kendisi büyümek zorunda.** Bu palet
+    Ü65'ten beri çarkın dilimlerinden besleniyor ve dilimlerde
+    kullanılmamış ton kalmadı.
+  */
+  krem: { zemin: "#fbf4e4", ana: "#8a7145", koyu: "#5c4a2a", canli: "#f0d9a8" },
 };
 
 /**
@@ -163,6 +192,30 @@ export const OYUN_RENGI: Record<string, OyuncuRengi> = {
     için çarkın kendisi de büyümek zorunda — palet oradan besleniyor.
   */
   bicak: "nane",
+  /*
+    Ü244: Kırıcı kehribar. Yukarıdaki yasak (kahve ve kehribar kupon
+    kategorilerinin) kalktı — kupon rengi Ü65'te teknik tipten
+    çıkıp `GORSEL_RENGI`ye taşındığı için oyun paletiyle çakışma
+    artık yok. Kehribar tuğlanın kendi rengi; başka bir ton
+    seçilseydi tahta ile karo ayrışırdı (Ü85).
+
+    ⚠️ Kalan üç oyun için çarkın dilim listesinde krem, sarı ve
+    lavanta duruyor.
+  */
+  kirici: "amber",
+  /*
+    Ü259: 2048 buz. Kalan iki ton (kahve, gök) — gök Blok'un, kahve
+    ise kupon kategorisiyle karışıyor. Buz serbestti ve sayıların
+    soğuk dili ona oturuyor.
+
+    ⚠️ Kalan iki oyun için çarkın dilim listesinde krem ve lavanta
+    duruyor; palet oradan besleniyor (bkz. `RENK.nane`).
+  */
+  ikibin: "buz",
+  /* Ü261: Ayır lavanta — gerekçesi paletin içinde. */
+  ayir: "lavanta",
+  /* Ü262: Bağla krem — çarkta kalan son ton. */
+  bagla: "krem",
 };
 
 export function oyunRengi(oyunId: string): OyuncuRengi {

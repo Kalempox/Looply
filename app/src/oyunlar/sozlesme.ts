@@ -97,6 +97,35 @@ export type Oyun<Durum, Girdi> = {
   odulIsareti?(durum: Durum): number;
 
   /**
+   * Günün görevinin "iyi bir tur" saydığı skor — Ü245.
+   *
+   * ── 🔴 Neden gerekti: görev bazı oyunlarda İMKÂNSIZDI ───────
+   *
+   * `domain/challenge.ts` skor görevini sabit sayıyla veriyordu
+   * (1.200 ve 2.000) ve oyunların skor ölçeği **birbirinden
+   * bağımsız**. Ölçüm:
+   *
+   *   Sekme  → iyi oyuncu ortanca **139.945**  → 2.000 bedava
+   *   Bıçak  → ölçülen tavan **1.911**         → 2.000 imkânsız
+   *   Kırıcı → ölçülen tavan **1.578**         → 1.200 bile zor
+   *
+   * Yani aynı görev bir oyunda hiç görev değil, ötekinde
+   * tamamlanamaz. Aynı sınıftan bir hata `cesit` hedefinde de
+   * yakalanmıştı (Ü235): kafe oyun kapatınca hedef açık oyun
+   * sayısını geçiyordu.
+   *
+   * ⚠️ Skorun ölçeğini **yalnızca oyun** bilir; sabit bir sayı bunu
+   * asla doğru bilemez. Bu yüzden alan sözleşmede ve motorda, görev
+   * tarafında değil.
+   *
+   * ⚠️ İsteğe bağlı: tanımlamayan oyun varsayılana düşüyor
+   * (`challenge.VARSAYILAN_HEDEF`). Bugün üç oyun tanımlıyor ve
+   * üçünün de sayısı **ölçümden** geliyor; kalan üçü ölçülmedi ve
+   * `docs/23`te açık madde olarak duruyor.
+   */
+  gunlukHedef?: number;
+
+  /**
    * Güvenilmeyen JSON'u girdiye çevirir. Biçim yanlışsa **null**.
    *
    * Zod yerine elle yazıldı: bu modüller istemciye de iniyor ve girdi

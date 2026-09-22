@@ -73,8 +73,14 @@ const TOP_R = 120;
  * ⚠️ Yatayın altına inen açı YOK: top doğrudan yana gidip duvarlar
  * arasında sonsuza kadar sekerdi. 15°'lik pay, en yatay atışın bile
  * er geç tavana ulaşmasını garantiliyor.
+ *
+ * 🔴 Sayı Ü243'te 61'den 60'a indi ve bu bir denge ayarı DEĞİL.
+ * 61 tek sayıydı, yani tablonun tam ortasında **90°** vardı:
+ * `[0, -220]`. Sıfır bileşenli tek vektör oydu ve oyunu kilitliyordu
+ * (aşağıya bakın). Çift sayıda açıyla 90°'ye hiç denk gelinmiyor;
+ * en dikeye yakın iki açı `[5, -220]` ve `[-5, -220]`.
  */
-export const ACI_SAYISI = 61;
+export const ACI_SAYISI = 60;
 
 /**
  * Yön tablosu — **kaynağa gömülü**, çalışma zamanında hesaplanmıyor.
@@ -86,22 +92,42 @@ export const ACI_SAYISI = 61;
  *
  * ⚠️ Bu diziye elle dokunulmamalı. Değiştirilecekse yeniden üretilip
  * **tamamı** değişmeli, yoksa açılar arasında hız farkı oluşur ve
- * oyuncu bazı açıların daha hızlı olduğunu fark eder.
+ * oyuncu bazı açıların daha hızlı olduğunu fark eder. Ü243'te tam da
+ * öyle yapıldı: tablo 60 açıyla baştan üretildi, hız sapması %0,28'den
+ * %0,24'e indi.
+ *
+ * ── 🔴 DEĞİŞMEZ: hiçbir vektörün bileşeni SIFIR olamaz ──────
+ *
+ * Ürün sahibi *"toplar böyle sağa sola giderken bugta kaldı"* dedi ve
+ * sebebi ölçüldü: sınıra dayanan dokuz atışın dokuzu da **açı 30**,
+ * yani eski tablodaki tam dikey `[0, -220]`.
+ *
+ * Mekanizma: 45°'lik üçgen yüzey bileşenleri **takas ediyor**
+ * (`[-vy, -vx]`). Dikey bir top (vx = 0) üçgene çarpınca
+ * `vy = -vx = 0` oluyor. Yansıma fiziksel olarak DOĞRU — hata
+ * oyunda yerçekimi olmamasında: `vy = 0` olan top eve dönemiyor,
+ * iki duvar arasında `EN_FAZLA_ADIM`a kadar sekiyor. Oyuncunun
+ * gördüğü şey ortada asılı kalmış toplar.
+ *
+ * Değişmez kendini koruyor: duvar ve eksen çarpışmaları yalnızca
+ * işaret çeviriyor (sıfır üretemez), takas ise bir bileşeni
+ * ötekinden alıyor — ikisi de sıfırdan farklıysa sonuç da öyle.
+ * Tek giriş kapısı bu tablo, o yüzden bekçilik `tests`te tabloya
+ * bakıyor.
  */
 const YONLER: readonly (readonly [number, number])[] = [
-  [213, -57], [210, -66], [207, -75], [203, -84], [199, -93],
-  [195, -102], [191, -110], [186, -118], [180, -126], [175, -134],
-  [169, -141], [162, -149], [156, -156], [149, -162], [141, -169],
-  [134, -175], [126, -180], [118, -186], [110, -191], [102, -195],
-  [93, -199], [84, -203], [75, -207], [66, -210], [57, -213],
-  [48, -215], [38, -217], [29, -218], [19, -219], [10, -220],
-  [0, -220], [-10, -220], [-19, -219], [-29, -218], [-38, -217],
-  [-48, -215], [-57, -213], [-66, -210], [-75, -207], [-84, -203],
-  [-93, -199], [-102, -195], [-110, -191], [-118, -186], [-126, -180],
-  [-134, -175], [-141, -169], [-149, -162], [-156, -156], [-162, -149],
-  [-169, -141], [-175, -134], [-180, -126], [-186, -118], [-191, -110],
-  [-195, -102], [-199, -93], [-203, -84], [-207, -75], [-210, -66],
-  [-213, -57],
+  [213, -57], [210, -66], [207, -76], [203, -85], [199, -94],
+  [195, -102], [190, -111], [185, -119], [179, -127], [174, -135],
+  [167, -143], [161, -150], [154, -157], [147, -164], [140, -170],
+  [132, -176], [124, -182], [116, -187], [107, -192], [99, -197],
+  [90, -201], [81, -205], [72, -208], [63, -211], [53, -213],
+  [44, -216], [34, -217], [24, -219], [15, -220], [5, -220],
+  [-5, -220], [-15, -220], [-24, -219], [-34, -217], [-44, -216],
+  [-53, -213], [-63, -211], [-72, -208], [-81, -205], [-90, -201],
+  [-99, -197], [-107, -192], [-116, -187], [-124, -182], [-132, -176],
+  [-140, -170], [-147, -164], [-154, -157], [-161, -150], [-167, -143],
+  [-174, -135], [-179, -127], [-185, -119], [-190, -111], [-195, -102],
+  [-199, -94], [-203, -85], [-207, -76], [-210, -66], [-213, -57],
 ];
 
 /**
@@ -117,6 +143,53 @@ const EN_FAZLA_ADIM = 4000;
 
 /** Toplar arasındaki fırlatma gecikmesi (adım). */
 const ATIS_ARALIGI = 6;
+
+/**
+ * Topun koruduğu en az dikey hız — Ü243.
+ *
+ * ── 🔴 15°'lik yatay payı ÇARPIŞMA SONRASI da geçerli ───────
+ *
+ * `ACI_SAYISI` notu şunu söylüyor: *"yatayın altına inen açı yok,
+ * 15°'lik pay en yatay atışın bile er geç tavana ulaşmasını
+ * garantiliyor."* O kural **fırlatma anında** uygulanıyordu ama
+ * çarpışmadan sonra değil.
+ *
+ * 45°'lik üçgen yüzey bileşenleri takas ediyor, yani çarpışmadan
+ * sonraki dikey hız **çarpışmadan önceki yatay hıza** eşit oluyor.
+ * Dikeye yakın bir atış (`[5, -220]`) üçgene çarpınca `[220, -5]`
+ * oluyor: neredeyse yatay. Yerçekimi olmadığı için o top eve
+ * dönemiyor, `EN_FAZLA_ADIM`a kadar duvarlar arasında sekiyor ve
+ * oyuncu ortada asılı kalmış toplar görüyor.
+ *
+ * Ölçüldü: tablodaki tam dikey kaldırıldıktan sonra bile 9.720
+ * atışın 2'si sınıra dayanıyordu ve ikisi de en dikeye yakın
+ * açılardı.
+ *
+ * Kural artık her adımda geçerli: dikey hız 57'nin altına düşerse
+ * 57'ye çekiliyor ve yatay hız 213 oluyor — yani **tablonun en
+ * yatay vektörü**. Hız 220'de kalıyor, yeni bir sayı uydurulmuyor.
+ *
+ * ⚠️ Fizik açısından bir düzeltme, bir "fudge" değil: oyunun
+ * kutusunda yerçekimi yok ve yatay kalan top tanımsız süre yaşıyor.
+ * Aynı gerekçe fırlatma açısını da 15°'de sınırlıyor.
+ */
+const EN_AZ_DIKEY = 57;
+/** `EN_AZ_DIKEY`in eşi — `213² + 57² ≈ 220²`, tablonun ilk satırı. */
+const DIKEY_ESI_YATAY = 213;
+
+/**
+ * Dikey hızı en az `EN_AZ_DIKEY` yapar — saf tam sayı.
+ *
+ * ⚠️ İşaret korunuyor: top yukarı gidiyorsa yukarı gitmeye devam
+ * ediyor, yalnızca eğimi dikleşiyor. `vy` sıfırsa aşağı seçiliyor;
+ * yön tablosunda sıfır bileşen olmadığı için buraya gelinmemeli ama
+ * gelinirse eve gitmek güvenli taraf.
+ */
+function dikeyKoru(t: Top): void {
+  if (t.vy >= EN_AZ_DIKEY || t.vy <= -EN_AZ_DIKEY) return;
+  t.vy = t.vy < 0 ? -EN_AZ_DIKEY : EN_AZ_DIKEY;
+  t.vx = t.vx < 0 ? -DIKEY_ESI_YATAY : DIKEY_ESI_YATAY;
+}
 
 /** Hücrenin içinde bloğun kapladığı pay — kenarda boşluk kalıyor. */
 const BLOK_PAY = 60;
@@ -486,6 +559,11 @@ function simule(durum: SekmeDurumu, aci: number, kayit: AtisKaresi[] | null): At
         }
       }
 
+      /* Ü243: 15°'lik pay çarpışmadan sonra da korunuyor.
+         Tablodan gelen hızlar zaten sınırın üstünde, yani bu çağrı
+         yalnızca çarpışma bileşenleri takas ettiğinde iş yapıyor. */
+      dikeyKoru(t);
+
       if (kare) kare.push({ x: t.x, y: t.y });
     }
 
@@ -543,9 +621,13 @@ export function atisIzi(durum: SekmeDurumu, aci: number): AtisKaresi[] {
 
 export const sekme: Oyun<SekmeDurumu, SekmeGirdisi> = {
   id: "sekme",
-  ad: "Sekme",
-  ozet: "Topu fırlat, blokları kır",
+  ad: "Blok Kırıcı",
+  ozet: "Topları fırlat, blokları patlat",
   emoji: "🎯",
+  /* Ölçüm (25 tur, iyi oyuncu botu): tur ortanca 161, skor ortanca
+     139.945. Ailenin en yüksek ölçeği — burada 2.000 görev değil,
+     ilk yarım dakika. */
+  gunlukHedef: 20_000,
 
   baslat(tohum) {
     return {

@@ -2,6 +2,10 @@ import type { HerhangiOyun } from "./sozlesme";
 import { bicak } from "./bicak";
 import { blok } from "./blok";
 import { dusen } from "./dusen";
+import { ayir } from "./ayir";
+import { bagla } from "./bagla";
+import { ikibin } from "./ikibin";
+import { kirici } from "./kirici";
 import { sekme } from "./sekme";
 import { yilan } from "./yilan";
 
@@ -19,6 +23,19 @@ import { yilan } from "./yilan";
  *   sekme  → (atış no, açı)          · zaman **motorun içinde**
  *   yılan  → (tick, yön)             · zaman var, **ödül işareti var**
  *   bıçak  → (tick)                  · **girdinin tamamı zaman**
+ *   kırıcı → (tick, konum)           · zaman + **sürekli** konum
+ *   2048   → (yön)                   · **tek alan, dört değer**
+ *
+ * Ü259'da 2048 eklendi ve iddia yedinci kez sınandı — bu sefer en
+ * ucuz uçtan: girdinin tek alanı var ve dört değer alıyor, yani bir
+ * turun kaydı birkaç yüz bayt. Sözleşmeye hiçbir şey eklenmedi.
+ *
+ * Ü244'te Blok Kırıcı eklendi ve iddia altıncı kez sınandı. Yenilik
+ * girdinin bir **örnekleme** olması: bir hamle değil, bir yön değil,
+ * yalnız zaman da değil — parmağın o tick'teki yeri. Ekran kaydı
+ * birleştiriyor (hedef değişmedikçe son girdinin `t`si uzuyor) ve
+ * bu ancak motorun `{t, x}` anlamı *"(sonTick, t] boyunca hedef x"*
+ * olduğu için geçerli. Sözleşmeye hiçbir şey eklenmedi.
  *
  * Ü235'te Bıçak eklendi ve iddia beşinci kez sınandı — bu sefer en
  * uçtan: girdinin tek alanı var ve o da tick. Oyuncunun yaptığı tek
@@ -46,7 +63,7 @@ import { yilan } from "./yilan";
  * karşılıyor — orası olmasaydı profil karnesinde ham kimlik görünürdü.
  */
 
-export const OYUNLAR: readonly HerhangiOyun[] = [blok, dusen, sekme, yilan, bicak];
+export const OYUNLAR: readonly HerhangiOyun[] = [blok, dusen, sekme, yilan, bicak, kirici, ikibin, ayir, bagla];
 
 export function oyunBul(id: string): HerhangiOyun | undefined {
   return OYUNLAR.find((o) => o.id === id);

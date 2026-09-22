@@ -16,31 +16,30 @@ import { type HerhangiOyun } from "@/oyunlar";
  *   · aynı **kart** → `OyunKapagi` (karusel.tsx) iki ekranda da o
  *   · aynı **veri** → kategori, sıra ve "bugünün oyunu" bu dosyadan
  *
- * ── Kategoriler (Ü66) ───────────────────────────────────────
+ * ── Kategoriler: Ü66'nın ikilisi Ü263'te ÜÇE çıktı ────────────
  *
- * ⚠️ Sekme "Düşünerek"te, "Yetişerek"te değil: oyunda **hiç zaman
- * baskısı yok** — oyuncu nişan alırken istediği kadar düşünebiliyor ve
- * zorluk açıyı kestirmekte. Ü217'de önce yanlış kategoriye kondu;
- * ayrım hızda değil, oyuncunun ne yaptığında.
+ * Ü66'dan beri iki kategori vardı — "Düşünerek" ve "Yetişerek" — ve
+ * ayrım oyuncunun ne yaptığıydı: düşünerek mi oynuyorsun yoksa
+ * yetişerek mi.
  *
- * Üç oyuna üç kategori yapılmadı; o, kategori değil etiket olurdu.
- * İki kategori var ve ayrım oyuncunun hissettiği şey: **düşünerek**
- * mi oynuyorsun yoksa **yetişerek** mi.
+ * Ü263'te ürün sahibi kart referansları gönderdi ve onlarda üç kategori
+ * vardı: **Stratejik · Mantık & Düşünme · Beceri & Hız**. Soruldu,
+ * referans seçildi.
  *
- * ── Ü208: Kelime çıkınca Yılan yerine oturdu ────────────────
+ * ⚠️ Ayrım ölçütü **değişmedi**, yalnızca "Düşünerek" ikiye bölündü:
+ * planlayıp biriktirdiğin oyunlar (Blok, Blok Kırıcı, Blok 2048) ile
+ * tek doğru çözümü aradığın bulmacalar (Renkli Tüpler, Renkli
+ * Çizgiler) artık ayrı duruyor. "Yetişerek" olduğu gibi "Beceri & Hız"
+ * oldu.
  *
- * Kelime kaldırılınca "Düşünerek" tek oyunla kaldı ve Yılan hâlâ
- * "Diğer"deydi — aşağıdaki not bunu zaten bir gözden kaçma olarak
- * yazıyordu. Yılan refleks oyunu; yeri "Yetişerek". Şimdi iki kategori
- * de dolu ve "Diğer" boş.
+ * ⚠️ Referansta yalnızca **altı** oyunun kartı vardı. Blok, Düşen ve
+ * Yılan'ınkiler henüz gelmedi; üçü de eski ayrımın söylediği yere
+ * kondu (Blok stratejik; Düşen ve Yılan beceri). Kartları gelince
+ * teyit edilecek.
  *
- * ── Ü235: Bıçak "Yetişerek"te ───────────────────────────────
- *
- * Sekme'nin kategorisi Ü217'de yanlış konmuştu ve ayrımın hızda
- * değil **oyuncunun ne yaptığında** olduğu o zaman yazıldı. Bıçak
- * testi tersinden geçiyor: kütük dönerken oyuncunun düşünecek bir
- * şeyi yok, yalnızca **ne zaman** dokunacağı var. Bekleyebilir ama
- * beklemek ona bir bilgi vermiyor — boşluk dönüp geliyor.
+ * ⚠️ Blok Kırıcı burada **Sekme'nin yeni adı**: referansta "Blok
+ * Kırıcı" topları fırlatıp blokları patlatan oyun, paletli olan ise
+ * "Tuğla Kırıcı". Eski adlandırmada ikisi terstiydi.
  */
 
 export type Kategori = {
@@ -51,14 +50,19 @@ export type Kategori = {
 
 export const KATEGORILER: Kategori[] = [
   {
-    ad: "Düşünerek",
-    ozet: "Acele yok, doğru hamle var",
-    oyunlar: ["blok", "sekme"],
+    ad: "Stratejik",
+    ozet: "Planla, yerleştir, biriktir",
+    oyunlar: ["blok", "sekme", "ikibin"],
   },
   {
-    ad: "Yetişerek",
+    ad: "Mantık & Düşünme",
+    ozet: "Acele yok, doğru hamle var",
+    oyunlar: ["ayir", "bagla"],
+  },
+  {
+    ad: "Beceri & Hız",
     ozet: "Hızlanıyor, sen yavaşlayamıyorsun",
-    oyunlar: ["dusen", "yilan", "bicak"],
+    oyunlar: ["dusen", "yilan", "bicak", "kirici"],
   },
 ];
 
@@ -67,7 +71,7 @@ export type KatalogKarti = {
   id: string;
   ad: string;
   ozet: string;
-  /** "Düşünerek" · "Yetişerek" · "Diğer" */
+  /** "Stratejik" · "Mantık & Düşünme" · "Beceri & Hız" · "Diğer" */
   kategori: string;
   bugunMu: boolean;
 };
@@ -77,7 +81,7 @@ export type KatalogKarti = {
  *
  * ⚠️ Sıra **kategorilere göre** kuruluyor, `acik` listesinin kendi
  * sırasına göre değil: karusel tek bir halka ama oyuncunun soldan sağa
- * göreceği düzen hâlâ "önce düşünerek, sonra yetişerek".
+ * göreceği düzen kategorilerin sırası.
  *
  * ⚠️ Kategoriye girmemiş oyun **sona** ekleniyor, düşmüyor: yeni bir
  * oyun eklenip `KATEGORILER` güncellenmezse oyun katalogdan sessizce

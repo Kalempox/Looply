@@ -41,7 +41,48 @@ import {
   type DusenGirdisi,
 } from "@/oyunlar/dusen";
 import { bicak, carpilanBicak, CEMBER, GIRIS_ACISI } from "@/oyunlar/bicak";
+import {
+  kirici,
+  kiriciDuvarUstu,
+  kiriciPaletEni,
+  KIRICI_EN,
+  KIRICI_OLCEK,
+  KIRICI_SATIR,
+  type KiriciDurumu,
+} from "@/oyunlar/kirici";
 import { sekme, ACI_SAYISI, atisIzi, SEKME_BOY } from "@/oyunlar/sekme";
+import { ikibin, type IkibinYonu } from "@/oyunlar/ikibin";
+import {
+  ayir,
+  bolumTahtasi,
+  bolumBittiMi,
+  bolumPuani,
+  parcaSayisi,
+  renkSayisi,
+  KAPASITE,
+  HAMLE_HAKKI,
+  EN_FAZLA_RENK,
+  type AyirDurumu,
+} from "@/oyunlar/ayir";
+import { ayirSivisi, AYIR_SIVI_SAYISI } from "@/oyunlar/arayuz/ayir-yuzey";
+import {
+  bagla,
+  bolumTahtasi as baglaBolumu,
+  bolumBittiMi as baglaBolumBittiMi,
+  bolumPuani as baglaPuani,
+  renkSayisi as baglaRenkSayisi,
+  tahtaEni,
+  CIZIM_HAKKI,
+  EN_FAZLA_RENK as BAGLA_EN_FAZLA_RENK,
+  type BaglaDurumu,
+} from "@/oyunlar/bagla";
+import { baglaYolRengi, BAGLA_RENK_SAYISI } from "@/oyunlar/arayuz/bagla-yuzey";
+import {
+  IKIBIN_BEYAZ_YAZI_SINIRI,
+  ikibinTonu,
+  ikibinYaziBoyu,
+  IKIBIN_KADEME,
+} from "@/oyunlar/arayuz/ikibin-yuzey";
 import { yilan, YILAN_EN, adimTickiHesapla, ODUL_OMRU_ADIM, type Yon } from "@/oyunlar/yilan";
 import {
   tekrarOyna,
@@ -51,6 +92,7 @@ import {
   saatTutarliMi,
 } from "@/oyunlar/sozlesme";
 import { OYUNLAR, type HerhangiOyun } from "@/oyunlar";
+import { katalogSirasi, KATEGORILER } from "@/oyunlar/katalog";
 import { isGunu } from "@/lib/tarih";
 import { yoneticiSorgu, benzersizEposta } from "./_yardim";
 
@@ -2339,3 +2381,1387 @@ describe("seviye atlama", () => {
   });
 });
 
+/**
+ * Topun palete varacağı x — duvar katlamasıyla, tuğlaları yok sayarak.
+ *
+ * ⚠️ Testin kendi kestirimi, motorun kopyası DEĞİL: motorun fiziğini
+ * buraya kopyalamak testi ürünün aynası yapar ve ikisi birlikte
+ * yanlış olabilirdi. Kestirim kaba ve öyle kalmalı — işi "iyi oyuncu"
+ * taklidi etmek, doğru cevabı bilmek değil.
+ */
+function kiriciInis(d: KiriciDurumu): number {
+  const { GENISLIK, TOP_R, PALET_Y } = KIRICI_OLCEK;
+  if (d.vy <= 0) return d.topX;
+  const x = d.topX + d.vx * ((PALET_Y - TOP_R - d.topY) / d.vy);
+  const en = GENISLIK - 2 * TOP_R;
+  let u = (x - TOP_R) % (2 * en);
+  if (u < 0) u += 2 * en;
+  return Math.round(u <= en ? TOP_R + u : TOP_R + (2 * en - u));
+}
+
+/** Kusursuz izleyen bot; `gecikme` tick kadar geç tepki veriyor. */
+function kiriciOyna(tohum: string, gecikme = 0) {
+  let d = kirici.baslat(tohum);
+  const kuyruk: number[] = [];
+  const girdiler: { t: number; x: number }[] = [];
+  for (let t = 1; t <= 13_000 && !kirici.bittiMi(d); t++) {
+    kuyruk.push(kiriciInis(d));
+    const x = kuyruk.length > gecikme ? kuyruk[kuyruk.length - 1 - gecikme] : kuyruk[0];
+    const sonraki = kirici.uygula(d, { t, x });
+    if (!sonraki) break;
+    d = sonraki;
+    girdiler.push({ t, x });
+  }
+  return { durum: d, skor: kirici.skor(d), girdiler };
+}
+
+describe("blok kırıcı (Ü244)", () => {
+  test("duvar her tohumda geliyor — kusursuz izleyen bot da ölüyor", () => {
+    /*
+      🔴 Bu testin bekçilik ettiği şey duvarın **tur içinde inmesi**.
+
+      İki kez ölçüldü ve iki kez duvar yoktu:
+        · sabit duvarla 160 turun 160'ı tick tavanına dayandı
+        · bölüm bölüm inen duvarla kusursuz bot 2. bölümde kapalı bir
+          bilardo yörüngesine kilitlendi ve son iki tuğlaya 9.000
+          tick boyunca değmedi
+
+      Şimdiki kural duvarı her on tick'te indiriyor. Bot topu hiç
+      kaçırmasa bile duvar palete iniyor ve tur bitiyor — Ü83:
+      "kazanarak biten bir tur yok."
+
+      ⚠️ `EN_FAZLA_TICK` tavanına DAYANMAMALI: tavan bir güvenlik
+      sınırı ve turu o bitiriyorsa oyunun kendi duvarı yok demektir.
+      Asıl bekçilik edilen şey bu.
+
+      ⚠️ Sınırlar bilerek gevşek: test dengeyi değil duvarın
+      **varlığını** sınıyor. Denge değiştiğinde kırmızı yanan bir test
+      her ayarda güncellenmek zorunda kalır ve güncellene güncellene
+      anlamını yitirir. Ölçülen (gecikmesiz bot, 40 tohum): bölüm
+      ortanca 5, en iyi 7, skor en iyi 1.578.
+    */
+    let enYuksekTur = 0;
+    let enYuksekSkor = 0;
+
+    for (let i = 0; i < 12; i++) {
+      const r = kiriciOyna(`duvar-${i}`);
+      assert.ok(kirici.bittiMi(r.durum), `duvar-${i}: tur bitmedi — duvar palete inmiyor`);
+      assert.ok(
+        r.durum.tick < 12_000,
+        `duvar-${i}: tur ${r.durum.tick}. tick'te GÜVENLİK SINIRIYLA bitti — ` +
+          `oyunun kendi duvarı yok`,
+      );
+      enYuksekTur = Math.max(enYuksekTur, r.durum.tur);
+      enYuksekSkor = Math.max(enYuksekSkor, r.skor);
+    }
+
+    assert.ok(enYuksekTur <= 16, `bölüm ${enYuksekTur}'e kadar gidildi — duvar yetişmiyor`);
+    assert.ok(
+      enYuksekSkor < 5000,
+      `en yüksek skor ${enYuksekSkor} — öbür oyunların mertebesinin çok üstünde`,
+    );
+  });
+
+  test("beceri ÖDÜLLENDİRİLİYOR — gecikmeli oyuncu daha az alıyor", () => {
+    /*
+      🔴 Ölçümün yakaladığı en sinsi hata buydu: eğri bir ara **ters**
+      dönmüştü. Paletin ortası topu dik yukarı gönderiyordu; topu
+      özenle ortadan karşılayan oyuncu dar bir koridora kilitleniyor,
+      az tuğla kırıyor ve inen duvara eziliyordu. Yani oyun oyuncuya
+      "daha kötü oyna" diyordu.
+
+      Yön tablosundan dikey yuva çıkarıldı (iki yay: 152°–108° ve
+      72°–28°). Test o düzeltmeyi bekçiliyor.
+
+      ⚠️ Karşılaştırma **ortalama**, tek tur değil: tek turda şanslı
+      bir tohum eğriyi tersine çevirebilir.
+    */
+    const topla = (gecikme: number) => {
+      let t = 0;
+      for (let i = 0; i < 10; i++) t += kiriciOyna(`beceri-${i}`, gecikme).skor;
+      return t / 10;
+    };
+    const hizli = topla(0);
+    const yavas = topla(8);
+
+    assert.ok(
+      hizli > yavas * 1.5,
+      `gecikmesiz ${Math.round(hizli)}, 8 tick gecikmeli ${Math.round(yavas)} — ` +
+        `beceri skora yansımıyor`,
+    );
+  });
+
+  test("top hiçbir zaman yatay ya da dikey kilitlenmiyor", () => {
+    /*
+      🔴 Sekme'de bu değişmez ihlal edilince ürün sahibi "toplar böyle
+      sağa sola giderken bugta kaldı" dedi (Ü243). Burada tek giriş
+      kapısı yön tablosu: duvar, tavan ve tuğla çarpışmaları yalnızca
+      işaret çeviriyor ve işaret çevirmek sıfır üretemez.
+
+      Tabloya doğrudan bakılmıyor (dışa açık değil, olmamalı da);
+      ölçülen şey **ürünün kendisi**.
+    */
+    let kare = 0;
+    for (let i = 0; i < 8; i++) {
+      let d = kirici.baslat(`sifir-${i}`);
+      for (let t = 1; t <= 4000 && !kirici.bittiMi(d); t++) {
+        const sonraki = kirici.uygula(d, { t, x: kiriciInis(d) });
+        if (!sonraki) break;
+        d = sonraki;
+        kare++;
+        assert.ok(
+          d.vx !== 0 && d.vy !== 0,
+          `sifir-${i}: ${t}. tick'te hız (${d.vx}, ${d.vy}) — top kilitlendi`,
+        );
+      }
+    }
+    assert.ok(kare > 5000, `yalnızca ${kare} kare tarandı — test bir şey sınamıyor`);
+  });
+
+  test("paket PUAN vermiyor — teslimat, kazanç değil", () => {
+    /*
+      Ü234'ün kuralı: oyun içi paket kazanılmış ödülü **teslim ediyor**,
+      yeni bir şey kazandırmıyor.
+
+      🔴 Fark testi: paketli tur ile paketsiz tur karşılaştırılamıyor
+      (paket eşikten sonra çıkıyor, yani eşiği geçen her tur onu
+      görüyor). Onun yerine turun kareleri taranıyor — paketin
+      kırıldığı tick'teki skor artışı, normal bir tuğlanınkinden büyük
+      olmamalı.
+    */
+    let denendi = 0;
+    for (let i = 0; i < 30 && denendi < 4; i++) {
+      let d = kirici.baslat(`paket-${i}`);
+      let oncekiSkor = 0;
+      let paketArtisi: number | null = null;
+      let enBuyukArtis = 0;
+
+      for (let t = 1; t <= 13_000 && !kirici.bittiMi(d); t++) {
+        const paketVardi = d.odulHucre;
+        const sonraki = kirici.uygula(d, { t, x: kiriciInis(d) });
+        if (!sonraki) break;
+        const artis = sonraki.skor - oncekiSkor;
+        if (paketVardi !== null && sonraki.odulHucre === null && sonraki.tur === d.tur) {
+          paketArtisi = artis;
+        } else if (artis > 0) {
+          enBuyukArtis = Math.max(enBuyukArtis, artis);
+        }
+        oncekiSkor = sonraki.skor;
+        d = sonraki;
+      }
+
+      if (paketArtisi === null) continue;
+      denendi++;
+      assert.ok(
+        paketArtisi <= enBuyukArtis,
+        `paket-${i}: paket ${paketArtisi} puan verdi, en büyük normal artış ` +
+          `${enBuyukArtis} — paket ekonomiye dokunuyor (Ü201)`,
+      );
+    }
+    assert.ok(denendi >= 2, `yalnızca ${denendi} turda paket çıktı — test bir şey sınamıyor`);
+  });
+
+  test("girdi kaydı BİRLEŞTİRİLİNCE de aynı skoru veriyor", () => {
+    /*
+      🔴 Ekranın en kritik varsayımı bu (`kirici-ekran.tsx`).
+
+      Motor her tick çağrılıyor ama kayda her tick yazılmıyor: hedef
+      değişmedikçe son girdinin `t`si uzatılıyor. Bu ancak `{t, x}`in
+      anlamı "(sonTick, t] boyunca hedef x" olduğu için geçerli.
+
+      Varsayım bozulursa ekrandaki skor ile sunucunun hesapladığı skor
+      ayrışır ve dürüst oyuncunun turu **sessizce** reddedilir.
+    */
+    for (let i = 0; i < 6; i++) {
+      const r = kiriciOyna(`birlestir-${i}`);
+
+      const birlesik: { t: number; x: number }[] = [];
+      for (const g of r.girdiler) {
+        const son = birlesik[birlesik.length - 1];
+        if (son && son.x === g.x && g.t - son.t < 200) son.t = g.t;
+        else birlesik.push({ ...g });
+      }
+
+      const sonuc = tekrarOyna(kirici, `birlestir-${i}`, birlesik);
+      assert.ok(sonuc.gecerli, `birlestir-${i}: birleşik kayıt reddedildi`);
+      if (!sonuc.gecerli) continue;
+      assert.equal(
+        sonuc.skor,
+        r.skor,
+        `birlestir-${i}: birleşik ${sonuc.skor}, tick tick ${r.skor} — ` +
+          `ekranın kayıt birleştirmesi motorla ayrışıyor`,
+      );
+      assert.ok(
+        birlesik.length < r.girdiler.length,
+        `birlestir-${i}: birleştirme hiçbir şeyi kısaltmadı — test bir şey sınamıyor`,
+      );
+    }
+  });
+
+  test("girdi denetimi — bozuk biçim ve kuraldışı zaman reddediliyor", () => {
+    const d = kirici.baslat("denetim");
+    assert.equal(kirici.girdiOku({ t: 1, x: 0 })?.x, 0, "geçerli girdi reddedildi");
+    assert.equal(kirici.girdiOku({ t: 1.5, x: 0 }), null, "kesirli tick kabul edildi");
+    assert.equal(kirici.girdiOku({ t: -1, x: 0 }), null, "negatif tick kabul edildi");
+    assert.equal(kirici.girdiOku({ t: 1 }), null, "konumsuz girdi kabul edildi");
+    assert.equal(kirici.girdiOku({ t: 1, x: 1.5 }), null, "kesirli konum kabul edildi");
+    assert.equal(kirici.girdiOku("1"), null, "metin kabul edildi");
+
+    assert.equal(kirici.uygula(d, { t: 0, x: 0 }), null, "geçmişe girdi kabul edildi");
+    assert.equal(kirici.uygula(d, { t: 5000, x: 0 }), null, "sınırsız bekleme kabul edildi");
+
+    /* Tahtanın dışındaki hedef REDDEDİLMİYOR, kırpılıyor: ekranın
+       kenarına basan parmak kuraldışı bir hamle değil. */
+    assert.ok(kirici.uygula(d, { t: 1, x: -999_999 }), "kenara basmak kuraldışı sayıldı");
+  });
+
+  test("gecenMs saati raporluyor — Ü84 kapısı bu oyunda da açık", () => {
+    const r = kiriciOyna("saat");
+    assert.ok(kirici.gecenMs, "gecenMs tanımlı değil — zaman tabanlı oyun saatsiz");
+    assert.equal(kirici.gecenMs?.(r.durum), r.durum.tick * TICK_MS);
+  });
+
+  test("ölçüler ekranla aynı kaynaktan — palet daralıyor, duvar iniyor", () => {
+    /* Ekran kendi kopyasını yazarsa iki taraf sessizce ayrışır ve
+       oyuncu gördüğü paletle değil başka bir paletle topu karşılar —
+       aynı tuzak Sekme'de `SEKME_OLCEK`, Bıçak'ta `CEMBER` için de
+       yazılı. */
+    assert.equal(KIRICI_OLCEK.GENISLIK, KIRICI_EN * KIRICI_OLCEK.BIRIM);
+    assert.ok(kiriciPaletEni(1) > kiriciPaletEni(9), "palet daralmıyor");
+    const d = kirici.baslat("olcu");
+    assert.ok(kiriciDuvarUstu(d, 200) > kiriciDuvarUstu(d, 0), "duvar tur içinde inmiyor");
+    assert.equal(KIRICI_SATIR * KIRICI_OLCEK.TUGLA_BOY < KIRICI_OLCEK.PALET_Y, true);
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════
+   Maymun testi — hiçbir motor FIRLATMAMALI (Ü253)
+   ═══════════════════════════════════════════════════════════ */
+
+/* ═══════════════════════════════════════════════════════════
+   Katalog — her oyun listede görünüyor mu (Ü263)
+   ═══════════════════════════════════════════════════════════ */
+
+describe("oyun kataloğu", () => {
+  test("🔴 açık olan HER oyun katalogda tam bir kez görünüyor", () => {
+    /*
+      🔴 `katalog.ts`in kendi yorumu şunu söylüyordu: *"yeni bir oyun
+      eklenip `KATEGORILER` güncellenmezse oyun katalogdan **sessizce**
+      kaybolurdu"* — ama bunu tutan hiçbir test yoktu. Dosya bu oturumda
+      bir ara bozuldu (kapanmamış yorum bloğu) ve **754 test yeşil
+      kaldı**: katalogu hiçbir test içe aktarmıyordu.
+
+      Aynı sınıf hata bu oturumda iki kez de `challenge.ts`te çıktı
+      (havuz boyu ile oyun sayısının OBEB'i). Orada test vardı ve iki
+      kez de yakaladı; burada yoktu.
+    */
+    const kartlar = katalogSirasi(OYUNLAR, null);
+    assert.equal(kartlar.length, OYUNLAR.length, "kart sayısı oyun sayısından farklı");
+    for (const oyun of OYUNLAR) {
+      const bulunan = kartlar.filter((k) => k.id === oyun.id);
+      assert.equal(bulunan.length, 1, `${oyun.id}: katalogda ${bulunan.length} kez var`);
+      assert.equal(bulunan[0].ad, oyun.ad, `${oyun.id}: kartın adı motorunkiyle ayrışmış`);
+    }
+  });
+
+  test("🔴 hiçbir oyun \"Diğer\"e düşmüyor", () => {
+    /* ⚠️ "Diğer" bir kategori değil, **alarm**: bir oyun oraya düştüyse
+       `KATEGORILER` güncellenmemiş demektir. */
+    const dusenler = katalogSirasi(OYUNLAR, null).filter((k) => k.kategori === "Diğer");
+    assert.deepEqual(
+      dusenler.map((k) => k.id),
+      [],
+      "bu oyunlar hiçbir kategoride değil — KATEGORILER güncellenmemiş",
+    );
+  });
+
+  test("kategori sırası korunuyor ve bugünün oyunu tek", () => {
+    const kartlar = katalogSirasi(OYUNLAR, "ayir");
+    const sira = KATEGORILER.map((k) => k.ad);
+    let onceki = -1;
+    for (const kart of kartlar) {
+      const yer = sira.indexOf(kart.kategori);
+      assert.ok(yer >= onceki, `${kart.id}: kategori sırası bozuldu (${kart.kategori})`);
+      onceki = yer;
+    }
+    assert.deepEqual(kartlar.filter((k) => k.bugunMu).map((k) => k.id), ["ayir"]);
+  });
+});
+
+describe("motorlar rastgele girdide çökmüyor (Ü253)", () => {
+  /**
+   * Her oyunun kabul ettiği biçimde rastgele girdi.
+   *
+   * ⚠️ Biçimler `girdiOku`dan okunarak yazıldı, tahminle değil. İlk
+   * yazımda dördü yanlıştı ve tarama **yalancı yeşil** verdi: girdiler
+   * reddediliyor, motor hiç çalışmıyor, test "temiz" diyordu. Aşağıdaki
+   * `en az adım` iddiası onun için var.
+   */
+  function girdiUret(
+    oyunId: string,
+    tick: number,
+    rnd: () => number,
+    d: { tur?: number; en?: number; uclar?: number[] },
+  ): unknown {
+    switch (oyunId) {
+      case "blok":
+        return { t: Math.floor(rnd() * 3), s: Math.floor(rnd() * 8), k: Math.floor(rnd() * 8) };
+      case "dusen":
+        return { tick, a: ["sol", "sag", "in", "dondur", "birak", "bekle"][Math.floor(rnd() * 6)] };
+      case "sekme":
+        // ⚠️ `t` atış SIRASI (durum.tur), tick değil — kayıt karıştırılamıyor.
+        return { t: d.tur ?? 0, a: Math.floor(rnd() * ACI_SAYISI) };
+      case "yilan":
+        return { tick, y: ["yukari", "asagi", "sol", "sag", "bekle"][Math.floor(rnd() * 5)] };
+      case "bicak":
+        return { t: tick };
+      case "kirici":
+        return { t: tick, x: Math.floor(rnd() * 9000) };
+      case "ikibin":
+        // ⚠️ Zamansız: tick yok, yalnızca yön.
+        return { y: ["yukari", "asagi", "sol", "sag"][Math.floor(rnd() * 4)] };
+      case "bagla": {
+        /* ⚠️ Tamamen rastgele bir dizi `girdiOku`yu bile geçse
+           `uygula` hepsini reddederdi ve tarama motoru hiç
+           çalıştırmazdı (aşağıdaki "en az adım" iddiasının yakaladığı
+           şey tam olarak buydu). Girdilerin çoğu **gerçek bir uçtan
+           başlayan rastgele yürüyüş**; küçük bir kısmı çöp. */
+        const en = d.en ?? 4;
+        const uclar = d.uclar ?? [];
+        const uc: number[] = [];
+        for (let i = 0; i < uclar.length; i++) if (uclar[i] !== 0) uc.push(i);
+        if (uc.length === 0 || rnd() < 0.15) {
+          const boy = 1 + Math.floor(rnd() * 5);
+          return { y: Array.from({ length: boy }, () => Math.floor(rnd() * en * en)) };
+        }
+        const yol = [uc[Math.floor(rnd() * uc.length)]];
+        const adim = 1 + Math.floor(rnd() * 10);
+        for (let i = 0; i < adim; i++) {
+          const k = yol[yol.length - 1];
+          const satir = Math.floor(k / en);
+          const sutun = k % en;
+          const komsu: number[] = [];
+          if (satir > 0) komsu.push(k - en);
+          if (satir < en - 1) komsu.push(k + en);
+          if (sutun > 0) komsu.push(k - 1);
+          if (sutun < en - 1) komsu.push(k + 1);
+          const n = komsu[Math.floor(rnd() * komsu.length)];
+          if (yol.includes(n)) break;
+          yol.push(n);
+        }
+        return { y: yol };
+      }
+      case "ayir":
+        /* ⚠️ Tüp sayısı bölümle değişiyor (5–7); rastgele çift bazen
+           aralığın dışına düşüyor ve o girdi zaten reddediliyor —
+           taramanın istediği de bu karışım. */
+        return { k: Math.floor(rnd() * 8), h: Math.floor(rnd() * 8) };
+      default:
+        return { t: tick };
+    }
+  }
+
+  test("🔴 her motor rastgele girdide fırlatmıyor", () => {
+    /*
+      🔴 Bu testin bekçilik ettiği sınıf: **beyaz ekran.**
+
+      Motorlar istemcide koşuyor. Biri `uygula` içinde fırlatırsa React
+      alt ağacı söküyor ve oyuncu bomboş bir sayfa görüyor — hata
+      konsola düşüyor, ekranda tek iz kalmıyor.
+
+      Fırlatma kolay: `rastgele.tamsayi(0)` ve `rastgele.sec([])` ikisi
+      de `Error` atıyor ve boş aralık bir kenar durumda kolayca oluşuyor
+      (tahta dolduğunda boş hücre kalmaması gibi).
+
+      ⚠️ Test kuralları sınamıyor — kuraldışı hamle `null` dönebilir,
+      sorun değil. Sınadığı tek şey **istisna atılmaması**.
+    */
+    let tohum = 12345;
+    const rnd = () => ((tohum = (tohum * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
+
+    for (const oyun of OYUNLAR) {
+      let enUzun = 0;
+
+      for (let n = 0; n < 60; n++) {
+        let d = oyun.baslat(`maymun-${oyun.id}-${n}`);
+        let adim = 0;
+
+        for (let t = 1; t <= 1500 && !oyun.bittiMi(d); t++) {
+          const g = oyun.girdiOku(
+            girdiUret(oyun.id, t, rnd, d as { tur?: number; en?: number; uclar?: number[] }),
+          );
+          if (g === null) continue;
+          const s = oyun.uygula(d, g);
+          if (s === null) continue;
+          d = s;
+          adim++;
+        }
+        enUzun = Math.max(enUzun, adim);
+      }
+
+      /* 🔴 Testin kendi kendini sınaması: girdiler reddediliyorsa motor
+         hiç çalışmamıştır ve "fırlatmadı" hiçbir şey kanıtlamaz. */
+      assert.ok(
+        enUzun >= 2,
+        `${oyun.id}: en uzun tur ${enUzun} girdi — girdi biçimi yanlış, test bir şey sınamıyor`,
+      );
+    }
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════
+   2048 (Ü259)
+   ═══════════════════════════════════════════════════════════ */
+
+describe("2048 (Ü259)", () => {
+  /** Açgözlü bot: boş hücre ve tek adım skoruna bakıyor. */
+  function oyna(tohum: string) {
+    let d = ikibin.baslat(tohum);
+    const girdiler: { y: IkibinYonu }[] = [];
+    for (let i = 0; i < 5000 && !ikibin.bittiMi(d); i++) {
+      let enIyi: IkibinYonu | null = null;
+      let puan = -1;
+      for (const y of ["yukari", "asagi", "sol", "sag"] as IkibinYonu[]) {
+        const s = ikibin.uygula(d, { y });
+        if (!s) continue;
+        const p = ikibin.skor(s) - ikibin.skor(d) + s.kareler.filter((c) => c === 0).length * 6;
+        if (p > puan) { puan = p; enIyi = y; }
+      }
+      if (!enIyi) break;
+      const s = ikibin.uygula(d, { y: enIyi })!;
+      d = s;
+      girdiler.push({ y: enIyi });
+    }
+    return { durum: d, skor: ikibin.skor(d), girdiler };
+  }
+
+  test("🔴 her tur KAYBEDEREK bitiyor — tahta doluyor (Ü83)", () => {
+    /*
+      Ü83: *"kazanarak biten bir tur yok."* 2048'de duvar oyunun
+      kendi doğasında — her hamle yeni bir karo doğuruyor ve tahta
+      on altı hücre. Yine de sınanıyor, çünkü tek bir yanlış kural
+      (örneğin kıpırdamayan hamleyi kabul etmek) duvarı kaldırırdı.
+
+      ⚠️ Döngü sınırına DAYANMAMALI: tur 5.000 hamlede bitmiyorsa
+      oyunun kendi bitişi yok demektir.
+    */
+    for (let i = 0; i < 12; i++) {
+      const r = oyna(`duvar-${i}`);
+      assert.ok(ikibin.bittiMi(r.durum), `duvar-${i}: tur bitmedi — tahta dolmuyor`);
+      assert.ok(
+        r.girdiler.length < 5000,
+        `duvar-${i}: tur döngü sınırıyla bitti — oyunun kendi duvarı yok`,
+      );
+    }
+  });
+
+  test("🔴 kıpırdamayan hamle REDDEDİLİYOR", () => {
+    /*
+      Kabul edilseydi oyuncu duvara yaslanıp aynı yöne basarak yeni
+      karo doğurabilir ve tahta hiç dolmazdı — Ü83'ün duvarı
+      kalkardı. Ayrıca kayıt şişerdi.
+
+      Kurulum: tek karoyu sola dayayıp tekrar sola basmak.
+    */
+    let d = ikibin.baslat("kipirdama");
+    // Sola tekrar tekrar bas; bir noktada hiçbir şey kıpırdayamaz.
+    let reddedildi = false;
+    for (let i = 0; i < 60; i++) {
+      const s = ikibin.uygula(d, { y: "sol" });
+      if (s === null) { reddedildi = true; break; }
+      d = s;
+      if (ikibin.bittiMi(d)) break;
+    }
+    assert.ok(reddedildi, "art arda sola basmak hiç reddedilmedi");
+  });
+
+  test("birleşme klasik kuralda — 4 4 4 4 sola 8 8 veriyor", () => {
+    /*
+      ⚠️ Bir karo tek hamlede **bir kez** birleşiyor. Olmasaydı
+      `4 4 4 4` tek hamlede `16` olurdu ve tahta boşalırdı — oyunun
+      bütün gerilimi o kuralda.
+
+      Tohumla kurulamayacak bir tahta; durum elle yazılıyor.
+    */
+    const d = ikibin.baslat("birlesme");
+    const elle = {
+      ...d,
+      kareler: [4, 4, 4, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      paket: new Array(16).fill(false),
+    };
+    const s = ikibin.uygula(elle, { y: "sol" });
+    assert.ok(s, "sola kaydırma reddedildi");
+    if (!s) return;
+    assert.equal(s.kareler[0], 8, "ilk hücre 8 olmalı");
+    assert.equal(s.kareler[1], 8, "ikinci hücre 8 olmalı");
+    assert.notEqual(s.kareler[0], 16, "iki birleşme zincirlenmiş — klasik kural bozuk");
+  });
+
+  test("paket PUAN vermiyor ve karolarla birlikte kayıyor", () => {
+    /*
+      Ü234: paket kazanılmış ödülü **teslim ediyor**, yeni bir şey
+      kazandırmıyor.
+
+      🔴 İkinci iddia daha ince: paket sabit bir hücrede durmuyor,
+      taşıyan karoyla birlikte kayıyor. Sabit dursaydı ekranda paket
+      bir karonun üstündeyken başka bir karo birleşince teslim
+      edilmiş görünürdü.
+    */
+    const d = ikibin.baslat("paket");
+    const elle = {
+      ...d,
+      kareler: [0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      paket: [false, false, false, true, ...new Array(12).fill(false)],
+      hamSkor: 4000, // eşiğin üstünde
+    };
+    const s = ikibin.uygula(elle, { y: "sol" });
+    assert.ok(s, "kaydırma reddedildi");
+    if (!s) return;
+
+    // Karo 3. hücreden 0'a kaydı; paket onunla gitmeli.
+    assert.equal(s.kareler[0], 2, "karo sola kaymadı");
+    assert.ok(s.paket[0], "paket karoyla birlikte kaymadı");
+    assert.ok(!s.paket[3], "paket eski hücrede kaldı");
+
+    // Teslim edilmemiş olmalı — birleşme olmadı.
+    assert.equal(s.odulVerildi, false, "birleşme yokken teslim edildi");
+  });
+
+  test("girdi denetimi — bozuk biçim reddediliyor", () => {
+    assert.equal(ikibin.girdiOku({ y: "sol" })?.y, "sol", "geçerli girdi reddedildi");
+    assert.equal(ikibin.girdiOku({ y: "yukarı" }), null, "yanlış yön kabul edildi");
+    assert.equal(ikibin.girdiOku({ y: 1 }), null, "sayı kabul edildi");
+    assert.equal(ikibin.girdiOku({}), null, "boş nesne kabul edildi");
+    assert.equal(ikibin.girdiOku("sol"), null, "metin kabul edildi");
+  });
+
+  test("zamansız oyun — gecenMs tanımlı DEĞİL", () => {
+    /*
+      Ü84'ün saat denetimi yalnızca zaman tabanlı oyunlar için.
+      2048'de saat yok; `gecenMs` tanımlanırsa sunucu var olmayan bir
+      süreyi karşılaştırmaya başlar. Blok'la aynı tercih.
+    */
+    assert.equal(ikibin.gecenMs, undefined, "zamansız oyunda gecenMs tanımlı");
+  });
+
+  test("aynı kayıt aynı skoru veriyor — S5", () => {
+    const r = oyna("tekrar");
+    const sonuc = tekrarOyna(ikibin, "tekrar", r.girdiler);
+    assert.ok(sonuc.gecerli, "kayıt reddedildi");
+    if (!sonuc.gecerli) return;
+    assert.equal(sonuc.skor, r.skor, "sunucu farklı skor hesapladı");
+    assert.ok(r.girdiler.length > 20, `yalnızca ${r.girdiler.length} hamle — test bir şey sınamıyor`);
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════
+   2048 paleti — Ü260
+   ═══════════════════════════════════════════════════════════ */
+
+describe("2048 karo paleti (Ü260)", () => {
+  /** WCAG bağıl parlaklık. */
+  function parlaklik(hex: string): number {
+    const kanal = (v: number) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4);
+    const n = parseInt(hex.slice(1), 16);
+    const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((c) => kanal(c / 255));
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  }
+  function kontrast(a: string, b: string): number {
+    const [x, y] = [parlaklik(a), parlaklik(b)].sort((p, q) => q - p);
+    return (x + 0.05) / (y + 0.05);
+  }
+
+  test("🔴 yazı rengi zeminin PARLAKLIĞINDAN türüyor", () => {
+    /*
+      🔴 Ü263'te palet referanstan alındı ve referans on bir karonun
+      **hepsinde** beyaz rakam kullanıyor. Ölçüldü: açık zeminlerde
+      beyaz okunmuyor — `2` karosunda kontrast 1,97, `32`de 2,11,
+      `2048`de 2,26. İkon boyutunda göze batmıyor, oyunda batıyor.
+
+      Kural: zemin koyuysa (L < `IKIBIN_BEYAZ_YAZI_SINIRI`) beyaz,
+      açıksa koyu yazı. Bu test kuralın paletle birlikte kaymasını
+      engelliyor — yeni bir ton eklendiğinde yazı rengi el yordamıyla
+      seçilirse burada düşer.
+
+      ⚠️ Ü260'ın "sayı büyüdükçe karo koyulaşıyor" testi burada
+      **duruyordu ve kaldırıldı**: o kural ürün sahibinin daha sonra
+      gönderdiği referansla çelişti, soruldu ve referans seçildi.
+      Referansta 512 yeşil, 1024 mavi, 2048 altın.
+    */
+    for (let k = 0; k < IKIBIN_KADEME; k++) {
+      const t = ikibinTonu(k);
+      const p = parlaklik(t.zemin);
+      const beyazMi = t.yazi.toLowerCase() === "#ffffff";
+      assert.equal(
+        beyazMi,
+        p < IKIBIN_BEYAZ_YAZI_SINIRI,
+        `${2 ** (k + 1)} karosu: zemin ${t.zemin} parlaklık ${p.toFixed(3)}, ` +
+          `yazı ${t.yazi} — ${p < IKIBIN_BEYAZ_YAZI_SINIRI ? "beyaz olmalıydı" : "koyu olmalıydı"}`,
+      );
+    }
+  });
+
+  test("her kademe AYRI bir renk", () => {
+    /*
+      *"Her sayıda farklı renk olmalı."* Oyuncu tahtaya bakıp hangi
+      karonun hangisiyle birleşeceğini renkten okuyor; iki kademe
+      aynı rengi taşırsa o okuma bozulur.
+    */
+    const renkler = new Set<string>();
+    for (let k = 0; k < IKIBIN_KADEME; k++) renkler.add(ikibinTonu(k).zemin);
+    assert.equal(renkler.size, IKIBIN_KADEME, "iki kademe aynı rengi taşıyor");
+  });
+
+  test("🔴 hiçbir karoda yazı okunmaz hâle gelmiyor", () => {
+    /*
+      ⚠️ Eşik **3,0**, 4,5 değil: WCAG'ın büyük yazı eşiği bu ve
+      rakamlar gerçekten büyük — en küçüğü (dört basamaklı) 27 piksel
+      kalın, sınır 18,66.
+
+      Ü260'ta eşik 4,5'ti çünkü palet o zaman koyulaşıyordu ve beyaz
+      yazı yalnızca koyu zeminlerde kullanılıyordu. Ü263'ün canlı
+      paletinde orta parlaklıkta zeminler var; beyaz rakam oralarda
+      3,1–4,7 veriyor ve bu boyutta okunuyor.
+
+      🔴 Yine de bir zemin **hiçbir** yazı rengiyle 3'ü geçemiyorsa o
+      ton palete girmemeli — testin asıl işi bu.
+    */
+    for (let k = 0; k < IKIBIN_KADEME; k++) {
+      const t = ikibinTonu(k);
+      const c = kontrast(t.zemin, t.yazi);
+      assert.ok(
+        c >= 3,
+        `${2 ** (k + 1)} karosunda kontrast ${c.toFixed(2)} — büyük yazı eşiği 3,00`,
+      );
+    }
+  });
+
+  test("yazı boyu basamak sayısıyla küçülüyor", () => {
+    /*
+      ⚠️ Sabit boy `2048`i hücreden taşırıyor. Ürün sahibi
+      *"sayıları büyüt"* dedi; büyütmenin sınırı dört basamak.
+    */
+    /* 🔴 Birim de sınanıyor: `%` yazılırsa punto hücreye değil üst
+       ögenin 16px'ine göre çözülür ve sayı 8 piksele düşer —
+       tarayıcıda ölçüldü, `ikibin-yuzey.ts`teki nota bakın. */
+    for (const d of [2, 16, 128, 2048]) {
+      assert.match(
+        ikibinYaziBoyu(d),
+        /^\d+(\.\d+)?cqmin$/,
+        `${d} karosunun puntosu hücreye bağlı değil: ${ikibinYaziBoyu(d)}`,
+      );
+    }
+    const yuzde = (d: number) => parseFloat(ikibinYaziBoyu(d));
+    assert.ok(yuzde(2) > yuzde(16), "tek basamak iki basamaktan büyük değil");
+    assert.ok(yuzde(16) > yuzde(128), "iki basamak üçten büyük değil");
+    assert.ok(yuzde(128) > yuzde(2048), "üç basamak dörtten büyük değil");
+    assert.ok(yuzde(2048) >= 26, "dört basamaklı karo okunamayacak kadar küçük");
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════
+   Ayır — renk sıralama (Ü261)
+   ═══════════════════════════════════════════════════════════ */
+
+describe("ayır (Ü261)", () => {
+  /** Tüp sırası önemsiz — arama anahtarı sıralanarak kanonikleşiyor. */
+  const anahtar = (t: number[][]) => t.map((x) => x.join(",")).sort().join("|");
+
+  function ust(tup: number[]): { renk: number; adet: number } {
+    if (tup.length === 0) return { renk: 0, adet: 0 };
+    const renk = tup[tup.length - 1];
+    let adet = 1;
+    while (adet < tup.length && tup[tup.length - 1 - adet] === renk) adet++;
+    return { renk, adet };
+  }
+
+  function yasalHamleler(t: number[][]): [number, number][] {
+    const c: [number, number][] = [];
+    for (let k = 0; k < t.length; k++) {
+      if (t[k].length === 0) continue;
+      const u = ust(t[k]);
+      for (let h = 0; h < t.length; h++) {
+        if (h === k || t[h].length >= KAPASITE) continue;
+        if (t[h].length === 0 || t[h][t[h].length - 1] === u.renk) c.push([k, h]);
+      }
+    }
+    return c;
+  }
+
+  function dok(t: number[][], k: number, h: number): number[][] {
+    const u = ust(t[k]);
+    const adet = Math.min(u.adet, KAPASITE - t[h].length);
+    const y = t.map((x) => [...x]);
+    y[k].splice(y[k].length - adet, adet);
+    for (let i = 0; i < adet; i++) y[h].push(u.renk);
+    return y;
+  }
+
+  /** Motordan BAĞIMSIZ çözücü: tahta çözülebiliyor mu. */
+  function cozulebilirMi(bas: number[][], tavan = 120_000): boolean | null {
+    if (bolumBittiMi(bas)) return true;
+    let sira = [bas];
+    const gorulen = new Set([anahtar(bas)]);
+    let dugum = 0;
+    while (sira.length > 0) {
+      const sonraki: number[][][] = [];
+      for (const t of sira) {
+        for (const [k, h] of yasalHamleler(t)) {
+          const y = dok(t, k, h);
+          const a = anahtar(y);
+          if (gorulen.has(a)) continue;
+          if (bolumBittiMi(y)) return true;
+          gorulen.add(a);
+          sonraki.push(y);
+          if (++dugum > tavan) return null; // tavana takıldı, hüküm yok
+        }
+      }
+      sira = sonraki;
+    }
+    return false; // arama tükendi: çözüm YOK
+  }
+
+  test("🔴 üretilen HER bölüm çözülebilir", () => {
+    /*
+      🔴 Bu oyunun tek gerçek riski bu. Bölüm üreteci tahtayı rastgele
+      dağıtmıyor; **çözülmüş tahtadan geriye doğru** oynuyor ve
+      çözülebilirlik o akıl yürütmeye dayanıyor (`ayir.ts` içindeki
+      "Ters hamlenin iki şartı"). Şartlardan biri yanlışsa üreteç
+      çözümsüz tahta basar ve oyuncu, kendi hatası olmayan bir yerde
+      kilitlenir — ekranda "tıkandın" yazar, sebebi görünmez.
+
+      Testin çözücüsü motordan bağımsız yazıldı: motorun kendi
+      `uygula`sını kullansaydı ikisi birlikte yanılabilirdi.
+
+      ⚠️ Arama tavanı aşılırsa hüküm verilmiyor (`null`) — "çözemedim"
+      ile "çözümü yok" aynı şey değil.
+    */
+    let bakilan = 0;
+    for (const tohum of ["cz-a", "cz-b", "cz-c"]) {
+      for (let bolum = 1; bolum <= 6; bolum++) {
+        const tahta = bolumTahtasi(tohum, bolum);
+        const sonuc = cozulebilirMi(tahta);
+        assert.notEqual(
+          sonuc,
+          false,
+          `bölüm ${bolum} (${tohum}) ÇÖZÜLEMEZ: ${JSON.stringify(tahta)}`,
+        );
+        if (sonuc === true) bakilan++;
+      }
+    }
+    assert.ok(bakilan >= 15, `yalnızca ${bakilan} tahta hüküm aldı — test bir şey sınamıyor`);
+  });
+
+  test("bölüm gerçekten karışık — üreteç çözülmüş tahta vermiyor", () => {
+    /* ⚠️ Yukarıdaki test tek başına yanıltıcı olabilir: çözülmüş bir
+       tahta da "çözülebilir"dir. Zorluğun geldiğini ayrıca sınıyoruz. */
+    for (let bolum = 1; bolum <= 6; bolum++) {
+      const tahta = bolumTahtasi("karisik", bolum);
+      assert.ok(
+        parcaSayisi(tahta) > renkSayisi(bolum),
+        `bölüm ${bolum} karışmamış: ${parcaSayisi(tahta)} parça, ${renkSayisi(bolum)} renk`,
+      );
+      assert.equal(bolumBittiMi(tahta), false, `bölüm ${bolum} zaten çözülmüş geldi`);
+    }
+  });
+
+  test("🔴 tur hamle hakkından uzun süremiyor — Ü83 duvarı", () => {
+    /*
+      Ü83: kazanarak biten tur yok. Bu oyunda duvar `HAMLE_HAKKI`:
+      her aktarım bir hamle yiyor ve hiçbir şey geri vermiyor.
+
+      ⚠️ Önce **iadeli** bir havuz vardı ve ölçümde kusursuz bot 42
+      bölüm oynayabiliyordu — duvar kâğıt üstünde vardı, pratikte
+      yoktu. Bu test o tasarımda geçmezdi.
+    */
+    for (const tohum of ["duvar-a", "duvar-b"]) {
+      let d = ayir.baslat(tohum);
+      let hamle = 0;
+      while (!ayir.bittiMi(d) && hamle < HAMLE_HAKKI + 50) {
+        const secenek = yasalHamleler(d.tupler);
+        if (secenek.length === 0) break;
+        const [k, h] = secenek[hamle % secenek.length];
+        const s = ayir.uygula(d, { k, h });
+        if (!s) break;
+        d = s;
+        hamle++;
+      }
+      assert.ok(ayir.bittiMi(d), `${tohum}: tur ${hamle} hamlede bitmedi`);
+      assert.ok(hamle <= HAMLE_HAKKI, `${tohum}: hak ${HAMLE_HAKKI} ama ${hamle} hamle oynandı`);
+    }
+  });
+
+  test("kuraldışı aktarımlar reddediliyor", () => {
+    const d = ayir.baslat("kural");
+    const doluFarkli = d.tupler.findIndex((t) => t.length > 0);
+    assert.ok(doluFarkli >= 0);
+
+    assert.equal(ayir.uygula(d, { k: 0, h: 0 }), null, "aynı tüpe dökme kabul edildi");
+    assert.equal(ayir.uygula(d, { k: -1, h: 1 }), null, "eksi indis kabul edildi");
+    assert.equal(ayir.uygula(d, { k: 0, h: 99 }), null, "aralık dışı indis kabul edildi");
+
+    const bos = d.tupler.findIndex((t) => t.length === 0);
+    if (bos >= 0) {
+      assert.equal(ayir.uygula(d, { k: bos, h: doluFarkli }), null, "boş tüpten döküldü");
+    }
+
+    /* Üstü farklı renk olan iki tüp — reddedilmeli. */
+    let bulundu = false;
+    for (let k = 0; k < d.tupler.length && !bulundu; k++) {
+      for (let h = 0; h < d.tupler.length; h++) {
+        if (k === h) continue;
+        const a = d.tupler[k];
+        const b = d.tupler[h];
+        if (a.length === 0 || b.length === 0 || b.length >= KAPASITE) continue;
+        if (a[a.length - 1] === b[b.length - 1]) continue;
+        assert.equal(ayir.uygula(d, { k, h }), null, "farklı rengin üstüne döküldü");
+        bulundu = true;
+        break;
+      }
+    }
+    assert.ok(bulundu, "farklı renk çifti bulunamadı — test bir şey sınamadı");
+  });
+
+  test("üstteki dizinin TAMAMI akıyor, hedefin yeri kadar", () => {
+    const d = ayir.baslat("akis");
+    const durum = { ...d, tupler: [[1, 1, 2, 2], [3], [], [2, 2, 2, 2], [1]] };
+    /* İki adet 2, üstünde yer olan tüpe akmalı ([] boş tüp). */
+    const s = ayir.uygula(durum, { k: 0, h: 2 });
+    assert.ok(s, "geçerli aktarım reddedildi");
+    assert.deepEqual(s.tupler[0], [1, 1], "kaynakta dizi kalmış");
+    assert.deepEqual(s.tupler[2], [2, 2], "hedefe dizinin tamamı gitmemiş");
+
+    /* Hedefte yalnızca bir yer varsa yalnızca bir birim akmalı. */
+    const dar = { ...d, tupler: [[1, 1, 2, 2], [2, 2, 2], [], [3], [1]] };
+    const s2 = ayir.uygula(dar, { k: 0, h: 1 });
+    assert.ok(s2, "dar hedefe aktarım reddedildi");
+    assert.deepEqual(s2.tupler[1], [2, 2, 2, 2], "hedef taşmış ya da eksik dolmuş");
+    assert.deepEqual(s2.tupler[0], [1, 1, 2], "kaynaktan fazla alınmış");
+  });
+
+  test("hamle hakkı her aktarımda bir azalıyor, biten bölüm geri VERMİYOR", () => {
+    /* 🔴 İadeli tasarım ölçümde çöktü (bkz. `HAMLE_HAKKI` notu): ilk
+       bölümlerin maliyeti iadeden küçük olduğu için oyuncu bedava
+       yakıt topluyordu. Bu test o tasarımın geri gelmesini engelliyor. */
+    let d = ayir.baslat("hak");
+    const basta = d.havuz;
+    let hamle = 0;
+    let bolumBitti = false;
+    while (!ayir.bittiMi(d) && hamle < HAMLE_HAKKI) {
+      const secenek = yasalHamleler(d.tupler);
+      if (secenek.length === 0) break;
+      const onceki = d.bolum;
+      const s = ayir.uygula(d, { k: secenek[0][0], h: secenek[0][1] });
+      if (!s) break;
+      hamle++;
+      if (s.bolum > onceki) bolumBitti = true;
+      assert.equal(s.havuz, basta - hamle, `${hamle}. hamlede hak ${s.havuz}, beklenen ${basta - hamle}`);
+      d = s;
+    }
+    assert.ok(hamle > 0, "hiç hamle oynanmadı");
+    void bolumBitti;
+  });
+
+  test("bölüm bitince puan yazılıyor ve yeni tahta geliyor", () => {
+    let d = ayir.baslat("bolum");
+    const tahta = d.tupler.map((t) => [...t]);
+    void tahta;
+    let hamle = 0;
+    while (!ayir.bittiMi(d) && d.bolum === 1 && hamle < HAMLE_HAKKI) {
+      const secenek = yasalHamleler(d.tupler);
+      if (secenek.length === 0) break;
+      const s: AyirDurumu | null = ayir.uygula(d, { k: secenek[0][0], h: secenek[0][1] });
+      if (!s) break;
+      d = s;
+      hamle++;
+    }
+    if (d.bolum > 1) {
+      assert.equal(ayir.skor(d), bolumPuani(1), "1. bölümün puanı yanlış yazıldı");
+      assert.equal(bolumBittiMi(d.tupler), false, "yeni bölüm çözülmüş geldi");
+    }
+  });
+
+  test("🔴 ödül paketi PUAN VERMİYOR ve odulIsareti'ne bağlı değil (Ü234)", () => {
+    /*
+      Ü201'de paket +120 puan verip kuponun barını 500'den fiilen 380'e
+      indirmişti. Kural: paket sıfır puan, tur başına bir kez ve
+      `odulIsareti` kancasına takılmaz (o kanca eşiği tamamen atlıyor).
+    */
+    assert.equal("odulIsareti" in ayir, false, "ayır odulIsareti kancasına takılmış");
+
+    const d = ayir.baslat("paket");
+    const durum = { ...d, skor: ODUL_ESIGI, paket: 0, tupler: [[1, 2, 1, 2], [1], [], [2], [1]] };
+    const oncekiSkor = ayir.skor(durum);
+    const s = ayir.uygula(durum, { k: 0, h: 3 });
+    assert.ok(s, "paket taşıyan tüpten aktarım reddedildi");
+    assert.equal(s.odulVerildi, true, "paket teslim edilmedi");
+    assert.equal(s.paket, null, "paket yerinde kaldı");
+    assert.equal(ayir.skor(s), oncekiSkor, "paket PUAN verdi — Ü201 hatası geri gelmiş");
+  });
+
+  test("girdiOku bozuk veriyi reddediyor", () => {
+    assert.equal(ayir.girdiOku(null), null);
+    assert.equal(ayir.girdiOku({ k: 0 }), null, "eksik alan kabul edildi");
+    assert.equal(ayir.girdiOku({ k: "0", h: 1 }), null, "metin kabul edildi");
+    assert.equal(ayir.girdiOku({ k: 1.5, h: 2 }), null, "ondalık kabul edildi");
+    assert.equal(ayir.girdiOku({ k: -1, h: 2 }), null, "eksi kabul edildi");
+    assert.equal(ayir.girdiOku({ k: 99, h: 2 }), null, "aralık dışı kabul edildi");
+    assert.deepEqual(ayir.girdiOku({ k: 0, h: 3 }), { k: 0, h: 3 });
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════
+   Ayır · sıvı paleti (Ü261)
+   ═══════════════════════════════════════════════════════════ */
+
+/* ═══════════════════════════════════════════════════════════
+   Renk bilimi — iki oyunun paleti aynı ölçütle sınanıyor
+
+   ⚠️ Ayır (Ü261) ve Bağla (Ü262) aynı sorunun iki yüzü: ikisinde de
+   "aynı renk" bir oyun kuralı taşıyor. Ölçüt tek yerde duruyor ki
+   birinin eşiği gevşetilirse ötekininki de gevşesin — ya da hiçbiri.
+   ═══════════════════════════════════════════════════════════ */
+
+type RGB = [number, number, number];
+const coz = (hex: string): RGB => {
+  const n = parseInt(hex.slice(1), 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+};
+const dogrusal = (v: number) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4);
+
+function lab([r, g, b]: RGB): [number, number, number] {
+  const [R, G, B] = [r, g, b].map((c) => dogrusal(c / 255));
+  const X = (0.4124 * R + 0.3576 * G + 0.1805 * B) / 0.95047;
+  const Y = 0.2126 * R + 0.7152 * G + 0.0722 * B;
+  const Z = (0.0193 * R + 0.1192 * G + 0.9505 * B) / 1.08883;
+  const f = (t: number) => (t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116);
+  const [fx, fy, fz] = [f(X), f(Y), f(Z)];
+  return [116 * fy - 16, 500 * (fx - fy), 200 * (fy - fz)];
+}
+const dE = (a: RGB, b: RGB) => {
+  const [l1, a1, b1] = lab(a);
+  const [l2, a2, b2] = lab(b);
+  return Math.hypot(l1 - l2, a1 - a2, b1 - b2);
+};
+
+const geri = (v: number) => {
+  const x = Math.max(0, Math.min(1, v));
+  return Math.round(255 * (x <= 0.0031308 ? 12.92 * x : 1.055 * x ** (1 / 2.4) - 0.055));
+};
+function lms([r, g, b]: RGB) {
+  const [R, G, B] = [r, g, b].map((c) => dogrusal(c / 255));
+  return {
+    L: 17.8824 * R + 43.5161 * G + 4.11935 * B,
+    M: 3.45565 * R + 27.1554 * G + 3.86714 * B,
+    S: 0.0299566 * R + 0.184309 * G + 1.46709 * B,
+  };
+}
+const lmsGeri = (L: number, M: number, S: number): RGB => [
+  geri(0.080944 * L - 0.0102485 * M - 0.000365294 * S),
+  geri(-0.0102485 * L + 0.0540193 * M - 0.000121649 * S),
+  geri(-0.000365294 * L - 0.00412163 * M + 0.693513 * S),
+];
+/** Brettel/Viénot yaklaşımı — kırmızı-yeşil renk körlüğünün iki türü. */
+const deuteranopi = (c: RGB): RGB => {
+  const { L, S } = lms(c);
+  return lmsGeri(L, 0.494207 * L + 1.24827 * S, S);
+};
+const protanopi = (c: RGB): RGB => {
+  const { M, S } = lms(c);
+  return lmsGeri(2.02344 * M - 2.52581 * S, M, S);
+};
+
+export const RENK_GORMELERI = [
+  { ad: "normal görme", f: (c: RGB) => c },
+  { ad: "deuteranopi", f: deuteranopi },
+  { ad: "protanopi", f: protanopi },
+];
+
+/** Bir renk kümesinde en yakın çiftin ΔE'si, verilen görmeye göre. */
+function enYakinRenkCifti(tonlar: string[], f: (c: RGB) => RGB): { dE: number; cift: string } {
+  let enYakin = Infinity;
+  let cift = "";
+  for (let i = 0; i < tonlar.length; i++) {
+    for (let j = i + 1; j < tonlar.length; j++) {
+      const d = dE(f(coz(tonlar[i])), f(coz(tonlar[j])));
+      if (d < enYakin) {
+        enYakin = d;
+        cift = `${tonlar[i]} ↔ ${tonlar[j]}`;
+      }
+    }
+  }
+  return { dE: enYakin, cift };
+}
+
+describe("ayır sıvı paleti (Ü261)", () => {
+  const TUM = Array.from({ length: AYIR_SIVI_SAYISI }, (_, i) => ayirSivisi(i + 1));
+
+  test("🔴 renk körlüğünde de hiçbir iki sıvı çakışmıyor", () => {
+    /*
+      🔴 Bu oyunda **aynı renk = birleşebilir** demek. İki sıvı bir
+      oyuncunun gözünde çakışıyorsa o oyuncu tahtayı okuyamaz.
+
+      Gözle seçilen ilk palet normal görmede iyiydi (en yakın çift
+      ΔE 49) ama deuteranopide gök ile orkide **ΔE 6,8** veriyordu —
+      pratikte aynı renk. Deuteranopi erkeklerin ~%5'inde var.
+
+      ⚠️ Eşik 30: ΔE ~2,3 "zor fark edilir", ~10 "belirgin". 30, hızlı
+      bakışta ayrışma için geniş bir pay bırakıyor. Aranan palet 36,2
+      veriyor.
+    */
+    for (const g of RENK_GORMELERI) {
+      const { dE: en, cift } = enYakinRenkCifti(TUM, g.f);
+      assert.ok(
+        en >= 30,
+        `${g.ad}: ${cift} çifti ΔE ${en.toFixed(1)} — eşik 30`,
+      );
+    }
+  });
+
+  test("ilk üç renk en ayrışan üçlü — bölüm 1'de yalnızca onlar görünüyor", () => {
+    /*
+      ⚠️ `renkSayisi(1) = 3`: oyuncunun oyunu ilk gördüğü tahtada üç
+      renk var ve onlar diğerlerinden daha ayrık olmalı. Sıra yanlışsa
+      oyun en zor renk çiftiyle **açılır**.
+    */
+    const ilkUc = TUM.slice(0, 3);
+    assert.equal(renkSayisi(1), ilkUc.length, "bölüm 1'in renk sayısı değişmiş");
+    for (const g of RENK_GORMELERI) {
+      const { dE: en, cift } = enYakinRenkCifti(ilkUc, g.f);
+      assert.ok(en >= 40, `${g.ad}: ilk üçlüde ${cift} çifti ΔE ${en.toFixed(1)} — eşik 40`);
+    }
+  });
+
+  test("hiçbir sıvı sahnenin zemininde kaybolmuyor", () => {
+    /* ⚠️ Sıvılar birbirinden ayrışsa bile zeminden ayrışmazsa tüp boş
+       görünür — arama bu yüzden zemini de hesaba kattı. */
+    for (const zemin of ["#1e1b4b", "#0e0c26"]) {
+      for (const g of RENK_GORMELERI) {
+        const { dE: en, cift } = enYakinRenkCifti([...TUM, zemin], g.f);
+        assert.ok(en >= 30, `${g.ad} · zemin ${zemin}: ${cift} ΔE ${en.toFixed(1)}`);
+      }
+    }
+  });
+
+  test("renk sayısı kadar sıvı var", () => {
+    /* Motor `EN_FAZLA_RENK` renge kadar çıkıyor; palet kısa kalırsa
+       `ayirSivisi` son rengi tekrarlar ve iki farklı sıvı aynı görünür. */
+    assert.ok(
+      AYIR_SIVI_SAYISI >= EN_FAZLA_RENK,
+      `palette ${AYIR_SIVI_SAYISI} ton var, motor ${EN_FAZLA_RENK} renk istiyor`,
+    );
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════
+   Bağla — renkleri çakışmadan birleştirme (Ü262)
+   ═══════════════════════════════════════════════════════════ */
+
+describe("bağla (Ü262)", () => {
+  const komsuMu = (a: number, b: number, en: number) =>
+    Math.abs(Math.floor(a / en) - Math.floor(b / en)) + Math.abs((a % en) - (b % en)) === 1;
+
+  test("🔴 üretilen HER bölümün çözümü tahtayı kaplıyor", () => {
+    /*
+      🔴 Bu oyunun üreteci, tahtayı tamamen kaplayan tek bir Hamilton
+      yolu kurup onu parçalara kesiyor; çözülebilirlik o yapıya
+      dayanıyor. Yol kurulurken kullanılan **backbite** adımı yanlış
+      uygulanırsa sonuç sessizce bozulur: kareler tekrarlanır ya da
+      komşuluk kopar. İkisi de ekranda "çözülemeyen bölüm" diye
+      görünür, sebebi görünmez.
+
+      Sınanan üç şey: her kare **tam bir kez** kaplanıyor, ardışık
+      kareler komşu, her renk tam iki uç taşıyor.
+    */
+    for (const tohum of ["kap-a", "kap-b", "kap-c"]) {
+      for (let bolum = 1; bolum <= 8; bolum++) {
+        const t = baglaBolumu(tohum, bolum);
+        const kapli = new Set<number>();
+        for (const dilim of t.cozum) {
+          assert.ok(dilim.length >= 2, `bölüm ${bolum}: ${dilim.length} kareli dilim — uçlar çakışır`);
+          for (let i = 0; i < dilim.length; i++) {
+            assert.equal(kapli.has(dilim[i]), false, `bölüm ${bolum}: ${dilim[i]} iki yolda`);
+            kapli.add(dilim[i]);
+            if (i > 0) {
+              assert.ok(
+                komsuMu(dilim[i - 1], dilim[i], t.en),
+                `bölüm ${bolum}: ${dilim[i - 1]} → ${dilim[i]} komşu değil`,
+              );
+            }
+          }
+        }
+        assert.equal(kapli.size, t.en * t.en, `bölüm ${bolum}: tahta tam kaplanmadı`);
+        assert.equal(
+          t.uclar.filter((u) => u !== 0).length,
+          t.renk * 2,
+          `bölüm ${bolum}: uç sayısı renk sayısının iki katı değil`,
+        );
+      }
+    }
+  });
+
+  test("🔴 motor kendi ürettiği çözümü KABUL ediyor ve bölümü bitiriyor", () => {
+    /*
+      🔴 Bir önceki test üretece bakıyor, bu ikisinin **arasına**:
+      üretecin çözümü motorun kurallarından geçiyor mu ve geçtiğinde
+      bölüm gerçekten bitiyor mu.
+
+      İkisi ayrı ayrı doğru olup birlikte yanlış olabilir — örneğin
+      `bolumBittiMi` kaplama şartını unutursa bu test yine geçer ama
+      `yolGecerliMi` uçtan başlama şartını yanlış kurarsa çözüm
+      reddedilir ve oyun **hiç** oynanamaz.
+    */
+    let cizim = 0;
+    for (const tohum of ["coz-a", "coz-b"]) {
+      let d: BaglaDurumu = { ...bagla.baslat(tohum), havuz: 10_000 };
+      for (let bolum = 1; bolum <= 6; bolum++) {
+        const t = baglaBolumu(tohum, bolum);
+        const oncekiBolum = d.bolum;
+        for (const dilim of t.cozum) {
+          const s = bagla.uygula(d, { y: dilim });
+          assert.ok(s, `bölüm ${bolum}: motor kendi çözümünün bir yolunu reddetti`);
+          d = s;
+          cizim++;
+        }
+        assert.equal(d.bolum, oncekiBolum + 1, `bölüm ${bolum}: çözüm uygulandı ama bölüm bitmedi`);
+      }
+    }
+    assert.ok(cizim >= 40, `yalnızca ${cizim} çizim denendi — test bir şey sınamıyor`);
+  });
+
+  test("🔴 zorluk merdiveni tek yönlü", () => {
+    /*
+      🔴 İlk formül kenara bağlıydı ve ölçümde bölüm 1'de 4, bölüm 2'de
+      **3** renk veriyordu — oyun ikinci bölümde kolaylaşıyordu.
+      Kırıcı'da (Ü244) da zorluk eğrisi bir kez tersine dönmüştü;
+      ikisi de ancak ölçünce göründü, gözle bakmakla değil.
+    */
+    for (let bolum = 2; bolum <= 20; bolum++) {
+      assert.ok(
+        baglaRenkSayisi(bolum) >= baglaRenkSayisi(bolum - 1),
+        `bölüm ${bolum}: renk ${baglaRenkSayisi(bolum)}, öncekinde ${baglaRenkSayisi(bolum - 1)} — merdiven tersine döndü`,
+      );
+      assert.ok(
+        tahtaEni(bolum) >= tahtaEni(bolum - 1),
+        `bölüm ${bolum}: tahta küçüldü`,
+      );
+    }
+    assert.ok(baglaRenkSayisi(12) > baglaRenkSayisi(1), "renk hiç artmıyor");
+  });
+
+  test("🔴 bütün renkler bağlı ama tahta DOLMAMIŞSA bölüm bitmiyor", () => {
+    /*
+      🔴 Klasik kuralın ta kendisi (bkz. `bagla.ts` dosya başı). Ürün
+      sahibinin gösterdiği Flow Free tahtanın tamamının dolmasını
+      istiyor; toytheater'daki basit sürüm istemiyor ve orada bulmaca
+      düz çizgilerle çözülüyor.
+
+      ⚠️ Bu test A/B ile **sonradan** eklendi: `bolumBittiMi`deki
+      kaplama şartı silinip bütün takım koşuldu ve **tek bir test bile
+      düşmedi**. Yani kural yazılıydı ama korumasızdı — biri
+      "sadeleştirme" diye o satırı silse oyun sessizce kolay sürüme
+      dönerdi.
+
+      Tahta elle kuruldu (3×3) çünkü üretecin çözümü zaten tahtayı
+      kaplıyor; kapsanmayan durumu görmek için eksik bir çözüm gerek.
+
+          1 . .        renk 1: uçlar 0 ve 5
+          . 2 1        renk 2: uçlar 4 ve 8
+          . . 2
+    */
+    const uclar = [1, 0, 0, 0, 2, 1, 0, 0, 2];
+
+    /* İki renk de bağlı — ama 3 ve 6 numaralı kareler boş. */
+    const eksik = { en: 3, renk: 2, uclar, yollar: [[0, 1, 2, 5], [4, 7, 8]] };
+    assert.equal(
+      baglaBolumBittiMi(eksik),
+      false,
+      "renkler bağlı diye bölüm bitti sayıldı — kaplama şartı kalkmış",
+    );
+
+    /* Aynı uçlar, tahtanın tamamını kaplayan çözüm. */
+    const tam = { en: 3, renk: 2, uclar, yollar: [[0, 1, 2, 5], [4, 3, 6, 7, 8]] };
+    assert.equal(baglaBolumBittiMi(tam), true, "tam kaplayan çözüm bitmiş sayılmadı");
+  });
+
+  test("kuraldışı çizimler reddediliyor", () => {
+    const d = bagla.baslat("kural");
+    const t = baglaBolumu("kural", 1);
+    const dogru = t.cozum[0];
+
+    assert.equal(bagla.uygula(d, { y: [] }), null, "boş yol kabul edildi");
+
+    /* Uç olmayan bir kareden başlamak. */
+    const ucsuz = d.uclar.findIndex((u) => u === 0);
+    assert.ok(ucsuz >= 0);
+    assert.equal(
+      bagla.uygula(d, { y: [ucsuz, dogru[0]] }),
+      null,
+      "uç olmayan kareden başlayan yol kabul edildi",
+    );
+
+    /* Komşu olmayan sıçrama. */
+    const uzak = d.en * d.en - 1 === dogru[0] ? 0 : d.en * d.en - 1;
+    if (!komsuMu(dogru[0], uzak, d.en)) {
+      assert.equal(bagla.uygula(d, { y: [dogru[0], uzak] }), null, "sıçrayan yol kabul edildi");
+    }
+
+    /* Kendini kesen yol. */
+    if (dogru.length >= 3) {
+      assert.equal(
+        bagla.uygula(d, { y: [dogru[0], dogru[1], dogru[0]] }),
+        null,
+        "kendini kesen yol kabul edildi",
+      );
+    }
+
+    /* Başka rengin ucundan geçmek. */
+    const baskaUc = d.uclar.findIndex((u) => u !== 0 && u !== d.uclar[dogru[0]]);
+    if (baskaUc >= 0) {
+      const ortadan = [dogru[0], ...dogru.slice(1)];
+      const sahte = [...ortadan];
+      sahte.splice(1, 0, baskaUc);
+      assert.equal(bagla.uygula(d, { y: sahte }), null, "başka rengin ucundan geçildi");
+    }
+  });
+
+  test("üstünden geçilen yol KESİLİYOR, çizim reddedilmiyor", () => {
+    /*
+      ⚠️ Gerçek oyundaki davranış bu ve alternatifi kilitlenmeydi:
+      çakışan çizimi reddetseydik, tahta dolduktan sonra oyuncunun her
+      denemesi reddedilir, her deneme hakkını yer ve tur çözülemeden
+      biterdi.
+    */
+    const tohum = "kesme";
+    const t = baglaBolumu(tohum, 1);
+    let d: BaglaDurumu = bagla.baslat(tohum);
+
+    const ilk = bagla.uygula(d, { y: t.cozum[0] });
+    assert.ok(ilk);
+    d = ilk;
+    assert.equal(d.yollar[0].length, t.cozum[0].length, "ilk yol yazılmadı");
+
+    /* İkinci rengi, birincinin bir karesinin üstünden geçecek şekilde
+       çizmek için birinci yolun ortasındaki kareye komşu bir yol
+       kurulamıyorsa test atlanıyor — ama çözümün kendisi zaten
+       kesişmiyor, o yüzden doğrudan elle bir çakışma kuruluyor. */
+    const ortak = t.cozum[0][1];
+    const ikinciUc = t.cozum[1][0];
+    if (komsuMu(ikinciUc, ortak, d.en)) {
+      const s = bagla.uygula(d, { y: [ikinciUc, ortak] });
+      assert.ok(s, "çakışan çizim reddedildi — kesme yerine ret yapılmış");
+      assert.ok(
+        s.yollar[0].length < t.cozum[0].length,
+        "üstünden geçilen yol kesilmedi",
+      );
+      assert.equal(s.yollar[0].includes(ortak), false, "kesilen yol hâlâ o kareyi tutuyor");
+    }
+  });
+
+  test("🔴 tur çizim hakkından uzun süremiyor — Ü83 duvarı", () => {
+    /*
+      Ü83: kazanarak biten tur yok. Duvar `CIZIM_HAKKI`: her çizim bir
+      hak yiyor, hiçbir şey geri vermiyor.
+    */
+    for (const tohum of ["duvar-a", "duvar-b"]) {
+      let d = bagla.baslat(tohum);
+      let cizim = 0;
+      while (!bagla.bittiMi(d) && cizim < CIZIM_HAKKI + 20) {
+        const t = baglaBolumu(tohum, d.bolum);
+        const s = bagla.uygula(d, { y: t.cozum[cizim % t.cozum.length] });
+        if (!s) break;
+        d = s;
+        cizim++;
+      }
+      assert.ok(bagla.bittiMi(d), `${tohum}: tur ${cizim} çizimde bitmedi`);
+      assert.ok(cizim <= CIZIM_HAKKI, `${tohum}: hak ${CIZIM_HAKKI} ama ${cizim} çizim oynandı`);
+    }
+  });
+
+  test("bölüm bitince puan yazılıyor ve yeni tahta geliyor", () => {
+    const tohum = "puan";
+    const t = baglaBolumu(tohum, 1);
+    let d: BaglaDurumu = bagla.baslat(tohum);
+    for (const dilim of t.cozum) {
+      const s = bagla.uygula(d, { y: dilim });
+      assert.ok(s);
+      d = s;
+    }
+    assert.equal(bagla.skor(d), baglaPuani(1), "1. bölümün puanı yanlış");
+    assert.equal(d.bolum, 2, "bölüm ilerlemedi");
+    assert.equal(d.yollar.every((y) => y.length === 0), true, "yeni bölüm çizili geldi");
+  });
+
+  test("🔴 ödül paketi PUAN VERMİYOR ve odulIsareti'ne bağlı değil (Ü234)", () => {
+    assert.equal("odulIsareti" in bagla, false, "bağla odulIsareti kancasına takılmış");
+
+    const tohum = "paket";
+    const t = baglaBolumu(tohum, 1);
+    /* Paketi, ilk rengin yolunun ortasındaki kareye koy. */
+    const hedef = t.cozum[0][1];
+    const d: BaglaDurumu = { ...bagla.baslat(tohum), skor: ODUL_ESIGI, paket: hedef };
+    const oncekiSkor = bagla.skor(d);
+    const s = bagla.uygula(d, { y: t.cozum[0] });
+    assert.ok(s, "paketi kapsayan çizim reddedildi");
+    assert.equal(s.odulVerildi, true, "paket teslim edilmedi");
+    assert.equal(s.paket, null, "paket yerinde kaldı");
+    assert.equal(bagla.skor(s), oncekiSkor, "paket PUAN verdi — Ü201 hatası geri gelmiş");
+  });
+
+  test("girdiOku bozuk veriyi reddediyor", () => {
+    assert.equal(bagla.girdiOku(null), null);
+    assert.equal(bagla.girdiOku({}), null, "yolsuz girdi kabul edildi");
+    assert.equal(bagla.girdiOku({ y: [] }), null, "boş yol kabul edildi");
+    assert.equal(bagla.girdiOku({ y: [0, "1"] }), null, "metin kabul edildi");
+    assert.equal(bagla.girdiOku({ y: [0, 1.5] }), null, "ondalık kabul edildi");
+    assert.equal(bagla.girdiOku({ y: [0, -1] }), null, "eksi kabul edildi");
+    assert.equal(bagla.girdiOku({ y: [0, 9999] }), null, "aralık dışı kabul edildi");
+    /* 🔴 Uzunluk sınırı: sınır olmasaydı tek girdiyle milyonluk bir
+       dizi gönderilip sunucu yorulabilirdi. */
+    assert.equal(
+      bagla.girdiOku({ y: new Array(200).fill(0) }),
+      null,
+      "tahtadan uzun yol kabul edildi",
+    );
+    assert.deepEqual(bagla.girdiOku({ y: [0, 1, 2] }), { y: [0, 1, 2] });
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════
+   Bağla · yol paleti (Ü262)
+   ═══════════════════════════════════════════════════════════ */
+
+describe("bağla yol paleti (Ü262)", () => {
+  const TUM = Array.from({ length: BAGLA_RENK_SAYISI }, (_, i) => baglaYolRengi(i + 1));
+
+  test("🔴 renk körlüğünde de hiçbir iki yol çakışmıyor", () => {
+    /*
+      Ayır'da (Ü261) gözle seçilen palet deuteranopide ΔE 6,8
+      veriyordu. Burada ders baştan uygulandı ve palet arandı; bu test
+      aramanın sonucunu kilitliyor.
+
+      ⚠️ Bu oyunda çakışma daha da pahalı: oyuncu hangi ucun hangi uca
+      gideceğini **yalnızca** renkten okuyor, tahtada başka ipucu yok.
+    */
+    for (const g of RENK_GORMELERI) {
+      const { dE: en, cift } = enYakinRenkCifti(TUM, g.f);
+      assert.ok(en >= 30, `${g.ad}: ${cift} çifti ΔE ${en.toFixed(1)} — eşik 30`);
+    }
+  });
+
+  test("ilk üç renk en ayrışan üçlü — bölüm 1'de yalnızca onlar görünüyor", () => {
+    const ilkUc = TUM.slice(0, 3);
+    assert.equal(baglaRenkSayisi(1), ilkUc.length, "bölüm 1'in renk sayısı değişmiş");
+    for (const g of RENK_GORMELERI) {
+      const { dE: en, cift } = enYakinRenkCifti(ilkUc, g.f);
+      assert.ok(en >= 40, `${g.ad}: ilk üçlüde ${cift} çifti ΔE ${en.toFixed(1)} — eşik 40`);
+    }
+  });
+
+  test("motorun renk sınırı kadar ton var", () => {
+    assert.ok(
+      BAGLA_RENK_SAYISI >= BAGLA_EN_FAZLA_RENK,
+      `palette ${BAGLA_RENK_SAYISI} ton var, motor ${BAGLA_EN_FAZLA_RENK} renk istiyor`,
+    );
+  });
+});
