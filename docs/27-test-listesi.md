@@ -9,6 +9,30 @@
 
 ---
 
+## 👥 ROLE GÖRE AYRI BELGELER
+
+Bu dosya **bütün akışı tek sırada** anlatıyor. Belirli bir kişinin
+gözünden A'dan Z'ye yürümek istersen aşağıdakiler ayrı ayrı yazıldı —
+her adımda *ne yaparsın · ne görmelisin · ne zaman hata sayılır*:
+
+| Belge | Kim | Nerede test edilir |
+|---|---|---|
+| [`28`](28-test-kafe-yoneticisi.md) | **Kafe yöneticisi** — başvuru, kurulum, günlük kullanım | Bilgisayar + telefon |
+| [`29`](29-test-oyuncu.md) | **Oyuncu** — karekod, konum, dokuz oyun, kupon | 🔴 Gerçek telefon şart |
+| [`30`](30-test-barista-kasiyer.md) | **Barista / kasiyer** — kupon onayı | Android **ve** iPhone |
+| [`31`](31-test-butik-isletme.md) | **Butik işletme** — oyun yok, çark var | Bilgisayar |
+| [`32`](32-test-butik-kasiyer.md) | **Butik kasiyeri** — iki işi var | Tablet/telefon |
+| [`33`](33-test-platform.md) | **Platform yöneticisi** — izolasyon ve gizlilik | Bilgisayar |
+
+⚠️ **Sıra:** 28 → 29 → 30 zincirleme ilerliyor; kurulmamış bir kafede
+oyuncu akışı test edilemez. Butik zinciri (31 → 32) bağımsız. 33 her
+zaman koşulabilir.
+
+⚠️ Aşağıdaki **§0 Hazırlık** hepsi için ortak — hangisiyle
+başlayacaksan önce onu yap.
+
+---
+
 ## 🔴 0 · Hazırlık — bunlar olmadan yarısı test edilemez
 
 ### 0.1 · HTTPS şart
