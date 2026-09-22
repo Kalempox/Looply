@@ -1679,3 +1679,126 @@ describe("ödül sınırları (Ü103)", () => {
     }
   });
 });
+
+/* ═══════════════════════════════════════════════════════════
+   Kupon ömrü kafenin ayarı — Ü250
+   ═══════════════════════════════════════════════════════════ */
+
+describe("kupon geçerlilik süresi (Ü250)", () => {
+  async function yeniOyuncuId() {
+    return (
+      await kaydet({
+        telefon: yeniTelefon(),
+        eposta: benzersizEposta(),
+        ad: "Sure",
+        soyad: "Testi",
+        dogumYili: 1990,
+        pazarlamaIzni: false,
+      })
+    ).oyuncu.id;
+  }
+
+  test("🔴 kuponun ömrü panelden ayarlanan gün sayısı kadar", async () => {
+    /*
+      🔴 Ürün sahibi: *"kupon geçerlilik süresi yani kaç gün süreceği ...
+      cafe sahibi panelden ayarlayabilmeli."*
+
+      Süre `kupon.GECERLILIK_GUN`de sabitti. Sabit kaldığı sürece panele
+      bir alan koymak işe yaramazdı — alan kaydeder, kupon eski süreyi
+      kullanırdı ve bu **hiçbir yerde görünmezdi**: kupon yine üretilir,
+      yine çalışır, yalnızca yanlış günde ölürdü.
+
+      Bu yüzden test sabitin değerini değil, **ayarın etkisini** sınıyor:
+      alışılmadık bir sayı yazılıyor ve kuponun son kullanımı ona göre
+      çıkıyor mu diye bakılıyor.
+    */
+    /*
+      🔴 Önce BÜTÇE TAZELENİYOR ve bu bir kolaylık değil, zorunluluk.
+
+      Ölçüldü: bu test süitin sonunda koşuyor ve o noktada `before`ta
+      açılan bütçenin çoğu önceki testlerce harcanmış oluyor.
+      `anlikOdulVer` o zaman `{ ok: false, hata: "bütçe doldu" }`
+      dönüyor ve test **kuponun ömrüyle hiç ilgisi olmayan** bir
+      sebeple düşüyor. Bir koşuda düştü, ikincisinde geçti — dosyanın
+      kendi uyarısı tam bunu söylüyor: *"kırılgan bir test olmayandan
+      kötüdür."*
+
+      ⚠️ Tempo tavanı da var (Ü87): günün erken saatinde taahhüdün
+      yalnızca bir kısmı erişilebilir. Taahhüt bol tutuluyor ki
+      testin koştuğu saat sonucu belirlemesin.
+    */
+    const butceSonucu = await butce.donemBelirle({
+      cafeId: kafeA,
+      taahhutKurus: 50_000_000,
+      aktorId: yoneticiA,
+      gun: bugun,
+    });
+    assert.ok(butceSonucu.ok, "test için bütçe tazelenemedi");
+
+    const ONCEKI = await ayar.sayiOku(kafeA, ayar.ANAHTARLAR.gecerlilikGunu);
+    const DENEME = 3; // varsayılan 7 değil — varsayılana düşerse yakalansın
+
+    await ayar.sayiYaz({
+      cafeId: kafeA,
+      anahtar: ayar.ANAHTARLAR.gecerlilikGunu,
+      deger: DENEME,
+      aktorId: yoneticiA,
+    });
+
+    try {
+      const p = await yeniOyuncuId();
+      const sonuc = await odulDus(p, kafeA);
+      assert.ok(sonuc?.ok, "ödül düşmedi — test bir şey sınamıyor");
+      if (!sonuc.ok) return;
+
+      const k = await withBypass("test: kupon ömrü", (db) =>
+        db.one<{ activates_at: Date; expires_at: Date }>(
+          `SELECT activates_at, expires_at FROM coupons WHERE id = $1`,
+          [sonuc.kuponId],
+        ),
+      );
+      assert.ok(k, "kupon bulunamadı");
+      if (!k) return;
+
+      /*
+        Ömür **açılıştan** sayılıyor, üretimden değil: son kullanım
+        `şimdi + erteleme + süre`. Ertelenmiş kuponda `activates_at`
+        ertelemeyi taşıyor, yani ikisinin farkı tam olarak süre.
+      */
+      const gun = (k.expires_at.getTime() - k.activates_at.getTime()) / 86_400_000;
+      assert.ok(
+        Math.abs(gun - DENEME) < 0.01,
+        `kupon ${gun.toFixed(2)} gün geçerli, ayar ${DENEME} — ayar kupona ulaşmıyor`,
+      );
+      assert.notEqual(
+        Math.round(gun),
+        kupon.GECERLILIK_GUN,
+        "kupon varsayılana düşmüş — panel alanı kaydediyor ama motor okumuyor",
+      );
+    } finally {
+      await ayar.sayiYaz({
+        cafeId: kafeA,
+        anahtar: ayar.ANAHTARLAR.gecerlilikGunu,
+        deger: ONCEKI,
+        aktorId: yoneticiA,
+      });
+    }
+  });
+
+  test("sınırların dışındaki gün reddediliyor", async () => {
+    /*
+      Üst sınır bütçeden geliyor: kullanılmamış kupon kafenin parasını
+      rezerve tutuyor ve ancak süresi dolunca iade ediliyor (E11).
+      Bir yıllık kupon o parayı bir yıl kilitlerdi.
+    */
+    for (const gun of [0, 31, -5]) {
+      const r = await ayar.sayiYaz({
+        cafeId: kafeA,
+        anahtar: ayar.ANAHTARLAR.gecerlilikGunu,
+        deger: gun,
+        aktorId: yoneticiA,
+      });
+      assert.equal(r.ok, false, `${gun} gün kabul edildi`);
+    }
+  });
+});

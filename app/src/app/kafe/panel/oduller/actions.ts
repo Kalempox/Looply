@@ -102,6 +102,7 @@ export async function esikEylemi(_onceki: EsikDurumu, form: FormData): Promise<E
 
   const tl = sayi(form, "esik");
   const saat = sayi(form, "saat");
+  const gun = sayi(form, "gun");
 
   const esikSonucu = await ayar.sayiYaz({
     cafeId: o.cafeId,
@@ -123,12 +124,27 @@ export async function esikEylemi(_onceki: EsikDurumu, form: FormData): Promise<E
   });
   if (!saatSonucu.ok) return { hata: saatSonucu.hata };
 
+  /* Ü250: geçerlilik süresi de aynı formda. Üçü tek eylemde çünkü
+     panelde tek bir cümle anlatıyorlar ("35 TL üstü 12 saat sonra
+     açılır, 7 gün geçerli"); ayrı kaydedilselerdi cümlenin yarısı
+     yeni yarısı eski olabilirdi. */
+  const gunSonucu = await ayar.sayiYaz({
+    cafeId: o.cafeId,
+    anahtar: ayar.ANAHTARLAR.gecerlilikGunu,
+    deger: gun,
+    aktorId: o.ozneId,
+  });
+  if (!gunSonucu.ok) return { hata: gunSonucu.hata };
+
   revalidatePath("/kafe/panel/oduller");
+  /* ⚠️ Cümle üç ayarı da söylüyor. İkisini söyleyip üçüncüsünü
+     atlasaydı kafe "gün sayısı kaydedildi mi" diye tekrar bakardı. */
   return {
     bilgi:
-      tl === 0
-        ? `Artık her ödül ${saat} saat sonra açılıyor.`
-        : `${tl.toLocaleString("tr-TR")} TL üstündeki ödüller ${saat} saat sonra açılacak.`,
+      (tl === 0
+        ? `Artık her ödül ${saat} saat sonra açılıyor`
+        : `${tl.toLocaleString("tr-TR")} TL üstündeki ödüller ${saat} saat sonra açılacak`) +
+      ` ve açıldıktan sonra ${gun} gün geçerli olacak.`,
   };
 }
 

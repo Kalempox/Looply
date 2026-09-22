@@ -70,7 +70,13 @@ import { idIleBul, odulKilidiBitis, takmaAdIle } from "./player";
 /** Ü129: kafe panelden değiştirmediyse geçerli olan süre. */
 export const ERTELEME_SAAT = 12;
 
-/** Kupon kaç gün geçerli (docs/06 §10). */
+/**
+ * Kupon kaç gün geçerli (docs/06 §10).
+ *
+ * ⚠️ Ü250'den beri yalnızca **varsayılan**: kafe panelden
+ * değiştirebiliyor (`ayar.ANAHTARLAR.gecerlilikGunu`). Sayı iki yerde
+ * durmuyor — `SINIRLAR` bu sabiti varsayılan olarak alıyor.
+ */
 export const GECERLILIK_GUN = 7;
 
 /** Kasiyerin onayı geri alabileceği süre. */
@@ -240,13 +246,17 @@ async function kuponUret(
   } else {
     const esik = await ayar.sayiOku(opts.cafeId, ayar.ANAHTARLAR.ertelemeEsigi);
     ertelendi = tutar > esik;
+    /* Ü250: süre de kafenin ayarı. Ertelensin ertelenmesin okunuyor —
+       `ertelemeSaati`den farkı bu: o yalnızca ertelenen kuponu
+       ilgilendiriyor, ömür ise her kuponun. */
+    const gecerlilikGun = await ayar.sayiOku(opts.cafeId, ayar.ANAHTARLAR.gecerlilikGunu);
     // Ü129: süre de kafenin ayarı. Yalnızca ertelenen kupon için okunuyor —
     // eşiğin altındaki ödül zaten anında açılıyor ve bu sayı ona dokunmuyor.
     if (ertelendi) {
       ertelemeSaat = await ayar.sayiOku(opts.cafeId, ayar.ANAHTARLAR.ertelemeSaati);
     }
     sonKullanim = new Date(
-      simdi + (ertelendi ? ertelemeSaat * 3_600_000 : 0) + GECERLILIK_GUN * 86_400_000,
+      simdi + (ertelendi ? ertelemeSaat * 3_600_000 : 0) + gecerlilikGun * 86_400_000,
     );
   }
 

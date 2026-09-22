@@ -93,6 +93,23 @@ export const ANAHTARLAR = {
    */
   ertelemeSaati: "erteleme_saat",
   /**
+   * Kupon açıldıktan sonra kaç gün geçerli — Ü250.
+   *
+   * Ürün sahibi: *"kupon geçerlilik süresi yani kaç gün süreceği ... cafe
+   * sahibi panelden ayarlayabilmeli."* Ü129'da erteleme saati panele
+   * taşınmıştı; süre sabit kalmıştı (`kupon.GECERLILIK_GUN`).
+   *
+   * ⚠️ Çark ve oyun ödülü aynı ayarı kullanıyor — `ertelemeSaati` ile
+   * birebir aynı gerekçe: ikisi de `kuponUret` yolundan geçiyor ve
+   * kuponun ömrü tek yerde hesaplanıyor.
+   *
+   * 🔴 Süre **açılıştan sonra** sayılıyor, üretimden değil: son kullanım
+   * `şimdi + erteleme + süre`. Yani 12 saat ertelenen 7 günlük bir kupon
+   * 7,5 gün sonra ölüyor, 7 değil. Aksi hâlde uzun erteleme kuponu
+   * açılmadan öldürebilirdi.
+   */
+  gecerlilikGunu: "gecerlilik_gun",
+  /**
    * İki çark çevirmesi arasındaki en az süre — Ü158 (saat).
    *
    * ── Neden ayar oldu ─────────────────────────────────────────
@@ -185,6 +202,19 @@ export const SINIRLAR: Record<Anahtar, { en_az: number; en_cok: number; varsayil
   // ondan uzun olursa kupon **açılmadan** ölürdü. 48 saat, geçerlilik
   // süresinin altında kalan güvenli bir tavan.
   [ANAHTARLAR.ertelemeSaati]: { en_az: 1, en_cok: 48, varsayilan: 12 },
+  /*
+    Ü250: varsayılan 7 — `kupon.GECERLILIK_GUN`in değeri, ayar olunca
+    varsayılan oldu. Paneli hiç açmayan kafede hiçbir şey değişmiyor.
+
+    🔴 Üst sınır 30 ve sebebi bütçe, nezaket değil: **kullanılmamış
+    kupon kafenin parasını rezerve tutuyor** (`reserved_kurus`) ve
+    ancak süresi dolunca iade ediliyor (E11, `sureDolanlariSupur`).
+    Bir yıllık kupon, o parayı bir yıl kilitler ve kafe neden
+    dağıtamadığını anlayamaz.
+
+    ⚠️ Alt sınır 1: sıfır gün, açıldığı anda ölen bir kupon demek.
+  */
+  [ANAHTARLAR.gecerlilikGunu]: { en_az: 1, en_cok: 30, varsayilan: 7 },
   // Ü158: varsayılan 24 — sabitken kullanılan değer, ayar olunca
   // varsayılan oldu. Paneli hiç açmayan kafede hiçbir şey değişmiyor.
   // Sınırların gerekçesi `carkAralikSaat`in kendi notunda.

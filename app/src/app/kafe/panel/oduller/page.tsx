@@ -32,7 +32,7 @@ export const metadata = { title: "Ödül kataloğu · Looply" };
  */
 export default async function OdullerSayfasi() {
   const o = await kafeYoneticisiGerekli();
-  const [oduller, urunler, esikKurus, carkSinirKurus, ertelemeSaat] = await Promise.all([
+  const [oduller, urunler, esikKurus, carkSinirKurus, ertelemeSaat, gecerlilikGun] = await Promise.all([
     katalog.listele(o.cafeId),
     urun.listele(o.cafeId, false),
     ayar.sayiOku(o.cafeId, ayar.ANAHTARLAR.ertelemeEsigi),
@@ -41,6 +41,8 @@ export default async function OdullerSayfasi() {
     ayar.sayiOku(o.cafeId, ayar.ANAHTARLAR.carkUstSinir),
     // Ü129: aktivasyon saati artık kafenin ayarı, `kupon.ts`teki sabit değil.
     ayar.sayiOku(o.cafeId, ayar.ANAHTARLAR.ertelemeSaati),
+    // Ü250: kuponun ömrü de kafenin ayarı.
+    ayar.sayiOku(o.cafeId, ayar.ANAHTARLAR.gecerlilikGunu),
   ]);
 
   // Çarkın dönebilmesi için sınırın altında en az bir anlık ödül gerekiyor;
@@ -171,13 +173,18 @@ export default async function OdullerSayfasi() {
         </details>
 
         <div className="rounded-2xl border border-cizgi bg-yuzey px-5 py-5">
-          <div className="text-[15px] font-semibold">Gecikmeli açılma</div>
+          <div className="text-[15px] font-semibold">Açılma ve geçerlilik</div>
           <p className="mt-0.5 mb-4 text-[12px] leading-relaxed text-yazi-sonuk">
             Bu tutarın üstündeki ödül {ertelemeSaat} saat sonra açılır —
-            müşteriyi ertesi gün geri getiren mekanik bu. Çark ödülü ve oyun
-            ödülü aynı kuralı paylaşıyor.
+            müşteriyi ertesi gün geri getiren mekanik bu. Açılan kupon{" "}
+            {gecerlilikGun} gün geçerli. Çark ödülü ve oyun ödülü aynı kuralı
+            paylaşıyor.
           </p>
-          <EsikAyari mevcutTl={Math.round(esikKurus / 100)} mevcutSaat={ertelemeSaat} />
+          <EsikAyari
+            mevcutTl={Math.round(esikKurus / 100)}
+            mevcutSaat={ertelemeSaat}
+            mevcutGun={gecerlilikGun}
+          />
         </div>
 
         <Link

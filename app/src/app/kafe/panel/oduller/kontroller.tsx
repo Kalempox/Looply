@@ -321,7 +321,15 @@ export function DurumDugmesi({
  * Sıfır yazmak her ödülü erteler; üst sınır 500 TL. İkisi de kafenin hakkı,
  * ama sınırsız bırakmak ertelemeyi fiilen kapatmanın yolu olurdu.
  */
-export function EsikAyari({ mevcutTl, mevcutSaat }: { mevcutTl: number; mevcutSaat: number }) {
+export function EsikAyari({
+  mevcutTl,
+  mevcutSaat,
+  mevcutGun,
+}: {
+  mevcutTl: number;
+  mevcutSaat: number;
+  mevcutGun: number;
+}) {
   const [durum, action, bekliyor] = useActionState(
     esikEylemi,
     {} as EsikDurumu,
@@ -363,6 +371,25 @@ export function EsikAyari({ mevcutTl, mevcutSaat }: { mevcutTl: number; mevcutSa
           defaultValue={String(mevcutSaat)}
           className={isletmeGirdi}
           placeholder="12"
+        />
+      </IsletmeAlan>
+
+      {/* Ü250: geçerlilik süresi. `kupon.GECERLILIK_GUN` sabitti ve ürün
+          sahibi panele istedi. Aktivasyon saatinden farkı: o yalnızca
+          ertelenen kuponu ilgilendiriyor, bu **her** kuponun ömrü. */}
+      <IsletmeAlan
+        etiket="Kupon kaç gün geçerli"
+        ipucu="Kupon açıldıktan sonra kaç gün kullanılabilsin. 1 ile 30 arası — kullanılmayan kupon bütçenden pay ayırıyor ve ancak süresi dolunca geri dönüyor."
+      >
+        <input
+          name="gun"
+          type="number"
+          inputMode="numeric"
+          min={1}
+          max={30}
+          defaultValue={String(mevcutGun)}
+          className={isletmeGirdi}
+          placeholder="7"
         />
       </IsletmeAlan>
 
