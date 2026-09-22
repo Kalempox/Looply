@@ -6,12 +6,518 @@
 > Yan dosyalar: neyin **var** olduğu → `21-looply-kapsam-haritasi.md` ·
 > demoda neyin **yapılabildiği** → `22-demo-yapilabilirlik.md`
 
-**Son güncelleme:** 2026-09-22 · **Kararlar:** Ü76 – Ü159, **Ü186 – Ü242**
+**Son güncelleme:** 2026-09-22 · **Kararlar:** Ü76 – Ü159, **Ü186 – Ü242**, **Ü259 – Ü265**
 
-> ⚠️ **BU LİSTEDE BİR BOŞLUK VAR: Ü160 – Ü185 yazılmadı.**
+> ⚠️ **BU LİSTEDE İKİ BOŞLUK VAR.**
+>
+> **Ü243 – Ü258 yazılmadı.** O turlar da commitlenmedi ve kod
+> yorumlarında duruyorlar: Blok Kırıcı, oyun başına `gunlukHedef`,
+> karekodun Loopy'si ve adlı kodlar, kafe değiştirince oturum hatası,
+> giden kutusu saklama süresi, sessizce çalışmayan `qr_temizlik`, hata
+> sınırları, `/firsatlar`ın kupon tasarımına taşınması, karusel
+> taşması. Dökülmeleri ayrı bir iş.
+>
+> **Ü160 – Ü185 yazılmadı.**
 > O turlar commit mesajlarında ve kod yorumlarında duruyor (oyun
 > sahneleri, koyu kartlar, koşan Loopy, seri sahnesi, yuva). Buraya
 > dökülmediler. Dökülmeleri ayrı bir iş ve karar sizin.
+
+---
+
+## ⬅️ Ü265 · Kart sahneleri referans kartlardan KESİLDİ — 2026-09-22
+
+⚠️ **Commitlenmedi.**
+
+Ürün sahibi: *"referans kartlardan illüstrasyonu kes, deneyelim; eğer
+olmazsa onları referans vererek fal.ai ile üretiriz."* Altı kartın
+illüstrasyon bandı kırpılıp kartın kendi koyu zemini saydama çevrildi.
+**Beşi tuttu, biri tutmadı.**
+
+Sahneler saydam kesitler (`public/oyun/<id>-512.webp`, RGBA) ve kartın
+kendi renginin üstünde duruyor — mevcut üç sahnenin (Blok, Düşen,
+Yılan) kurduğu biçim bu. Yeni altısının saydamlığı %26–47, eskilerinki
+%34–53; aynı aralık.
+
+### 🔴 Zemin tahmini iki kez yanlış kuruldu
+
+**Birinci deneme — "en koyu %20'nin ortalaması".** Ayır'da çalıştı ama
+Blok Kırıcı'da çöktü: illüstrasyon kırpmanın neredeyse tamamını
+kapladığı için "en koyu" pikseller zemin değil **gölgeli illüstrasyon**
+oldu. Ölçüldü: saydamlık **%1**. Kartta illüstrasyonun çevresinde
+mavi-yeşil bir dikdörtgen panel duruyordu ve mor kartın üstünde açıkça
+görünüyordu.
+
+**İkinci deneme — kırpmanın kenar şeridinin medyanı.** İllüstrasyon
+ortada, kenar zemindir. Aynı eşiklerle altı kartın altısında da
+çalıştı; Blok Kırıcı'nın saydamlığı %1'den **%41**'e çıktı ve
+dikdörtgen kayboldu.
+
+⚠️ Köşedeki uygulama ikonu kırpmanın **dışında** bırakıldı. Bir turda
+silinerek denendi ve iz bıraktı: silinen dikdörtgen tam saydam oluyor,
+çevresinde zeminin kalıntısı kalıyor ve aradaki fark kartta yama gibi
+görünüyordu.
+
+⚠️ Bıçak Ustası ve Tuğla Kırıcı'nın referansında illüstrasyonun içine
+**"BÖLÜM 1 / SKOR 0"** yazıları gömülüydü; kırpma onların altından
+başlıyor.
+
+### 🔴 Tuğla Kırıcı tutmadı — ve sebebi kesim değil
+
+Kesim temiz çıktı ama kart okunmuyor: illüstrasyon baştan sona turuncu
+ve kartın rengi de kehribar (Ü244). Üç ayrı deneme yapıldı —
+zemini kısmen bırakan perde (taban 110), daha koyusu (190, 215, 240),
+kenarları eriten tüy — **üçü de işe yaramadı**, çünkü kartta turuncuyu
+bastıran şey zemin değil illüstrasyonun kendi turuncu ışıması.
+
+Aynı kesit koyu bir kartta (arduvaz #1e293b) denendi ve **canlandı**:
+tuğlalar, top ve palet net ayrışıyor. Yani çözüm sahnede değil **kart
+renginde**.
+
+⚠️ Renkli Çizgiler'de aynı sorunun hafifi var: neon-camgöbeği
+illüstrasyon krem kartın haki tonunda donuk duruyor. Okunuyor ama
+parlamıyor.
+
+🔴 İkisi de **palet kararı** ve palet tükenmiş durumda (bkz.
+`oyuncu-renk.ts`): çarkın dilim listesinde kullanılmamış ton kalmadı.
+Karar ürün sahibinde.
+
+**Doğrulama:** 757 test · 0 hata · tsc · eslint · `next build` ·
+karusel tarayıcıda gezildi (Blok Kırıcı · Blok 2048 · Renkli Tüpler ·
+Renkli Çizgiler · Tuğla Kırıcı kartları görüldü).
+
+---
+
+## ⬅️ Ü264 · Kart ikonları geldi — dört oyun genel daireden çıktı — 2026-09-22
+
+⚠️ **Commitlenmedi.**
+
+Ürün sahibi dört ikon gönderdi ve hangisinin hangi oyun olduğunu
+söyledi: *"soldaki 2048, ortadaki ayır, sağdaki birleştir · ikinci
+görselde blok kırıcı."*
+
+| ikon | oyun | not |
+|---|---|---|
+| sayı blokları | `ikibin` | — |
+| deney tüpleri | `ayir` | — |
+| birleşen toplar | `bagla` | ⚠️ görselde **top** var, oyunda **çizgi** |
+| tuğla + palet | `kirici` | ürün sahibi "blok kırıcı" dedi, görselde palet var |
+
+⚠️ İkonlar **üretilmedi, kırpıldı**: ilk görsel üç ikonu yan yana
+taşıyordu. Sınırları tahminle değil parlaklıktan bulup kare kırptım
+(referans zemin ile ikon arasındaki fark 30 kademe), 256×256'ya
+indirdim. Ü254'te referanssız üretilen dokuz görselin hiçbiri
+tutmamıştı; bu turda tur harcanmadı.
+
+⚠️ `bagla`nın ikonu oyunun mekaniğini birebir anlatmıyor — oyun aynı
+renkleri **çizgiyle** birleştiriyor, ikonda ise toplar birleşiyor.
+Ürün sahibi "birleştir" diye adlandırdı ve oyunun eski özeti de *"aynı
+renkleri birleştir"*di; yine de farklı bir ikon isterse değişebilir.
+
+⚠️ `kirici`yi ürün sahibi eski adıyla ("blok kırıcı") andı. Görselde
+**palet** olduğu için hangi oyun olduğu tartışmasız: Ü263'te "Tuğla
+Kırıcı" adını alan oyun. Ad değişikliği geri alınmadı.
+
+**Blok · Düşen · Yılan eskisi gibi kaldı** — ürün sahibinin kararı.
+Adları değişmedi; kategorileri eski ayrımın karşılığına kondu (Blok →
+Stratejik, Düşen ve Yılan → Beceri & Hız).
+
+**⬜ Kalan: kart SAHNELERİ.** Karuselin büyük görseli yalnızca üç
+oyunda var (`blok`, `dusen`, `yilan`); kalan altı kart ikonla ve soluk
+bir genel görselle kalıyor. Ürün sahibinin gönderdiği kart
+referanslarında tam sahne vardı ama metin görselin içine gömülü, yani
+doğrudan kullanılamıyor.
+
+**Doğrulama:** 757 test · 0 hata · tsc · eslint · `next build` ·
+tarayıcıda dokuz oyunun dokuzu da görsel ikon kullanıyor (genel daireye
+düşen: 0).
+
+---
+
+## ⬅️ Ü263 · Kart referansları geldi: 2048'in paleti, oyun adları, kategoriler — 2026-09-22
+
+⚠️ **Commitlenmedi.**
+
+Ürün sahibi yedi referans görsel gönderdi (ikon + altı oyun kartı) ve
+*"sayılar hâlâ küçük, baya büyük olsun · blok için görseldeki gibi olsun
+· istediğim ikon ve kart görsellerini gönderdim, bunlar gibi yap"* dedi.
+Görseller `docs/tasarim/oyun-kartlari-referans/` altında duruyor.
+
+### Sayılar bir kez daha büyüdü
+
+Hedef doluluk %80'den **%85'e** çıktı: 72 / 64 / 50 / 35 cqmin. Tek
+basamak artık **yükseklik** sınırında (hücrenin %72'si); genişlikte
+yalnızca %42 kaplıyor ama rakamın boyu hücrenin yarısını geçiyor.
+
+### 🔴 Palet kuralı DEĞİŞTİ — iki istek çeliştiği için soruldu
+
+Ü260'ta ürün sahibi *"sayı büyüdükçe daha koyu"* demişti; palet ona göre
+kurulmuş, parlaklığı 0,921'den 0,009'a tek yönlü düşüyordu ve testi
+vardı. Referans görselde ise renkler koyulaşmıyor: 512 yeşil, 1024 mavi,
+2048 parlayan altın. **Çelişki sorulup referans seçildi**; koyulaşma
+kuralı ve testi kalktı.
+
+⚠️ Renkler gözle kopyalanmadı, görselden **ölçüldü** — ve ilk iki ölçüm
+yanlış çıktı, ikisi de ölçümün kendisiyle görüldü:
+
+1. Karo merkezinden örnekleme beyaz **rakama** denk geliyordu (2048 için
+   `#fff4de` okundu).
+2. "En doygun pikseller" süzgeci açık karolarda kenar parlamasını
+   yakalıyordu (`2` karosu `#889fea` çıktı, oysa açık periwinkle).
+
+Üçüncüsü tuttu: beyaza yakın (rakam) ve koyu (gölge) pikseller elenip
+**medyan** alındı.
+
+### 🔴 Yazı rengi referanstan ALINMADI
+
+Referans on bir karonun hepsinde beyaz rakam kullanıyor. Ölçüm: `2`
+karosunda beyazın kontrastı **1,97**, `32`de 2,11, `2048`de 2,26. İkon
+boyutunda göze batmıyor, oyunda rakam hücrenin yarısı kadar ve okunması
+şart.
+
+Kural: zemin koyuysa (bağıl parlaklık < 0,30) beyaz, açıksa kendi
+tonundan türeyen çok koyu bir renk. Referansın canlı zeminleri aynen
+duruyor, rakam her karoda okunuyor.
+
+⚠️ Kontrast eşiği 4,5'ten **3,0**'a indi ve bu bir gevşetme değil:
+WCAG'ın **büyük yazı** eşiği bu ve rakamların en küçüğü 27 piksel kalın
+(sınır 18,66). Ü260'ta 4,5 uygundu çünkü palet koyulaşıyordu ve beyaz
+yalnızca koyu zeminlerde kullanılıyordu.
+
+⚠️ 2048 karosunun parlaması geri geldi. Ü260'ta kaldırılmıştı çünkü o
+zamanki kural "büyük = koyu"ydu; kural kalkınca gerekçe de kalktı.
+
+### Adlar ve kategoriler referanstan
+
+🔴 **Bir ad çakışması vardı ve ancak eşleştirirken görüldü:** referanstaki
+"Blok Kırıcı" topları fırlatıp blokları patlatan oyun — yani bizim
+**Sekme**. Paletli olan ise "Tuğla Kırıcı" — bizim o güne kadar "Blok
+Kırıcı" adını taşıyan **Kırıcı**. İkisi birlikte değiştirilmeseydi iki
+oyun aynı adı taşıyacaktı.
+
+| kimlik | eski ad | yeni ad |
+|---|---|---|
+| `sekme` | Sekme | **Blok Kırıcı** |
+| `kirici` | Blok Kırıcı | **Tuğla Kırıcı** |
+| `ikibin` | 2048 | **Blok 2048** |
+| `ayir` | Ayır | **Renkli Tüpler** |
+| `bagla` | Bağla | **Renkli Çizgiler** |
+| `bicak` | Bıçak | **Bıçak Ustası** |
+
+Kategoriler ikiden **üçe** çıktı: Stratejik · Mantık & Düşünme · Beceri
+& Hız. ⚠️ Ayrım ölçütü değişmedi, yalnızca "Düşünerek" ikiye bölündü:
+planlayıp biriktirdiğin oyunlar ile tek doğru çözümü aradığın
+bulmacalar artık ayrı.
+
+⚠️ Referansta yalnızca altı kart vardı. Blok, Düşen ve Yılan eski
+ayrımın söylediği yere kondu; kartları gelince teyit edilecek.
+
+⚠️ Açıklamalar referanstan alındı **ama iki yerde alınmadı**: referans
+kartları *"tüm seviyeleri tamamla"* diyor ve bu Ü83'le çelişiyor —
+bizde kazanarak biten tur yok. Renkli Çizgiler'in açıklaması da
+mekaniği yanlış anlatıyordu (*"çizgileri sırala"*).
+
+### 🔴 Yol boyunca: katalog hiçbir testten geçmiyormuş
+
+`katalog.ts` bir ara bozuldu (kapanmamış yorum bloğu) ve **754 test
+yeşil kaldı** — dosyayı hiçbir test içe aktarmıyordu. Oysa dosyanın
+kendi yorumu *"yeni bir oyun eklenip `KATEGORILER` güncellenmezse oyun
+katalogdan **sessizce** kaybolurdu"* diye uyarıyordu.
+
+Üç test eklendi (her oyun katalogda tam bir kez · hiçbiri "Diğer"e
+düşmüyor · kategori sırası korunuyor) ve A/B ile doğrulandı.
+
+⚠️ Aynı sınıf hata bu oturumda `challenge.ts`te iki kez çıktı ve orada
+test **vardı**, ikisini de yakaladı. Fark testin varlığıydı.
+
+**Doğrulama:** 757 test · 0 hata · tsc · eslint · `next build` ·
+tarayıcıda oynandı, tur sunucuda doğrulandı (920 puan).
+
+---
+
+## ⬅️ Ü262 · Dokuzuncu oyun: Bağla (Flow Free) — 2026-09-22
+
+⚠️ **Commitlenmedi.** ✅ Tarayıcıda doğrulandı (Ü263 turunda, ürün
+sahibi giriş yaptıktan sonra).
+
+Ürün sahibinin istediği üç oyunun sonuncusu: *"renkli çizgileri
+birleştir"*, kaynak Yandex'teki **Flow Free**. `docs/18`in aday
+listesinde **10 numara**: *"girdi bir yol — en zengin girdi biçimi.
+Bölüm üretimi zor: her bölümün çözülebilir olduğu garanti edilmeli."*
+
+Aynı mekaniğin basit sürümü de açılıp oynandı
+(toytheater.com/color-link) ve **kural farkı orada görüldü**: orada
+noktaları birleştirmek yetiyor, tahtayı doldurmak gerekmiyor. Klasik
+kural alındı — hem ürün sahibinin gösterdiği oyun o, hem doldurma şartı
+olmadan bulmacanın çoğu düz çizgiyle çözülüyor.
+
+### Girdi biçimi (Ü21)
+
+Sekiz oyunun girdisi birkaç sayıdan ibaretti; bunun ki **değişken
+uzunlukta bir dizi**. Parmak sürüklenirken taslak yol ekranda duruyor ve
+motora dokunmuyor: bir çizim **tek** girdi. Her kare ayrı girdi olsaydı
+kayıt kare sayısı kadar şişer ve `EN_FAZLA_GIRDI` bir turda dolardı.
+
+### 🔴 Bölüm üreteci — Hamilton yolunu keserek
+
+Tahtayı tamamen kaplayan tek bir yol kuruluyor (yılan sıralamasından
+başlayıp **backbite** adımlarıyla karıştırılarak) ve o yol parçalara
+kesiliyor. Her parça bir rengin çözümü, parçanın iki ucu o rengin
+noktaları. Çözülebilirlik **ispat**: parçaların kendisi zaten bir çözüm
+ve tahtanın tamamını kaplıyor.
+
+Alternatif (uçları rastgele serp → çözücüyle doğrula) Ayır'daki (Ü261)
+gerekçeyle reddedildi: `baslat` oyun kaydı doğrulanırken sunucuda
+yeniden koşuyor (S5) ve aramanın maliyeti her doğrulamaya binerdi.
+
+Ölçüm: 14 bölüm × 30 tohum = 420 tahtada kaplama, komşuluk ve uç sayısı
+**kusursuz**; motor kendi çözümünü **2120 çizimde 0 kez** reddetmedi.
+
+### 🔴 Zorluk merdiveni ilk yazımda TERSİNE dönüyordu
+
+Renk sayısı formülü kenara bağlıydı ve ölçümde bölüm 1'de 4, bölüm 2'de
+**3** renk veriyordu — oyun ikinci bölümde kolaylaşıyordu. Kırıcı'da
+(Ü244) da zorluk eğrisi bir kez tersine dönmüştü; ikisi de gözle değil
+ancak **ölçünce** göründü. Şimdi tek yönlü ve testi var.
+
+### Duvar (Ü83) ve ekonomi
+
+Duvar tek sayı: **36 çizim hakkı**, iade yok. Kusursuz oyuncu bir bölümü
+renk sayısı kadar çizimde bitiriyor; renk bölümle büyüdüğü için biriken
+maliyet hızlanıyor ve hak tükeniyor.
+
+Dört oyuncu modeli × beş hak değeri ölçüldü. 36'da bölüm sayıları:
+**acemi 2, iyi 4, usta 6, kusursuz 8** — dört seviyenin dördü de
+ayrışıyor. Puan ölçeği (`60 + 30·bölüm`) eşiği dördüncü bölümün hemen
+üstüne koyuyor: 3 bölüm 360, 4 bölüm 540. Kupon eşiğini (500) geçme
+oranı acemi %7, iyi %80, usta %98.
+
+⚠️ Bot `q<1`'de **üretecin yolunu** bulamayınca rastgele geçerli bir yol
+çiziyor; insan ise kendi bulduğu çözümü çiziyor. Yani acemi/iyi satırları
+gerçek insanın **alt sınırı**. Ayar yapılırken buna güvenilmedi.
+
+### Palet — Ayır'ın dersi baştan uygulandı
+
+Ü261'de gözle seçilen palet deuteranopide ΔE 6,8 vermişti. Burada palet
+seçilmedi, **arandı**: en zayıf halka **36,2** (normal 51,6 ·
+deuteranopi 36,2 · protanopi 37,1).
+
+⚠️ Sekiz renk denendi ve arama sekiz **canlı** ton bulamadı — en iyi
+sekizli beyaz, gri ve kahve içeriyordu (32,8). Motorun renk sınırı bu
+yüzden altıya indi; zorluk bundan kaybetmiyor, çünkü 36 hakla kusursuz
+oyuncu bile 8. bölümü geçemiyor ve renk orada zaten 6.
+
+⚠️ Dört ton Ayır'ınkiyle aynı ve bu kopyalama değil: aynı ölçüte göre
+aranan altı canlı rengin tavanı bu.
+
+### 🔴 A/B bir BOŞLUK ortaya çıkardı
+
+Bekçi testler hatayı geri koyarak sınandı. Üreteç testi bozuk backbite'ı
+yakaladı. Ama `bolumBittiMi`deki **kaplama şartı silinince tek bir test
+bile düşmedi** — yani dosyanın başında "klasik kuralı alıyoruz" diye
+yazan kural korumasızdı ve biri "sadeleştirme" diye o satırı silse oyun
+sessizce kolay sürüme dönerdi. Elle kurulmuş 3×3 bir tahtayla test
+eklendi ve A/B ile doğrulandı.
+
+### Yan etki: onuncu günlük görev
+
+Oyun sayısı dokuza çıkınca görev havuzu da dokuzdu ve **OBEB 9** oldu.
+`challenge.test.ts` düşürdü. Onuncu görev eklendi (`skorOrta`, oran 80,
+XP 75): OBEB(10,9) = 1, döngü 90 gün. ⚠️ Oran 80 yeni bir zorluk kademesi
+değil, `skorIyi` (60) ile `skorZor` (100) arasındaki **eksik basamak**.
+Skor görevleri rotasyonda yan yana düşmeyecek şekilde yerleştirildi.
+
+**Renk:** krem — çarkın dilim listesinde kalan **son** ton. 🔴 Onuncu
+oyun için çarkın kendisi büyümek zorunda.
+
+**Dosyalar:** `oyunlar/bagla.ts` · `arayuz/bagla-ekran.tsx` ·
+`arayuz/bagla-yuzey.ts` · `oyunlar/index.ts` · `arayuz/index.tsx` ·
+`katalog.ts` · `components/oyuncu-renk.ts` · `domain/challenge.ts` ·
+`tests/oyun-motoru.test.ts`
+
+**Doğrulama:** 754 test, 0 hata · tsc · eslint · `next build` ·
+tarayıcıda çizildi. SVG uçlarının DOM kareleriyle **en büyük sapması
+0,51 piksel** — ızgara boşluğunun sıfırlanması doğru karardı.
+
+🔴 **Tarayıcıda bir kusur çıktı ve düzeltildi: hızlı parmak kare
+atlıyordu.** `pointermove` her pikselde düşmüyor; iki olay arasında
+kalan kare yola hiç girmiyor ve çizgi geride takılı kalıyordu. Yavaş
+çizerken görünmüyordu. Artık son kareden parmağın bulunduğu kareye
+**adım adım** yürünüyor. Ölçüldü: 0 → 3 arasında tek bir hızlı
+sürükleme dördünü de yakalıyor (düzeltmeden önce yol hiç işlenmezdi).
+
+**⬜ Eksik:** kart görseli yok · gerçek dokunmatik cihazda sınanmadı.
+
+---
+
+## ⬅️ Ü261 · Sekizinci oyun: Ayır (renk sıralama) — 2026-09-22
+
+⚠️ **Commitlenmedi.**
+
+Ürün sahibi üç oyun istemişti: 2048, **sıvı ayırma**
+(`toytheater.com/liquid-sort/`) ve "renkli çizgileri birleştir". Bu
+ikincisi. `docs/18`in aday listesinde **1 numara** olarak duruyordu:
+girdi `(kaynak, hedef)`, zaman yok, maliyet düşük.
+
+Referans açıldı ve oynandı (kural metni + bir hamle): bir tüpe dokun,
+ötekine dokun, üstteki renk dizisi aktarılsın.
+
+**Referanstan alınmayan tek şey puan.** Orada *"bulmacayı hızlı bitir,
+daha çok puan al"* yazıyor; bizde bu Ş2'ye takılıyor — sunucu
+istemcinin duvar saatini göremiyor. Oyunda zaman **hiç yok**.
+
+### 🔴 Bölüm üreteci — klasik yol ölçümde çöktü
+
+Alışılmış yol birimleri tüplere rastgele dağıtmak. Aynı renk/tüp
+sayılarıyla 320 tahta üretildi:
+
+| üreteç | çözülebilir | **çözümsüz** |
+|---|---|---|
+| rastgele dağıtım | 135 | **185 (%58)** |
+| ters oynatma | 320 | **0** |
+
+Çözümsüz bölüm, oyuncunun hatası olmayan bir kayıp demek. İkinci
+alışılmış yol (dağıt → aramayla doğrula → olmazsa yeniden dağıt) da
+reddedildi: oyun kaydı doğrulanırken `baslat` sunucuda yeniden çalışıyor
+(S5) ve aramanın maliyeti **her doğrulamaya** binerdi.
+
+Seçilen yol **ters oynatma**: çözülmüş tahtadan başlanıp yalnızca
+geçerli bir ileri hamlenin tersi olan adımlar atılıyor. Çözüm, atılan
+adımların tersi — arama yok, garanti var.
+
+⚠️ Ters hamlenin iki şartı var ve **ikisi aynı ağırlıkta değil**. Şart 2
+kaldırılıp aynı 320 tahta yeniden tarandı: yine 0 çözümsüz, parça sayısı
+16,8'den 16,6'ya indi. Yani şart 2 bu tahta boyutlarında taşıyıcı değil —
+ama kaldırılırsa elde kalan şey ölçüm olur, **ispat olmaz**. Duruyor ve
+gerekçesi kodda yazılı.
+
+### 🔴 Duvar (Ü83) iki kez tasarlandı
+
+İlk tasarım: hamle **havuzu**, biten bölüm sabit 12 hamle iade ediyor.
+Kâğıtta duvar vardı (maliyet büyür, iade sabit kalır). Ölçüm çürüttü:
+
+- İlk bölümlerin en kısa çözümü 2–6 hamle, yani **iade maliyetten
+  büyüktü**: oyuncu ilk bölümlerde havuzu şişiriyordu. Rastgele oynayan
+  bot 6,5 bölüm ilerledi ve kupon eşiğini **%94,7** oranında geçti.
+- Maliyet üst bölümlerde ~13,5'te sabitlenince duvar **42. bölüme**
+  düştü; kusursuz bot 533 hamle oynadı. Kafede bir kahve süresi değil.
+
+İkinci tasarım: **tek hamle hakkı, iade yok.** Her bölüm en az bir
+hamleye mal olduğuna göre tur kaçınılmaz olarak bitiyor — ispat bir
+satır. Sayı dört oyuncu modeli × altı hak değeri taranarak seçildi:
+
+| hak | 40 | 50 | **60** | 70 | 85 |
+|---|---|---|---|---|---|
+| rastgele | 180 %0 | 280 %0 | **280 %10** | 280 %22 | 280 %25 |
+| acemi %40 | 280 %0 | 400 %8 | **400 %43** | 400 %46 | 400 %46 |
+| iyi %75 | 400 %0 | 600 %53 | **540 %78** | 700 %78 | 880 %78 |
+| kusursuz | 400 %0 | 540 %100 | **700 %100** | 880 %100 | 1080 %100 |
+
+*(ortanca skor · kupon eşiğini geçme oranı)*
+
+40 ve 50'de kusursuz oyuncu bile iyi oyuncudan ayrışmıyor; 85'te
+rastgele oynayan her dört turun birinde eşiği geçiyor. **60** ikisinin
+arasında. `gunlukHedef` de ölçümden: 540.
+
+⚠️ Tabloda 60'tan sonra rastgele botun skoru artmıyor — onu bitiren şey
+artık hak değil, **tek boş tüpte kilitlenmesi**. Boş tüp sayısı bölüm
+3'ten sonra 2'den 1'e iniyor ve hatanın bedelini o doğuruyor; iki
+boşlukta *"iyi"* ile *"kusursuz"* aynı skoru alıyordu.
+
+### 🔴 Sıvı paleti gözle seçildi, renk körlüğünde çöktü
+
+İlk palet elle seçilmişti ve normal görmede iyiydi. Renk körlüğü
+benzetiminden geçirilince:
+
+| görme | en yakın çift ΔE |
+|---|---|
+| normal | 49,1 ✓ |
+| **deuteranopi** | **6,8** 🔴 gök ↔ orkide |
+| protanopi | 22,1 |
+
+Bu oyunda **aynı renk = birleşebilir** demek; çakışan iki sıvı tahtayı
+okunamaz yapıyor. Deuteranopi erkeklerin ~%5'inde var.
+
+⚠️ İlk kod yorumu *"kırmızı-yeşil çifti bilerek uzak tutuldu"* diyordu ve
+yanlış yere bakıyordu: çakışan çift kırmızı-yeşil değil **mavi-mor**.
+Renk körlüğünün hangi çifti çökerteceği sezgiyle bilinmiyor.
+
+Palet seçilmedi, **arandı**: 32 tonluk havuzdan, üç görme biçiminde en
+yakın çiftin ΔE'sini birlikte en büyük yapan altılı. Sahnenin kendi
+rengi de aramaya girdi. Sonuç: **6,8 → 36,2** (beş kat). Sıra da ölçüm —
+ilk bölümde yalnızca üç renk görünüyor, o yüzden kod 1-2-3 en ayrışan
+üçlü (ΔE 49,4).
+
+### Ekranda düzeltilen iki şey
+
+- **Dilim başına bir öge saç teli çizgiler bırakıyordu.** 225 piksellik
+  tüpte %25 = 56,25 piksel; kesir yuvarlanınca komşu ögelerin arasından
+  koyu zemin sızıyor ve aynı renkten dört birim **dört ayrı blok** gibi
+  görünüyordu. Sıvı tek bir degradeye çevrildi.
+- **Tüp boyu ölçüyle büyütüldü** (232 → 281 piksel). En bilerek dar
+  kaldı: beş tüp 375 piksellik telefonda ancak bu enle tek sıraya
+  sığıyor. Yedi tüplü bölüm klonlanarak **gerçekten ölçüldü** — iki sıra,
+  123..705, taşma yok.
+
+### Yan etki: dokuzuncu günlük görev
+
+Oyun sayısı sekize çıkınca görev havuzu da sekizdi ve **OBEB 8** oldu —
+her oyuna hep aynı görev düşerdi. `challenge.test.ts` bunu düşürdü.
+Dokuzuncu görev eklendi (`skorUsta`, oran 130, XP 100): OBEB(9,8) = 1,
+döngü 72 gün. ⚠️ Yine bir **skor** görevi, çünkü havuzdaki sekiz görevin
+altısı birden fazla tur istiyordu.
+
+**Dosyalar:** `oyunlar/ayir.ts` · `arayuz/ayir-ekran.tsx` ·
+`arayuz/ayir-yuzey.ts` · `oyunlar/index.ts` · `katalog.ts` ·
+`components/oyuncu-renk.ts` (yeni ton: lavanta) · `domain/challenge.ts` ·
+`globals.css` · `tests/oyun-motoru.test.ts`
+
+**Doğrulama:** 741 test, 0 hata · tsc · eslint · `next build` · tarayıcıda
+oynandı. Dört bekçi test hatayı geri koyarak sınandı: çözülebilirlik
+(bozuk üreteç 185 tahtada yakalandı), duvar, renk körlüğü paleti, ödül
+paketinin puan vermemesi.
+
+**⬜ Eksik:** oyunun **kart görseli** yok — karusel genel daireye
+düşüyor. Ü254'te öğrenildiği gibi referans görsel olmadan tur harcamak
+işe yaramıyor; ürün sahibinden bekleniyor.
+
+---
+
+## ⬅️ Ü260 · 2048'in karo paleti ölçülerek kuruldu — 2026-09-22
+
+⚠️ **Commitlenmedi.**
+
+Ürün sahibi: *"2048'deki sayıları büyüt, renkleri değiştir, her sayıda
+farklı renk olmalı ve gitgide daha koyu."*
+
+### 🔴 Asıl hata punto birimindeydi
+
+`fontSize: "54%"` yazılmıştı ve tarayıcıda **8,64 piksel** ölçüldü:
+CSS'te yüzdeli `font-size` ögenin kendi boyutuna değil **üst ögenin
+punto'suna** göre çözülüyor. Üstte punto 16px olduğu için 76 piksellik
+hücreye 8 piksellik sayı yazılıyordu — yani "sayıları büyüt" isteği hiç
+uygulanmamış, yalnızca yüzdeler oynamıştı.
+
+Hücre `containerType: size` ile ölçü kabına çevrildi, punto `cqmin`e
+geçti. Merdiven tarayıcıda ölçülerek kuruldu (her basamak sayısının
+gerçek yazı genişliği canvas'la ölçülüp hücrenin ~%80'ini dolduracak
+punto seçildi): 54 / 50 / 44 / 33 cqmin.
+
+⚠️ Tek basamağı sınırlayan şey genişlik değil **yükseklik**: "2" 54'te
+hücrenin %32'sini kaplıyor ama rakamın boyu zaten hücrenin yarısı.
+
+### Palet iki kez düzeltildi
+
+*"Gitgide daha koyu"* gözle doğrulanamaz — renk algısı parlaklıkla aynı
+şey değil. Her kademenin WCAG bağıl parlaklığı hesaplandı:
+
+- **Sarı 16'dan 8'e alındı.** 8 yeşildi (L .639), 16 sarıydı (L .746) —
+  sayı büyürken karo **açılıyordu**. Sarı doğası gereği parlak.
+- **64'ün yazısı beyazdan koyuya döndü.** Kontrast 3,67 çıkıyordu, AA
+  eşiği 4,50. Zemini koyultmak o basamağı 128'e yapıştırırdı.
+
+Sonuç: parlaklık .921'den .009'a **tek yönlü** düşüyor, en düşük kontrast
+**4,71**, 11 kademe 11 ayrı renk. Dört test bekçilik ediyor ve ikisi
+hatayı geri koyarak sınandı.
 
 ---
 

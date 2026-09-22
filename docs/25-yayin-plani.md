@@ -341,19 +341,35 @@ ekonomisinin merkezini testin hemen öncesinde değiştirmek, onun gördüğü
 | **C2** | **WhatsApp Business API** | Aynı arayüzün arkasına takılacak. ⚠️ Şablon onayı Meta'da; 24 saat penceresi ve opt-in kuralları SMS'ten farklı |
 | **C3** | **İYS entegrasyonu** | ⚠️ **Ticari ileti göndermek için Türkiye'de zorunlu.** Bugün yalnızca hizmet bildirimi gönderiyoruz (kupon açıldı/doluyor) ve onlar kapsam dışı — ama "direkt mesaj" başladığı an zorunlu. Kodda yalnızca `TODO(Faz 10)` var |
 
-### ⚠️ WhatsApp'ın KVKK sonucu
+### 🔴 md. 9 ARTIK DEVREDE — ve sebebi WhatsApp değil
 
-Barındırmayı Türkiye seçtiniz ve **KVKK md. 9 tamamen devre dışı
-kalmıştı** — belgenin en riskli bölümü boştu.
+Bu bölüm *"barındırmayı Türkiye seçtiniz, md. 9 tamamen devre dışı
+kalmıştı"* diyordu ve **2026-09-22'de geçerliliğini yitirdi.**
 
-WhatsApp Business API ile telefon numaraları **Meta'ya** gidiyor. Meta bir
-alt işlemci oluyor ve **md. 9 geri geliyor.** Türk bir BSP üzerinden
-alınsa bile veri Meta altyapısına akıyor.
+Sebep park edilmiş WhatsApp değil, **e-posta**:
 
-Bu, kararın yanlış olduğu anlamına gelmiyor — WhatsApp Türkiye'de SMS'ten
-çok daha etkili bir kanal. Ama bedeli **bilinçli ödenmeli**: veri
-envanterine alt işlemci olarak eklenecek, açık rıza metni değişecek,
-avukata md. 9 mekanizması sorulacak (D3).
+- Ü170 doğrulama kodunu SMS'ten e-postaya taşıdı.
+- `src/lib/env.ts:92` canlı ortamın `EPOSTA_SAGLAYICI=console` ile
+  açılmasını reddediyor — yani **yayına çıkmak gerçek bir sağlayıcıyı
+  zorunlu kılıyor**.
+- Enum'daki tek gerçek seçenek Resend ve şirket ABD'de.
+
+Yani aktarım bir tercihle değil, yayına çıkma koşuluyla geldi. Ürün
+sahibinin kararı Resend'le devam etmek; envanter buna göre yeniden
+yazıldı (`docs/24` §4 ve §5).
+
+⚠️ **Bunun D3'e etkisi:** md. 9 mekanizması artık WhatsApp'a bağlı bir
+"ileride" sorusu değil, **canlıya çıkışın koşulu**. Aşağıdaki tabloda
+güncellendi.
+
+### WhatsApp'ın ayrı sonucu (hâlâ geçerli)
+
+WhatsApp Business API ile telefon numaraları **Meta'ya** gidiyor ve Türk
+bir BSP üzerinden alınsa bile veri Meta altyapısına akıyor. Kanal
+açılırsa envantere ikinci bir yurt dışı satır ekler.
+
+⚠️ Artık "boş bölümü bozmak" değil, var olan bölümü büyütmek — bedeli
+küçüldü ama yok olmadı.
 
 ---
 
@@ -362,8 +378,8 @@ avukata md. 9 mekanizması sorulacak (D3).
 | # | İş | Not |
 |---|---|---|
 | **D1** | **S7 · Şans mevzuatı görüşü** | 🔴 **Tek başına canlıya çıkışı durduruyor.** Şans, Ü77'den beri ödül motorunun merkezinde. Ü110 ile kafe ağırlık yazıyordu; **Ü124 ile doğrudan yüzde yazıyor** ("bu ödül %40 ihtimalle çıksın"). Ü117 ile butik modelinde beceri payı tamamen kalkıyor. Soru artık "üründe şans var mı" değil, **"işletmenin belirlediği olasılıkla ödül dağıtmak nedir"** |
-| **D2** | **S20 · Aydınlatma metni incelemesi** | Hazırlık bitti: `docs/24-veri-envanteri.md`. Tüzel kişi tam unvanı eksik (K4) |
-| **D3** | WhatsApp → md. 9 mekanizması | Açık rıza mı, taahhütname mi? D2 ile aynı görüşmede |
+| **D2** | **S20 · Aydınlatma metni incelemesi** | Hazırlık bitti: `docs/24-veri-envanteri.md`. Tüzel kişi tam unvanı eksik (K4). 🔴 Metindeki *"Kimlerle paylaşıyoruz"* bölümü bugün **"yalnızca operatör hizmet sağlayıcısıyla numaran paylaşılır"** diyor (`app/aydinlatma/page.tsx:87`). E-posta sağlayıcısı orada yok ve *"yalnızca"* kelimesi cümleyi yanlış yapıyor. D3 sonuçlanınca düzeltilecek |
+| **D3** | 🔴 **md. 9 mekanizması — E-POSTA için** | **Canlıya çıkışın koşulu, "ileride" değil.** Resend (ABD) doğrulama kodu e-postası gönderiyor ve canlı ortam sağlayıcısız açılmıyor. Açık rıza mı, taahhütname mi? Ayrıca Resend ile veri işleyen sözleşmesi (DPA) ve VERBİS'te yurt dışı aktarım alanı. WhatsApp açılırsa **aynı mekanizmaya ikinci bir satır** ekleniyor |
 | **D4** | S6/H2 · Ad-soyad-telefon hukuki sebebi | D2 ile birlikte |
 
 ⚠️ **D1, D2 ve D3 aynı randevuda sorulmalı.** Üçü de aynı avukatın
