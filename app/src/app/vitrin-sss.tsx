@@ -119,13 +119,20 @@ const SORULAR: Soru[] = [
 
 export function VitrinSSS() {
   return (
-    <section className="mx-auto w-full max-w-3xl px-5 py-20 sm:py-28">
+    <section
+      id="sss"
+      className="mx-auto w-full max-w-3xl scroll-mt-20 px-5 py-20 sm:py-28"
+    >
       <Beliren yon="olcek">
         <p className="etiket-caps text-yazi-sonuk">Sıkça sorulanlar</p>
+        {/* Ü220: ürün sahibinin içerik listesindeki ifade — "soru"
+            değil "itiraz", "şimdi" değil "daha baştan". İkisi de aynı
+            yöne çekiyor: bu bölüm bilgi vermek için değil, satın alma
+            önündeki engeli kaldırmak için var. */}
         <h2 className="mt-4 font-display text-[clamp(28px,4.4vw,44px)] leading-[1.05] font-extrabold tracking-[-0.03em]">
-          Aklındaki soruyu
+          Aklındaki itirazları
           <br />
-          <span className="text-vurgu">şimdi</span> cevaplayalım.
+          <span className="text-vurgu">daha baştan</span> cevaplayalım.
         </h2>
       </Beliren>
 

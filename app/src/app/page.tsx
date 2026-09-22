@@ -9,10 +9,14 @@ import Image from "next/image";
 import { Karekod } from "@/components/karekod";
 import { YaklasanSahne, TelefonCercevesi } from "./vitrin-yaklasma";
 import { YapiskanCagri } from "./vitrin-yapiskan";
-import { VitrinItiraz } from "./vitrin-itiraz";
 import { VitrinDongusu } from "./vitrin-dongu";
 import { VitrinGizliAcilis, VitrinEkSatis } from "./vitrin-katmanlar";
+import { VitrinLoopy } from "./vitrin-loopy";
+import { VitrinDamga } from "./vitrin-damga";
+import { VitrinItirazlar } from "./vitrin-itirazlar";
+import { VitrinOlcum } from "./vitrin-olcum";
 import { VitrinSSS } from "./vitrin-sss";
+import { Avatar } from "@/components/avatar";
 
 export const dynamic = "force-dynamic";
 
@@ -169,8 +173,43 @@ export default async function Vitrin() {
       {o && <MevcutOturum rol={o.rol} />}
 
       {/* ═══ Kahraman ════════════════════════════════ */}
-      <section className="mx-auto w-full max-w-6xl px-5 pt-14 pb-20 text-center sm:pt-20 sm:pb-24">
-        <p className="etiket-caps text-yazi-sonuk">
+      <section className="mx-auto w-full max-w-6xl px-5 pt-10 pb-20 text-center sm:pt-14 sm:pb-24">
+        {/*
+          Loopy — sayfanın ilk yüzü (Ü219).
+
+          🔴 Küçük ve ortada duruyor, bilerek. Kahramanın tamamı ortalı
+          ve asıl olay dev başlıkla arkasında yanan ödül etiketleri;
+          yana konan bir karakter o dengeyi bozar, büyütülen bir karakter
+          başlığın önüne geçerdi. Burada yaptığı iş tek bir şey: ürünün
+          bir **yüzü** olduğunu ilk ekranda söylemek. Anlatısı aşağıda,
+          `VitrinLoopy` bölümünde.
+
+          ⚠️ `oncelik` ELLE veriliyor: `Avatar`ın "büyükse üsttedir"
+          tahmini burada ters yönden yanılıyor — 104 piksel küçük ama
+          sayfanın ilk boyası. Verilmeseydi üç katman tembel yüklenir ve
+          karakter başlık oturduktan sonra yerine düşerdi.
+
+          🔴 Kare `kuponlu`, `sakin` DEĞİL — ürün sahibi: *"Loopy'mizin
+          daha mutlu olması lazım, şu an hepsinde dümdüz duruyor."*
+          Haklı ve kusurun adı zaten yazılıydı: `sakin`in ağzı **düz bir
+          çizgi** (bkz. `loopy-sozu.tsx`). Elimizdeki beş kare arasında
+          göz kırpan + ağzı açık gülen tek kare `kuponlu` ve elindeki
+          yıldız başlığın *"Kazan"*ıyla aynı şeyi söylüyor.
+
+          ⚠️ `mutlu` daha da neşeli ama buraya konamadı: kıvılcımları
+          sabit piksel (±78) ve 104 pikselde karakterin iki katı kadar
+          uzağa saçılıyor. Kare ayrıca ~22° eğik çizilmiş ve sabit
+          dururken sevinç değil devrilme okunuyor (Ü176).
+
+          ⚠️ Bölümün üst boşluğu 14 → 10 (sm: 20 → 14) indi: karakter
+          yer kaplıyor ve dev başlığın telefonda ilk ekranda kalması
+          ölçülerek korundu.
+        */}
+        <div className="flex justify-center">
+          <Avatar ifade="kuponlu" boy={104} oncelik ad="Looply'nin maskotu Loopy" />
+        </div>
+
+        <p className="mt-3 etiket-caps text-yazi-sonuk">
           Kafeler ve butik işletmeler için
         </p>
 
@@ -179,7 +218,33 @@ export default async function Vitrin() {
             etiketleri sırayla yanıyor (bkz. `vitrin-kahraman.tsx`). */}
         <KahramanBaslik />
 
-        <p className="mx-auto mt-8 max-w-xl text-[17px] leading-relaxed text-yazi-sonuk sm:text-[19px]">
+        {/*
+          🔴 Ü220 · referansın H1'i buraya ikinci satır olarak girdi.
+
+          Ürün sahibinin içerik listesinde kahraman başlığı *"Müşterin
+          kafene geldi. Peki yarın neden tekrar gelsin?"* idi ve bizimki
+          *"Oyna. Kazan. Geri gel."* İkisi arasında seçim sorulduğunda
+          **ikisi birden** dendi.
+
+          Sıralama tesadüf değil ve üçlü bir yapı kuruyor:
+
+            slogan  → Oyna. Kazan. Geri gel.        (ne yapıyoruz)
+            soru    → Peki yarın neden tekrar gelsin? (işletmecinin derdi)
+            cevap   → Müşterin … indirim kazansın…    (nasıl çözüyoruz)
+
+          Soru cevaptan ÖNCE geliyor: sloganın hemen ardından bir vaat
+          okumak, henüz sorulmamış bir soruya cevap vermek olurdu.
+
+          ⚠️ Soru daha büyük ve koyu, cevap küçük ve sönük: ikisi aynı
+          ağırlıkta olsaydı kahramanda üç eşit paragraf dururdu ve göz
+          hangisinin önemli olduğunu bilemezdi.
+        */}
+        <p className="mx-auto mt-7 max-w-2xl font-display text-[clamp(19px,3vw,27px)] leading-[1.18] font-extrabold tracking-[-0.02em]">
+          Müşterin kafene geldi.{" "}
+          <span className="text-vurgu">Peki yarın</span> neden tekrar gelsin?
+        </p>
+
+        <p className="mx-auto mt-4 max-w-xl text-[16px] leading-relaxed text-yazi-sonuk sm:text-[17px]">
           Müşterin kafende oyun oynarken indirim kazansın — ve o indirimi
           kullanmak için sana geri gelsin.
         </p>
@@ -604,24 +669,71 @@ export default async function Vitrin() {
       </section>
 
       {/*
-        ═══ Sorun → döngü ════════════════════════════
+        🔴 Ü228 · *"Sorun"* bölümü KALDIRILDI (ürün sahibinin kararı).
 
-        🔴 Ü200. Bu iki bölüm birbirine bağlı ve SIRALARI önemli:
-        itiraz bölümü soruları soruyor, döngü bölümü cevabı veriyor.
-        Araya başka bir şey girerse soru havada kalıyor.
+        Ü200'de eklenmiş, Ü220'de referansın içerik listesiyle
+        eşleşmişti, Ü227'de maskotla yer değiştirmişti. Dört itiraz
+        sorusu soruyordu: reklam · yarın gelme sebebi · indirim ölçümü ·
+        yeni ürünü duyurma.
 
-        Yerleri de tesadüf değil — "neden Looply" ve "nasıl çalışıyor"
-        anlatıldıktan SONRA geliyorlar. Sayfanın başına konsalardı
-        henüz ne sattığımızı bilmeyen kişiye dert anlatmış olurduk.
+        ⚠️ **Ü200'ün "soru–cevap çifti" kaygısı kendiliğinden çözüldü:**
+        soru bölümü gidince `VitrinDongusu` havada kalan bir cevabı
+        değil, kendi başına duran bir anlatıyı taşıyor.
+
+        ⚠️ Argümanın tamamı kaybolmadı: *"reklamdan sonra ne oluyor"*
+        sorusu aşağıdaki **reklam karşılaştırması** bölümünde, indirim
+        ölçümü ise **Ölçüm** bölümünde duruyor.
+
+        ⚠️ Üst menüden de çıkarıldı (`vitrin-ust.tsx`) — hedefi olmayan
+        bir bağlantı bırakmak, tıklayanı sayfanın ortasına atardı.
       */}
-      <VitrinItiraz />
+
+      {/*
+        ═══ Maskot ══════════════════════════════════
+
+        Ü219'da yazıldı, Ü227'de buraya taşındı. Bölüm beyaz zeminli ama
+        içi kocaman bir lacivert kart: altındaki `VitrinDongusu` de
+        beyaz olmasına rağmen sınır görünüyor.
+      */}
+      <VitrinLoopy />
+
+      {/*
+        ═══ Nasıl çalışır ════════════════════════════
+
+        Yeri tesadüf değil — "neden Looply" anlatıldıktan SONRA geliyor.
+        Sayfanın başına konsaydı henüz ne sattığımızı bilmeyen kişiye
+        dert anlatmış olurduk.
+      */}
       <VitrinDongusu />
 
       {/* ═══ Gizli açılış — üründe var, sayfada yoktu (Ü200) ══ */}
       <VitrinGizliAcilis />
 
+      {/*
+        ═══ Damga kartı · itirazlar ══════════════════════
+
+        🔴 Ü220 — ürün sahibinin içerik listesinde vardı, bizde yoktu.
+
+        Sıra referanstakiyle aynı ve sebebi var: merak bölümü *"müşteri
+        yarınını düşünüyor"* diyerek bitiyor, damga kartı bölümü de tam
+        oradan başlıyor — *"benim de kartım bunu yapıyor"*. İtirazlar
+        hemen ardından geliyor çünkü ilk itiraz cevaplanınca sıradaki
+        akla geliyor.
+      */}
+      <VitrinDamga />
+      <VitrinItirazlar />
+
       {/* ═══ Ek satış — üründe var, sayfada yoktu (Ü200) ═════ */}
       <VitrinEkSatis />
+
+      {/*
+        ═══ Ölçüm ════════════════════════════════════════
+
+        🔴 Ü220. İçeriği tamamen yeni değil ama **yeri** yeni: en
+        önemli cümlesi (*"satışını otomatik ölçmüyoruz"*) SSS'in kapalı
+        bir akordeonunun içindeydi ve tıklanmadan görünmüyordu.
+      */}
+      <VitrinOlcum />
 
       {/* ═══ Kimler için — düz beyaz ════════════════ */}
       <section className="py-20 sm:py-28">
@@ -707,7 +819,24 @@ export default async function Vitrin() {
         </Beliren>
       </section>
 
-      <SosyalKanit />
+      {/*
+        🔴 *"Dürüst olalım / Burada müşteri yorumu görmeyeceksin"*
+        bölümü KALDIRILDI — Ü231, ürün sahibi: *"bu çok saçma bir
+        başlık."*
+
+        Dalga 8'de sosyal kanıt yuvası olarak açılmış, Ü228'de
+        kaldırılmış, Ü229'da görselleştirilerek geri gelmiş ve Ü231'de
+        başlığı yüzünden tamamen çıkmıştı. Üç turda üç karar; kalıcı
+        olan sonuncusu.
+
+        ⚠️ Yuva boş: ilk gerçek kafeler geldiğinde **asıl** sosyal
+        kanıt buraya gelecek. Uydurma referans / şişirilmiş sayı yasağı
+        (Dalga 8) o gün de geçerli.
+
+        ⚠️ Bölümün taşıdığı kural — *"söylediğimiz her şey üründe
+        doğrulanabilir"* — `vitrin-olcum.tsx`te yazılı ve orada
+        kalıyor.
+      */}
 
       {/*
         ═══ Reklamla karşılaştırma ═══════════════════
@@ -890,7 +1019,31 @@ export default async function Vitrin() {
           </Sirali>
 
           <Beliren yon="olcek" gecikme={120} className="mt-16">
-            <p className="mx-auto max-w-2xl font-display text-[clamp(22px,3.4vw,34px)] leading-[1.15] font-extrabold tracking-[-0.02em]">
+            {/*
+              Elinde kupon tutan Loopy — Ü219.
+
+              🔴 Yeri **dönüş noktası**: üstünde üç kayıp sayılıyor,
+              altında "denersen ne kaybedersin" soruluyor. Karakter tam
+              o iki cümlenin arasında ve elinde müşterinin kazandığı
+              şey var — bölümün tonu orada kayıptan kazanca dönüyor.
+
+              ⚠️ Kayıpların ÜSTÜNE konmadı. Loopy hep pozitif (Ü176) ve
+              "Bugün gelen müşteriyi kaybediyorsun" cümlesinin yanında
+              gülen bir maskot, iki mesajı da bozardı.
+
+              ⚠️ `kuponlu` karesi zaten havada bir poz; `Avatar` ona
+              zıplama hareketi vermiyor (nefes yetiyor) — yoksa iki
+              zıplama üst üste binerdi.
+
+              ⚠️ Gölge (`loopy-golge`) tam olarak lacivert bölümün
+              tonunda: koyu zeminde kaybolduğu için karakter havada
+              duruyor, altına leke düşmüyor.
+            */}
+            <div className="flex justify-center">
+              <Avatar ifade="kuponlu" boy={128} oncelik={false} />
+            </div>
+
+            <p className="mx-auto mt-4 max-w-2xl font-display text-[clamp(22px,3.4vw,34px)] leading-[1.15] font-extrabold tracking-[-0.02em]">
               Peki denersen ne kaybedersin?
             </p>
             <p className="mx-auto mt-5 max-w-lg text-[15px] leading-relaxed text-white/60">
@@ -1184,151 +1337,6 @@ function Kayip({ baslik, metin }: { baslik: string; metin: string }) {
     <div className="h-full rounded-2xl bg-white/[0.06] px-6 py-6 ring-1 ring-white/10">
       <h3 className="text-[16px] font-bold">{baslik}</h3>
       <p className="mt-2.5 text-[14px] leading-relaxed text-white/55">{metin}</p>
-    </div>
-  );
-}
-
-/**
- * Sosyal kanıt yuvası — Dalga 8.
- *
- * ── 🔴 Burada neden müşteri yorumu yok ──────────────────────
- *
- * Ürün sahibinin verdiği sırada dördüncü bölüm "sosyal kanıtlar".
- * Ama **gerçek müşteri yok**: ürün henüz canlıya çıkmadı. Uydurma bir
- * referans, sahte bir yıldız ya da "500+ kafe" gibi bir sayı yazmak
- * teknik olarak beş dakikalık iş ve sonucu şu: sahada ilk konuşmada
- * işletmeci "hangi kafeler?" diye soruyor ve güven bir kez kırılıyor.
- * Vitrindeki "katılım ücretsiz" cümlesi de (Ü133) aynı sebeple
- * kaldırılmıştı.
- *
- * Ürün sahibine üç seçenek sunuldu ve **dürüst erken dönem çerçevesi**
- * seçildi: yuva doluyor, referans uydurulmuyor.
- *
- * ── Yerine ne konuyor ───────────────────────────────────────
- *
- * Kanıt yerine **kanıtlanabilir olan** konuyor. Üç maddenin üçü de bu
- * sayfada ya da üründe zaten doğrulanabilir:
- *
- *   · ekran görüntüleri gerçekten çalışan uygulamadan (bkz. dosya başı)
- *   · yukarıdaki hesap ziyaretçinin kendi girdiği sayılarla çalışıyor
- *   · sayfada anlatılan adımların hepsi üründe var
- *
- * ⚠️ **Sayı yok ve olmayacak.** "Kaç kafe başvurdu" gibi canlı bir sayı
- * ürün sahibine ayrıca soruldu ve seçilmedi: bugün sıfıra yakın olduğu
- * için ürünü ıssız gösterir, tohum verisiyle şişirilirse yalan olur.
- *
- * ⚠️ Bu bölüm **sosyal kanıt değil** ve öyleymiş gibi de durmuyor;
- * başlık açıkça "burada müşteri yorumu görmeyeceksin" diyor. İlk gerçek
- * kafeler geldiğinde asıl sosyal kanıt buranın yerine geçecek.
- */
-function SosyalKanit() {
-  return (
-    <section className="mx-auto w-full max-w-6xl px-5 pb-20 sm:pb-24">
-      <div className="rounded-3xl border border-cizgi bg-cukur px-6 py-12 sm:px-10 sm:py-14">
-        <Beliren yon="olcek">
-          <p className="text-center etiket-caps text-yazi-sonuk">
-            Dürüst olalım
-          </p>
-          <h2 className="mx-auto mt-4 max-w-2xl text-center font-display text-[clamp(26px,4.4vw,44px)] leading-[1.06] font-extrabold tracking-[-0.03em]">
-            Burada müşteri yorumu
-            <br />
-            görmeyeceksin.
-          </h2>
-          <p className="mx-auto mt-6 max-w-xl text-center text-[16px] leading-relaxed text-yazi-sonuk">
-            Daha yeni başlıyoruz ve olmayan bir referansı yazmak, sahada ilk
-            soruda anlaşılır. Onun yerine, bu sayfada söylediğimiz her şeyin
-            neden doğrulanabilir olduğunu yazıyoruz.
-          </p>
-        </Beliren>
-
-        {/*
-          Dalga 10: üç kanıt teker teker giriyor ve her biri **mühürleniyor**.
-
-          Bölümün iddiası *"yorum yok, doğrulanabilir üç şey var"*. Onay
-          işareti tam bunu söylüyor ve kendi kendine çiziliyor — hazır
-          basılı duran bir tik, madde kadar sessiz kalırdı.
-
-          ⚠️ Mühür bir **sayı ya da referans değil**; bizim kendi
-          iddiamızı işaretliyor. Uydurma yorum ya da şişirilmiş sayı bu
-          bölümde yasak (Dalga 8) ve bu kural bozulmuyor.
-        */}
-        <Sirali adim={150} cocukSinifi="h-full" className="mt-12 grid gap-4 sm:grid-cols-3">
-          <Kanit
-            sira={0}
-            baslik="Ekranların hepsi gerçek"
-            metin="Yukarıdaki panel, çark ve oyun görüntüleri çalışan uygulamadan alındı. Çizim yok, sahte ekran yok."
-          />
-          <Kanit
-            sira={1}
-            baslik="Hesabı sen yapıyorsun"
-            metin="Az önceki tablo senin girdiğin sayılarla çalışıyor. Bizim seçtiğimiz güzel bir örnekle değil."
-          />
-          <Kanit
-            sira={2}
-            baslik="Sözümüz dar"
-            metin="Dört alanlık başvuru, panelden yazdırılan karekod, kasada onaylanan kupon. Anlattığımız her adım üründe var."
-          />
-        </Sirali>
-
-        <Beliren gecikme={300}>
-          <p className="mt-10 text-center text-[15px] leading-relaxed text-yazi-sonuk">
-            İlk kafelerden biri olursan, buradaki yorumu sen yazacaksın.{" "}
-            <Link
-              href="/kafe/basvuru"
-              className="font-semibold text-vurgu underline underline-offset-4 hover:opacity-80"
-            >
-              Hemen dene
-            </Link>
-          </p>
-        </Beliren>
-      </div>
-    </section>
-  );
-}
-
-/**
- * Sosyal kanıt kartı — üstünde kendini çizen bir onay mührü.
- *
- * ⚠️ `sira` yalnızca **gecikme** için: kart sırası `Sirali`den geliyor
- * ama mühür kartın kendi içinde ve kabın ritmini bilmiyor. Sayı
- * dışarıdan veriliyor ki mühür, kartı yerine oturduktan sonra bassın.
- */
-function Kanit({
-  baslik,
-  metin,
-  sira = 0,
-}: {
-  baslik: string;
-  metin: string;
-  sira?: number;
-}) {
-  const gecikme = 420 + sira * 150;
-
-  return (
-    <div className="h-full rounded-2xl border border-cizgi bg-yuzey px-6 py-6">
-      <Cizilen
-        gecikme={gecikme + 120}
-        sure={0.5}
-        className="muhur-basan mb-3 inline-flex size-7 items-center justify-center rounded-full bg-vurgu-zemin text-vurgu"
-        style={{ "--muhur-gecikme": `${gecikme}ms` } as React.CSSProperties}
-      >
-        <svg
-          viewBox="0 0 24 24"
-          aria-hidden
-          className="size-4"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="3"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path pathLength="1" d="M5 12.5l4.5 4.5L19 7" />
-        </svg>
-      </Cizilen>
-      <h3 className="text-[16px] font-bold">{baslik}</h3>
-      <p className="mt-2.5 text-[14px] leading-relaxed text-yazi-sonuk">
-        {metin}
-      </p>
     </div>
   );
 }

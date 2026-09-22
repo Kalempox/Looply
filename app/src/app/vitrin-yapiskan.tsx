@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { Avatar } from "@/components/avatar";
 
 /**
  * Ekranın altına yapışan çağrı — Ü200.
@@ -95,10 +96,23 @@ export function YapiskanCagri({ sonBolumId }: { sonBolumId: string }) {
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4">
           {/* ⚠️ Metin dar ekranda GİZLİ: 375 pikselde cümle ve düğme yan
               yana sıkışıyor, düğme de küçülüyordu. Şeridin işi ikna
-              etmek değil, ikna olanı tıklatmak. */}
-          <p className="hidden min-w-0 flex-1 text-[14px] leading-snug text-yazi-sonuk sm:block">
-            Kafenin karekodu beş dakikada hazır — başvuru dört alan.
-          </p>
+              etmek değil, ikna olanı tıklatmak.
+
+              ⚠️ Loopy de aynı kapıdan geçiyor (Ü219): metinle birlikte
+              gizleniyor. Dar ekranda şeritte düğmeden başka hiçbir şey
+              yok ve olmamalı — karakteri orada bırakmak, yerden
+              kazanmak için gizlenen cümlenin yanına bir görsel koymak
+              olurdu. */}
+          <div className="hidden min-w-0 flex-1 items-center gap-2.5 sm:flex">
+            {/* Şerit sayfanın sonuna kadar duruyor; üç katmanı öne
+                çekmenin sebebi yok. */}
+            <span className="shrink-0">
+              <Avatar ifade="neseli" boy={34} oncelik={false} />
+            </span>
+            <p className="min-w-0 text-[14px] leading-snug text-yazi-sonuk">
+              Kafenin karekodu beş dakikada hazır — başvuru dört alan.
+            </p>
+          </div>
           <Link
             href="/kafe/basvuru"
             className="w-full shrink-0 rounded-full bg-vurgu px-6 py-3.5 text-center text-[15px] font-semibold text-yuzey transition-opacity hover:opacity-90 sm:w-auto"

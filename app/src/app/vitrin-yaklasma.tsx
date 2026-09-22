@@ -3,6 +3,14 @@
 import Image from "next/image";
 import { Fragment, useEffect, useRef, useState } from "react";
 import { LooplyLogo } from "@/components/logo";
+/*
+  ⚠️ Ü75 denetimi yapıldı: `Bilet` → `oyuncu-renk` · `oyuncu-sahne` ·
+  `kart-gorseli` · `oyuncu-gorsel`. Zincirin hiçbir halkası
+  `@/domain/*` çekmiyor, yani bu `"use client"` dosyasına girmesi
+  güvenli (domain → `@/db/context` → `pg` → `fs`/`dns`).
+*/
+import { Bilet } from "@/components/bilet";
+import { GORSEL_RENGI, type KuponGorseli } from "@/components/oyuncu-gorsel";
 import { Beliren } from "./vitrin-hareket";
 
 /**
@@ -442,7 +450,7 @@ function KaydirmaSahnesi({
                   opacity: kendi > 0 && kendi < 0.95 ? 1 : 0,
                 }}
               >
-                <KuponRozeti baslik={k.baslik} />
+                <KuponRozeti baslik={k.baslik} gorsel={k.gorsel} />
               </div>
             );
           })}
@@ -455,15 +463,63 @@ function KaydirmaSahnesi({
           return (
             <div
               key={y.baslik}
-              className={`yaklasma-yazi pointer-events-none absolute z-40 max-w-[370px] rounded-2xl bg-vitrin-fildisi/95 px-7 py-6 shadow-[0_22px_55px_-18px_rgba(16,32,77,0.5)] ring-1 ring-vitrin-lacivert/10 backdrop-blur-[3px] ${
-                y.yan === "sol" ? "top-[18%] left-[3.5%]" : "top-[46%] right-[3.5%]"
+              /*
+                🔴 Ü225 · kutu KOYU oldu ve büyüdü.
+
+                Eski hâli `bg-vitrin-fildisi/95` idi ve sahnenin zemini
+                de fildişi: kutu **zeminle aynı renkteydi.** Arkadaki
+                bulanık kafe fotoğrafı da açık tonlu, yani kutunun
+                dikkat çekmemesinin sebebi boyutu değil, kontrastın
+                yokluğuydu.
+
+                Lacivert kart hem fotoğrafın üstünde hem fildişi
+                zeminde ayrılıyor ve sayfanın başka yerlerinde
+                (simülasyon, maskot) zaten kullanılan cihaz — yeni bir
+                dil icat edilmiyor.
+
+                ⚠️ Genişlik 370 → 460: telefon sahnenin ortasında ve
+                yan kutu 1280 pikselde ona değmiyor (ölçüldü).
+              */
+              className={`yaklasma-yazi pointer-events-none absolute z-40 max-w-[460px] rounded-3xl bg-vitrin-lacivert/95 px-9 py-8 backdrop-blur-[3px] ${
+                y.yan === "sol" ? "top-[15%] left-[3.5%]" : "top-[44%] right-[3.5%]"
               }`}
               style={{
                 opacity: goster,
                 transform: `translateX(${(1 - goster) * (y.yan === "sol" ? -34 : 34)}px)`,
+                /*
+                  🔴 Ü226 · dış çerçeve — ürün sahibi: *"dışına çerçeve
+                  ekle ve daha dikkat çekici yap."*
+
+                  Üç `box-shadow` katmanı, üçü de aynı gölge
+                  özelliğinden çıkıyor — `border` kullanılmadı çünkü
+                  kenarlık kutunun ÖLÇÜSÜNÜ büyütür ve dört evrede
+                  ölçülmüş çakışmasızlık bozulurdu. Gölge yayılması
+                  düzeni hiç etkilemiyor.
+
+                    1 · 2 piksel altın çerçeve — kartın kendi sınırı
+                    2 · 9 piksel soluk altın hale — çerçevenin DIŞINDA
+                        duran ikinci bir çerçeve; kartı fotoğraftan
+                        koparan şey bu
+                    3 · zeminden kalkış gölgesi
+
+                  ⚠️ Altın tesadüf değil: lacivert üstünde sayfanın
+                  kurulu eşleşmesi (`--color-odul`, üst etiketler ve
+                  ölçüm kutusu da bu çiftte).
+                */
+                boxShadow: [
+                  "0 0 0 2.5px rgba(212,175,55,0.72)",
+                  "0 0 0 11px rgba(212,175,55,0.18)",
+                  "0 40px 90px -20px rgba(16,32,77,0.82)",
+                ].join(", "),
               }}
             >
-              <KutuIcerigi baslik={y.baslik} metin={y.metin} alt={y.alt} />
+              <KutuIcerigi
+                sira={KENAR_YAZILARI.indexOf(y) + 1}
+                baslik={y.baslik}
+                metin={y.metin}
+                alt={y.alt}
+                koyu
+              />
             </div>
           );
         })}
@@ -838,11 +894,20 @@ function AdimlarYol({ karekod }: { karekod: React.ReactNode }) {
 
                 <span
                   aria-hidden
-                  className="mb-4 flex h-[58px] items-center justify-center rounded-lg bg-vitrin-fildisi"
+                  /* ⚠️ Ü225: bant 58 → 92 piksel. Ürün sahibi
+                     *"görseller daha büyük olsun"* dedi ve mobilde
+                     asıl küçük kalan yer burasıydı — 58 pikselde
+                     telefonun içindeki oyun ekranı seçilmiyordu. */
+                  className="mb-4 flex h-[92px] items-center justify-center rounded-lg bg-vitrin-fildisi"
                   style={{ "--adim-gecikme": `${i * 140 + 240}ms` } as React.CSSProperties}
                 >
                   <Sahne />
                 </span>
+                  {/* ⚠️ `sira` VERİLMİYOR: bu yolun kendi numara rozeti
+                      zaten var (yukarıda, izin üstünde duruyor) ve
+                      ikisi birden basılınca kartta aynı sayı iki kez
+                      görünüyordu. Numara yalnızca masaüstü sahnesinin
+                      yan kutusunda — orada başka bir işaret yok. */}
                   <KutuIcerigi baslik={y.baslik} metin={y.metin} />
                 </li>
               </Beliren>
@@ -870,7 +935,7 @@ function AdimlarYol({ karekod }: { karekod: React.ReactNode }) {
 function MiniKarekod({ karekod }: { karekod: React.ReactNode }) {
   return (
     <span className="mini-karekod block rounded-md bg-white p-1.5 shadow-[0_6px_16px_-8px_rgba(16,32,77,0.5)] ring-1 ring-vitrin-lacivert/15">
-      <span className="block [&_svg]:block [&_svg]:size-[44px]">{karekod}</span>
+      <span className="block [&_svg]:block [&_svg]:size-[66px]">{karekod}</span>
     </span>
   );
 }
@@ -887,8 +952,8 @@ function MiniKarekod({ karekod }: { karekod: React.ReactNode }) {
  */
 function MiniOyun() {
   return (
-    <span className="mini-telefon relative block h-[68px] w-[38px] overflow-hidden rounded-[7px] bg-vitrin-lacivert p-[3px] shadow-[0_8px_18px_-8px_rgba(16,32,77,0.6)]">
-      <span className="relative block h-full w-full overflow-hidden rounded-[5px]">
+    <span className="mini-telefon relative block h-[104px] w-[58px] overflow-hidden rounded-[10px] bg-vitrin-lacivert p-[3px] shadow-[0_10px_22px_-8px_rgba(16,32,77,0.6)]">
+      <span className="relative block h-full w-full overflow-hidden rounded-[7px]">
         <Image
           src="/vitrin/oyun-yilan.png"
           alt=""
@@ -914,12 +979,14 @@ function MiniOyun() {
  */
 function MiniKazima() {
   return (
-    <span className="relative block h-11 w-28 overflow-visible">
+    /* ⚠️ Ü225: 44×112 → 64×160. Bant büyüdü, kart onunla ölçeklendi;
+       eski boyda "25 TL" yazısı ve kazınan yüzey seçilmiyordu. */
+    <span className="relative block h-16 w-40 overflow-visible">
       <span className="absolute inset-0 overflow-hidden rounded-lg bg-white shadow-[0_6px_16px_-8px_rgba(16,32,77,0.5)] ring-1 ring-vitrin-lacivert/15">
         {/* Altta duran ödül */}
         <span className="absolute inset-0 flex items-center justify-center gap-1.5">
-          <span className="size-4 rounded bg-odul" />
-          <span className="font-display text-[11px] font-extrabold text-vitrin-lacivert">
+          <span className="size-5 rounded bg-odul" />
+          <span className="font-display text-[15px] font-extrabold text-vitrin-lacivert">
             25 TL
           </span>
         </span>
@@ -985,7 +1052,7 @@ function MiniDonus() {
     <svg
       viewBox="0 0 76 40"
       aria-hidden
-      className="h-10 w-[76px] text-vurgu"
+      className="h-14 w-[108px] text-vurgu"
       fill="none"
       stroke="currentColor"
       strokeWidth="3"
@@ -1001,24 +1068,63 @@ function MiniDonus() {
 }
 
 function KutuIcerigi({
+  sira,
   baslik,
   metin,
   alt,
+  koyu = false,
 }: {
+  /** Kaçıncı adım — verilirse başlığın üstünde altın rozet. */
+  sira?: number;
   baslik: string;
   metin: string;
   alt?: string;
+  /** Koyu zeminde mi duruyor — metin renkleri buna göre. */
+  koyu?: boolean;
 }) {
   return (
     <>
-      <p className="font-display text-[20px] leading-[1.15] font-extrabold tracking-tight sm:text-[23px]">
+      {/*
+        Adım numarası — Ü225.
+
+        Ürün sahibi: *"daha dikkat çekici, daha büyük, daha müşteriyi
+        okutacak şekilde olsun."* Numara boyut değil **beklenti**
+        veriyor: okuyan kişi "dört tane var, biri bu" diyor ve
+        başlayınca bitirme eğilimi doğuyor. Numarasız bir kutu, ne
+        kadar büyük olursa olsun, atlanabilir bir kutu.
+      */}
+      {sira !== undefined && (
+        <span
+          className={`mb-4 inline-flex size-9 items-center justify-center rounded-full font-data text-[16px] font-bold ${
+            koyu ? "bg-odul text-vitrin-lacivert" : "bg-vurgu-zemin text-vurgu"
+          }`}
+        >
+          {sira}
+        </span>
+      )}
+      {/* ⚠️ Üç kademeli boy: mobilde `AdimlarYol` kartı dar (375
+          piksel), masaüstünde sahnenin yan kutusu geniş. Tek boy
+          verilirse biri taşar, öteki kaybolur. */}
+      <p
+        className={`font-display text-[21px] leading-[1.08] font-extrabold tracking-[-0.025em] sm:text-[25px] lg:text-[31px] ${
+          koyu ? "text-yuzey" : ""
+        }`}
+      >
         {baslik}
       </p>
-      <p className="mt-3 text-[14px] leading-relaxed text-yazi-sonuk sm:text-[15px]">
+      <p
+        className={`mt-3.5 text-[15px] leading-relaxed sm:text-[16px] lg:text-[17px] ${
+          koyu ? "text-white/70" : "text-yazi-sonuk"
+        }`}
+      >
         {metin}
       </p>
       {alt && (
-        <p className="mt-4 border-t border-vitrin-lacivert/10 pt-3 etiket-caps text-[10px] text-vurgu">
+        <p
+          className={`mt-5 border-t pt-3.5 etiket-caps text-[11px] ${
+            koyu ? "border-white/15 text-odul" : "border-vitrin-lacivert/10 text-vurgu"
+          }`}
+        >
           {alt}
         </p>
       )}
@@ -1114,31 +1220,64 @@ export function TelefonCercevesi({
 }
 
 /**
- * Yağan kupon rozeti.
+ * Kaydırmalı sahnede yağan kupon — Ü223'te GERÇEK bilete bağlandı.
  *
- * Ürün sahibi: *"Yağan ödüllerin boyutu daha büyük olsun."* Küçük
- * hâlinde ne yazdığı okunmuyordu; ekranda yalnızca beyaz lekeler
- * uçuyordu ve yağan şeyin **ödül** olduğu anlaşılmıyordu.
- */
-/**
- * Kaydırmalı sahnede yağan kupon rozeti.
+ * ── 🔴 Önceki hâli biletin taklidiydi ───────────────────────
  *
- * ⚠️ Silinenler listesinde DEĞİL: mobildeki yağmur kalktı ama
+ * Beyaz bir kutu, altın bir bilet simgesi ve tek satır yazı. Ürünün
+ * gerçek kuponu ise Ü72'den beri koyu doygun zeminli, kartın tamamına
+ * döşenmiş desenli ve sağ kenarından taşan illüstrasyonlu — Ü189'dan
+ * beri o illüstrasyonda **Loopy ödülü yaşıyor** (kahve içiyor, tatlı
+ * yiyor, para ödülünü açıyor).
+ *
+ * Yani vitrin, sayfanın kendi kuralını çiğniyordu: *"ekranların hepsi
+ * gerçek, çizim yok, sahte ekran yok"* (bkz. `vitrin-olcum.tsx`). Ziyaretçi
+ * burada bir kupon görüp ürüne girince başka bir kupon buluyordu.
+ *
+ * Artık `<Bilet sus>` — aynı bileşen, aynı yüzey. Bilet değişirse
+ * vitrin de kendiliğinden değişiyor.
+ *
+ * ── Genişlik neden ELLE veriliyor ───────────────────────────
+ *
+ * `Bilet` `block h-[124px]` ve kendi genişliği yok; ekranlarda kolonu
+ * dolduruyor. Burada taşıyıcı `absolute` ve genişliği içerikten
+ * geliyor — kart yazısı kadar daralıp okunmaz hâle gelirdi.
+ *
+ * ⚠️ Silinenler listesinde DEĞİL: mobildeki yağmur Ü154'te kalktı ama
  * masaüstündeki kaydırmalı sahne bunu hâlâ kullanıyor (`YAGAN`).
- * Ü154'te bir kez yanlışlıkla silindi ve derleme onu yakaladı.
  */
-function KuponRozeti({ baslik }: { baslik: string }) {
+function KuponRozeti({ baslik, gorsel }: { baslik: string; gorsel: KuponGorseli }) {
   return (
-    <div className="flex items-center gap-4 rounded-2xl border border-cizgi bg-white px-6 py-4 shadow-[0_18px_40px_-14px_rgba(16,32,77,0.5)]">
-      <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-odul">
-        <svg width="17" height="17" viewBox="0 0 16 16" fill="none" aria-hidden>
-          <path
-            d="M2 5.5A1.5 1.5 0 013.5 4h9A1.5 1.5 0 0114 5.5v1a1.5 1.5 0 000 3v1A1.5 1.5 0 0112.5 12h-9A1.5 1.5 0 012 10.5v-1a1.5 1.5 0 000-3v-1z"
-            fill="#10204d"
-          />
-        </svg>
-      </span>
-      <span className="text-[17px] font-bold whitespace-nowrap">{baslik}</span>
+    <div className="w-[310px]">
+      <Bilet
+        sus
+        veri={{
+          /* ⚠️ `href` süs kipinde hiç kullanılmıyor (bağlantı
+             üretilmiyor) ama tip zorunlu tutuyor — doğru olan boş
+             bırakmak değil, gerçek adresi yazmak. */
+          href: "/oduller",
+          /*
+            ⚠️ Uydurma bir kafe adı YAZILMIYOR. Gerçek kartta orada
+            kuponun ait olduğu kafenin adı var; vitrinde "Kafe A" gibi
+            bir ad koymak, sayfanın hiçbir yerinde olmayan bir işletme
+            uydurmak olurdu (aynı kural `vitrin-olcum.tsx`te yazılı).
+            "Kafende" hem doğru hem de okuyanın kendi kafesini
+            işaret ediyor.
+
+            ⚠️ Tarih yerine "yarın kullan": gerçek kartta son kullanım
+            günü yazıyor ve burada bir tarih uydurulamaz. Yazan şey
+            ürünün sözünün kendisi — ödül 24 saat sonra açılıyor.
+          */
+          kafe: "Kafende",
+          baslik,
+          gorsel,
+          /* Renk kupon türünden türüyor: eşleme `GORSEL_RENGI`de ve
+             ürünün her yerinde aynı (Ü65). */
+          renk: GORSEL_RENGI[gorsel],
+          son: "yarın kullan",
+          tarihOneki: "",
+        }}
+      />
     </div>
   );
 }
@@ -1181,19 +1320,32 @@ function KuponRozeti({ baslik }: { baslik: string }) {
  * göreceği cümleler. Kuponun ne olduğunu tarif etmiyoruz, tanıdık
  * geliyor.
  */
-const YAGAN = [
-  { baslik: "Ücretsiz filtre kahve", x: 7, basla: 0.0, egim: -8, donus: 14 },
-  { baslik: "Tatlıda %20", x: 70, basla: 0.04, egim: 6, donus: -12 },
-  { baslik: "+1 shot espresso", x: 28, basla: 0.08, egim: 4, donus: 10 },
-  { baslik: "25 TL indirim", x: 84, basla: 0.12, egim: -5, donus: -9 },
-  { baslik: "Ice Americano", x: 15, basla: 0.16, egim: 7, donus: 12 },
-  { baslik: "İkinci kahve yarı fiyat", x: 50, basla: 0.2, egim: -6, donus: -14 },
-  { baslik: "Kruvasan + filtre kahve", x: 38, basla: 0.24, egim: 5, donus: 11 },
-  { baslik: "Cheesecake %25", x: 92, basla: 0.28, egim: -7, donus: -10 },
-  { baslik: "Limonatada %15", x: 3, basla: 0.32, egim: 8, donus: 13 },
-  { baslik: "Ücretsiz sürahi çay", x: 62, basla: 0.36, egim: -4, donus: -11 },
-  { baslik: "Kahve yanına kurabiye", x: 22, basla: 0.4, egim: 6, donus: 9 },
-  { baslik: "30 TL indirim", x: 77, basla: 0.44, egim: -8, donus: -13 },
-  { baslik: "Sahlepte %20", x: 45, basla: 0.48, egim: 5, donus: 12 },
-  { baslik: "Brunch'ta %15", x: 88, basla: 0.52, egim: -6, donus: -8 },
+/*
+  ⚠️ `gorsel` Ü223'te eklendi ve **uydurulmadı**: kupon türü ürünün
+  kendi beş türünden biri (`KuponGorseli`) ve kartın rengi ile
+  illüstrasyonu ondan türüyor. Yanlış tür seçmek, sıcak kahve
+  kuponunun üstüne buzlu bardak çizdirmek olurdu.
+*/
+const YAGAN: {
+  baslik: string;
+  gorsel: KuponGorseli;
+  x: number;
+  basla: number;
+  egim: number;
+  donus: number;
+}[] = [
+  { baslik: "Ücretsiz filtre kahve", gorsel: "icecek", x: 7, basla: 0.0, egim: -8, donus: 14 },
+  { baslik: "Tatlıda %20", gorsel: "tatli", x: 70, basla: 0.04, egim: 6, donus: -12 },
+  { baslik: "+1 shot espresso", gorsel: "icecek", x: 28, basla: 0.08, egim: 4, donus: 10 },
+  { baslik: "25 TL indirim", gorsel: "para", x: 84, basla: 0.12, egim: -5, donus: -9 },
+  { baslik: "Ice Americano", gorsel: "soguk", x: 15, basla: 0.16, egim: 7, donus: 12 },
+  { baslik: "İkinci kahve yarı fiyat", gorsel: "icecek", x: 50, basla: 0.2, egim: -6, donus: -14 },
+  { baslik: "Kruvasan + filtre kahve", gorsel: "yiyecek", x: 38, basla: 0.24, egim: 5, donus: 11 },
+  { baslik: "Cheesecake %25", gorsel: "tatli", x: 92, basla: 0.28, egim: -7, donus: -10 },
+  { baslik: "Limonatada %15", gorsel: "soguk", x: 3, basla: 0.32, egim: 8, donus: 13 },
+  { baslik: "Ücretsiz sürahi çay", gorsel: "icecek", x: 62, basla: 0.36, egim: -4, donus: -11 },
+  { baslik: "Kahve yanına kurabiye", gorsel: "yiyecek", x: 22, basla: 0.4, egim: 6, donus: 9 },
+  { baslik: "30 TL indirim", gorsel: "para", x: 77, basla: 0.44, egim: -8, donus: -13 },
+  { baslik: "Sahlepte %20", gorsel: "icecek", x: 45, basla: 0.48, egim: 5, donus: 12 },
+  { baslik: "Brunch'ta %15", gorsel: "yiyecek", x: 88, basla: 0.52, egim: -6, donus: -8 },
 ];

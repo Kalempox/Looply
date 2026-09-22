@@ -307,7 +307,7 @@ export function Sirali({
   /**
    * Sarmalayıcıya eklenen sınıf — ızgaralarda `h-full` için.
    *
-   * ⚠️ Gerekli çünkü sarmalayıcı **araya giriyor**: `Kart`, `Kanit` ve
+   * ⚠️ Gerekli çünkü sarmalayıcı **araya giriyor**: `Kart`, `Kayip` ve
    * `Kayip` `h-full` taşıyor ve ızgarada eşit yükseklik bekliyorlar.
    * Sarmalayıcı ızgara ögesi olduğu için esneyen odur; içindeki kartın
    * ona yetişebilmesi için sarmalayıcının da yüksekliği geçirmesi

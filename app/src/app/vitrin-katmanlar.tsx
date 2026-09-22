@@ -1,3 +1,5 @@
+import { Bilet } from "@/components/bilet";
+import { type KuponGorseli } from "@/components/oyuncu-gorsel";
 import { Beliren, Sirali } from "./vitrin-hareket";
 
 /**
@@ -91,6 +93,23 @@ export function VitrinGizliAcilis() {
             </div>
           </Beliren>
         </div>
+
+        {/*
+          Bölümü kapatan tek cümle — Ü220.
+
+          Ürün sahibinin içerik listesinde merak bölümü bu cümleyle
+          bitiyordu ve bizde yoktu: üç madde mekanizmayı anlatıyor ama
+          **neden önemli olduğunu** söyleyen satır eksikti. Kapanış
+          cümlesi bölümün iddiasını tek satıra indiriyor ve bir sonraki
+          bölüme (damga kartı) köprü kuruyor.
+        */}
+        <Beliren yon="olcek" gecikme={140}>
+          <p className="mt-16 text-center font-display text-[clamp(21px,3.2vw,34px)] leading-[1.14] font-extrabold tracking-[-0.02em]">
+            Merak, müşterinin{" "}
+            <span className="text-vitrin-altin">yarınını</span> düşünmesini
+            sağlar.
+          </p>
+        </Beliren>
       </div>
     </section>
   );
@@ -120,7 +139,10 @@ function Katman({ baslik, metin }: { baslik: string; metin: string }) {
  */
 export function VitrinEkSatis() {
   return (
-    <section className="mx-auto w-full max-w-6xl px-5 py-20 sm:py-28">
+    <section
+      id="ek-satis"
+      className="mx-auto w-full max-w-6xl scroll-mt-20 px-5 py-20 sm:py-28"
+    >
       <Beliren yon="olcek">
         <p className="etiket-caps text-yazi-sonuk">Ek satış</p>
         <h2 className="mt-4 max-w-3xl font-display text-[clamp(30px,5vw,54px)] leading-[1.02] font-extrabold tracking-[-0.03em]">
@@ -140,16 +162,19 @@ export function VitrinEkSatis() {
           ust="Ödül olarak"
           baslik="Yanına tatlı"
           metin="Kataloğa cheesecake koy. Çarktan o çıktığında müşteri kahvenin yanına bir şey daha alıyor."
+          kupon={{ baslik: "Cheesecake %25", gorsel: "tatli", renk: "pembe" }}
         />
         <Urun
           ust="Fırsat olarak"
           baslik="Yeni ürün denensin"
           metin="Yeni içeceğini fırsat listesine ekle. Oyun bitince açılan ekranda görünüyor."
+          kupon={{ baslik: "Yeni: Ice Americano", gorsel: "soguk", renk: "buz" }}
         />
         <Urun
           ust="Saatine göre"
           baslik="Boş saati doldur"
           metin="Happy Hour penceresini sen açıyorsun. Kafenin boş kaldığı saatte ödül daha cömert."
+          kupon={{ baslik: "16:00–18:00 · +1 kahve", gorsel: "icecek", renk: "kahve" }}
         />
       </Sirali>
 
@@ -165,14 +190,65 @@ export function VitrinEkSatis() {
   );
 }
 
-function Urun({ ust, baslik, metin }: { ust: string; baslik: string; metin: string }) {
+/**
+ * Ek satış kartı — Ü232'de görselleştirildi.
+ *
+ * ── 🔴 Bölüm ekranı anlatıyordu ama göstermiyordu ───────────
+ *
+ * Ürün sahibi: *"bu kısmı görselleştir."* Metin *"öne çıkarmak
+ * istediğin ürün müşterinin baktığı ekranda duruyor — menüde değil,
+ * elinde"* diyordu ve o ekranı hiç göstermiyordu. Üç kartın üçünde de
+ * artık ürünün **gerçek kupon kartı** duruyor (`Bilet`, süs kipinde).
+ *
+ * ⚠️ Kupon türleri uydurulmadı: `cheesecake → tatli`,
+ * `yeni içecek → soguk`, `happy hour → icecek`. Renk ve
+ * illüstrasyon türden türüyor; yanlış tür seçmek tatlı kuponunun
+ * üstüne buzlu bardak çizdirmek olurdu.
+ *
+ * ⚠️ Kart `scale-[0.86]` ile küçültülüyor, `boy` verilerek DEĞİL:
+ * `Bilet` sabit 124 piksel yükseklikte ve içindeki illüstrasyonun
+ * taşma kadrajı ona göre ayarlı. Yükseklik zorlansaydı çizim
+ * kırpılırdı.
+ */
+function Urun({
+  ust,
+  baslik,
+  metin,
+  kupon,
+}: {
+  ust: string;
+  baslik: string;
+  metin: string;
+  kupon: { baslik: string; gorsel: KuponGorseli; renk: "kahve" | "buz" | "pembe" };
+}) {
   return (
-    <div className="h-full rounded-2xl border border-cizgi p-7">
-      <p className="etiket-caps text-[10px] text-vurgu">{ust}</p>
-      <h3 className="mt-2.5 font-display text-[19px] leading-tight font-bold tracking-tight">
-        {baslik}
-      </h3>
-      <p className="mt-2.5 text-[14px] leading-relaxed text-yazi-sonuk">{metin}</p>
+    <div className="h-full overflow-hidden rounded-2xl border border-cizgi">
+      <div className="border-b border-cizgi bg-vitrin-fildisi px-4 py-5">
+        {/* ⚠️ `origin-top` + negatif alt boşluk: küçültme kartın altında
+            boşluk bırakıyordu ve üç kutu farklı yükseklikte duruyordu. */}
+        <div className="origin-top scale-[0.86] -mb-[17px]">
+          <Bilet
+            sus
+            veri={{
+              href: "/oduller",
+              kafe: "Kafende",
+              baslik: kupon.baslik,
+              gorsel: kupon.gorsel,
+              renk: kupon.renk,
+              son: "yarın kullan",
+              tarihOneki: "",
+            }}
+          />
+        </div>
+      </div>
+
+      <div className="p-7">
+        <p className="etiket-caps text-[10px] text-vurgu">{ust}</p>
+        <h3 className="mt-2.5 font-display text-[19px] leading-tight font-bold tracking-tight">
+          {baslik}
+        </h3>
+        <p className="mt-2.5 text-[14px] leading-relaxed text-yazi-sonuk">{metin}</p>
+      </div>
     </div>
   );
 }
