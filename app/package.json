@@ -10,7 +10,6 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "keys:generate": "tsx scripts/anahtar-uret.ts",
-    "kelime:uret": "tsx scripts/kelime-listesi-uret.ts",
     "db:up": "docker compose up -d --wait",
     "db:down": "docker compose down",
     "db:reset": "docker compose down -v && docker compose up -d --wait",

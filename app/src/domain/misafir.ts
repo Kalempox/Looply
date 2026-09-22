@@ -276,7 +276,8 @@ export function bitir(opts: {
     // Ü83: başarı artık oyunun değil ürünün kuralı (`puan.KUPON_ESIGI`).
     // Ü91: oyun içi ödül işareti eşiği atlıyor — misafir akışı da aynı
     // kuralı uyguluyor (Ü35: ürün kuralları gevşemiyor).
-    basarili: basariliMi(sonuc.skor, sonuc.odulIsareti),
+    /* Ü234: işaret artık kapıyı açmıyor — tek ölçü skor. */
+    basarili: basariliMi(sonuc.skor),
     iddia: Number.isFinite(opts.iddiaEdilenSkor) ? Math.trunc(opts.iddiaEdilenSkor) : 0,
     sureMs: gercekMs,
     k2: !!konum?.k2,

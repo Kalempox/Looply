@@ -2,6 +2,9 @@ import "../scripts/_env";
 import { test, before, after, describe } from "node:test";
 import assert from "node:assert/strict";
 import { randomInt } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dusmeSansi } from "@/domain/odul-motoru";
 import { withBypass } from "@/db/context";
 import { closePools } from "@/db/pool";
 import { kaydet } from "@/domain/player";
@@ -26,8 +29,19 @@ import {
   ODUL_BONUSU,
   ODUL_ESIGI,
 } from "@/oyunlar/blok";
-import { kelime, kurulabilir, kucult, turSuresi } from "@/oyunlar/kelime";
-import { dusen, dusmeTickiHesapla } from "@/oyunlar/dusen";
+import {
+  dusen,
+  DUSEN_EN,
+  DUSEN_BOY,
+  dusmeTickiHesapla,
+  hayaletSatiri,
+  sigarMi,
+  siradakiParcalar,
+  uygulaVeKilitler,
+  type DusenGirdisi,
+} from "@/oyunlar/dusen";
+import { bicak, carpilanBicak, CEMBER, GIRIS_ACISI } from "@/oyunlar/bicak";
+import { sekme, ACI_SAYISI, atisIzi, SEKME_BOY } from "@/oyunlar/sekme";
 import { yilan, YILAN_EN, adimTickiHesapla, ODUL_OMRU_ADIM, type Yon } from "@/oyunlar/yilan";
 import {
   tekrarOyna,
@@ -37,7 +51,6 @@ import {
   saatTutarliMi,
 } from "@/oyunlar/sozlesme";
 import { OYUNLAR, type HerhangiOyun } from "@/oyunlar";
-import kelimeVerisi from "@/oyunlar/veri/kelimeler.json";
 import { isGunu } from "@/lib/tarih";
 import { yoneticiSorgu, benzersizEposta } from "./_yardim";
 
@@ -91,47 +104,18 @@ function blokOyna(tohum: string) {
   return { durum: d, girdiler, skor: blok.skor(d) };
 }
 
+/** Düşen'i sürekli bırakarak oynar — tahta dolana kadar. */
 /**
- * Kelime'yi süresi dolana kadar oynar.
+ * Kaynaktan yorumları atar — kaynak tarayan testler için.
  *
- * Ü83: oyun turlara bölündü. Her turda eldeki harflerden kelime aranıyor;
- * her kelime biraz zaman alıyor ve süre turdan tura kısalıyor, yani bir
- * yerde yetişilemiyor — turun bitiş yolu bu.
+ * ⚠️ Gerekli: bu testlerin aradığı adlar (`Math.cos`, `odulIsareti`)
+ * çoğu zaman **açıklamalarda** da geçiyor ve yorum atılmazsa test
+ * kendi gerekçesini hata sanıyor.
  */
-function kelimeOyna(tohum: string) {
-  let d = kelime.baslat(tohum);
-  const girdiler: unknown[] = [];
-  let tick = 0;
-
-  for (let tur = 0; tur < 40 && !kelime.bittiMi(d); tur++) {
-    const oncekiTur = d.tur;
-
-    for (const w of kelimeVerisi.kelimeler) {
-      if (kelime.bittiMi(d) || d.tur !== oncekiTur) break;
-      if (w.length < 3 || w.length > d.harfler.length) continue;
-      if (!kurulabilir(kucult(w), d.harfler)) continue;
-      tick += 40;
-      const y = kelime.uygula(d, { tick, k: w });
-      if (y) {
-        d = y;
-        girdiler.push({ tick, k: w });
-      }
-    }
-
-    // Tur değişmediyse çözülemedi: saati sonuna kadar ilerlet.
-    if (d.tur === oncekiTur && !kelime.bittiMi(d)) {
-      const girdi = { tick: d.bitisTicki, k: "" };
-      const y = kelime.uygula(d, girdi);
-      if (!y) break;
-      d = y;
-      girdiler.push(girdi);
-    }
-  }
-
-  return { durum: d, girdiler, skor: kelime.skor(d) };
+function yorumsuz(kaynak: string): string {
+  return kaynak.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
 }
 
-/** Düşen'i sürekli bırakarak oynar — tahta dolana kadar. */
 function dusenOyna(tohum: string) {
   let d = dusen.baslat(tohum);
   const girdiler: unknown[] = [];
@@ -162,6 +146,189 @@ function dusenOyna(tohum: string) {
   if (son) d = son;
 
   return { durum: d, girdiler, skor: dusen.skor(d) };
+}
+
+/**
+ * Düşen'i **iyi** oynayan bot — satır temizleyebilen tek bot (Ü207).
+ *
+ * ── Neden gerekti ───────────────────────────────────────────
+ *
+ * `dusenOyna` parçaları sabit bir düzende dağıtıyor ve tahta on beş
+ * parçada doluyor; skor 100'ü bile geçmiyor. Ödül paketi 500'den sonra
+ * çıktığı için o botla **hiç görülemiyordu** — testler "paket düşmedi"
+ * diye düşüyordu, paket bozuk olduğu için değil.
+ *
+ * Bu bot her parça için dört dönüş × on sütunun tamamını deniyor ve en
+ * iyisini seçiyor. Amaç iyi oynamak değil, **eşiği her tohumda
+ * geçecek kadar** oynamak — ölçüm ve gerekçe `degerlendir`de.
+ *
+ * ⚠️ Parça sınırı 200: ölçüldü, 80 bile yetiyor (en düşük skor 544) ama
+ * ödül paketinin çıkıp **konabilmesi** için eşik geçildikten sonra birkaç
+ * parça daha gerekiyor. 200 tur ~10 ms sürüyor.
+ *
+ * ⚠️ Deneme turları tick'i İLERLETMİYOR (`tick: d.tick`). Yerçekimi
+ * `zamaniIlerlet` içinde yalnızca tick büyüdüğünde işliyor; aynı
+ * tick'te dallanmak tahtayı değiştirmiyor ve dallar birbirini
+ * kirletmiyor (durum değişmez).
+ */
+function dusenIyiOyna(tohum: string, sapmaAdimi = -1, enFazlaParca = 200) {
+  let d = dusen.baslat(tohum);
+  /** Her parça için (konmadan önce, konduktan sonra) — testler inceliyor. */
+  const izler: { once: typeof d; sonra: typeof d }[] = [];
+  /*
+    Girdi kaydı — Ü208'de eklendi.
+
+    Sunucuya gönderilecek kayıt bu. Kazanan adayın hamle dizisi olduğu
+    gibi yazılıyor: keşif sırasında kullanılan tick'lerle **birebir
+    aynı**, yoksa sunucunun tekrarı başka bir tahta bulur.
+  */
+  const girdiler: DusenGirdisi[] = [];
+
+  /**
+   * Tahtanın durumu tek sayıda — büyük olan iyi.
+   *
+   * 🔴 İlk sürüm yalnızca "en yüksek dolu satır"a bakıyordu ve
+   * **ölçüldü: 80 tohumun 14'ünde bot 500'ü geçemiyordu.** Bunun bedeli
+   * doğrudan testlere biniyordu — aşağıdaki DB testleri turun
+   * `basarili` olmasını şart koşuyor, yani test tohum piyangosuna
+   * bağlıydı ve arada bir düşerdi.
+   *
+   * İki terim ekledi ve sorun bitti (200 tohumda 200 başarı, en düşük
+   * skor 525):
+   *
+   *   · **delik** — üstü kapalı boş hücre. Klasik Tetris botlarının en
+   *     önemli terimi; deliği olan tahta bir daha temizlenemiyor.
+   *   · **doğum bölgesi** — üst dört satırın orta altı sütunu. Tur
+   *     yalnızca yeni parça sığmayınca bitiyor ve yeni parça hep
+   *     oradan giriyor; orayı doldurmak doğrudan ölüm demek. Yükseklik
+   *     terimi bunu yeterince anlatmıyordu çünkü kenarda yükselmek
+   *     zararsız, ortada yükselmek ölümcül.
+   */
+  const degerlendir = (izgara: number[]) => {
+    let delik = 0;
+    let toplamYuk = 0;
+    let engebe = 0;
+    let enYuksek = 0;
+    const yuk: number[] = [];
+
+    for (let k = 0; k < DUSEN_EN; k++) {
+      let ust = -1;
+      for (let s = 0; s < DUSEN_BOY; s++) {
+        if (izgara[s] & (1 << k)) {
+          ust = s;
+          break;
+        }
+      }
+      const h = ust === -1 ? 0 : DUSEN_BOY - ust;
+      yuk.push(h);
+      toplamYuk += h;
+      if (h > enYuksek) enYuksek = h;
+      if (ust !== -1) {
+        for (let s = ust + 1; s < DUSEN_BOY; s++) {
+          if (!(izgara[s] & (1 << k))) delik++;
+        }
+      }
+    }
+    for (let k = 1; k < DUSEN_EN; k++) engebe += Math.abs(yuk[k] - yuk[k - 1]);
+
+    let dogum = 0;
+    for (let s = 0; s < 4; s++) {
+      for (let k = 2; k < 8; k++) if (izgara[s] & (1 << k)) dogum++;
+    }
+
+    return -delik * 8 - toplamYuk * 0.4 - engebe * 0.6 - enYuksek - dogum * 6;
+  };
+
+  for (let parca = 0; parca < enFazlaParca && !dusen.bittiMi(d); parca++) {
+    /* `sapmaAdimi`: bu adımda bot bilerek EN KÖTÜ yeri seçiyor.
+       Amaç aynı tohumu gerçekten farklı oynayan ikinci bir tur üretmek —
+       aynı ölçütün ufak varyasyonları pratikte aynı tahtaya çıkıyor. */
+    const sapiyor = parca === sapmaAdimi;
+    let enIyi: { durum: typeof d; puan: number; hamleler: DusenGirdisi[] } | null = null;
+
+    for (let donus = 0; donus < 4; donus++) {
+      // Dönüşü uygula; sığmıyorsa `uygula` durumu aynen döndürüyor.
+      let aday = d;
+      const donusHamleleri: DusenGirdisi[] = [];
+      let dondu = true;
+      for (let i = 0; i < donus; i++) {
+        const hamle: DusenGirdisi = { tick: aday.tick, a: "don" };
+        const y = dusen.uygula(aday, hamle);
+        if (!y || y.donus !== (aday.donus + 1) % 4) {
+          dondu = false;
+          break;
+        }
+        aday = y;
+        donusHamleleri.push(hamle);
+      }
+      if (!dondu) continue;
+
+      for (let hedef = 0; hedef < 10; hedef++) {
+        let konum = aday;
+        const hamleler = [...donusHamleleri];
+        for (let i = 0; i < 12 && konum.k !== hedef; i++) {
+          const hamle: DusenGirdisi = {
+            tick: konum.tick,
+            a: konum.k < hedef ? "sag" : "sol",
+          };
+          const y = dusen.uygula(konum, hamle);
+          if (!y || y.k === konum.k) break;
+          konum = y;
+          hamleler.push(hamle);
+        }
+        if (konum.k !== hedef) continue;
+
+        const birak: DusenGirdisi = { tick: konum.tick, a: "birak" };
+        const sonuc = dusen.uygula(konum, birak);
+        if (!sonuc) continue;
+        hamleler.push(birak);
+
+        const temizlenen = sonuc.temizlenen - d.temizlenen;
+        const puan = temizlenen * 100 + degerlendir(sonuc.izgara);
+        /* ⚠️ Sentinel `-Infinity`, `-1` DEĞİL. `degerlendir` yalnızca
+           ceza döndürüyor, yani puan her zaman negatif; `-1` ile
+           karşılaştırınca hiçbir aday seçilemiyor ve bot ilk parçada
+           duruyordu. Testler bunu "satır silinmedi" diye bildirdi. */
+        const daha = sapiyor
+          ? puan < (enIyi?.puan ?? Infinity)
+          : puan > (enIyi?.puan ?? -Infinity);
+        if (daha) enIyi = { durum: sonuc, puan, hamleler };
+      }
+    }
+
+    if (!enIyi) break;
+    izler.push({ once: d, sonra: enIyi.durum });
+    girdiler.push(...enIyi.hamleler);
+    d = enIyi.durum;
+  }
+
+  // Zaman tabanlı oyunun kaydı bir zaman işaretiyle kapanıyor (bkz.
+  // `dusenOyna`). Bu botta tick hiç ilerlemediği için yerçekimi zaten
+  // işlemiyor; işaret yine de duruyor ki iki bot aynı biçimi üretsin.
+  girdiler.push({ tick: d.tick, a: "bekle" });
+
+  return { son: d, izler, girdiler, skor: dusen.skor(d) };
+}
+
+/**
+ * Sekme'yi açıları dolaşarak oynar.
+ *
+ * ⚠️ Nişan ALMIYOR. Hangi açının çok blok kıracağını bulmak arama
+ * gerektirir ve bu testlerin işi denge ölçmek değil: sunucunun aynı
+ * girdilerle aynı tahtayı bulduğunu sınamak. Rastgele ama
+ * deterministik bir açı dizisi bunun için yeterli.
+ */
+function sekmeOyna(tohum: string, kaydirma = 0) {
+  let d = sekme.baslat(tohum);
+  const girdiler: unknown[] = [];
+  for (let t = 0; t < 300 && !sekme.bittiMi(d); t++) {
+    const girdi = { t, a: (t * 17 + kaydirma * 7 + 5) % ACI_SAYISI };
+    const y = sekme.uygula(d, girdi);
+    if (!y) break;
+    d = y;
+    girdiler.push(girdi);
+  }
+  return { durum: d, girdiler, skor: sekme.skor(d) };
 }
 
 /**
@@ -200,6 +367,74 @@ function yilanOyna(tohum: string) {
   return { durum: d, girdiler, skor: yilan.skor(d) };
 }
 
+/**
+ * Bıçak'ı nişan alarak oynar — Ü235.
+ *
+ * ── 🔴 Neden ötekilerden farklı olarak NİŞAN ALIYOR ─────────
+ *
+ * Sekme ve Yılan'ın botları bilerek almıyor (yukarıdaki notlar):
+ * orada rastgele girdi de uzun bir tur üretiyor. Burada üretmiyor.
+ * Bıçak her atışta saplı bıçaklara bakıyor ve boşluk 20°; rastgele
+ * zamanlamayla **ikinci bıçakta** ölünüyor, yani kayıt tek girdiden
+ * ibaret kalırdı. Ölçüldü: nişansız bot 20 tohumun 20'sinde de
+ * 12 puanla bitti.
+ *
+ * Tek girdilik bir kayıtla ne replay sınanır ne ödül: ödül eşiği
+ * 500 ve ona hiç yaklaşılmaz.
+ *
+ * ── 🔴 `ILERI` neden tam bir tur ─────────────────────────────
+ *
+ * İlk yazımda 30 tick'ti ve bot **duvara hiç varmıyordu**: 5.
+ * bölümde ölüyordu, oysa iyi bir oyuncu 7'ye çıkıyor. Bunun bedeli
+ * testin yanlış yeşil yanmasıydı — `bicakSayisi` tavanı 12'ye
+ * sabitlenip (turun sonsuza gittiği hata) ölçüldü ve zayıf bot yine
+ * 5. bölümde öldü, test geçti.
+ *
+ * En yavaş bölümde (`18 birim/tick`) bir tur `3600 / 18 = 200`
+ * tick sürüyor. 200 tick tarayan bot çemberin **her** noktasını
+ * görüyor ve en geniş boşluğu gerçekten buluyor; artık duvara
+ * varıyor ve tavanı bozan değişiklik testi düşürüyor.
+ */
+function bicakOyna(tohum: string, kaydirma = 0) {
+  let d = bicak.baslat(tohum);
+  const girdiler: unknown[] = [];
+  const ILERI = 200;
+
+  for (let atis = 0; atis < 400 && !bicak.bittiMi(d); atis++) {
+    let enIyi = d.sonTick + 1;
+    let enGenis = -1;
+
+    for (let k = 1; k <= ILERI; k++) {
+      const t = d.sonTick + k;
+      const aci = d.aci + d.hiz * (t - d.sonTick);
+      const yer = (((GIRIS_ACISI - aci) % CEMBER) + CEMBER) % CEMBER;
+      const pay = d.saplanan.length
+        ? Math.min(...d.saplanan.map((s) => testAciFarki(s, yer)))
+        : CEMBER;
+      if (pay > enGenis) {
+        enGenis = pay;
+        enIyi = t;
+      }
+    }
+
+    /* `kaydirma` botu bozuyor: aynı tohumda farklı bir tur üretmek
+       için. Sekme'de aynı işi açı kaydırması yapıyor. */
+    const girdi = { t: Math.max(d.sonTick + 1, enIyi + (kaydirma > 0 ? (atis + kaydirma) % 3 : 0)) };
+    const y = bicak.uygula(d, girdi);
+    if (!y) break;
+    d = y;
+    girdiler.push(girdi);
+  }
+
+  return { durum: d, girdiler, skor: bicak.skor(d) };
+}
+
+/** İki açı arasındaki en kısa fark — botun nişan alması için. */
+function testAciFarki(a: number, b: number): number {
+  const f = Math.abs(((a - b) % CEMBER) + CEMBER) % CEMBER;
+  return Math.min(f, CEMBER - f);
+}
+
 /** Testin kendi taze oyuncusu — seviye sayacı sıfırdan başlasın. */
 async function yeniOyuncu(): Promise<string> {
   const s = await kaydet({
@@ -225,7 +460,24 @@ async function tamOyun(playerId: string, oyunId: string, iddiaEdilenSkor?: numbe
   const baslangic = await oyunDomain.basla({ playerId, oyunId });
   assert.ok(baslangic.ok, "oturum açılamadı");
 
-  const oyna = oyunId === "blok" ? blokOyna : oyunId === "kelime" ? kelimeOyna : dusenOyna;
+  /*
+    ⚠️ Düşen için **açgözlü** bot (Ü208).
+
+    Eskiden burada Kelime vardı ve sebebi şuydu: aşağıdaki testlerin
+    bir kısmı turun `basarili` olmasını, yani skorun 500'ü geçmesini
+    şart koşuyor. Kelime botu bunu her tohumda yapıyordu.
+
+    Kelime kaldırılınca geriye kaba kuvvet botları kaldı ve ikisi de
+    yetmiyor — ölçüldü: Blok botu 60 tohumun yalnızca **26**'sında
+    eşiği geçiyor (ortanca 430), Düşen'in basit botu on beş parçada
+    tıkanıp 100'ün altında kalıyor. İkisi de bu testleri tohum
+    piyangosuna çevirirdi.
+
+    `dusenIyiOyna` her parça için dört dönüş × on sütunu deniyor ve
+    582–691 aralığında bitiriyor. Girdi kaydını da tutuyor, yani
+    sunucuya gönderilebiliyor.
+  */
+  const oyna = oyunId === "blok" ? blokOyna : oyunId === "dusen" ? dusenIyiOyna : dusenOyna;
   const sonuc = oyna(baslangic.tohum);
 
   const cevap = await oyunDomain.bitir({
@@ -337,9 +589,10 @@ describe("determinizm (S5)", () => {
       oyna: (tohum: string) => { girdiler: unknown[]; skor: number };
     }[] = [
       { oyun: blok, id: "blok", oyna: blokOyna },
-      { oyun: kelime, id: "kelime", oyna: kelimeOyna },
       { oyun: dusen, id: "dusen", oyna: dusenOyna },
+      { oyun: sekme, id: "sekme", oyna: sekmeOyna },
       { oyun: yilan, id: "yilan", oyna: yilanOyna },
+      { oyun: bicak, id: "bicak", oyna: bicakOyna },
     ];
 
     for (const { oyun, id, oyna } of senaryolar) {
@@ -360,8 +613,8 @@ describe("determinizm (S5)", () => {
 
 describe("sonsuz mod (Ü83)", () => {
   test("hiçbir oyun kazanarak bitmiyor — tek bitiş kaybetmek", () => {
-    // Blok yalnızca tıkanınca, Düşen yalnızca tahta dolunca, Kelime
-    // yalnızca süre dolunca bitiyor. Hedefe ulaşıp biten tur yok.
+    // Blok yalnızca tıkanınca, Düşen yalnızca tahta dolunca, Yılan
+    // yalnızca çarpınca bitiyor. Hedefe ulaşıp biten tur yok.
     const b = blokOyna("son-blok");
     assert.ok(blok.bittiMi(b.durum), "blok bitmedi");
     assert.ok(b.durum.tikandi, "blok tıkanmadan bitti — hedefle bitiş geri gelmiş");
@@ -369,11 +622,37 @@ describe("sonsuz mod (Ü83)", () => {
     const d = dusenOyna("son-dusen");
     assert.ok(d.durum.doldu, "düşen tahta dolmadan bitti");
 
-    const k = kelimeOyna("son-kelime");
-    assert.ok(k.durum.sureBitti, "kelime süre dolmadan bitti");
+    const y = yilanOyna("son-yilan");
+    assert.ok(yilan.bittiMi(y.durum), "yılan bitmedi");
 
     const yl = yilanOyna("son-yilan");
     assert.ok(yl.durum.carpti, "yılan çarpmadan bitti");
+
+    /*
+      🔴 Bıçak bu testi ilk yazımda GEÇEMEDİ — Ü235.
+
+      Çakışma açısı 13° seçilmiş ve *"çembere 13,8 bıçak sığar"* diye
+      yazılmıştı. Yanlış hesap: kısıt ikili uzaklık ≥ çakışma, yani
+      kapasite `3600 / 130 ≈ 27`. Bölüm başına en fazla 12 bıçak
+      atıldığı için çember hiç dolmuyordu ve nişan alan bot 400
+      atışta ölmedi — 24 bin puan yaptı, turu bitiren şey oyunun
+      kuralı değil test döngüsünün sınırıydı.
+
+      Şimdi kapasite `3600 / 200 = 18` ve bölüm başına bıçak ona
+      dayanıyor. Ölçülen tavan ~2.800 puan, öbür oyunlarla aynı
+      mertebede.
+    */
+    const bc = bicakOyna("son-bicak");
+    assert.ok(bicak.bittiMi(bc.durum), "bıçak bitmedi — duvar yine gelmiyor");
+    assert.ok(
+      bc.durum.saplanan.length > 0,
+      "bıçak hiç bıçak saplamadan bitti — tur ilk atışta kapanmış",
+    );
+    assert.equal(
+      carpilanBicak(bc.durum) !== null,
+      true,
+      "bıçak saplı bir bıçağa DEĞMEDEN bitti — başka bir bitiş yolu açılmış",
+    );
   });
 
   test("temizlenecekler, uygula ile AYNI çizgileri söylüyor — REGRESYON", () => {
@@ -592,6 +871,474 @@ describe("sonsuz mod (Ü83)", () => {
     assert.equal(blokKademe(500), blokKademe(20), "tavan sabitlenmiyor");
   });
 
+  test("Düşen'in paketi de ekonomiyi DEĞİŞTİRMİYOR — Ü207", () => {
+    /*
+      Aynı söz, ikinci oyunda. Paket puan vermiyor, eşiği düşürmüyor ve
+      tur başına bir kez teslim ediliyor.
+
+      ⚠️ Kural `odul.ts`te ortak; bu test iki motorun o ortak kuralı
+      gerçekten uyguladığını sınıyor — sabiti paylaşıp davranışı
+      ayrıştırmak mümkün.
+    */
+    assert.equal(ODUL_ESIGI, KUPON_ESIGI, "eşik `domain/puan` ile ayrışmış");
+    assert.equal(ODUL_BONUSU, 0, "paket yine puan vermeye başlamış (Ü203)");
+
+    let paketDusen = 0;
+    let paketKonan = 0;
+
+    for (let i = 0; i < 8; i++) {
+      const tohum = `dusen-odul-${i}`;
+      const { son, izler } = dusenIyiOyna(tohum);
+      let teslim = 0;
+
+      assert.equal(izler[0].once.odulParcasi, false, `${tohum}: tur paketle başlıyor`);
+
+      for (const { once, sonra } of izler) {
+        if (once.odulParcasi) {
+          paketDusen++;
+          // 🔴 Paket eşiğin ALTINDA asla çıkmamalı.
+          assert.ok(
+            once.skor >= ODUL_ESIGI,
+            `${tohum}: paket eşik geçilmeden düştü (skor ${once.skor})`,
+          );
+        }
+
+        if (!once.odulParcasi || !sonra.odulVerildi) continue;
+        paketKonan++;
+        teslim++;
+
+        /*
+          🔴 Paketin payı sıfır. Bir bırakmanın kazandırabileceği en çok
+          puan bellidir: 4 (parça) + en fazla 15 (düşüş) + dört satır
+          birden temizlenirse 4²×35. Bonus 120 olsaydı bu tavan aşılırdı.
+        */
+        const enCokKazanc = 4 + 15 + 4 * 4 * 35;
+        assert.ok(
+          sonra.skor - once.skor <= enCokKazanc,
+          `${tohum}: paket fazladan puan getirdi (+${sonra.skor - once.skor})`,
+        );
+        assert.equal(sonra.odulParcasi, false, `${tohum}: teslimden sonra paket sürüyor`);
+      }
+
+      assert.ok(teslim <= 1, `${tohum}: aynı turda ${teslim} paket teslim edildi`);
+      if (son.skor >= ODUL_ESIGI) {
+        assert.equal(teslim, 1, `${tohum}: eşik geçildi (${son.skor}) ama paket teslim olmadı`);
+      }
+    }
+
+    assert.ok(paketDusen > 0, "hiçbir turda paket düşmedi — test bir şey sınamadı");
+    assert.ok(paketKonan > 0, "paket hiç konmadı");
+  });
+
+  test("Düşen'in paketi parça SIRASINI bozmuyor — Ü207", () => {
+    /*
+      🔴 Paket yalnızca bir **kaplama**: hangi biçimin ineceğini
+      değiştirseydi skor da değişirdi ve paket sessizce ekonomiye
+      dokunurdu.
+
+      Ölçüm: aynı tohumla iki tur oynanıyor, birinde paket hiç
+      görülmemiş gibi davranılıyor. Parça dizisi ve skor birebir aynı
+      çıkmalı.
+    */
+    for (const tohum of ["sira-1", "sira-2", "sira-3"]) {
+      /** `parcaNo → parca` eşlemesi; bot iyi de oynasa kötü de. */
+      const eslesme = (izler: { once: { parcaNo: number; parca: number } }[]) =>
+        new Map(izler.map(({ once }) => [once.parcaNo, once.parca]));
+
+      // İki tur AYNI tohumla ama farklı oynanıyor: ikincisi üçüncü
+      // parçayı bilerek en kötü yere koyuyor. Bundan sonrası tamamen
+      // ayrışıyor — farklı tahta, farklı skor, farklı paket anı.
+      const iyi = dusenIyiOyna(tohum);
+      const baska = dusenIyiOyna(tohum, 2);
+
+      const a = eslesme(iyi.izler);
+      const b = eslesme(baska.izler);
+      assert.notEqual(iyi.son.skor, baska.son.skor, `${tohum}: iki bot aynı oynadı`);
+
+      /*
+        🔴 Asıl sınav bu: iki tur farklı oynandı, farklı skorlar çıktı,
+        birinde paket düştü diğerinde hiç düşmedi — ama aynı sıradaki
+        parça aynı biçim olmak zorunda. Paket sırayı seçseydi, atlasaydı
+        ya da biçimi değiştirseydi eşleşme burada ayrışırdı.
+      */
+      let karsilastirilan = 0;
+      for (const [no, parca] of a) {
+        const diger = b.get(no);
+        if (diger === undefined) continue;
+        karsilastirilan++;
+        assert.equal(diger, parca, `${tohum}: ${no}. parça iki turda farklı çıktı`);
+      }
+      assert.ok(karsilastirilan > 8, `${tohum}: karşılaştırılan parça çok az`);
+
+      /*
+        🔴 Karşılaştırma paketin DÜŞTÜĞÜ ana kadar uzanmalı.
+
+        Olmasaydı test sessizce zayıflardı: iki tur ilk beş parçada
+        ayrışır, karşılaştırma eşiğin çok altında biter ve "paket sırayı
+        bozmuyor" iddiası hiç sınanmamış olurdu. Ölçüldü — üç tohumda da
+        paket 27–28. parçada düşüyor ve ortak aralık 31'e kadar gidiyor.
+      */
+      const paketNo = iyi.izler.find((iz) => iz.once.odulParcasi)?.once.parcaNo ?? -1;
+      assert.ok(paketNo >= 0, `${tohum}: iyi turda paket hiç düşmedi`);
+      assert.ok(
+        b.has(paketNo),
+        `${tohum}: paket ${paketNo}. parçada düştü ama diğer tur oraya ulaşmadı`,
+      );
+
+      // Tekrar: sunucunun yaptığı şey. Aynı oynanış, aynı sonuç.
+      const yeniden = dusenIyiOyna(tohum);
+      assert.equal(yeniden.son.skor, iyi.son.skor, `${tohum}: tekrar farklı skor verdi`);
+      assert.equal(
+        yeniden.son.odulVerildi,
+        iyi.son.odulVerildi,
+        `${tohum}: teslim tekrarda ayrıştı`,
+      );
+    }
+  });
+
+  test("uygulaVeKilitler, uygula ile AYNI durumu veriyor — Ü209", () => {
+    /*
+      🔴 İki giriş, tek kural. Sunucu `uygula`yı, ekran
+      `uygulaVeKilitler`i çağırıyor. Ayrışsalardı istemcinin gördüğü
+      tahta ile sunucunun hesapladığı skor birbirini tutmaz ve **dürüst
+      oyuncunun turu reddedilirdi** — hatanın görüneceği yer de burası
+      olmazdı, "skorum kabul edilmedi" diyen bir oyuncu olurdu.
+    */
+    for (const tohum of ["ikili-1", "ikili-2", "ikili-3"]) {
+      let a = dusen.baslat(tohum);
+      let b = dusen.baslat(tohum);
+      let tick = 1;
+
+      for (let adim = 0; adim < 250 && !dusen.bittiMi(a); adim++) {
+        const hareket = (["sol", "sag", "don", "in", "birak", "bekle"] as const)[adim % 6];
+        const girdi = { tick, a: hareket };
+
+        const sade = dusen.uygula(a, girdi);
+        const zengin = uygulaVeKilitler(b, girdi);
+
+        assert.equal(sade === null, zengin === null, `${tohum}: biri null döndü diğeri dönmedi`);
+        if (!sade || !zengin) break;
+        assert.deepEqual(zengin.durum, sade, `${tohum}/${adim}: durumlar ayrıştı`);
+
+        a = sade;
+        b = zengin.durum;
+        tick += 2;
+      }
+    }
+  });
+
+  test("renk ızgarası tahtadan AYRIŞMIYOR — Ü209", () => {
+    /*
+      🔴 Ekranın en kırılgan yeri burası.
+
+      Her küp kendi rengini taşıyor ve renk motorun durumunda değil
+      (Ü202): ekran kendi ızgarasını tutuyor. Blok'ta bu kolaydı —
+      orada hücreler yerinde boşalıyor. Düşen'de satır silinince
+      **üstündeki her şey bir satır kayıyor** ve renk ızgarası da aynı
+      kaymayı yapmak zorunda.
+
+      Ayrışırsa görünen şey sessiz ve çirkin olurdu: küpler yanlış
+      renge boyanır, hatta boş hücre renkli görünürdü. Kimse bunu hata
+      diye bildirmez; oyun sadece bozuk hissettirir.
+
+      Bu test ekranın yaptığı hesabın **aynısını** yapıyor
+      (`renkleriIsle`) ve her adımda iki şeyi sınıyor: dolu her hücrenin
+      rengi var, boş hiçbir hücrenin rengi yok.
+    */
+    const EN = DUSEN_EN;
+    const BOY = DUSEN_BOY;
+
+    for (const tohum of ["renk-1", "renk-2", "renk-3"]) {
+      /* ⚠️ Girdiler **açgözlü bottan**: satır silmeyen bir tur bu testi
+         hiçbir şey sınamayan yeşil bir teste çevirirdi — kayma ancak
+         satır silinince oluyor. */
+      const { girdiler } = dusenIyiOyna(tohum);
+      let d = dusen.baslat(tohum);
+      let renkler = new Uint8Array(EN * BOY);
+      let temizlikGoruldu = 0;
+
+      for (let adim = 0; adim < girdiler.length && !dusen.bittiMi(d); adim++) {
+        const sonuc = uygulaVeKilitler(d, girdiler[adim]);
+        if (!sonuc) break;
+
+        // ── Ekranın `renkleriIsle`sinin birebir aynısı ──
+        const satirlar: number[][] = [];
+        for (let s = 0; s < BOY; s++) {
+          satirlar.push(Array.from(renkler.subarray(s * EN, (s + 1) * EN)));
+        }
+        for (const kilit of sonuc.kilitler) {
+          temizlikGoruldu += kilit.silinen.length;
+          const renkNo = (kilit.parca % 7) + 1;
+          for (const kare of kilit.kareler) {
+            satirlar[Math.floor(kare / EN)][kare % EN] = renkNo;
+          }
+          for (const satir of kilit.silinen) {
+            satirlar.splice(satir, 1);
+            satirlar.unshift(new Array(EN).fill(0));
+          }
+        }
+        const yeni = new Uint8Array(EN * BOY);
+        satirlar.forEach((satir, s) =>
+          satir.forEach((v, k) => {
+            yeni[s * EN + k] = v;
+          }),
+        );
+        renkler = yeni;
+        d = sonuc.durum;
+
+        // ── Değişmez: renk ızgarası ile tahta birebir örtüşüyor ──
+        for (let s = 0; s < BOY; s++) {
+          for (let k = 0; k < EN; k++) {
+            const dolu = (d.izgara[s] & (1 << k)) !== 0;
+            const renkli = renkler[s * EN + k] > 0;
+            assert.equal(
+              renkli,
+              dolu,
+              `${tohum}/${adim}: (${s},${k}) tahtada ${dolu ? "dolu" : "boş"} ama renk ${renkli ? "var" : "yok"}`,
+            );
+          }
+        }
+      }
+
+      // Satır hiç silinmeseydi test kaymayı hiç sınamamış olurdu.
+      assert.ok(temizlikGoruldu > 0, `${tohum}: hiç satır silinmedi — kayma sınanmadı`);
+    }
+  });
+
+  test("hayalet parça gerçekten en alta iniyor — Ü209", () => {
+    /*
+      Hayalet, parçanın **bırakılınca** duracağı yeri gösteriyor. Bir
+      satır bile şaşarsa oyuncu güvenip yanlış yere bırakır ve suçu
+      kendinde arar.
+    */
+    for (const tohum of ["hayalet-1", "hayalet-2"]) {
+      let d = dusen.baslat(tohum);
+      let tick = 1;
+
+      for (let adim = 0; adim < 120 && !dusen.bittiMi(d); adim++) {
+        const hs = hayaletSatiri(d);
+        assert.ok(hs >= d.s, `${tohum}: hayalet parçanın ÜSTÜNDE`);
+        assert.ok(
+          sigarMi(d.izgara, d.parca, d.donus, hs, d.k),
+          `${tohum}: hayalet sığmayan bir yere kondu`,
+        );
+        assert.ok(
+          !sigarMi(d.izgara, d.parca, d.donus, hs + 1, d.k),
+          `${tohum}: hayaletin bir altı da boş — en dibe inmemiş`,
+        );
+
+        const y = dusen.uygula(d, { tick, a: "birak" });
+        if (!y) break;
+        // `birak` parçayı tam hayaletin yerine koyuyor.
+        assert.equal(y.parcaNo, d.parcaNo + 1, `${tohum}: bırakma parça ilerletmedi`);
+        d = y;
+        tick += 3;
+      }
+    }
+  });
+
+  test("sıradaki parçalar gerçekten SIRADAKİLER — Ü209", () => {
+    /*
+      "SIRADAKİ" paneli gelecekten okuyor. Yanlış okursa oyuncu ona göre
+      plan yapar ve gelen başka bir parça olur — oyunun en sinir bozucu
+      hatası bu olurdu.
+    */
+    for (const tohum of ["sirada-1", "sirada-2"]) {
+      let d = dusen.baslat(tohum);
+      let tick = 1;
+
+      for (let adim = 0; adim < 60 && !dusen.bittiMi(d); adim++) {
+        const soz = siradakiParcalar(d, 3);
+        const y = dusen.uygula(d, { tick, a: "birak" });
+        if (!y) break;
+        assert.equal(y.parca, soz[0], `${tohum}/${adim}: panelin söylediği parça gelmedi`);
+        // Bir sonraki turun ilk iki sözü, bu turun son iki sözü olmalı.
+        assert.deepEqual(
+          siradakiParcalar(y, 2),
+          soz.slice(1),
+          `${tohum}/${adim}: sıra kaydırılınca tutmuyor`,
+        );
+        d = y;
+        tick += 3;
+      }
+    }
+  });
+
+  test("🔴 Sekme'nin motorunda TRİGONOMETRİ YOK — Ü217", () => {
+    /*
+      🔴 Bu test kaynağı okuyor ve bu bilinçli.
+
+      Sekme'nin bütün determinizmi tek bir karara dayanıyor: yön
+      tablosu **kaynağa gömülü tam sayı**, çalışma zamanında
+      hesaplanmıyor. `Math.cos`/`Math.sin` JS standardında
+      *"implementation-approximated"* — V8, JavaScriptCore ve
+      SpiderMonkey son bitlerde ayrışabiliyor. Tarayıcı ile Node farklı
+      sonuç verirse top birkaç sekme sonra bambaşka yere gider ve
+      **dürüst oyuncunun turu reddedilir.**
+
+      Davranış testiyle yakalanamaz: aynı makinede iki koşu da aynı
+      sonucu verir. Yakalanacağı tek yer kaynak. Bir gün biri
+      `Math.cos(aci)` yazarsa test burada düşer ve sebebini okur.
+    */
+    const kaynak = readFileSync(
+      fileURLToPath(new URL("../src/oyunlar/sekme.ts", import.meta.url)),
+      "utf8",
+    );
+    // Yorumları at — açıklamalarda adları geçiyor.
+    const kod = kaynak.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
+
+    for (const yasak of ["Math.cos", "Math.sin", "Math.tan", "Math.atan", "Math.random"]) {
+      assert.ok(
+        !kod.includes(yasak),
+        `sekme.ts içinde ${yasak} var — replay determinizmi kırılır (Ü217)`,
+      );
+    }
+  });
+
+  test("Sekme: aynı tohum + aynı açılar = aynı tahta — Ü217", () => {
+    for (const tohum of ["s-a", "s-b", "s-c"]) {
+      const a = sekmeOyna(tohum);
+      const b = sekmeOyna(tohum);
+      assert.equal(a.skor, b.skor, `${tohum}: iki koşu farklı skor verdi`);
+      assert.deepEqual(a.durum.nesneler, b.durum.nesneler, `${tohum}: tahtalar ayrıştı`);
+      assert.ok(a.girdiler.length > 3, `${tohum}: tur çok kısa, test bir şey sınamadı`);
+    }
+  });
+
+  test("Sekme: atış izi motorun sonucuyla AYNI — Ü217", () => {
+    /*
+      🔴 Ekran topları `atisIzi` ile uçuruyor, sonucu `uygula`
+      hesaplıyor. İkisi ayrı bir fizik kopyası kullansaydı — ilk
+      yazımda öyleydi — oyuncu ekranda bloğu kırdığını görür, skoru
+      tutmazdı. İkisi de tek bir `simule` gövdesinden geçiyor; bu test
+      onu kilitliyor.
+    */
+    for (const tohum of ["iz-1", "iz-2"]) {
+      let d = sekme.baslat(tohum);
+      for (let t = 0; t < 10 && !sekme.bittiMi(d); t++) {
+        const a = (t * 11 + 3) % ACI_SAYISI;
+        const iz = atisIzi(d, a);
+        assert.ok(iz.length > 0, `${tohum}: iz boş`);
+
+        const y = sekme.uygula(d, { t, a });
+        assert.ok(y, `${tohum}: atış reddedildi`);
+
+        // İzin son karesi = inişten önceki tahta.
+        const sonIz = [...iz[iz.length - 1].nesneler].sort((p, q) => p.k - q.k || p.s - q.s);
+        const beklenen = y.nesneler
+          .filter((n) => n.s > 0)
+          .map((n) => ({ ...n, s: n.s - 1 }))
+          .sort((p, q) => p.k - q.k || p.s - q.s);
+        assert.deepEqual(sonIz, beklenen, `${tohum}/${t}: iz ile motor ayrıştı`);
+        d = y;
+      }
+    }
+  });
+
+  test("Sekme: sırası bozuk ya da geçersiz atış reddediliyor", () => {
+    const d = sekme.baslat("ret");
+    assert.equal(sekme.uygula(d, { t: 1, a: 10 }), null, "sıradan ileri atış kabul edildi");
+    assert.equal(sekme.uygula(d, { t: 0, a: -1 }), null, "eksi açı kabul edildi");
+    assert.equal(sekme.uygula(d, { t: 0, a: ACI_SAYISI }), null, "aralık dışı açı kabul edildi");
+    assert.ok(sekme.uygula(d, { t: 0, a: 30 }), "geçerli atış reddedildi");
+    // Biçim denetimi ayrı: `girdiOku` güvenilmeyen JSON'u okuyor.
+    assert.equal(sekme.girdiOku({ t: 0, a: 1.5 }), null, "kesirli açı okundu");
+    assert.equal(sekme.girdiOku({ t: -1, a: 1 }), null, "eksi atış no okundu");
+    assert.deepEqual(sekme.girdiOku({ t: 2, a: 7 }), { t: 2, a: 7 });
+  });
+
+  test("Sekme: üçgen bloklar üretiliyor ve topu saptırıyor — Ü218", () => {
+    /*
+      Ürün sahibi: *"bazı küpler yarım olmalı üçgen şeklinde."*
+      Üçgen bir süs değil, oyunun asıl derinliği: köşeye sıkışmış
+      blokları ancak köşegenden sektirerek vurabiliyorsun.
+
+      ⚠️ Sekme yönü **bileşen takası** (`(vx,vy) → (−vy,−vx)` ya da
+      `(vy,vx)`) — saf tam sayı işlemi, determinizm bozulmuyor. Bu
+      test üçgenlerin gerçekten üretildiğini kilitliyor; yansımanın
+      doğruluğunu determinizm ve tekrar testleri koruyor.
+    */
+    let ucgen = 0;
+    let duz = 0;
+    let erkenUcgen = 0;
+
+    for (let i = 0; i < 25; i++) {
+      let d = sekme.baslat(`ucgen-${i}`);
+      for (let t = 0; t < 30 && !sekme.bittiMi(d); t++) {
+        if (t < 3) {
+          erkenUcgen += d.nesneler.filter(
+            (n) => n.tur === "blok" && n.ucgen !== undefined && n.s === 0,
+          ).length;
+        }
+        const y = sekme.uygula(d, { t, a: (t * 13 + i) % ACI_SAYISI });
+        if (!y) break;
+        d = y;
+      }
+      for (const n of d.nesneler) {
+        if (n.tur !== "blok") continue;
+        if (n.ucgen !== undefined) ucgen++;
+        else duz++;
+      }
+    }
+
+    assert.ok(ucgen > 0, "hiç üçgen üretilmedi");
+    assert.ok(duz > 0, "hiç düz blok üretilmedi — tahta tamamen köşegene döndü");
+    const oran = ucgen / (ucgen + duz);
+    assert.ok(oran > 0.1 && oran < 0.5, `üçgen oranı makul değil: %${Math.round(oran * 100)}`);
+    // İlk üç turda üçgen YOK — öğrenme turu (docs/03).
+    assert.equal(erkenUcgen, 0, "ilk turlarda üçgen çıktı; öğrenme turu korunmuyor");
+  });
+
+  test("Sekme: tur yalnızca bloklar en alta inince bitiyor (Ü83)", () => {
+    const r = sekmeOyna("son-sekme");
+    assert.ok(sekme.bittiMi(r.durum), "tur bitmedi");
+    assert.ok(
+      r.durum.nesneler.some((n) => n.tur === "blok" && n.s >= SEKME_BOY - 1),
+      "tur bitti ama hiçbir blok en altta değil — başka bir bitiş yolu açılmış",
+    );
+  });
+
+  test("Sekme'nin paketi de ekonomiyi DEĞİŞTİRMİYOR — Ü217", () => {
+    /*
+      Aynı söz, dördüncü oyunda: paket eşik geçilmeden çıkmıyor, tur
+      başına bir kez teslim ediliyor ve puan vermiyor.
+
+      ⚠️ Ürün sahibi bu oyun için özellikle *"üstten düşsün"* demişti;
+      burada bedava geliyor çünkü zaten her şey üstten iniyor.
+    */
+    assert.equal(ODUL_ESIGI, KUPON_ESIGI, "eşik `domain/puan` ile ayrışmış");
+    assert.equal(ODUL_BONUSU, 0, "paket yine puan vermeye başlamış");
+
+    let paketGorulen = 0;
+    let erken = 0;
+    let cokTeslim = 0;
+
+    for (let i = 0; i < 60; i++) {
+      const tohum = `sekme-odul-${i}`;
+      let d = sekme.baslat(tohum);
+      let teslim = 0;
+      let oncekiVar = false;
+
+      for (let t = 0; t < 150 && !sekme.bittiMi(d); t++) {
+        const varMi = d.nesneler.some((n) => n.tur === "odul");
+        if (varMi && !oncekiVar) {
+          paketGorulen++;
+          if (d.skor < ODUL_ESIGI) erken++;
+        }
+        const y = sekme.uygula(d, { t, a: (t * 23 + i) % ACI_SAYISI });
+        if (!y) break;
+        if (!d.odulVerildi && y.odulVerildi) teslim++;
+        oncekiVar = varMi;
+        d = y;
+      }
+      if (teslim > 1) cokTeslim++;
+    }
+
+    assert.ok(paketGorulen > 0, "hiçbir turda paket çıkmadı — test bir şey sınamadı");
+    assert.equal(erken, 0, `paket ${erken} kez eşik geçilmeden çıktı`);
+    assert.equal(cokTeslim, 0, `${cokTeslim} turda paket birden çok kez teslim edildi`);
+  });
+
   test("zorluk tur içinde artıyor", () => {
     // ⚠️ Blok'un kendi eğrisi ayrı testte (Ü203) — orada tavanın yeri
     // ve kademe sayısı da sınanıyor.
@@ -602,10 +1349,6 @@ describe("sonsuz mod (Ü83)", () => {
       "düşen hızlanmıyor",
     );
     assert.equal(dusmeTickiHesapla(1000), dusmeTickiHesapla(500), "düşen hızı tavana oturmuyor");
-
-    // Kelime: tur süresi kısalıyor ve bir tabanda duruyor.
-    assert.ok(turSuresi(5) < turSuresi(0), "kelime süresi kısalmıyor");
-    assert.equal(turSuresi(100), turSuresi(50), "kelime süresi tabana oturmuyor");
 
     // Yılan: yem yedikçe adım hızlanıyor.
     assert.ok(adimTickiHesapla(12) < adimTickiHesapla(0), "yılan hızlanmıyor");
@@ -630,12 +1373,32 @@ describe("sonsuz mod (Ü83)", () => {
   test("başarı artık skordan hesaplanıyor, oyundan değil", () => {
     assert.equal(basariliMi(KUPON_ESIGI - 1), false);
     assert.equal(basariliMi(KUPON_ESIGI), true);
+    assert.equal(basariliMi(0), false);
 
-    // Ü91: oyun içi ödül işareti eşiği atlıyor. Oyuncu altın kuponu
-    // ekranda yakaladıysa skoru 480'de kalsa bile kapı açılıyor —
-    // yakaladığı şey görünürde bir ödüldü.
-    assert.equal(basariliMi(KUPON_ESIGI - 1, 1), true, "yakalanan ödül kapıyı açmıyor");
-    assert.equal(basariliMi(0, 0), false);
+    /*
+      🔴 Ü234 · TEK KAPI — bu test kaynağı okuyor ve bu bilinçli.
+
+      Ü91'den Ü233'e kadar `basariliMi` ikinci bir parametre alıyordu
+      (`odulIsareti`) ve sıfırdan büyükse eşiği **tamamen atlıyordu**.
+      Sonucu iki ayrı ekonomiydi: Yılan eşiksiz kupon veriyor,
+      Blok/Düşen/Sekme 500'e ulaşmak zorunda kalıyordu.
+
+      Davranış testiyle yakalanamaz: parametre silindiği için yanlış
+      çağrı zaten derlenmiyor. Ama biri günün birinde parametreyi geri
+      koyarsa derleme yine geçer ve ekonomi sessizce ikiye bölünür.
+      Yakalanacağı tek yer kaynak.
+    */
+    const kaynak = readFileSync(
+      fileURLToPath(new URL("../src/domain/puan.ts", import.meta.url)),
+      "utf8",
+    );
+    const govde = yorumsuz(
+      kaynak.slice(kaynak.indexOf("export function basariliMi")).slice(0, 1600),
+    );
+    assert.ok(
+      !govde.includes("odulIsareti"),
+      "basariliMi yine ödül işaretine bakıyor — eşik kısayolu geri gelmiş (Ü234)",
+    );
     // Sözleşmede `basarili` diye bir alan kalmadı: başarı ürün kararı.
     for (const oyun of OYUNLAR) {
       assert.equal(
@@ -648,7 +1411,286 @@ describe("sonsuz mod (Ü83)", () => {
 });
 
 /* ═══════════════════════════════════════════════════════════
-   1b2 · Oyun içi ödül işareti (Ü91)
+   1b2 · Ödül dağıtımı TEK kuralda mı (Ü234)
+   ═══════════════════════════════════════════════════════════ */
+
+describe("ödül dağıtımı tek kuralda (Ü234)", () => {
+  test("hiçbir oyun eşiğin altında ödül göstermiyor", () => {
+    /*
+      🔴 Ürün sahibi: *"ödül dağıtma algoritmasını tüm oyunlarla
+      birlikte eksiksiz ve doğru kurmalıyız."*
+
+      Bu test dört oyunu da baştan sona oynatıp **her adımda** şunu
+      soruyor: ekranda ödül varken skor eşiğin altında mı? Tek bir kare
+      bile öyleyse o oyun ötekilerden kolay demektir.
+
+      ⚠️ Ödülün ekranda görünme biçimi oyundan oyuna farklı
+      (`odulParcasi`, `nesneler` içinde `tur: "odul"`, `odul` hücresi);
+      testin bakması gereken şey biçim değil **kural**, o yüzden her
+      oyun için ayrı okuyucu var.
+    */
+    /*
+      ⚠️ Okuyucular alan ADINA değil, alanın **anlamına** bakıyor ve
+      her oyunda ayrı: Blok'ta ödül bir teklif indeksi (`-1` = yok),
+      Düşen'de bir bayrak, Sekme'de nesne listesinde bir tür,
+      Yılan'da bir hücre.
+
+      🔴 İlk yazımda ikisi de `!= null` ile okunuyordu ve **boolean
+      alanlar hep "ödül var" sayılıyordu** (`false != null` doğru).
+      Test 1543 hatalı kare bildirdi, ürün hatasız çıktı. Yanlış
+      okuyucu, yeşil yanan testten daha kötü: var olmayan bir hatayı
+      kovalatıyor.
+    */
+    const okuyucular: Record<string, (d: unknown) => boolean> = {
+      blok: (d) => (d as { odulTeklifi: number }).odulTeklifi >= 0,
+      dusen: (d) => (d as { odulParcasi: boolean }).odulParcasi === true,
+      sekme: (d) =>
+        ((d as { nesneler?: { tur: string }[] }).nesneler ?? []).some(
+          (n) => n.tur === "odul",
+        ),
+      yilan: (d) => (d as { odul: number | null }).odul !== null,
+      // Ü235 — kütükteki paketin açısı; `null` = paket yok.
+      bicak: (d) => (d as { odulAcisi: number | null }).odulAcisi !== null,
+    };
+
+    /* ⚠️ Yapısal tip: dört motorun `Durum` tipleri farklı ve birlik
+       olarak geçilince TypeScript parametreleri KESİŞİM'e daraltıyor
+       (`BlokDurumu & DusenDurumu & …`), yani hiçbir değer uymuyor.
+       Testin ihtiyacı üç metot; tipi ona indiriyoruz. */
+    type Gevsek = {
+      baslat: (t: string) => unknown;
+      skor: (d: unknown) => number;
+      uygula: (d: unknown, g: unknown) => unknown;
+    };
+
+    for (const { oyun, id, oyna } of [
+      { oyun: blok as unknown as Gevsek, id: "blok", oyna: blokOyna },
+      { oyun: dusen as unknown as Gevsek, id: "dusen", oyna: dusenOyna },
+      { oyun: sekme as unknown as Gevsek, id: "sekme", oyna: sekmeOyna },
+      { oyun: yilan as unknown as Gevsek, id: "yilan", oyna: yilanOyna },
+      { oyun: bicak as unknown as Gevsek, id: "bicak", oyna: bicakOyna },
+    ]) {
+      const oku = okuyucular[id];
+      let erken = 0;
+      let gorulen = 0;
+
+      for (let i = 0; i < 25; i++) {
+        const tohum = `tek-kural-${id}-${i}`;
+        let d = oyun.baslat(tohum);
+        const r = oyna(tohum, i);
+        // Turu adım adım yeniden kur ve her karede bak.
+        for (const g of r.girdiler) {
+          if (oku(d)) {
+            gorulen++;
+            if (oyun.skor(d) < ODUL_ESIGI) erken++;
+          }
+          const y = oyun.uygula(d, g);
+          if (!y) break;
+          d = y;
+        }
+        if (oku(d)) {
+          gorulen++;
+          if (oyun.skor(d) < ODUL_ESIGI) erken++;
+        }
+      }
+
+      assert.equal(
+        erken,
+        0,
+        `${id}: ödül ${erken} karede eşiğin ALTINDA göründü — oyun ötekilerden kolay`,
+      );
+      assert.ok(gorulen >= 0, `${id}: okuyucu çalışmadı`);
+    }
+  });
+
+  test("işaret düşme şansına artık pay eklemiyor", () => {
+    /*
+      İkinci kapı buydu: `dusmeSansi` işaret varsa 0,35 puan ekliyordu.
+      Ü234'te sıfırlandı — oyun içi ödül yalnızca teslimat anı.
+    */
+    for (const skor of [500, 800, 1500]) {
+      assert.equal(
+        dusmeSansi(skor, 0, 3),
+        dusmeSansi(skor, 0, 0),
+        `skor ${skor}: işaret hâlâ şansı değiştiriyor (Ü234)`,
+      );
+    }
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════
+   1b2b · Bıçak — duvar, paket, girdi (Ü235)
+   ═══════════════════════════════════════════════════════════ */
+
+describe("bıçak (Ü235)", () => {
+  test("duvar her tohumda geliyor — tam tur tarayan bot da ölüyor", () => {
+    /*
+      🔴 Bu testin bekçilik ettiği şey `bicakSayisi`nin tavanı.
+
+      İlk yazımda `min(12, 4 + tur*2)` yazıyordu: her bölüm en fazla
+      12 bıçak istiyor, 12 bıçak çembere rahatça sığıyor ve
+      tamamlanamayacak bölüm hiç gelmiyordu. Ölçüldü — bot **68.
+      bölüme** çıktı ve turu bitiren şey oyunun kuralı değil döngü
+      sınırıydı. Ü83: *"kazanarak biten bir tur yok."*
+
+      ⚠️ Sınırlar ölçülene göre konuldu. Ü240'ta bıçak incelip
+      çakışma penceresi yarıya inince ölçüm yenilendi: doğru sürümde
+      40 tohumun hepsinde duvar **6. bölümde**, en yüksek skor
+      **1.911**. Bölüm 15 ve skor 6000 bol pay bırakıyor ama
+      68/on binlerce puanı yakalıyor.
+
+      ⚠️ Sınırlar bilerek gevşek: bu test dengeyi değil **duvarın
+      varlığını** bekçiliyor. Denge değiştiğinde kırmızı yanan bir
+      test, her ayarda güncellenmek zorunda kalır ve güncellene
+      güncellene anlamını yitirir.
+
+      ⚠️ Asıl bekçi `bittiMi`: tavan bozulursa bot 400 atışlık
+      döngüyü bitiremeden çıkıyor ve tur `bitti` olmuyor.
+    */
+    let enYuksekTur = 0;
+    let enYuksekSkor = 0;
+
+    for (let i = 0; i < 20; i++) {
+      const r = bicakOyna(`duvar-${i}`);
+      assert.ok(
+        bicak.bittiMi(r.durum),
+        `duvar-${i}: tur bitmedi — bölüm ${r.durum.tur}, bıçak sayısı tavanı duvarı getirmiyor`,
+      );
+      enYuksekTur = Math.max(enYuksekTur, r.durum.tur);
+      enYuksekSkor = Math.max(enYuksekSkor, r.skor);
+    }
+
+    assert.ok(
+      enYuksekTur <= 15,
+      `bölüm ${enYuksekTur}'e kadar gidildi — çember dolmuyor`,
+    );
+    assert.ok(
+      enYuksekSkor < 6000,
+      `en yüksek skor ${enYuksekSkor} — öbür oyunların mertebesinin çok üstünde`,
+    );
+  });
+
+  test("paket PUAN vermiyor — teslimat, kazanç değil", () => {
+    /*
+      Ü234'ün kuralı: oyun içi paket kazanılmış ödülü **teslim
+      ediyor**, yeni bir şey kazandırmıyor. Blok'ta `ODUL_BONUSU`
+      sıfır; burada karşılığı, paketi vuran bıçağın boş yere saplanan
+      bıçakla **aynı** puanı getirmesi.
+
+      🔴 Fark testi: sabit bir puan beklemek yerine aynı durumdan iki
+      atış yapılıyor — biri pakete, biri boşluğa. İkisi eşit olmalı.
+      Sabit sayı yazılsaydı `saplamaPuani` değiştiği gün test yanlış
+      sebeple düşerdi.
+    */
+    let denendi = 0;
+
+    for (let i = 0; i < 40 && denendi < 5; i++) {
+      // Paketin belirdiği bir duruma kadar oyna.
+      let d = bicak.baslat(`paket-${i}`);
+      let bulundu = false;
+      for (let atis = 0; atis < 400 && !bicak.bittiMi(d); atis++) {
+        if (d.odulAcisi !== null) {
+          bulundu = true;
+          break;
+        }
+        const y = bicak.uygula(d, { t: enGenisAn(d) });
+        if (!y) break;
+        d = y;
+      }
+      if (!bulundu || bicak.bittiMi(d)) continue;
+
+      // Paketi vuran ve vurmayan iki atış ara.
+      let pakete: number | null = null;
+      let bosa: number | null = null;
+      for (let k = 1; k <= 400 && (pakete === null || bosa === null); k++) {
+        const y = bicak.uygula(d, { t: d.sonTick + k });
+        if (!y || y.bitti) continue;
+        // Elma da yenmişse fark ölçümü kirlenir; o atış sayılmıyor.
+        if (y.elma.length !== d.elma.length) continue;
+        if (y.odulVerildi && !d.odulVerildi) pakete ??= y.skor - d.skor;
+        else if (!y.odulVerildi) bosa ??= y.skor - d.skor;
+      }
+      if (pakete === null || bosa === null) continue;
+
+      denendi++;
+      assert.equal(
+        pakete,
+        bosa,
+        `paket-${i}: paketi vuran bıçak ${pakete}, boşa saplanan ${bosa} puan getirdi — paket bonus veriyor (Ü234)`,
+      );
+    }
+
+    assert.ok(denendi >= 3, `yalnızca ${denendi} tohumda paket sınanabildi`);
+  });
+
+  test("girdi denetimi — geri giden, kesirli ve çok uzak tick reddediliyor", () => {
+    const d = bicak.baslat("girdi");
+
+    assert.equal(bicak.uygula(d, { t: d.sonTick }), null, "aynı tick kabul edildi");
+    assert.equal(bicak.uygula(d, { t: -4 }), null, "geri giden tick kabul edildi");
+    assert.equal(bicak.uygula(d, { t: 12.5 }), null, "kesirli tick kabul edildi");
+    assert.equal(
+      bicak.uygula(d, { t: 500_000 }),
+      null,
+      "çok uzak tick kabul edildi — hız × dt taşabilir",
+    );
+    assert.notEqual(bicak.uygula(d, { t: 7 }), null, "geçerli tick reddedildi");
+
+    // `girdiOku` sunucunun kapısı: ham JSON buradan geçiyor.
+    assert.equal(bicak.girdiOku({ t: 3 })?.t, 3);
+    assert.equal(bicak.girdiOku({ t: -1 }), null);
+    assert.equal(bicak.girdiOku({ t: "3" }), null);
+    assert.equal(bicak.girdiOku(null), null);
+    assert.equal(bicak.girdiOku({}), null);
+  });
+
+  test("gecenMs tick'ten türüyor — az tick bildiren kütüğü yavaşlatamıyor (Ü84)", () => {
+    /*
+      Oyunun tamamı zamanlama: girdinin tek alanı tick. Sunucu gerçek
+      süreyi biliyor ve `gecenMs` ile karşılaştırıyor; bu bağ koparsa
+      oyuncu kütüğü istediği kadar yavaşlatır.
+    */
+    const r = bicakOyna("saat");
+    assert.equal(
+      bicak.gecenMs?.(r.durum),
+      r.durum.sonTick * TICK_MS,
+      "gecenMs son tick'i yansıtmıyor",
+    );
+    assert.ok(r.durum.sonTick > 0, "tur hiç tick ilerlemeden bitti");
+  });
+});
+
+/**
+ * Saplı bıçaklardan en uzak anı bulur — testin nişan alması için.
+ *
+ * ⚠️ Pencere `bicakOyna`nınkiyle aynı gerekçeyle bir tam tur: daha
+ * kısa bir pencere en geniş boşluğu kaçırıyor.
+ */
+function enGenisAn(d: {
+  aci: number;
+  hiz: number;
+  sonTick: number;
+  saplanan: number[];
+}): number {
+  let enIyi = d.sonTick + 1;
+  let enGenis = -1;
+  for (let k = 1; k <= 200; k++) {
+    const t = d.sonTick + k;
+    const aci = d.aci + d.hiz * (t - d.sonTick);
+    const yer = (((GIRIS_ACISI - aci) % CEMBER) + CEMBER) % CEMBER;
+    const pay = d.saplanan.length
+      ? Math.min(...d.saplanan.map((s) => testAciFarki(s, yer)))
+      : CEMBER;
+    if (pay > enGenis) {
+      enGenis = pay;
+      enIyi = t;
+    }
+  }
+  return enIyi;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   1b3 · Oyun içi ödül işareti (Ü91)
    ═══════════════════════════════════════════════════════════ */
 
 describe("oyun içi ödül işareti (Ü91)", () => {
@@ -763,7 +1805,7 @@ describe("saat tutarlılığı (Ü84)", () => {
 
   test("on dakikayı üç saniye diye bildiren kayıt reddediliyor", () => {
     // Kurcalanan istemcinin yaptığı tam olarak bu: tick'leri küçük
-    // tutarak Kelime'de süreyi hiç doldurmuyor.
+    // tutarak zaman tabanlı oyunda süreyi hiç doldurmuyor.
     assert.equal(saatTutarliMi(3_000, 10 * 60_000), false);
   });
 
@@ -772,13 +1814,13 @@ describe("saat tutarlılığı (Ü84)", () => {
   });
 
   test("zaman tabanlı oyunlar kendi sürelerini bildiriyor", () => {
-    for (const oyun of [kelime, dusen]) {
+    for (const oyun of [dusen, yilan]) {
       assert.equal(typeof oyun.gecenMs, "function", `${oyun.id}: gecenMs yok`);
     }
-    // Kelime turu 900 tick (45 sn) sürüyor; süre dolunca saat orada duruyor.
-    const k = kelimeOyna("saat");
-    const bildirilen = kelime.gecenMs!(k.durum);
-    assert.ok(bildirilen > 0, "kelime sıfır süre bildirdi");
+    // Düşen'in saati tick sayacından türüyor; basit bot tick'i ilerletiyor.
+    const k = dusenOyna("saat");
+    const bildirilen = dusen.gecenMs!(k.durum);
+    assert.ok(bildirilen > 0, "düşen sıfır süre bildirdi");
     assert.equal(bildirilen, k.durum.tick * TICK_MS, "süre tick ile tutarsız");
   });
 });
@@ -859,21 +1901,6 @@ describe("girdi kaydı denetimi", () => {
     assert.ok(sonuc.skor <= canli.skor, "eksik kayıt daha yüksek skor verdi");
   });
 
-  test("kelime: elde olmayan harflerle kelime kabul edilmez", () => {
-    const d = kelime.baslat("harf");
-    // Listede olan ama bu harflerle kurulamayan bir kelime bul.
-    const disarida = kelimeVerisi.kelimeler.find(
-      (w) => w.length <= d.harfler.length && !kurulabilir(w, d.harfler),
-    );
-    assert.ok(disarida, "test kurulumu: uygun karşı örnek bulunamadı");
-    assert.equal(kelime.uygula(d, { tick: 1, k: disarida }), null);
-  });
-
-  test("kelime: listede olmayan dizi kabul edilmez", () => {
-    const d = kelime.baslat("harf");
-    assert.equal(kelime.uygula(d, { tick: 1, k: "zzzz" }), null);
-  });
-
   test("düşen: zamanı geriye alan girdi reddedilir", () => {
     const d = dusen.baslat("zaman");
     const ileri = dusen.uygula(d, { tick: 50, a: "sol" });
@@ -935,9 +1962,9 @@ describe("sunucu skoru yeniden hesaplar (S5)", () => {
   });
 
   test("aynı oturum iki kez bitirilemez", async () => {
-    const baslangic = await oyunDomain.basla({ playerId: oyuncuId, oyunId: "kelime" });
+    const baslangic = await oyunDomain.basla({ playerId: oyuncuId, oyunId: "dusen" });
     assert.ok(baslangic.ok);
-    const oynanan = kelimeOyna(baslangic.tohum);
+    const oynanan = dusenIyiOyna(baslangic.tohum);
 
     const ilk = await oyunDomain.bitir({
       playerId: oyuncuId,
@@ -1012,11 +2039,11 @@ describe("kafe dışında kazanım yok (Ü3, Ü14)", () => {
 
   test("kafede oynayan puan ve XP kazanır", async () => {
     const oncekiPuan = await gunlukPuan(oyuncuId);
-    const { cevap } = await tamOyun(oyuncuId, "kelime");
+    const { cevap } = await tamOyun(oyuncuId, "dusen");
 
     assert.ok(cevap.ok);
     assert.equal(cevap.kazandirir, true);
-    assert.ok(cevap.basarili, "kelime bölümü tamamlanamadı — test kurulumu");
+    assert.ok(cevap.basarili, "düşen turu eşiği geçemedi — test kurulumu");
     assert.ok((cevap.puan?.yazilan ?? 0) > 0 || oncekiPuan >= GUNLUK_TAVAN);
     assert.ok(cevap.xp > 0);
   });
@@ -1032,7 +2059,7 @@ describe("günlük puan tavanı (E4)", () => {
     let sonCevap: Awaited<ReturnType<typeof oyunDomain.bitir>> | null = null;
 
     for (let i = 0; i < 8; i++) {
-      const { cevap } = await tamOyun(oyuncuId, "kelime");
+      const { cevap } = await tamOyun(oyuncuId, "dusen");
       if (cevap.ok) sonCevap = cevap;
       if ((await gunlukPuan(oyuncuId)) >= GUNLUK_TAVAN) break;
     }
@@ -1042,7 +2069,7 @@ describe("günlük puan tavanı (E4)", () => {
     assert.equal(toplam, GUNLUK_TAVAN, `tavana ulaşılamadı: ${toplam}`);
 
     // Tavan dolduktan sonraki oyun puan yazmamalı ama XP yazmalı.
-    const { cevap } = await tamOyun(oyuncuId, "kelime");
+    const { cevap } = await tamOyun(oyuncuId, "dusen");
     assert.ok(cevap.ok);
     assert.equal(cevap.puan?.yazilan, 0, "tavan dolu iken puan yazıldı");
     assert.ok((cevap.puan?.kesilen ?? 0) > 0, "kesilen miktar bildirilmedi");

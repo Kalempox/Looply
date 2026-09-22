@@ -5,7 +5,8 @@ import type { CSSProperties } from "react";
  *
  * ── Neden `tahta.tsx`ten ayrı ───────────────────────────────
  *
- * `tahta.tsx` DÖRT oyunun ortak yüzeyi (blok, düşen, yılan, kelime).
+ * `tahta.tsx` oyunların ortak yüzeyi (Ü208'den beri düşen ve yılan;
+ * Blok kendi yüzeyine geçti, Kelime sistemden çıktı).
  * Ürün sahibi Blok için ayrıntılı bir tasarım verdi — koyu sahne, parlak
  * panel, cam hücreler, şeker gibi çok renkli bloklar. Ortak dosyayı
  * değiştirmek diğer üç oyunu da sormadan değiştirmek olurdu.

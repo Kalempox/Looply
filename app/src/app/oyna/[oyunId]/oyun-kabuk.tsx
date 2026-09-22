@@ -26,9 +26,9 @@ import { baslaEylemi, bitirEylemi, type BitirCevabi, teklifAlEylemi } from "./ac
  *
  * ── Renk oyunun kendi rengi (Ü65) ───────────────────────────
  *
- * Ü64'te kabuğun iki ekranı da koyu mordu ve üç oyun birbirinden
- * ayırt edilemiyordu. Şimdi her oyun kendi renginde — Blok gök, Kelime
- * menekşe, Düşen gül — ve bu renk ana ekrandaki karodan başlayıp oyun
+ * Ü64'te kabuğun iki ekranı da koyu mordu ve oyunlar birbirinden
+ * ayırt edilemiyordu. Şimdi her oyun kendi renginde — Blok gök, Düşen
+ * pembe, Yılan yeşil — ve bu renk ana ekrandaki karodan başlayıp oyun
  * sonu ekranına kadar sürüyor.
  *
  * Aradaki **oyun alanı** renklenmiyor: oyunun kendi görünümü var ve

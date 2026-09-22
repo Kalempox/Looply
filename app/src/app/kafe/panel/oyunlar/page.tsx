@@ -14,10 +14,10 @@ export const metadata = { title: "Oyunlar · Looply" };
  *
  * ── Neden bir kafe oyunu kapatmak istesin ───────────────────
  *
- * Oyunlar farklı şeyler istiyor: Kelime okuma-yazma ve dikkat, Yılan
- * refleks. Çocuk ağırlıklı bir kafe Kelime'yi, sessiz çalışma kafesi
- * Yılan'ı kapatmak isteyebilir. Bu bir ekonomi kararı değil, mekânın
- * kendi kararı.
+ * Oyunlar farklı şeyler istiyor: Blok sabır ve planlama, Yılan refleks.
+ * Sessiz çalışma kafesi Yılan'ı, çocuk ağırlıklı bir kafe Blok'u
+ * kapatmak isteyebilir. Bu bir ekonomi kararı değil, mekânın kendi
+ * kararı.
  *
  * ── ⚠️ Ekranda oynanma sayısı DA var ────────────────────────
  *

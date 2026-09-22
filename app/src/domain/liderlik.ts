@@ -122,7 +122,7 @@ async function listeKur(
  *
  * ── Neden tek oyun ──────────────────────────────────────────
  *
- * Taht kartıyla aynı gerekçe: Blok'ta 1.240 ile Kelime'de 1.240 aynı şey
+ * Taht kartıyla aynı gerekçe: Blok'ta 1.240 ile Düşen'de 1.240 aynı şey
  * değil. Farklı oyunları tek listede yarıştırmak sıralamayı anlamsız
  * kılardı.
  *

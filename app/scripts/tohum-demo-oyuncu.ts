@@ -239,7 +239,7 @@ async function main() {
     istediği şey *"serin risk altında"* ve o hâl ancak bugün oynanmamışken
     görünüyor (betiğin baştan beri gelen kararı).
   */
-  const OYUNLAR = ["blok", "dusen", "kelime", "yilan"];
+  const OYUNLAR = ["blok", "dusen", "sekme", "yilan"];
   const GUN_SAYISI = 14;
 
   await db.query(

@@ -18,9 +18,29 @@ import { type HerhangiOyun } from "@/oyunlar";
  *
  * ── Kategoriler (Ü66) ───────────────────────────────────────
  *
+ * ⚠️ Sekme "Düşünerek"te, "Yetişerek"te değil: oyunda **hiç zaman
+ * baskısı yok** — oyuncu nişan alırken istediği kadar düşünebiliyor ve
+ * zorluk açıyı kestirmekte. Ü217'de önce yanlış kategoriye kondu;
+ * ayrım hızda değil, oyuncunun ne yaptığında.
+ *
  * Üç oyuna üç kategori yapılmadı; o, kategori değil etiket olurdu.
  * İki kategori var ve ayrım oyuncunun hissettiği şey: **düşünerek**
  * mi oynuyorsun yoksa **yetişerek** mi.
+ *
+ * ── Ü208: Kelime çıkınca Yılan yerine oturdu ────────────────
+ *
+ * Kelime kaldırılınca "Düşünerek" tek oyunla kaldı ve Yılan hâlâ
+ * "Diğer"deydi — aşağıdaki not bunu zaten bir gözden kaçma olarak
+ * yazıyordu. Yılan refleks oyunu; yeri "Yetişerek". Şimdi iki kategori
+ * de dolu ve "Diğer" boş.
+ *
+ * ── Ü235: Bıçak "Yetişerek"te ───────────────────────────────
+ *
+ * Sekme'nin kategorisi Ü217'de yanlış konmuştu ve ayrımın hızda
+ * değil **oyuncunun ne yaptığında** olduğu o zaman yazıldı. Bıçak
+ * testi tersinden geçiyor: kütük dönerken oyuncunun düşünecek bir
+ * şeyi yok, yalnızca **ne zaman** dokunacağı var. Bekleyebilir ama
+ * beklemek ona bir bilgi vermiyor — boşluk dönüp geliyor.
  */
 
 export type Kategori = {
@@ -33,12 +53,12 @@ export const KATEGORILER: Kategori[] = [
   {
     ad: "Düşünerek",
     ozet: "Acele yok, doğru hamle var",
-    oyunlar: ["blok", "kelime"],
+    oyunlar: ["blok", "sekme"],
   },
   {
     ad: "Yetişerek",
     ozet: "Hızlanıyor, sen yavaşlayamıyorsun",
-    oyunlar: ["dusen"],
+    oyunlar: ["dusen", "yilan", "bicak"],
   },
 ];
 
@@ -61,8 +81,8 @@ export type KatalogKarti = {
  *
  * ⚠️ Kategoriye girmemiş oyun **sona** ekleniyor, düşmüyor: yeni bir
  * oyun eklenip `KATEGORILER` güncellenmezse oyun katalogdan sessizce
- * kaybolurdu. (Yılan bugün tam olarak bu durumda ve "Diğer" altında
- * görünüyor.)
+ * kaybolurdu. Bugün "Diğer" boş ve öyle kalmalı — dolduğu gün
+ * `KATEGORILER`in güncellenmediği anlaşılır.
  *
  * @param bugunId Bugünün oyununun kimliği; misafirde de kafeye göre
  *   hesaplanabiliyor, `null` verilirse hiçbir kart işaretlenmiyor.

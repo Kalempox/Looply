@@ -3,7 +3,11 @@
 import { useCallback, useEffect, useRef, useSyncExternalStore } from "react";
 
 /**
- * Blok'un sesleri — Ü205.
+ * Oyunların sesleri — Ü205 · Ü209.
+ *
+ * ⚠️ Adı Ü209'a kadar `blok-ses.ts`ti. Düşen de aynı beş sesi
+ * kullanınca dosyanın bir oyunun adını taşıması yanlış oldu: sesler
+ * ürünün dili, tek bir oyunun değil.
  *
  * ── 🔴 Neden dosya yok ──────────────────────────────────────
  *
@@ -37,6 +41,11 @@ import { useCallback, useEffect, useRef, useSyncExternalStore } from "react";
 
 export type SesAdi = "yerlesti" | "gecersiz" | "temizlik" | "kombo" | "odul";
 
+/*
+  ⚠️ Anahtar `blok-ses` KALDI, `oyun-ses` yapılmadı. Değiştirmek, sesi
+  bir kez açmış her oyuncunun tercihini sıfırlardı — dosya adı bizim
+  meselemiz, tarayıcıdaki kayıt oyuncunun.
+*/
 const ANAHTAR = "looply:blok-ses";
 
 /**
@@ -156,8 +165,8 @@ function oku(): boolean {
 /** Sunucuda ses tercihi diye bir şey yok. */
 const sunucudaOku = () => false;
 
-/** Sesleri çalan kanca. */
-export function useBlokSesi() {
+/** Sesleri çalan kanca — Blok ve Düşen aynısını kullanıyor. */
+export function useOyunSesi() {
   const acik = useSyncExternalStore(abone, oku, sunucudaOku);
   const ctxRef = useRef<AudioContext | null>(null);
   const anaRef = useRef<GainNode | null>(null);

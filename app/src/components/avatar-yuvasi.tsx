@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Avatar, type AvatarIfadesi } from "./avatar";
+import { Avatar, DURUS, type AvatarIfadesi } from "./avatar";
 
 /**
  * Avatarın yuvası — Ü159.
@@ -60,7 +60,7 @@ export function AvatarYuvasi({ ad }: { ad?: string }) {
   const [disarida, setDisarida] = useState(false);
   /** Yuvaya dönüş animasyonu sürerken panel hâlâ çizili durmalı. */
   const [donuyor, setDonuyor] = useState(false);
-  const [ifade, setIfade] = useState<AvatarIfadesi>("sakin");
+  const [ifade, setIfade] = useState<AvatarIfadesi>(DURUS);
 
   const yolRef = useRef(0);
   const sonRef = useRef<{ x: number; y: number } | null>(null);
@@ -72,7 +72,7 @@ export function AvatarYuvasi({ ad }: { ad?: string }) {
   // yeni bir duruş olurdu.
   useEffect(() => {
     if (ifade !== "keyifli") return;
-    const t = window.setTimeout(() => setIfade("sakin"), 2600);
+    const t = window.setTimeout(() => setIfade(DURUS), 2600);
     return () => window.clearTimeout(t);
   }, [ifade]);
 
@@ -145,7 +145,7 @@ export function AvatarYuvasi({ ad }: { ad?: string }) {
 
   const yuvayaGonder = useCallback(() => {
     setDonuyor(true);
-    setIfade("sakin");
+    setIfade(DURUS);
     zamanRef.current = window.setTimeout(() => {
       setDisarida(false);
       setDonuyor(false);
@@ -179,7 +179,7 @@ export function AvatarYuvasi({ ad }: { ad?: string }) {
           className="avatar-yuva fixed right-3 bottom-[4.75rem] z-20 grid size-12 place-items-center rounded-full border border-cizgi bg-yuzey/95 shadow-[0_10px_26px_-10px_rgba(16,32,77,0.55)] backdrop-blur active:scale-95"
         >
           <span aria-hidden className="block">
-            <Avatar boy={28} ifade="sakin" />
+            <Avatar boy={28} ifade={DURUS} />
           </span>
         </button>
       )}

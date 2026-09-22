@@ -67,8 +67,20 @@ type Tanim = {
  * Günün oyunu da günün görevi de aynı gün sayacından türüyor. Boylar ortak
  * bir bölene sahip olsaydı (örneğin ikisi de 4) her oyuna hep aynı görev
  * düşerdi: "Yılan günü" sonsuza kadar "1.200 skor" olurdu ve iki rotasyon
- * varmış gibi görünen tek bir rotasyon kalırdı. Beşinci oyun eklendiğinde
- * bu sessizce bozulur — `tests/challenge.test.ts` onu bekliyor.
+ * varmış gibi görünen tek bir rotasyon kalırdı.
+ *
+ * ── 🔴 Ü235: tam da öngörüldüğü gibi bozuldu ────────────────
+ *
+ * Buradaki not *"beşinci oyun eklendiğinde bu sessizce bozulur"* diyordu
+ * ve Bıçak eklenince havuz 5, oyun 5 oldu: OBEB 5. `challenge.test.ts`
+ * yakaladı — ekranda hiçbir şey görünmezdi, yalnızca her oyun hep aynı
+ * görevle eşleşirdi.
+ *
+ * Havuz altıya çıktı (`cesit3`): OBEB(6, 5) = 1, döngü 30 gün.
+ *
+ * ⚠️ Kalan dört oyun eklenirken bu **her seferinde** yeniden bakılacak:
+ * 6 oyunda OBEB 6, 8 oyunda 2, 9 oyunda 3 — üçü de bozuk. Sabit bir
+ * havuz boyu bu sorunu çözmüyor; testi görmezden gelmemek çözüyor.
  */
 const HAVUZ: readonly Tanim[] = [
   { id: "skor1200", tur: "skor", hedef: 1200, xp: 60 },
@@ -76,6 +88,9 @@ const HAVUZ: readonly Tanim[] = [
   { id: "cesit2", tur: "cesit", hedef: 2, xp: 75 },
   { id: "skor2000", tur: "skor", hedef: 2000, xp: 90 },
   { id: "tur3", tur: "tur", hedef: 3, xp: 90 },
+  /* Beş oyunla "üç farklı oyun" rahat bir hedef; dört oyunluk katalogda
+     havuzun dörtte üçünü istemek olurdu. Oyun sayısı arttıkça yeri var. */
+  { id: "cesit3", tur: "cesit", hedef: 3, xp: 100 },
 ];
 
 export const HAVUZ_BOYU = HAVUZ.length;
@@ -130,13 +145,38 @@ export function gununGorevi(
         baslik: `${t.hedef} tur oyna`,
         aciklama: `Bugün bu kafede ${t.hedef} oyun tamamla. Hangi oyun olduğu fark etmiyor.`,
       };
-    case "cesit":
+    case "cesit": {
+      /*
+        🔴 Hedef, kafenin AÇIK oyun sayısını geçemez — Ü235.
+
+        Kafe oyun kapatabiliyor (Ü109) ve kuralın tek sınırı *"en az
+        bir oyun açık kalmalı"* (`oyun-secimi.ts`). Yani iki oyun açık
+        bırakan bir kafede *"3 farklı oyun"* **tamamlanması imkânsız**
+        bir görev olurdu: oyuncu bütün günü oynasa da ilerleme 2'de
+        kalır ve XP hiç yazılmaz.
+
+        ⚠️ Bu delik `cesit3` ile açılmadı, `cesit2` ile zaten vardı:
+        tek oyun bırakan kafede o da imkânsızdı. Görülmemiş olması
+        yalnızca kimsenin dört oyundan üçünü kapatmamış olması.
+
+        ⚠️ Havuz verilmezse (kafe bilinmiyor) tam katalog varsayılıyor
+        — `gununOyunu` ile aynı tercih.
+
+        ⚠️ Tek oyun açıksa hedef 1'e iniyor ve görev *"1 farklı oyun"*
+        diyor. Tuhaf bir cümle ama doğru ve tamamlanabilir; oyun
+        çeşidi olmayan bir kafede çeşit görevinin söyleyebileceği
+        başka bir şey yok.
+      */
+      const acik = havuz && havuz.length > 0 ? havuz.length : OYUNLAR.length;
+      const hedef = Math.min(t.hedef, acik);
       return {
         ...t,
+        hedef,
         oyunId: null,
-        baslik: `${t.hedef} farklı oyun`,
-        aciklama: `Bugün bu kafede ${t.hedef} farklı oyun dene.`,
+        baslik: `${hedef} farklı oyun`,
+        aciklama: `Bugün bu kafede ${hedef} farklı oyun dene.`,
       };
+    }
   }
 }
 

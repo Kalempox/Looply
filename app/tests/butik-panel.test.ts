@@ -114,14 +114,14 @@ describe("butik paneli — asıl kapı sunucuda", () => {
   test("reddedilen çağrı veritabanına satır yazmıyor", async () => {
     await oyunSecimi.degistir({
       cafeId: butik,
-      oyunId: "kelime",
+      oyunId: "dusen",
       acik: false,
       aktorId: butikYonetici,
     });
 
     const n = await withBypass("test doğrulaması", (db) =>
       db.one<{ n: string }>(
-        `SELECT count(*) AS n FROM cafe_game_settings WHERE cafe_id = $1 AND game_id = 'kelime'`,
+        `SELECT count(*) AS n FROM cafe_game_settings WHERE cafe_id = $1 AND game_id = 'dusen'`,
         [butik],
       ),
     );

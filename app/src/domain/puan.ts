@@ -143,14 +143,30 @@ export const KUPON_ESIGI = 500;
  * Eşiğin altında kalan tur boşa gitmiyor: katılım puanı ve XP yine yazılıyor
  * (Ü48), skor liderliğe giriyor, seri bozulmuyor.
  */
-export function basariliMi(skor: number, odulIsareti = 0): boolean {
-  // ⚠️ Ü91: oyun içi ödül işareti eşiği **atlıyor**. Oyuncu altın kuponu
-  // ekranda gördü ve ona ulaştı; skoru 480'de kaldı diye eli boş dönmesi
-  // mekaniği yalan çıkarır — yakaladığı şey görünürde bir ödüldü.
-  //
-  // Bedava değil: ödül yine şansa (Ü88), günlük sınıra, bütçeye (E10) ve
-  // azalan getiriye (Ü77) tabi. İşaret yalnızca **kapıyı** açıyor.
-  if (odulIsareti > 0) return true;
+export function basariliMi(skor: number): boolean {
+  /*
+    🔴 Ü234 · TEK KAPI: eşik.
+
+    Ü91'den Ü233'e kadar burada bir kısayol vardı: oyun içi ödül işareti
+    (`odulIsareti > 0`) eşiği **tamamen atlıyordu**. Gerekçesi
+    savunulabilirdi — oyuncu altın kuponu ekranda gördü ve ona ulaştı,
+    480'de kaldı diye eli boş dönmesi mekaniği yalan çıkarır.
+
+    Ama sonucu iki ayrı ekonomiydi: Yılan oynayan müşteri kuponu
+    eşiksiz alıyor, Blok/Düşen/Sekme oynayan 500'e ulaşmak zorunda
+    kalıyordu. Ürün sahibi *"ödül dağıtma algoritmasını tüm oyunlarla
+    birlikte eksiksiz ve doğru kurmalıyız"* dedi ve **tek kural: eşik**
+    seçti.
+
+    ⚠️ Ü91'in kaygısı boşa düşmedi, **kaynağında** çözüldü: altın yem
+    artık eşiğin altında hiç belirmiyor (`oyunlar/yilan.ts`). Yani
+    oyuncunun yakalayıp da karşılığını alamadığı bir ödül yok —
+    görünen her ödül gerçekten kazanılmış bir ödülün teslimi.
+
+    ⚠️ Parametre SİLİNDİ, varsayılanla bırakılmadı: `basariliMi(skor, 1)`
+    yazan bir çağrı sessizce eski davranışa dönerdi. Derleme hatası
+    verip durması daha iyi.
+  */
   return skor >= KUPON_ESIGI;
 }
 

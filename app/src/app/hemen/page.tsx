@@ -9,7 +9,7 @@ import * as cark from "@/domain/cark";
 import { kodEkrandaGosterilir } from "@/sms";
 import * as oyunSecimi from "@/domain/oyun-secimi";
 import { withBypass } from "@/db/context";
-import { Sayfa } from "@/components/ui";
+import { Sayfa, masaKunyesi } from "@/components/ui";
 import { KoyuKart } from "@/components/oyuncu";
 import { LooplyLogo } from "@/components/logo";
 import { LoopySozu } from "@/components/loopy-sozu";
@@ -136,9 +136,14 @@ export default async function HemenSayfasi({
               </h1>
               {/* ⚠️ Kafe ve masa aynı satırda: karekodun hangi masadan
                   okutulduğu, ödülün hangi kafeye yazılacağını belirleyen
-                  şey (Ü35). Küçük ama gizlenecek bir bilgi değil. */}
+                  şey (Ü35). Küçük ama gizlenecek bir bilgi değil.
+
+                  ⚠️ Ü222: kafenin KENDİ karekodunda masa adı kafe adına
+                  eşit (göç 0038) ve burada "Kafe A · Kafe A" yazıyordu.
+                  Kural `masaKunyesi`de, tek yerde — aynı künye giriş
+                  ekranında da basılıyor. */}
               <p className="mt-2.5 text-[13px] leading-relaxed text-white/70">
-                {masa.cafe_adi} · {masa.masa_adi}
+                {masaKunyesi(masa.cafe_adi, masa.masa_adi)}
               </p>
             </div>
 

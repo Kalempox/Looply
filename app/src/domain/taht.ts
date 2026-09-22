@@ -18,7 +18,7 @@ import { pazartesi, gunEkle, isGunu } from "@/lib/tarih";
  * ── Skor kaynağı: günün oyunu ───────────────────────────────
  *
  * Spec'in şartı: *"tek oyun — karşılaştırılabilir olması için"*. Blok'ta
- * 1.240, Kelime'de 1.240 aynı şey değil; farklı oyunları tek tahtta
+ * 1.240, Düşen'de 1.240 aynı şey değil; farklı oyunları tek tahtta
  * yarıştırmak sıralamayı anlamsız kılardı. Çağıran hangi oyunu sorduğunu
  * söylüyor; ekran `gununOyunu()` ile çağırıyor.
  *

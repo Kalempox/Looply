@@ -75,6 +75,29 @@ export type AvatarIfadesi =
   | "kuponlu";
 export type AvatarAksesuari = "yok" | "bere" | "gozluk" | "fular";
 
+/**
+ * Loopy'nin **dinlenme** hâli — Ü219.
+ *
+ * ── 🔴 `sakin` değil, `neseli` ──────────────────────────────
+ *
+ * Ürün sahibi: *"Loopy'mizin daha mutlu olması lazım, şu an hepsinde
+ * dümdüz duruyor."* Kusurun adı zaten `loopy-sozu.tsx`te yazılıydı:
+ * `sakin` karesinin **ağzı düz bir çizgi**. `neseli` aynı karenin
+ * gülümseyen hâli (Ü179'da ondan türetildi) — duruş, kol, bacak,
+ * boyut, hepsi aynı; değişen tek şey ağız.
+ *
+ * ── Neden sabit, neden tek yerde ────────────────────────────
+ *
+ * Dinlenme hâli dört yerde geçiyor: yuvadaki küçük düğme, tam ekran
+ * karakterin başlangıcı, okşama bittiğinde dönülen hâl ve renk
+ * seçicinin önizlemesi. Dördüne ayrı ayrı yazılsaydı biri her turda
+ * geride kalırdı — bu projede o hatanın adı var (Ü71).
+ *
+ * ⚠️ `sakin` SİLİNMEDİ: nötr bir yüz gereken bir yer çıkarsa duruyor.
+ * Bugün hiçbir ekran onu istemiyor.
+ */
+export const DURUS: AvatarIfadesi = "neseli";
+
 /** `AKSESUARLI` açılınca sunulacak liste. */
 export const AVATAR_AKSESUARLARI: { deger: AvatarAksesuari; ad: string }[] = [
   { deger: "yok", ad: "Sade" },
@@ -172,15 +195,30 @@ const KALPLER = [
 ] as const;
 
 /**
- * Buhar tutamları — Ü182.
+ * Buhar tutamları — Ü182, Ü219'da ölçülüp düzeltildi.
  *
  * Üçü de farklı gecikmede ve farklı yana savruluyor. Aynı anda aynı yolu
  * izleselerdi üç çizgi olurlardı; duman düzensiz olduğu için duman.
+ *
+ * ── 🔴 `sol` 42/50/58 → 39/47/55 ────────────────────────────
+ *
+ * Değerler kapağın karenin **ortasında** olduğunu varsayıyordu. Alfa
+ * ölçümü öyle olmadığını söyledi: `loopy-sakin-sabit-512.webp`de
+ * kapağın yatay ortası karenin **%47,4**'ünde. Tutamlar 2,6 puan sağa
+ * kaçıyordu — 228 pikselde 6 piksel, yani buhar bardağın kenarından
+ * tütüyordu.
+ *
+ * ── 🔴 `savrul` piksel değil ORAN ───────────────────────────
+ *
+ * −7/5/10 piksel, karakterin boyu ne olursa olsun aynıydı. 228
+ * pikselde doğru, 56 pikselde genişliğin sekizde biri kadar yana
+ * savrulma demekti. Oranlar 228 pikselde aynı pikselleri veriyor;
+ * ölçek değişince buhar da onunla ölçekleniyor.
  */
 const BUHARLAR = [
-  { savrul: -7, gecikme: 0, sol: 42 },
-  { savrul: 5, gecikme: 850, sol: 50 },
-  { savrul: 10, gecikme: 1700, sol: 58 },
+  { savrul: -0.031, gecikme: 0, sol: 39 },
+  { savrul: 0.022, gecikme: 850, sol: 47 },
+  { savrul: 0.044, gecikme: 1700, sol: 55 },
 ] as const;
 
 /**
@@ -275,6 +313,7 @@ export function Avatar({
   boy = 120,
   ad,
   buhar = false,
+  oncelik,
   govde,
   serit,
 }: {
@@ -301,6 +340,25 @@ export function Avatar({
    */
   buhar?: boolean;
   /**
+   * Görsel ilk boyada mı yüklensin — Ü219.
+   *
+   * ── 🔴 Neden boy yetmiyor ───────────────────────────────────
+   *
+   * Verilmezse `boy >= 120` kuralı işliyor: "büyük Loopy ekranın
+   * üstündedir" varsayımı ve oyuncu yüzeylerinde doğru — karşılama
+   * kartındaki 150 piksellik Loopy gerçekten ilk görülen şey.
+   *
+   * Vitrin bu varsayımı **iki yönden birden** kırıyor:
+   *
+   *   · kahramandaki Loopy 104 piksel ama sayfanın İLK boyası
+   *   · maskot bölümündeki 236 piksellik Loopy ekranlarca AŞAĞIDA
+   *
+   * Birincisi geç yüklenip yerine oturuyor, ikincisi hiç
+   * görülmeyebilecek üç dosyayı öne çekiyordu. Boy bir tahmin;
+   * çağıran yeri biliyor.
+   */
+  oncelik?: boolean;
+  /**
    * Gövde ve şerit rengini **doğrudan** ver — Ü186.
    *
    * ⚠️ Neredeyse hiçbir çağıranın buna dokunması gerekmiyor: renk
@@ -313,11 +371,23 @@ export function Avatar({
   serit?: string;
 }) {
   const hareket = HAREKET[ifade];
+  /* Boy yalnızca TAHMİN; çağıran bilmiyorsa ona düşülüyor. */
+  const oncelikli = oncelik ?? boy >= 120;
 
   return (
     <div
       className={`loopy loopy-${hareket}`}
-      style={{ width: boy, height: boy * 1.06 }}
+      /*
+        ⚠️ `--loopy-boy` CSS'e boyu duyuruyor — Ü219.
+
+        Buharın tutam boyu, bulanıklığı ve yükselme mesafesi sabit
+        pikseldi ve karakterin boyuyla ilgisi yoktu: 228 pikselde doğru,
+        56 pikselde bardağın yarısı kadar bir bulut. Ölçü tek yerden,
+        buradan geliyor.
+      */
+      style={
+        { width: boy, height: boy * 1.06, "--loopy-boy": `${boy}px` } as React.CSSProperties
+      }
     >
       {/*
         Gölge ayrı bir öge: zıplarken küçülüp soluyor. Görselin içine
@@ -337,7 +407,7 @@ export function Avatar({
               style={
                 {
                   left: `${b.sol}%`,
-                  "--savrul": `${b.savrul}px`,
+                  "--savrul": `calc(var(--loopy-boy) * ${b.savrul})`,
                   animationDelay: `${b.gecikme}ms`,
                 } as React.CSSProperties
               }
@@ -358,14 +428,14 @@ export function Avatar({
           kare={KARE[ifade]}
           ad="govde"
           renk={govde ? govdeRengi(govde) : GOVDE_DEGISKENI}
-          oncelik={boy >= 120}
+          oncelik={oncelikli}
         />
-        <Katman kare={KARE[ifade]} ad="sabit" ad2={ad} oncelik={boy >= 120} />
+        <Katman kare={KARE[ifade]} ad="sabit" ad2={ad} oncelik={oncelikli} />
         <Katman
           kare={KARE[ifade]}
           ad="serit"
           renk={serit ? seritRengi(serit) : SERIT_DEGISKENI}
-          oncelik={boy >= 120}
+          oncelik={oncelikli}
         />
       </div>
 

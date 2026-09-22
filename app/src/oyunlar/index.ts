@@ -1,7 +1,8 @@
 import type { HerhangiOyun } from "./sozlesme";
+import { bicak } from "./bicak";
 import { blok } from "./blok";
 import { dusen } from "./dusen";
-import { kelime } from "./kelime";
+import { sekme } from "./sekme";
 import { yilan } from "./yilan";
 
 /**
@@ -14,17 +15,38 @@ import { yilan } from "./yilan";
  *
  * Oyunlar kasıtlı olarak **farklı girdi biçimleri** üretiyor (Ü21):
  *   blok   → (teklif, satır, sütun)  · zaman yok
- *   kelime → (tick, kelime)          · zaman var
  *   düşen  → (tick, hareket)         · zaman var
+ *   sekme  → (atış no, açı)          · zaman **motorun içinde**
  *   yılan  → (tick, yön)             · zaman var, **ödül işareti var**
+ *   bıçak  → (tick)                  · **girdinin tamamı zaman**
+ *
+ * Ü235'te Bıçak eklendi ve iddia beşinci kez sınandı — bu sefer en
+ * uçtan: girdinin tek alanı var ve o da tick. Oyuncunun yaptığı tek
+ * şey *ne zaman* dokunduğu; nereye dokunduğu oyunda yok. Sözleşmeye
+ * hiçbir şey eklenmedi.
+ *
+ * Ü217'de Sekme eklendi ve iddia dördüncü kez sınandı: bir girdi tek
+ * bir **atışın tamamı** — motor topların uçuşunu kendi içinde
+ * simüle ediyor. Sözleşmeye hiçbir şey eklenmedi.
  *
  * İddia ancak böyle sınanır: tek bir girdi biçimine göre yazılmış bir motor
  * "takılabilir" değildir. Ü91'de yılan eklendi ve iddia bir kez daha
  * sınandı — sözleşmeye tek bir isteğe bağlı alan eklendi (`odulIsareti`),
  * motor, oturum akışı ve doğrulama hiç değişmedi.
+ *
+ * ── Ü208: Kelime kaldırıldı ─────────────────────────────────
+ *
+ * Ürün sahibinin kararı. Defterden bir satır silmek yetti — motor, oturum
+ * akışı, sunucu doğrulaması ve ekranlar hiç değişmedi. Faz 5'in sözünün
+ * **ters yönü** de böylece sınanmış oldu: oyun eklemek kadar oyun
+ * çıkarmak da dosya işi.
+ *
+ * ⚠️ Geçmiş turlar duruyor (`play_sessions.game_id = 'kelime'`) ve
+ * silinmedi. Adlarını `domain/gecmis.ts` içindeki emekli oyun haritası
+ * karşılıyor — orası olmasaydı profil karnesinde ham kimlik görünürdü.
  */
 
-export const OYUNLAR: readonly HerhangiOyun[] = [blok, kelime, dusen, yilan];
+export const OYUNLAR: readonly HerhangiOyun[] = [blok, dusen, sekme, yilan, bicak];
 
 export function oyunBul(id: string): HerhangiOyun | undefined {
   return OYUNLAR.find((o) => o.id === id);

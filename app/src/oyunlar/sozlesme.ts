@@ -70,7 +70,8 @@ export type Oyun<Durum, Girdi> = {
    *
    * Zaman tabanlı oyunlarda saat **istemcide** işliyor ve tick değerlerini
    * istemci bildiriyor. Az tick bildiren oyuncu kendine fazladan süre
-   * kazandırır: Kelime'de tur hiç bitmez, Düşen'de yerçekimi yavaşlar.
+   * kazandırır: Düşen'de yerçekimi yavaşlar, Yılan'da yılan yavaş
+   * ilerler ve tur uzar.
    *
    * Sunucu gerçek süreyi zaten biliyor (`play_sessions.duration_ms`).
    * Karşılaştırabilmesi için oyunun **kendi** süresini de sorması gerekiyor
@@ -137,8 +138,8 @@ export const TICK_MS = 50;
  *
  * Zaman tabanlı oyunlarda saat istemcide işliyor ve tick değerlerini
  * istemci bildiriyor. Az tick bildirmek kendine süre kazandırıyor:
- * Kelime'de tur hiç bitmiyor, Düşen'de yerçekimi yavaşlıyor. Sunucu
- * gerçek süreyi biliyor (`play_sessions.duration_ms`); tek eksik onu
+ * Düşen'de yerçekimi yavaşlıyor, Yılan'da tur uzuyor. Sunucu gerçek
+ * süreyi biliyor (`play_sessions.duration_ms`); tek eksik onu
  * bildirilenle karşılaştırmaktı.
  *
  * ── Neden yarısı, tamamı değil ──────────────────────────────

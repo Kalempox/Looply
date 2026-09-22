@@ -120,7 +120,19 @@ const BIKKINLIK = 0.5;
  * şansını yükseltiyor. Tier'i de açsaydı pahalı ödül yakalanabilir bir
  * hedefe dönerdi ve kafenin günlük bütçesi yönetilemez olurdu (Ü89).
  */
-const ODUL_ISARETI_PAYI = 0.35;
+/*
+  🔴 Ü234'te SIFIRLANDI — sabit kayıt için duruyor.
+
+  İşaret, düşme şansına 0,35 puan ekliyordu. `basariliMi`deki eşik
+  kısayoluyla birlikte Yılan'ı ötekilerden belirgin biçimde kolay hâle
+  getiriyordu. Ürün sahibinin kararı: oyun içi ödül **yalnızca teslimat
+  anı**, ekonomiye dokunmuyor.
+
+  ⚠️ Sıfır bırakıldı, kaldırılmadı: bir gün oyuna özel bir pay
+  gerekirse tartışma bu satırın üstünde yeniden açılır. Sıfır olduğu
+  sürece `dusmeSansi` işareti hiç görmüyor.
+*/
+const ODUL_ISARETI_PAYI = 0;
 
 /** Şans hiçbir koşulda bunun üstüne çıkmıyor. */
 const MUTLAK_TAVAN = 0.95;

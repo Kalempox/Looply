@@ -557,7 +557,7 @@ export async function basla(opts: {
   const kazandirir = !!masa && (masa.kanitMaskesi & K2) !== 0;
 
   // ⚠️ Ü109: kafe bu oyunu kapattıysa oturum HİÇ açılmıyor. Süzgeç
-  // yalnızca katalogda olsaydı adres çubuğuna `/oyna/kelime` yazan
+  // yalnızca katalogda olsaydı adres çubuğuna `/oyna/<oyun>` yazan
   // oyuncu kapalı oyunu oynar ve kapatma bir dilek olarak kalırdı.
   if (!(await oyunSecimi.acikMi(masa?.cafeId ?? null, oyun.id))) {
     return { ok: false, hata: "Bu kafede bu oyun kapalı. Diğer oyunlardan birini seçebilirsin." };
@@ -769,8 +769,8 @@ export async function bitir(opts: {
     // Ü84: bildirilen oyun saati gerçek süreyle tutarlı mı?
     //
     // Zaman tabanlı oyunlarda saat istemcide işliyor. On dakika oturup
-    // "üç saniye geçti" diyen bir kayıt, Kelime'de süreyi hiç doldurmaz
-    // ve tur sonsuza kadar sürer. Reddetme yolu geçersiz replay'inkiyle
+    // "üç saniye geçti" diyen bir kayıt, Düşen'de yerçekimini neredeyse
+    // durdurur ve tur sonsuza kadar sürer. Reddetme yolu geçersiz replay'inkiyle
     // aynı: oturum `rejected` yazılıyor, hiçbir kazanım işlenmiyor.
     if (!saatTutarliMi(sonuc.oyunMs, yas)) {
       await db.query(
@@ -794,7 +794,8 @@ export async function bitir(opts: {
 
     // Ü83: "başarılı" artık oyunun değil ürünün kuralı — skor eşiği.
     // Ü91: oyun içi ödül işareti eşiği atlıyor.
-    const basarili = basariliMi(sonuc.skor, sonuc.odulIsareti);
+    /* Ü234: işaret artık kapıyı açmıyor — tek ölçü skor. */
+    const basarili = basariliMi(sonuc.skor);
 
     const nitelikli = await nitelikliMi(db, {
       playerId: opts.playerId,

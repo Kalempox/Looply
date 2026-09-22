@@ -20,7 +20,7 @@ import {
   komboBul,
   type BlokRengi,
 } from "./blok-yuzey";
-import { useBlokSesi } from "./blok-ses";
+import { useOyunSesi } from "./oyun-ses";
 import type { OyunEkraniProps } from "./ortak";
 
 /**
@@ -183,6 +183,23 @@ export function BlokEkrani({ tohum, bitti, kazandirir = true, cik }: OyunEkraniP
   const [odul, setOdul] = useState<{ anahtar: number; s: number; k: number } | null>(
     null,
   );
+  /*
+    Kartı ekrandan KALDIRAN zamanlayıcı — Ü207.
+
+    Önce yoktu: kart mount kalıyor, yalnızca animasyonun son karesi onu
+    görünmez yapıyordu. Bunun bedeli `prefers-reduced-motion`da
+    görünüyordu — animasyon kapalıyken kart asılı kalmasın diye CSS onu
+    tamamen gizliyordu ve o cihazlarda oyuncu **ödülünü kazandığını hiç
+    görmüyordu.** Kaldırma işi DOM'a geçince o gizleme gereksiz kaldı.
+
+    ⚠️ Süre animasyondan 100 ms uzun: kart kaybolurken kesilmesin.
+  */
+  useEffect(() => {
+    if (!odul) return;
+    const zamanlayici = window.setTimeout(() => setOdul(null), 2300);
+    return () => window.clearTimeout(zamanlayici);
+  }, [odul]);
+
   /** Sürükleme sırasında parmağın altındaki kare. */
   const [hedef, setHedef] = useState<{ t: number; s: number; k: number } | null>(null);
   /**
@@ -201,7 +218,7 @@ export function BlokEkrani({ tohum, bitti, kazandirir = true, cik }: OyunEkraniP
    * Sesler — Ü205. Sessiz başlıyor; kafede varsayılan açık ses
    * masadaki oyuncuyu da yanındakini de rahatsız eder.
    */
-  const ses = useBlokSesi();
+  const ses = useOyunSesi();
 
   /**
    * Tam ekranda arka plan kaymıyor — Ü203.
@@ -810,7 +827,7 @@ export function BlokEkrani({ tohum, bitti, kazandirir = true, cik }: OyunEkraniP
             <div aria-hidden className="pointer-events-none absolute inset-2.5">
               <div
                 key={`odul-${odul.anahtar}`}
-                className="blok-odul absolute flex flex-col items-center gap-1 rounded-2xl px-4 py-3 text-center whitespace-nowrap"
+                className="odul-karti absolute flex flex-col items-center gap-1 rounded-2xl px-4 py-3 text-center whitespace-nowrap"
                 style={{
                   left: `${((odul.k + 0.5) / 8) * 100}%`,
                   top: `${((odul.s + 0.5) / 8) * 100}%`,

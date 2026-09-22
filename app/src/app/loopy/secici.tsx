@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState, useTransition } from "react";
-import { Avatar, type AvatarIfadesi } from "@/components/avatar";
+import { Avatar, DURUS, type AvatarIfadesi } from "@/components/avatar";
 import { Uyari } from "@/components/ui";
 import {
   GOVDE_KUMELERI,
@@ -53,7 +53,7 @@ export function Secici({
   kaydet: (govde: string, serit: string) => Promise<{ ok: boolean }>;
 }) {
   const [secim, setSecim] = useState<Secim>(baslangic);
-  const [ifade, setIfade] = useState<AvatarIfadesi>("sakin");
+  const [ifade, setIfade] = useState<AvatarIfadesi>(DURUS);
   const [hata, setHata] = useState(false);
   const [, basla] = useTransition();
 
@@ -69,7 +69,7 @@ export function Secici({
       // Her seçimde bir an seviniyor: dokunmanın karşılığı görünüyor.
       setIfade("mutlu");
       window.clearTimeout(zamanRef.current);
-      zamanRef.current = window.setTimeout(() => setIfade("sakin"), 1200);
+      zamanRef.current = window.setTimeout(() => setIfade(DURUS), 1200);
 
       basla(async () => {
         const { ok } = await kaydet(yeni.govde, yeni.serit);

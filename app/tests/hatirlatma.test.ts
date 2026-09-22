@@ -71,12 +71,39 @@ async function kuponYaz(opts: {
     // Dönem alt sorgudan geliyor: 0023'ten beri rezerve eden kupon
     // hangi dönemden ayırdığını söylemek zorunda (Ü17 + Ü82). Bu test
     // bütçeyi sınamıyor ama gerçek bir kupon satırına benzemek zorunda.
+    /*
+      🔴 `activates_at` ÇOK ESKİ ve bu kasıtlı — Ü239.
+
+      Hatırlatma adayları `ORDER BY c.activates_at LIMIT 50` ile
+      seçiliyor (`domain/hatirlatma.ts` · `KOSU_TAVANI`): en eski
+      kupon önce, bir koşuda en fazla elli tane.
+
+      Fikstür `now() - 1 dakika` ile yazılıyordu, yani **sıranın en
+      sonundaydı.** Testler ile uygulama aynı veritabanını paylaşıyor;
+      demo tohumu ve simülasyon bekleyen kupon biriktiriyor. Bekleyen
+      aday sayısı elliyi geçtiği anda testin kendi kuponuna sıra hiç
+      gelmiyor ve test "1 bekliyorum, 0 buldum" diye düşüyor —
+      **koda hiç dokunulmadan.**
+
+      Ölçüldü (2026-09-22): kuyruk 340 kupondu, koşu tavanı 50.
+      Belirti "bir koşu geçiyor, bir koşu düşüyor"du: her koşu
+      kuyruktan elli tane eritiyor, kuyruk ellinin altına inince test
+      geçiyordu.
+
+      Doksan gün önce açılmış, yarın süresi dolan bir kupon gerçekçi
+      bir satır ve sıralamada **hep başta** oluyor. Test artık
+      veritabanındaki birikime bakmıyor.
+
+      ⚠️ Ürün hatası DEĞİL: köprü dakikada bir koşuyor, yani 50/dk
+      ile 340'lık kuyruk yedi dakikada eriyor. Sıralama da doğru —
+      en eski kupon önce gider.
+    */
     `INSERT INTO coupons
        (id, cafe_id, player_id, reward_id, code, qr_token, status,
         issued_at, activates_at, expires_at, reserved_kurus, proof_level,
         budget_period_id)
      VALUES ($1,$2,$3,$4,$5,$6,'active',
-             now() - interval '1 hour', now() - interval '1 minute',
+             now() - interval '91 days', now() - interval '90 days',
              now() + ($7 || ' hours')::interval, 2000, 3,
              (SELECT id FROM budget_periods
                WHERE cafe_id = $2 ORDER BY period_start DESC LIMIT 1))`,
@@ -125,6 +152,38 @@ before(async () => {
 beforeEach(async () => {
   await withBypass("test: kota sıfırlama", (db) => db.query("DELETE FROM rate_limits"));
   await yoneticiSorgu(`DELETE FROM sms_outbox WHERE id LIKE 'sms_htr_%'`);
+
+  /*
+    🔴 Ü230 · GÜNLÜK SMS TAVANININ PENCERESİ DE SIFIRLANIYOR.
+
+    Buradaki testler *"hatırlatma yazıldı mı"* diye soruyor ve
+    hatırlatma ancak tavanın altındayken yazılıyor. Tavan (G14,
+    `sms/index.ts`) şunu sayıyor:
+
+        SELECT count(*) FROM sms_outbox
+         WHERE status = 'sent' AND created_at > now() - interval '1 day'
+
+    ⚠️ **Sayılan satırların çoğu bu testlerin değil.** Paketteki her
+    giriş/kayıt testi gerçek bir satır yazıyor, tohum ve simülasyon da
+    yazıyor. Yukarıdaki `sms_htr_%` temizliği yalnızca kendi
+    satırlarını siliyordu; geri kalanlar birikiyor ve paket birkaç kez
+    koşturulunca 2000'e dayanıyor. O noktadan sonra hatırlatma
+    yazılamıyor ve testler 1 beklerken 0 buluyor — koda hiç dokunmadan.
+
+    Bu, "ilk koşuda düşüyor sonra geçiyor" diye görünen eski
+    belirsizliğin asıl mekanizmasıydı (2026-09-21'de teşhis edildi).
+
+    ⚠️ Silme **yalnızca sayılan pencereyi** hedefliyor, tabloyu değil:
+    bir günden eski kayıtlar duruyor. Genel tablo temizliği ayrı bir iş
+    (liste: madde 37 · `sms_outbox` saklama süresi).
+
+    ⚠️ Kapsam dışı satırı silmek bu pakette zaten kurulu bir kalıp —
+    bir satır yukarıda `rate_limits` tamamen siliniyor.
+  */
+  await yoneticiSorgu(
+    `DELETE FROM sms_outbox
+      WHERE status = 'sent' AND created_at > now() - interval '1 day'`,
+  );
 });
 
 after(async () => {

@@ -1,5 +1,6 @@
 import { tohumla } from "./rastgele";
 import { TICK_MS, type Oyun } from "./sozlesme";
+import { odulSirasiGeldi } from "./odul";
 
 /**
  * Yılan — yem topla, kendine ve duvara çarpma.
@@ -158,8 +159,39 @@ function bosHucre(anahtar: string, dolu: readonly number[]): number {
   return bos.length === 0 ? dolu[0] : bos[r.tamsayi(bos.length)];
 }
 
-/** Bu yemden sonra ödül belirecek mi? */
-function odulBelirirMi(tohum: string, yenen: number): boolean {
+/**
+ * Bu yemden sonra ödül belirecek mi?
+ *
+ * ── 🔴 Ü234 · ÖDÜL ARTIK EŞİKTEN SONRA BELİRİYOR ────────────
+ *
+ * Ü91'den beri altın yem skordan bağımsız çıkıyordu ve yakalamak
+ * `basariliMi`de eşiği **tamamen atlıyordu**. Sonucu şuydu: aynı
+ * kafede Yılan oynayan bir müşteri 480 puanla kupon alıyor, Blok
+ * oynayan 500'e ulaşmak zorunda kalıyordu. Ürün sahibi bunu
+ * *"eksiksiz ve doğru kurmalıyız"* diye işaretledi ve **tek kural:
+ * eşik** dedi.
+ *
+ * Kapıyı kapatmak tek başına yetmezdi: eşiğin altında beliren ama
+ * artık hiçbir şey kazandırmayan bir altın yem, **yalan söyleyen** bir
+ * nesne olurdu — Ü91'in *"mekaniği yalan çıkarır"* uyarısı bu kez ters
+ * yönden geçerli olurdu.
+ *
+ * Çözüm ötekilerle aynı: ödül bir **teslimat anı**. Blok, Düşen ve
+ * Sekme'de paket nasıl eşik geçildikten sonra düşüyorsa, burada da
+ * altın yem eşik geçildikten sonra beliriyor ve tur başına **bir kez**
+ * çıkıyor (`odulSirasiGeldi`).
+ *
+ * ⚠️ `ODUL_ILK_YEM` (öğrenme turu) ve `ODUL_YUZDE` korunuyor: eşik
+ * geçilse bile ödül hemen çıkmıyor, birkaç yem sürebiliyor. Anında
+ * çıksaydı "teslimat" değil "otomatik ödeme" gibi okunurdu.
+ */
+function odulBelirirMi(
+  tohum: string,
+  yenen: number,
+  skor: number,
+  verildi: boolean,
+): boolean {
+  if (!odulSirasiGeldi(skor, verildi)) return false;
   return (
     yenen >= ODUL_ILK_YEM && tohumla(`${tohum}:yilan:odul:${yenen}`).tamsayi(100) < ODUL_YUZDE
   );
@@ -339,7 +371,11 @@ function adimAt(durum: YilanDurumu): YilanDurumu {
   // Ödül yalnızca tahtada başkası yokken beliriyor: iki ödül aynı anda
   // durursa oyuncu birini kaçırdığına üzülmek yerine ikisini birden
   // toplamaya çalışır ve mekanik "karar" olmaktan çıkar.
-  if (odul === null && odulBelirirMi(durum.tohum, yenen)) {
+  /* ⚠️ Skor bu satırda HENÜZ yemin puanını almadı (aşağıda ekleniyor);
+     eşik kontrolü yemle birlikte yapılmalı ki oyuncu 500'ü geçtiği
+     yemde ödülü bekletmeden görebilsin. */
+  const skorSimdi = skor + yemPuani(durum.yenen);
+  if (odul === null && odulBelirirMi(durum.tohum, yenen, skorSimdi, yakalanan > 0)) {
     odul = bosHucre(`${durum.tohum}:yilan:odulyer:${yenen}`, [...govde, yem]);
     kalan = ODUL_OMRU_ADIM;
   }

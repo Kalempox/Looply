@@ -128,61 +128,59 @@ export function SeriSahnesi({
       <button
         type="button"
         onClick={() => setAcik(true)}
-        className={`kart-golge kart-gel relative w-full overflow-hidden rounded-3xl px-5 py-5 text-left transition-transform hover:-translate-y-0.5 ${
-          riskte ? "text-white" : ""
-        }`}
-        style={
+        className="kart-golge kart-gel relative w-full overflow-hidden rounded-3xl px-5 py-5 text-left text-white transition-transform hover:-translate-y-0.5"
+        style={{
           /*
-            🔴 Riskteyken KOYU bilet, değilken sakin beyaz — Ü188.
+            🔴 Ü224 · kart HER İKİ HÂLDE DE koyu.
 
-            İki durumlu olması Ü65'ten beri bilinçli: rengin işi burada
-            "bugün bir şey yapman gerekiyor" demek, süs değil. Değişen
-            şey renkli hâlin DİLİ. Ü171–Ü188 arasında ana ekranın bütün
-            kartları koyu bilet ailesine geçti; bu kart pastel amberde
-            kalınca ürün sahibi *"bu ikisinin de kart tasarımını
-            değiştirelim"* dedi. Aynı ekranda iki dil vardı.
+            Ü188'de sakin hâl beyaz bırakılmıştı ve gerekçesi şuydu:
+            *"koyuya çevirmek 'bir şey yap' demenin tek işaretini
+            silerdi."* Ürün sahibi vitrin karesinde beyaz hâli görüp
+            *"neden eski duruyor"* dedi ve *"her zaman böyle olsun"*
+            kararını verdi — yani beyaz kart, **güncellenmemiş** gibi
+            okunuyor. Kullanıcının kartı nasıl okuduğu, bizim ona
+            yüklediğimiz anlamdan önce gelir.
 
-            Sakin hâli beyaz KALIYOR ve bu da bilerek: koyuya çevirmek
-            "bir şey yap" demenin tek işaretini silerdi.
+            ⚠️ Ü188'in kaygısı boşa düşmedi: risk işareti silinmedi,
+            **taşındı**. Kartın rengi yerine dalgaların vurgusu, cümle
+            ve okun rengi söylüyor (aşağıda). Böylece "bugün bir şey
+            yapman gerekiyor" hâlâ görülüyor ama kart hiçbir zaman
+            yarım kalmış gibi durmuyor.
           */
-          riskte
-            ? { background: `linear-gradient(115deg, ${r.koyu} 0%, ${r.ana} 100%)` }
-            : { background: "var(--color-yuzey)", border: "1px solid var(--color-cizgi)" }
-        }
+          background: `linear-gradient(115deg, ${r.koyu} 0%, ${r.ana} 100%)`,
+        }}
       >
-        {riskte && (
-          <>
-            {/* Ü189: dalgalı zemin + ateşte koşan Loopy. Görsel sağdan
-                ve üstten taşıyor; kartın içine sığdırılmış hâli
-                "buraya bir ikon koyduk" diye okunuyor (Ü181). */}
-            <KartDalgalari vurgu="rgba(239,68,68,.34)" />
-            <span aria-hidden className="pointer-events-none absolute -top-7 -right-8">
-              <KartResmi ad="ates" boy={168} />
-            </span>
-          </>
-        )}
+        {/* Ü189: dalgalı zemin + ateşte koşan Loopy. Görsel sağdan
+            ve üstten taşıyor; kartın içine sığdırılmış hâli
+            "buraya bir ikon koyduk" diye okunuyor (Ü181).
+
+            ⚠️ Dalga vurgusu risk işaretini taşıyan yer: riskteyken
+            kırmızı, sakinken altın. Alev görseli ikisinde de duruyor —
+            alev burada aciliyet değil **seri** demek, her uygulamada
+            olduğu gibi. */}
+        <KartDalgalari vurgu={riskte ? "rgba(239,68,68,.34)" : "rgba(253,224,71,.30)"} />
+        <span aria-hidden className="pointer-events-none absolute -top-7 -right-8">
+          <KartResmi ad="ates" boy={168} />
+        </span>
 
         {/* ⚠️ Metin kolonu riskteyken DAR: sağın üçte biri görselin ve
             tam genişlikte bir satır onun altına girerdi. Sakin hâlde
             görsel yok, kolon tam genişlikte kalıyor. */}
-        <span
-          className={`relative flex items-center gap-4 ${riskte ? "max-w-[64%]" : ""}`}
-        >
-          {/* ⚠️ Alev simgesi yalnızca SAKİN hâlde: riskteyken kartta
-              zaten kocaman bir alev var ve ikisi aynı şeyi iki kez
-              söylüyordu. */}
-          {!riskte && (
-            <span className="shrink-0">
-              <AlevIkonu boy={40} />
-            </span>
-          )}
+        {/* ⚠️ Metin kolonu DAR: sağın üçte biri görselin ve tam
+            genişlikte bir satır onun altına girerdi.
+
+            ⚠️ Küçük alev simgesi KALKTI (Ü224): kartta zaten kocaman
+            bir alev var ve ikisi aynı şeyi iki kez söylüyordu. Ü188'de
+            yalnızca sakin hâlde duruyordu çünkü o hâlde büyük görsel
+            yoktu; artık her hâlde var. */}
+        <span className="relative flex max-w-[64%] items-center gap-4">
           <span className="min-w-0 flex-1">
             <span className="block font-display text-lg leading-tight font-bold">
               {gun} gün üst üste
             </span>
             <span
               className="mt-1 block text-[13px] leading-relaxed"
-              style={{ color: riskte ? "rgba(255,255,255,.8)" : "var(--color-yazi-sonuk)" }}
+              style={{ color: "rgba(255,255,255,.8)" }}
             >
               {riskte
                 ? `Bugün oynamazsan seri sıfırlanır. Oynarsan ${bonus} puan bonus.`
@@ -192,7 +190,9 @@ export function SeriSahnesi({
           <span
             aria-hidden
             className="text-[18px]"
-            style={{ color: riskte ? r.canli : "var(--color-yazi-sonuk)" }}
+            /* Ok da risk işaretini taşıyor: riskteyken canlı, sakinken
+               solgun. Kartın rengi artık ayırt etmiyor. */
+            style={{ color: riskte ? r.canli : "rgba(255,255,255,.55)" }}
           >
             →
           </span>

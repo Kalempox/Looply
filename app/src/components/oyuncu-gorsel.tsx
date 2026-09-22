@@ -44,8 +44,9 @@ export type GorselAdi =
   | "para"
   /* Oyunlar */
   | "blok"
-  | "kelime"
   | "dusen"
+  | "sekme"
+  | "bicak"
   /* Ekran başlıkları — Ü68 */
   | "bilet"
   | "kupa"
@@ -210,10 +211,19 @@ export const GORSEL_RENGI = {
  */
 const OYUN_GORSELI: Record<string, GorselAdi> = {
   blok: "blok",
-  kelime: "kelime",
+  // Ü208: `kelime` kaldırıldı — oyun sistemden çıktı, çizimi de.
   dusen: "dusen",
+  /*
+    🔴 Ü221: `sekme` BURAYA YAZILMADIĞI İÇİN Blok'un çizimini
+    kullanıyordu. Aşağıdaki `?? "blok"` yedeği ekranı boş bırakmıyor
+    ama sessiz: oyun Ü217'de eklendi, satır unutuldu ve katalogda iki
+    oyun aynı göründü. Yeni oyun eklerken bu satır da eklenmeli.
+  */
+  sekme: "sekme",
   // Ü91: yılanın kendi çizimi yok; kumanda çizimi oyun kartında duruyor.
   yilan: "kumanda",
+  // Ü235 — yukarıdaki uyarı okunarak ilk seferde eklendi.
+  bicak: "bicak",
 };
 
 export function oyunGorseli(oyunId: string): GorselAdi {
@@ -251,6 +261,37 @@ export function Gorsel({
 
 /** Referans ikonların çizgi kalınlığı — 512'lik kutuda 20 birim. */
 const CIZGI = 20;
+
+/**
+ * Kütüğe saplanmış tek bıçak — Ü235.
+ *
+ * Ucu (256, 340)'ta, yani kütüğün merkezinden (256, 256) 84 birim
+ * aşağıda: dış halkanın (r=120) içinde, göbeğin (r=44) dışında.
+ * `derece` bıçağı kütüğün merkezi etrafında çeviriyor.
+ *
+ * ⚠️ Uç göbeğe değmiyor. Değseydi üç çizgi tek noktada birleşir ve
+ * küçük boyda leke olurdu — aynı sınır `SekmeIkonu`'nun izinde de
+ * ölçülmüştü.
+ *
+ * 🔴 Sapın ucu merkezden **240 birim** uzakta ve kutunun yarısı 256:
+ * 20 birimlik çizgi kalınlığının yarısıyla birlikte 250 ediyor. Bu
+ * yüzden kütük **tam ortada** duruyor — o zaman bıçak hangi açıya
+ * çevrilirse çevrilsin kutuya sığıyor. Kütük yukarı kaydırılsaydı
+ * (ilk denemede öyleydi) yukarı bakan bıçağın sapı üst kenardan
+ * taşardı.
+ */
+function sapliBicak(derece: number) {
+  return (
+    <g transform={`rotate(${derece} 256 256)`}>
+      {/* Ağız */}
+      <path d="M234 450V384l22-44 22 44v66" />
+      {/* Balçak */}
+      <path d="M222 450h68" />
+      {/* Sap */}
+      <path d="M240 462h32v18a16 16 0 0 1-32 0v-18Z" />
+    </g>
+  );
+}
 
 /*
  * Çizimler modül seviyesinde sabit elemanlar.
@@ -349,20 +390,6 @@ const CIZIM: Record<GorselAdi, React.ReactElement> = {
     </g>
   ),
 
-  /** Kelime — üst üste binen harf taşları. */
-  kelime: (
-    <g>
-      <rect x="20" y="20" width="220" height="220" rx="44" />
-      <rect x="72" y="72" width="116" height="116" rx="12" />
-      <rect x="272" y="20" width="220" height="220" rx="44" />
-      <circle cx="382" cy="130" r="52" />
-      <rect x="20" y="272" width="220" height="220" rx="44" />
-      <path d="M110 442V322h44a40 40 0 0 1 0 80h-44m52 0 42 40" />
-      <rect x="272" y="272" width="220" height="220" rx="44" />
-      <path d="M348 442V322h40c34 0 56 24 56 60s-22 60-56 60h-40Z" />
-    </g>
-  ),
-
   /** Düşen — inen parça ve biriken duvar. */
   dusen: (
     <g>
@@ -373,6 +400,95 @@ const CIZIM: Record<GorselAdi, React.ReactElement> = {
       {/* Duvar */}
       <path d="M30 322h75v-80h150v-80h75v160h152v160H30V322Z" />
       <path d="M105 322v160M180 322v160M255 322v160M330 322v160M405 322v160M30 402h452" />
+    </g>
+  ),
+
+  /**
+   * Sekme — üstteki sıra, sekerek çıkan top — Ü221.
+   *
+   * ── 🔴 Neden gerekliydi ─────────────────────────────────────
+   *
+   * Ü217'de oyun eklendi ama çizimi eklenmedi ve `oyunGorseli`
+   * tanımadığı kimliği **sessizce `blok`a düşürüyor**: katalogda,
+   * oyun kabuğunda ve misafir ekranında Sekme, **Blok'un çizimiyle**
+   * duruyordu. Yedek değerin sessiz olması burada doğru (ekran
+   * boş kalmıyor) ama dolduruluncaya kadar iki oyun aynı görünüyor.
+   *
+   * ── Ne çiziliyor ────────────────────────────────────────────
+   *
+   * Oyunun üç ayırt edici parçası: üstteki **sıra**, içinde bir
+   * **üçgen** (Ü218) ve aşağıdan çıkıp **seken** top. Üçgen olmazsa
+   * çizim Blok'un sırasından ayırt edilemezdi; sekme olmazsa
+   * Düşen'den.
+   *
+   * ⚠️ İz **kesik çizgi**: düz çizilseydi `dusen`in duvar çizgileriyle
+   * aynı dili konuşur ve bir engel gibi okunurdu. Kesik çizgi yol
+   * demek.
+   *
+   * ⚠️ Sekme noktası sağ duvarda ve yansıma **gerçek**: gelen yön
+   * (206,−158), giden (−206,−158). Yanlış açıyla çizilmiş bir iz,
+   * oyunun tek mekaniğini yanlış anlatırdı.
+   */
+  sekme: (
+    <g>
+      {/* Üst sıra — üç kutu ve bir üçgen. */}
+      <rect x="40" y="40" width="102" height="88" rx="16" />
+      <rect x="150" y="40" width="102" height="88" rx="16" />
+      <path d="M260 128V40l102 88Z" />
+      <rect x="370" y="40" width="102" height="88" rx="16" />
+
+      {/* Atış izi — sağ duvardan sekiyor. */}
+      <path
+        d="M262 430 468 272 306 148"
+        strokeDasharray="34 30"
+        opacity="0.75"
+      />
+
+      {/* Top. */}
+      <circle cx="256" cy="452" r="30" fill="currentColor" stroke="none" />
+    </g>
+  ),
+
+  /**
+   * Bıçak — kütük ve ona saplanmış bıçaklar (Ü235).
+   *
+   * ── 🔴 İlk çizim ekranda çalışmadı ──────────────────────────
+   *
+   * İlk sürümde kütük yukarıdaydı ve altında, kutu kenarından
+   * kırpılmış bir **gelen bıçak** duruyordu: "henüz saplanmadı"
+   * demesi gerekiyordu. Tarayıcıda bakıldığında bıçak gibi değil,
+   * kapısı olan küçük bir **ev** gibi okunuyordu — ağzın kesik
+   * ucu çatı, balçak çizgisi saçak, sapın görünen kısmı kapı.
+   *
+   * Kırpılmış bir nesne "devam ediyor" demiyor; başka bir nesne
+   * oluyor. Gelen bıçak kaldırıldı.
+   *
+   * ── Ne çiziliyor ────────────────────────────────────────────
+   *
+   * Kütük ve üç saplı bıçak. Referansın (Knife Hit) kendi kimliği
+   * de bu: bıçak dolu bir kütük. "Atma anı" çizime girmiyor çünkü
+   * tek kare onu anlatamıyor — kart zaten oyunun adını taşıyor.
+   *
+   * ⚠️ Bıçakların ağzı halkayı **kesiyor**, ucu içeride bitiyor.
+   * Çizim kontur olduğu için halka altındakini örtemez;
+   * "saplanmış" olduğunu söyleyen şey ucun içeride, sapın dışarıda
+   * kalması.
+   *
+   * ⚠️ Açılar eşit aralıklı DEĞİL (10° · 130° · −110°): eşit
+   * aralık üç kollu bir pervane veriyor ve oyunun bütün gerilimi
+   * bıçakların düzensiz dizilmesinde. Düzenli bir çember,
+   * kazanılmış bir tur gibi duruyordu.
+   */
+  bicak: (
+    <g>
+      {/* Saplı bıçaklar — halkadan önce ama kontur olduğu için örtme yok. */}
+      {sapliBicak(10)}
+      {sapliBicak(130)}
+      {sapliBicak(-110)}
+
+      {/* Kütük — dış halka ve göbek. */}
+      <circle cx="256" cy="256" r="120" />
+      <circle cx="256" cy="256" r="44" />
     </g>
   ),
 

@@ -1,9 +1,10 @@
 "use client";
 
 import type { OyunEkraniProps } from "./ortak";
+import { BicakEkrani } from "./bicak-ekran";
 import { BlokEkrani } from "./blok-ekran";
-import { KelimeEkrani } from "./kelime-ekran";
 import { DusenEkrani } from "./dusen-ekran";
+import { SekmeEkrani } from "./sekme-ekran";
 import { YilanEkrani } from "./yilan-ekran";
 
 /**
@@ -29,12 +30,14 @@ export function OyunEkrani({ oyunId, ...props }: OyunEkraniProps) {
   switch (oyunId) {
     case "blok":
       return <BlokEkrani oyunId={oyunId} {...props} />;
-    case "kelime":
-      return <KelimeEkrani oyunId={oyunId} {...props} />;
     case "dusen":
       return <DusenEkrani oyunId={oyunId} {...props} />;
+    case "sekme":
+      return <SekmeEkrani oyunId={oyunId} {...props} />;
     case "yilan":
       return <YilanEkrani oyunId={oyunId} {...props} />;
+    case "bicak":
+      return <BicakEkrani oyunId={oyunId} {...props} />;
     default:
       return <p className="text-tehlike">Bu oyunun ekranı bulunamadı.</p>;
   }

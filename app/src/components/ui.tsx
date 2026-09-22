@@ -92,12 +92,40 @@ export function Uyari({
 }
 
 /** Masa künyesi — hangi kafede, hangi masada olduğun her ekranda görünür. */
+/**
+ * "Buradasın" künyesi — kafe ve masa.
+ *
+ * ── 🔴 Ü222 · kafe düzeyindeki karekodda ad İKİ KEZ yazıyordu ─
+ *
+ * Ekranda **"Kafe A · Kafe A"** görünüyordu ve bu bir veri hatası
+ * değil: göç 0038 kafenin kendi karekodunun etiketini bilerek kafenin
+ * **adı** yapıyor (bkz. `domain/masa-yonetim.ts` → `kafeKarekodu`).
+ * Yani satır doğru, ekran onu ikinci kez basıyordu.
+ *
+ * Masaya asılmış bir kodda "Kafe A · Masa 3" doğru; kafenin genel
+ * kodunda ikinci parça yok. `masaAdi()` ikisini ayırıyor.
+ *
+ * ⚠️ Karşılaştırma **kırpılmış**: panelden girilen etiketlerde
+ * görünmeyen boşluk kalabiliyor ve "Kafe A " ile "Kafe A" eşitse
+ * kullanıcı için de eşittir.
+ */
+export function masaKunyesi(kafe: string, masa: string): string {
+  return masa.trim() === kafe.trim() ? kafe : `${kafe} · ${masa}`;
+}
+
 export function MasaKunyesi({ kafe, masa }: { kafe: string; masa: string }) {
+  const ayri = masa.trim() !== kafe.trim();
   return (
     <div className="mb-8 rounded-2xl border border-vurgu bg-yuzey px-4 py-3.5">
       <div className="etiket-caps text-yazi-sonuk">Buradasın</div>
       <div className="mt-1 font-display text-lg font-bold">
-        {kafe} <span className="text-yazi-sonuk">·</span> {masa}
+        {kafe}
+        {ayri && (
+          <>
+            {" "}
+            <span className="text-yazi-sonuk">·</span> {masa}
+          </>
+        )}
       </div>
     </div>
   );

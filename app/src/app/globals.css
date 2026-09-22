@@ -340,7 +340,10 @@ body {
 }
 
 /* Kupon eşiği geçildi — turun en büyük anı, tahtanın ortasında. */
-@keyframes blok-odul {
+/* ── Ödül teslim kartı — Blok ve Düşen ortak (Ü203 · Ü207) ───
+   Adı `blok-odul` idi; ikinci oyun da kullanınca oyunun adını taşıması
+   yanlış oldu. Kart iki oyunda da aynı şeyi söylüyor, aynı görünmeli. */
+@keyframes odul-karti {
   0% {
     opacity: 0;
     transform: translate(-50%, -50%) scale(0.55) rotate(-6deg);
@@ -362,8 +365,251 @@ body {
   }
 }
 
-.blok-odul {
-  animation: blok-odul 2200ms cubic-bezier(0.2, 0.8, 0.3, 1) both;
+.odul-karti {
+  animation: odul-karti 2200ms cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+
+/* ── Düşen'in sahnesi — Ü209 ─────────────────────────────────
+   Ürün sahibinin referansı uzayda geçiyor. Yıldızlar tek bir ögede,
+   `radial-gradient` noktalarıyla: yüz tane `<span>` yerine bir zemin.
+
+   ⚠️ `background-size` ile iki ayrı katman farklı hızda nefes alıyor;
+   tek katman olsaydı bütün yıldızlar aynı anda parlar ve yanıp sönen
+   bir ampul gibi dururdu. */
+.dusen-yildiz {
+  background-image:
+    radial-gradient(1.4px 1.4px at 18% 12%, rgba(255, 255, 255, 0.85), transparent),
+    radial-gradient(1.2px 1.2px at 72% 8%, rgba(190, 230, 255, 0.8), transparent),
+    radial-gradient(1.6px 1.6px at 41% 26%, rgba(255, 255, 255, 0.7), transparent),
+    radial-gradient(1.1px 1.1px at 88% 34%, rgba(214, 190, 255, 0.75), transparent),
+    radial-gradient(1.3px 1.3px at 9% 48%, rgba(255, 255, 255, 0.6), transparent),
+    radial-gradient(1.2px 1.2px at 63% 61%, rgba(190, 230, 255, 0.55), transparent),
+    radial-gradient(1.5px 1.5px at 31% 78%, rgba(255, 255, 255, 0.5), transparent),
+    radial-gradient(1.1px 1.1px at 84% 88%, rgba(214, 190, 255, 0.5), transparent);
+  animation: dusen-yildiz 7s ease-in-out infinite;
+}
+
+@keyframes dusen-yildiz {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Skor değişince kısa bir zıplama — sayı arttığını hissettirmeli. */
+@keyframes dusen-skor {
+  0% {
+    transform: scale(1.22);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.dusen-skor {
+  display: inline-block;
+  animation: dusen-skor 220ms cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+
+/* Dört satır birden: 2 piksellik sarsıntı. Ü202'de ürün sahibinin
+   Blok için verdiği ölçü; aynı el burada da. */
+@keyframes dusen-sars {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  20% {
+    transform: translate(-2px, 1px);
+  }
+  45% {
+    transform: translate(2px, -1px);
+  }
+  70% {
+    transform: translate(-1px, -1px);
+  }
+}
+
+.dusen-sars {
+  animation: dusen-sars 260ms ease-in-out both;
+}
+
+/* Silinen satırda soldan sağa geçen ışık — patlamadan ÖNCE.
+   ⚠️ Sıra önemli: önce süpürge, sonra patlama. Aynı anda olsalardı
+   hangi satırın silindiği görünmez, yalnızca bir parlama olurdu. */
+@keyframes dusen-supurge {
+  0% {
+    opacity: 0;
+    transform: translateX(-100%);
+  }
+  25% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+}
+
+.dusen-supurge {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.9) 45%,
+    rgba(94, 233, 255, 0.9) 55%,
+    transparent 100%
+  );
+  animation: dusen-supurge 300ms cubic-bezier(0.35, 0.1, 0.25, 1) both;
+}
+
+/* Silinen hücre: parlayıp büyüyerek kayboluyor. */
+@keyframes dusen-patla {
+  0% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+  30% {
+    transform: scale(1.18);
+    filter: brightness(2.4);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.5);
+    filter: brightness(2.4);
+  }
+}
+
+.dusen-patla {
+  animation: dusen-patla 380ms cubic-bezier(0.2, 0.8, 0.3, 1) both;
+  animation-delay: 160ms;
+}
+
+/* Parçacık: süpürge geçtikten sonra savruluyor. */
+@keyframes dusen-parcacik {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.4);
+  }
+  18% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--u)), calc(-50% + var(--v))) scale(0.2);
+  }
+}
+
+.dusen-parcacik {
+  animation: dusen-parcacik 620ms cubic-bezier(0.2, 0.7, 0.4, 1) both;
+}
+
+/* İKİLİ / ÜÇLÜ / MÜKEMMEL! */
+@keyframes dusen-kombo {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 6px) scale(0.6);
+  }
+  22% {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1.12);
+  }
+  34% {
+    transform: translate(-50%, 0) scale(1);
+  }
+  72% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -20px) scale(1);
+  }
+}
+
+.dusen-kombo {
+  animation: dusen-kombo 900ms cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+
+/* Düşen'in paketli parçası — Ü207.
+   ⚠️ Düşen'de inen parça ZATEN altın (`tahta.tsx` · "aktif"): paketi
+   yalnızca renkle ayırmak imkânsızdı. Ayıran şeyler kurdele deseni,
+   hediye rozeti ve bu nabız. Nabız yavaş ve küçük — inen parçanın
+   okunurluğunu bozmamalı, oyuncu onu yerleştirecek. */
+@keyframes dusen-paket {
+  0%,
+  100% {
+    box-shadow:
+      inset 0 0 0 1.5px rgba(255, 243, 196, 0.9),
+      0 0 4px rgba(255, 215, 94, 0.55);
+  }
+  50% {
+    box-shadow:
+      inset 0 0 0 1.5px rgba(255, 252, 235, 1),
+      0 0 11px rgba(255, 215, 94, 0.95);
+  }
+}
+
+.dusen-paket {
+  animation: dusen-paket 1100ms ease-in-out infinite;
+}
+
+/* ── Bıçak — Ü235 · Ü236 ─────────────────────────────────────
+   🔴 Ürün sahibi: *"kullanıcı her ekrana dokunduğunda bıçak
+   fırlamalı."* İlk sürümde saplanan bıçak, duracağı yerin 42'sinden
+   geliyordu — bıçağın boyunun yarısı kadar, yani ekranda hiç yol
+   almıyordu. Fırlatma görünmüyordu.
+
+   Şimdi yol `--bicak-ucus` ile geliyor ve sıradaki bıçağın durduğu
+   yere kadar uzanıyor (`bicak-ekran.tsx` · `UCUS`): bıçak ekranın
+   dibinden kalkıp kütüğe saplanıyor.
+
+   ⚠️ Değişken elle YAZILMIYOR, ekranda yerleşim sabitlerinden
+   türüyor. Burada sabit bir sayı dursaydı kütüğün yeri değiştiği
+   gün bıçak yolun ortasında belirirdi.
+
+   ⚠️ `translateY` bıçağın KENDİ ekseninde: öge kütükle birlikte
+   dönen bir katmanın içinde, yani "aşağı" her zaman bıçağın sap
+   tarafı. Ekran koordinatında verilseydi kütük yarım tur dönmüşken
+   bıçak yukarıdan gelirdi.
+
+   ⚠️ Süre 130ms ve **hızlanarak değil yavaşlayarak** bitiyor:
+   oyuncu varışta kütüğün nerede olduğunu okumak zorunda ve sert
+   duran bir bıçak gözü orada tutuyor. */
+@keyframes bicak-sapla {
+  0% {
+    transform: translate(-50%, var(--bicak-ucus, 360%));
+  }
+  82% {
+    transform: translate(-50%, -3%);
+  }
+  100% {
+    transform: translate(-50%, 0);
+  }
+}
+
+.bicak-sapla {
+  animation: bicak-sapla 130ms cubic-bezier(0.3, 0.7, 0.4, 1) both;
+}
+
+/* Sıradaki bıçak: alttan kayıp yerine geliyor.
+
+   ⚠️ 110ms GECİKMELİ: uçan bıçak tam bu noktadan kalkıyor ve
+   gecikme olmasaydı ikisi bir kare boyunca üst üste dururdu —
+   oyuncu iki bıçak görürdü. */
+@keyframes bicak-hazir {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 60%);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+.bicak-hazir {
+  animation: bicak-hazir 140ms cubic-bezier(0.2, 0.8, 0.3, 1) 110ms both;
 }
 
 /* ── Ü202: ürün sahibinin ölçülü tarifi ──────────────────────
@@ -518,7 +764,15 @@ body {
   .blok-patla,
   .blok-puan,
   .blok-sars,
-  .blok-odul,
+  .odul-karti,
+  .dusen-paket,
+  .dusen-yildiz,
+  .dusen-skor,
+  .dusen-sars,
+  .dusen-supurge,
+  .dusen-patla,
+  .dusen-parcacik,
+  .dusen-kombo,
   .blok-otur,
   .blok-vurus,
   .blok-halka,
@@ -528,18 +782,37 @@ body {
   .blok-yildiz {
     animation: none !important;
   }
-  /* ⚠️ Patlama ve ödül GÖRÜNMEZ kalıyor, donmuş hâlde değil: animasyon
-     kapatılınca `both` son kareyi bırakır ve ödül kutlaması ekranın
-     ortasında kalıcı olarak asılı kalırdı. */
+  /* ⚠️ Patlama efektleri GÖRÜNMEZ kalıyor, donmuş hâlde değil: animasyon
+     kapatılınca `both` son kareyi bırakır ve efekt ekranda asılı kalırdı.
+     Süslerin kaybolmasında bir kayıp yok — hepsi tekrar.
+
+     🔴 Ödül kartı bu listede DEĞİL — Ü207.
+
+     Eskiden buradaydı ve sonucu şuydu: hareketi azaltılmış cihazda
+     oyuncu ödülünü kazandığını **hiç görmüyordu.** Turun tek gerçek
+     haberini erişilebilirlik ayarına kurban etmek, kartı asılı
+     bırakmaktan daha kötü.
+
+     Asılı da kalmıyor: iki ekran da kartı kendisi kaldırıyor (Blok
+     zamanlayıcıyla, Düşen tick sayacıyla). Görünürlüğü artık CSS'e
+     bırakılmış bir yan etki değil. */
   .blok-patla,
   .blok-puan,
-  .blok-odul,
   .blok-halka,
   .blok-supurge,
   .blok-parcacik,
-  .blok-kombo {
+  .blok-kombo,
+  .dusen-supurge,
+  .dusen-parcacik,
+  .dusen-kombo {
     opacity: 0;
   }
+
+  /* ⚠️ `.dusen-patla` burada DEĞİL: animasyonu kapatınca son kare
+     (`opacity: 0`) düşer ve hücre görünür kalır — doğrusu da bu.
+     Silinen satır zaten bir sonraki karede tahtadan gidiyor; hareketi
+     azaltılmış cihazda geçiş anında kaybolmuş olması bir kayıp değil,
+     asılı kalması ise hayalet hücre bırakırdı. */
 }
 
 /* ── Ödül açılışı (Ü56) ──────────────────────────────────────
@@ -887,8 +1160,24 @@ body {
 }
 
 /* Çağrı düğmesi bir kez nabız atıyor, sonra duruyor: sürekli atan bir
-   düğme reklam bandı gibi okunuyor ve tıklanmıyor. */
-@keyframes nabiz {
+   düğme reklam bandı gibi okunuyor ve tıklanmıyor.
+
+   🔴 Adı `nabiz` değil `nabiz-halka` — Ü212'de bulundu.
+
+   İkisi de `nabiz` adını taşıyordu ve CSS'te aynı adlı iki
+   `@keyframes`ten **sonuncusu kazanıyor.** Yani yukarıdaki opaklık
+   nabzı ölü koddu ve `.nabiz` kullanan her öge (misafir ekranındaki
+   ipucu, konum bekleme noktası, Yılan'ın yemi ve ödülü) bunun yerine
+   bu mavi halkayı koşuyordu.
+
+   Bedeli iki katlıydı: animasyon `box-shadow`u sürdüğü için o ögelerin
+   **kendi parıltısı siliniyor**, yerine ürünün hiçbir yerinde olmayan
+   mavi bir halka geliyordu. Tarayıcıda ölçüldü:
+   `rgba(37,99,235,.18) 0 0 0 10px`.
+
+   Sessiz bir hataydı — kimse "yemin parıltısı kayboldu" diye
+   bildirmez, oyun sadece sönük görünür. */
+@keyframes nabiz-halka {
   0%,
   100% {
     box-shadow: 0 0 0 0 rgba(37, 99, 235, 0);
@@ -902,7 +1191,7 @@ body {
 }
 
 .nabiz-bir-kez {
-  animation: nabiz 2.2s ease-out 1.2s 3;
+  animation: nabiz-halka 2.2s ease-out 1.2s 3;
 }
 
 /* ── Kupon kazıma (Ü141) ─────────────────────────────────────
@@ -1246,21 +1535,44 @@ body {
     opacity: 0.75;
   }
   100% {
-    transform: translate(calc(-50% + var(--savrul, 0px)), -34px) scale(1.5);
+    transform: translate(
+        calc(-50% + var(--savrul, 0px)),
+        calc(var(--loopy-boy, 120px) * -0.15)
+      )
+      scale(1.5);
     opacity: 0;
   }
 }
 
+/* 🔴 Ü219 · buhar İLK KEZ açıldı ve ölçüm iki hatayı buldu.
+
+   Ü182 bu kuralı yazdı ama `buhar` propunu hiçbir ekran açmamıştı;
+   yani geometri bugüne kadar hiç görülmedi. Vitrinin maskot bölümü ilk
+   çağıran (`vitrin-loopy.tsx`).
+
+   1 · **`top` 12% → 25%.** Yorumda *"karakterin tepesi karenin
+       ~%17'sinde"* yazıyordu; `loopy-sakin-sabit-512.webp`nin alfası
+       ölçüldü ve ilk dolu satır **%20,9**. Kutu ayrıca kareden uzun
+       (`boy × 1.06`) ve resim ALTA yaslı, yani kapak kutunun
+       %26,9'unda — kutu yüksekliğine göre %25,4. Buhar 13 puan yukarıda
+       doğuyordu: 228 pikselde 31 piksel, bardakla arasında boşluk olan
+       iki nokta gibi.
+
+   2 · **Ölçüler piksel değil, boyun oranı.** 9px tutam, 2.5px
+       bulanıklık ve −34px yükseliş yalnızca ~228 pikselde doğruydu.
+       Oranlar (0.04 · 0.011 · 0.15) o boyda birebir aynı pikselleri
+       veriyor — yani görüntü değişmiyor, ölçeklenebilir oluyor. */
 .loopy-buhar {
   position: absolute;
-  /* Kapağın üstü: karakterin tepesi karenin ~%17'sinde başlıyor. */
-  top: 12%;
+  /* Kapağın üstü — ölçülerek: resim %20,9'da başlıyor, kutu boyun
+     1,06 katı ve resim alta yaslı → (0.06 + 0.209) / 1.06 ≈ %25,4. */
+  top: 25%;
   left: 50%;
-  width: 9px;
-  height: 9px;
+  width: calc(var(--loopy-boy, 120px) * 0.04);
+  height: calc(var(--loopy-boy, 120px) * 0.04);
   border-radius: 50%;
   background: #fff;
-  filter: blur(2.5px);
+  filter: blur(calc(var(--loopy-boy, 120px) * 0.011));
   animation: loopy-buhar-yuksel 2.6s ease-out infinite;
 }
 

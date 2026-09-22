@@ -110,7 +110,34 @@ export type BiletVerisi = {
   };
 };
 
-export function Bilet({ veri }: { veri: BiletVerisi }) {
+/**
+ * Süs kipi — Ü223.
+ *
+ * ── 🔴 Neden bir kip eklendi ────────────────────────────────
+ *
+ * Vitrindeki kaydırmalı sahnede gökten kupon yağıyor ve o kartlar
+ * biletin **taklidiydi**: beyaz kutu, altın bir bilet simgesi, bir
+ * satır yazı. Ürünün gerçek kuponu ise Ü72'den beri koyu doygun
+ * zeminli, desenli ve üstünde Loopy'nin ödülü yaşadığı illüstrasyon
+ * var (Ü189). Yani vitrin, sayfanın kendi kuralını çiğniyordu:
+ * *"ekranların hepsi gerçek"*.
+ *
+ * Taklidi düzeltmek yerine gerçeği ödünç vermek doğru olanı: bilet
+ * değişince vitrin de kendiliğinden değişiyor. Bu deponun adı konmuş
+ * hatası tam tersi (Ü71: *"yüzey tek yerden gelmezse her turda bir
+ * ekran geride kalıyor"*).
+ *
+ * ── Neden `sonuk` ile yapılamadı ────────────────────────────
+ *
+ * `sonuk` zaten bağlantısız bir `<div>` üretiyor ama yanında iki şey
+ * daha getiriyor: siyah perde ve doygunluk düşüşü. Süs kartı **taze**
+ * bir kupon; sönük göstermek "bu kupon geçmiş" demek olurdu.
+ *
+ * ⚠️ `aria-hidden`: yağan kartlar süs. Ekran okuyucuya on dört kupon
+ * başlığı okutmak bilgi değil gürültü — bölümün anlamı yandaki
+ * metinde.
+ */
+export function Bilet({ veri, sus = false }: { veri: BiletVerisi; sus?: boolean }) {
   const r = RENK[veri.renk];
   const sonuk = veri.sonuk;
 
@@ -262,6 +289,15 @@ export function Bilet({ veri }: { veri: BiletVerisi }) {
   };
 
   const ortak = "kart-golge relative block h-[124px] overflow-hidden rounded-2xl";
+
+  /* Süs: tıklanmıyor, okunmuyor, sönmüyor — yalnızca yüzey. */
+  if (sus) {
+    return (
+      <div aria-hidden className={ortak} style={zemin}>
+        {govde}
+      </div>
+    );
+  }
 
   if (sonuk) {
     const stil = {

@@ -1,5 +1,13 @@
+import { ODUL_BONUSU, ODUL_ESIGI, odulSirasiGeldi } from "./odul";
 import { tohumla } from "./rastgele";
 import type { Oyun } from "./sozlesme";
+
+/*
+  Ü207: ödül paketinin kuralı artık `odul.ts`te — Düşen de aynı kuralı
+  kullanıyor. Sabitler buradan dışa veriliyor ki mevcut testler ve
+  çağıranlar kırılmasın; gerekçelerinin tamamı o dosyada.
+*/
+export { ODUL_BONUSU, ODUL_ESIGI };
 
 /**
  * Blok — 8×8 ızgaraya parça yerleştirme.
@@ -182,68 +190,11 @@ export function kademe(tur: number): number {
 }
 
 /**
- * Ödül parçası PUAN VERMİYOR — Ü203.
- *
- * ── 🔴 Ü201'in ekonomi hatası ───────────────────────────────
- *
- * Ü201'de parça +120 puan veriyordu ve **yalnızca eşiği geçirmeye
- * yettiği anda** (380 ≤ skor < 500) teklif ediliyordu. Mantık tutarlı
- * görünüyordu ama sonucu şuydu: kuponun barı fiilen 500'den **380'e
- * indi.** Ürün sahibi oynayıp gördü — *"oyun çok ödül dağıtıyor…
- * kafenin belirlediği günlük bütçeye göre çok doğru ayarlanmalı."*
- *
- * Bütçe motoru (`odul-motoru.ts`) zaten kuponu kafenin günlük
- * bütçesinden veriyor ve o kural hiç delinmemişti; delinen şey
- * **eşiğe ulaşma zorluğuydu.** Daha çok tur eşiği geçince daha çok
- * kupon talebi doğuyor ve bütçe daha hızlı bitiyor.
- *
- * ── Yeni rol: ödül ÜRETMİYOR, TESLİM ediyor ─────────────────
- *
- * Parça artık oyuncu eşiği **kendi oyunuyla geçtikten sonra** çıkıyor
- * ve sıfır puan veriyor. Yani skor tam olarak Ü201 öncesindeki skor;
- * ekonomiye dokunan hiçbir şey kalmadı. Parçanın işi kazanılmış
- * ödülü ekranda bir **nesne** hâline getirmek — ürün sahibinin
- * istediği şey de buydu (*"ödül kaplı parça olsun, ekrana konunca
- * ödül kazanılsın"*), ödülün daha kolay kazanılması değil.
- *
- * ⚠️ Sıfır kalması ŞART. Bir daha puana bağlanırsa aynı ekonomi
- * kayması geri gelir ve bu kez sessizce.
- */
-export const ODUL_BONUSU = 0;
-
-/**
- * Kupon eşiği — motorun kopyası.
- *
- * 🔴 `domain/puan.KUPON_ESIGI` ile **aynı olmak zorunda** ve bunu bir
- * test koruyor (`oyun-motoru.test.ts`).
- *
- * Neden kopya: asıl sabit `domain/puan.ts`te ve o dosya `@/db/context`
- * import ediyor. Motor hem sunucuda hem tarayıcıda koşuyor; buradan
- * `domain/puan` import etmek `pg`yi istemci paketine çeker ve derleme
- * kırılır (Ü75, Ü199'da iki kez yaşandı). Sayıyı taşımak yerine
- * kopyalayıp **ayrışmasını imkânsız kılmak** daha ucuz.
- */
-export const ODUL_ESIGI = 500;
-
-/**
  * Bu teklif turunda ödül parçası var mı, varsa hangi sırada.
  *
- * ── Kural — Ü203 ────────────────────────────────────────────
- *
- * Parça, oyuncu eşiği **kendi oyunuyla geçtikten sonra** çıkıyor ve
- * bir kez teslim ediliyor:
- *
- *     skor >= 500   ve   henüz teslim edilmedi
- *
- * Ü201'de tam tersiydi (eşiğin altında çıkıp puanla geçiriyordu) ve
- * ekonomiyi kaydırıyordu — bkz. `ODUL_BONUSU`.
- *
- * ⚠️ Tek sefer: `odulVerildi` olmasaydı eşik geçildikten sonra HER
- * turda paket çıkardı ve oyuncu her seferinde bir kupon kazandığını
- * sanardı.
- *
- * ⚠️ Yer tohumdan: aynı tohum her yerde aynı sırayı veriyor, sunucunun
- * tekrarında da.
+ * Kuralın kendisi ve gerekçesi `odul.ts`te (Ü203 · Ü207); buradaki tek
+ * ek şey **yerin tohumdan türemesi**: aynı tohum her yerde paketi aynı
+ * sıraya koyuyor, sunucunun tekrarında da.
  */
 function odulSlotu(
   tohum: string,
@@ -251,8 +202,7 @@ function odulSlotu(
   skor: number,
   verildi: boolean,
 ): number {
-  if (verildi) return -1;
-  if (skor < ODUL_ESIGI) return -1;
+  if (!odulSirasiGeldi(skor, verildi)) return -1;
   return tohumla(`${tohum}:blok-odul:${tur}`).tamsayi(TEKLIF);
 }
 

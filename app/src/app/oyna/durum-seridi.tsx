@@ -2,6 +2,9 @@
 
 import Link from "next/link";
 import { Avatar } from "@/components/avatar";
+/* Ü222: kafenin kendi karekodunda masa adı kafe adına eşit — künye
+   kuralı tek yerde (`masaKunyesi`), burada da o basılıyor. */
+import { masaKunyesi } from "@/components/ui";
 import { useState, useTransition } from "react";
 import { konumBildir, konumReddedildi, demoKafedeSay } from "./actions";
 
@@ -114,13 +117,14 @@ export function DurumSeridi({
             <>
               <div className="etiket-caps truncate">Masa oturumun doldu</div>
               <div className="text-[12px] text-yazi-sonuk">
-                {durum.kafe} · {durum.masa} — karekodu tekrar okut, kaldığın yerden devam et
+                {masaKunyesi(durum.kafe, durum.masa)} — karekodu tekrar okut, kaldığın
+                yerden devam et
               </div>
             </>
           ) : (
             <>
               <div className="etiket-caps truncate">
-                {durum.kafe} · {durum.masa}
+                {masaKunyesi(durum.kafe, durum.masa)}
               </div>
               <div className="text-[12px] text-yazi-sonuk">
                 {gecici ??

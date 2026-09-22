@@ -1,7 +1,13 @@
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+import {
+  bicak,
+  CEMBER,
+  GIRIS_ACISI,
+  type BicakDurumu,
+  type BicakGirdisi,
+} from "@/oyunlar/bicak";
 import { blok, type BlokDurumu, type BlokGirdisi } from "@/oyunlar/blok";
 import { dusen, type DusenDurumu, type DusenGirdisi, type DusenHareket } from "@/oyunlar/dusen";
+import { sekme, ACI_SAYISI, type SekmeDurumu, type SekmeGirdisi } from "@/oyunlar/sekme";
 import {
   yilan,
   YILAN_EN,
@@ -9,7 +15,6 @@ import {
   type YilanGirdisi,
   type Yon,
 } from "@/oyunlar/yilan";
-import { kelime, kurulabilir, kucult, type KelimeDurumu, type KelimeGirdisi } from "@/oyunlar/kelime";
 
 /**
  * Simülasyon botları — oyunları GERÇEKTEN oynarlar.
@@ -79,60 +84,6 @@ function blokOyna(tohum: string, rnd: () => number): BotSonucu {
   }
 
   return { girdiler, skor: blok.skor(durum) };
-}
-
-/* ── Kelime ───────────────────────────────────────────────── */
-
-const KELIMELER: string[] = JSON.parse(
-  readFileSync(fileURLToPath(new URL("../src/oyunlar/veri/kelimeler.json", import.meta.url)), "utf8"),
-).kelimeler;
-
-/**
- * Eldeki harflerden kurulabilen kelimeleri dener.
- *
- * Hepsini değil: oyuncu gibi davranması için bir kısmını atlıyor. Her botun
- * bütün kelimeleri bulması, kelime oyununu raporda "herkes tam puan" gibi
- * gösterirdi.
- */
-function kelimeOyna(tohum: string, rnd: () => number): BotSonucu {
-  let durum: KelimeDurumu = kelime.baslat(tohum);
-  const girdiler: KelimeGirdisi[] = [];
-  let tick = 0;
-
-  // Ü83: oyun turlara bölündü ve her turun süresi var. Bot her turda
-  // eldeki harflerden kelime arıyor; süresi dolunca oyun kendiliğinden
-  // bitiyor. Dış döngü tur sayısını değil **süre bitişini** bekliyor.
-  for (let tur = 0; tur < 40 && !kelime.bittiMi(durum); tur++) {
-    const oncekiTur = durum.tur;
-    const adaylar = KELIMELER.filter((k) => kurulabilir(kucult(k), durum.harfler));
-
-    for (const aday of adaylar) {
-      if (kelime.bittiMi(durum) || durum.tur !== oncekiTur) break;
-      if (rnd() < 0.35) continue; // bazılarını göremedi
-
-      // Kelime bulmak zaman alıyor: 1–5 saniye. Bot ilerledikçe süre
-      // kısalıyor ve bir yerde yetişemiyor — oyunun bitiş yolu bu.
-      tick += 20 + Math.floor(rnd() * 80);
-      const girdi: KelimeGirdisi = { tick, k: aday };
-      const sonraki = kelime.uygula(durum, girdi);
-      if (sonraki) {
-        durum = sonraki;
-        girdiler.push(girdi);
-      }
-    }
-
-    // Tur değişmediyse bot bu turu çözemedi: saati sonuna kadar ilerletip
-    // oyunu bitiriyor.
-    if (durum.tur === oncekiTur && !kelime.bittiMi(durum)) {
-      const girdi: KelimeGirdisi = { tick: durum.bitisTicki, k: "" };
-      const sonraki = kelime.uygula(durum, girdi);
-      if (!sonraki) break;
-      durum = sonraki;
-      girdiler.push(girdi);
-    }
-  }
-
-  return { girdiler, skor: kelime.skor(durum) };
 }
 
 /* ── Düşen ────────────────────────────────────────────────── */
@@ -210,12 +161,103 @@ function yilanOyna(tohum: string, rnd: () => number): BotSonucu {
   return { girdiler, skor: yilan.skor(durum) };
 }
 
+/* ── Sekme ────────────────────────────────────────────────── */
+
+/**
+ * Açıyı tohumdan seçen bot.
+ *
+ * ⚠️ Nişan almıyor, alamaz da: hangi açının çok blok kıracağını
+ * bulmak arama gerektirir ve simülasyonun işi denge ölçmek değil
+ * **gerçek girdi kaydı üretmek**. Rastgele açı, sunucunun tekrarını
+ * sınamak için yeterli.
+ */
+function sekmeOyna(tohum: string, rnd: () => number): BotSonucu {
+  let durum: SekmeDurumu = sekme.baslat(tohum);
+  const girdiler: SekmeGirdisi[] = [];
+
+  for (let t = 0; t < 200 && !sekme.bittiMi(durum); t++) {
+    const girdi: SekmeGirdisi = { t, a: Math.floor(rnd() * ACI_SAYISI) };
+    const sonraki = sekme.uygula(durum, girdi);
+    if (!sonraki) break;
+    durum = sonraki;
+    girdiler.push(girdi);
+  }
+
+  return { girdiler, skor: sekme.skor(durum) };
+}
+
+/* ── Bıçak ────────────────────────────────────────────────── */
+
+/**
+ * Kütüğe bakıp boşluğa atan bot — Ü235.
+ *
+ * ── Neden bu bot nişan ALIYOR ───────────────────────────────
+ *
+ * Sekme'nin botu bilerek nişan almıyor (yukarıdaki not): orada
+ * rastgele açı da uzun bir tur üretiyor. Burada üretmiyor —
+ * rastgele zamanlama **ikinci bıçakta** ölüyor ve simülasyon
+ * her turu 12 puanla kapatırdı. Tek bıçaklık bir kayıt, sunucunun
+ * tekrarını sınamaz.
+ *
+ * Bot ileriye birkaç tick bakıp saplı bıçaklardan en uzak anı
+ * seçiyor. Mükemmel değil: pencere kısa (`ILERI`) ve bölüm
+ * doldukça hiçbir an güvenli olmuyor — tur yine kaybederek
+ * bitiyor (Ü83).
+ */
+function bicakOyna(tohum: string, rnd: () => number): BotSonucu {
+  let durum: BicakDurumu = bicak.baslat(tohum);
+  const girdiler: BicakGirdisi[] = [];
+
+  /** Kaç tick ileriye bakılıyor — yarım tur bile değil. */
+  const ILERI = 24;
+
+  for (let atis = 0; atis < 400 && !bicak.bittiMi(durum); atis++) {
+    let enIyi = durum.sonTick + 1;
+    let enGenis = -1;
+
+    for (let k = 1; k <= ILERI; k++) {
+      const t = durum.sonTick + k;
+      const yer = bicakYeri(durum, t);
+      const pay = durum.saplanan.length
+        ? Math.min(...durum.saplanan.map((s) => bicakAciFarki(s, yer)))
+        : CEMBER;
+      if (pay > enGenis) {
+        enGenis = pay;
+        enIyi = t;
+      }
+    }
+
+    /* Elle oynanan bir turda zamanlama tam tutmaz; bir tick'lik
+       kayma botu insana yaklaştırıyor ve kaydı tekdüze olmaktan
+       çıkarıyor. */
+    const girdi: BicakGirdisi = { t: Math.max(durum.sonTick + 1, enIyi + (rnd() < 0.3 ? 1 : 0)) };
+    const sonraki = bicak.uygula(durum, girdi);
+    if (!sonraki) break;
+    durum = sonraki;
+    girdiler.push(girdi);
+  }
+
+  return { girdiler, skor: bicak.skor(durum) };
+}
+
+/** Bıçağın `t` tick'inde saplanacağı yer — motorun kendi tanımı. */
+function bicakYeri(durum: BicakDurumu, t: number): number {
+  const aci = durum.aci + durum.hiz * (t - durum.sonTick);
+  return (((GIRIS_ACISI - aci) % CEMBER) + CEMBER) % CEMBER;
+}
+
+function bicakAciFarki(a: number, b: number): number {
+  const d = Math.abs(((a - b) % CEMBER) + CEMBER) % CEMBER;
+  return Math.min(d, CEMBER - d);
+}
+
 /* ── Seçici ───────────────────────────────────────────────── */
 
 export function botOyna(oyunId: string, tohum: string, rnd: () => number): BotSonucu {
   if (oyunId === "blok") return blokOyna(tohum, rnd);
-  if (oyunId === "kelime") return kelimeOyna(tohum, rnd);
   if (oyunId === "dusen") return dusenOyna(tohum, rnd);
+  if (oyunId === "sekme") return sekmeOyna(tohum, rnd);
   if (oyunId === "yilan") return yilanOyna(tohum, rnd);
+  if (oyunId === "bicak") return bicakOyna(tohum, rnd);
   throw new Error(`Bot yok: ${oyunId}`);
 }

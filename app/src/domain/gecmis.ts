@@ -39,6 +39,27 @@ import { oyunBul } from "@/oyunlar";
  * geliyor ve orada oyuncu politikası yok. Süzgeç SQL'de açık.
  */
 
+/**
+ * Sistemden çıkarılmış oyunların adları — Ü208.
+ *
+ * ── Neden gerekiyor ─────────────────────────────────────────
+ *
+ * Kelime kaldırıldığında `play_sessions` içinde **352 tamamlanmış tur**
+ * duruyordu ve silinmediler: oyuncunun oynadığı tur oyun listeden
+ * çıktı diye olmamış sayılamaz — skoru, XP'si ve kuponu gerçekti.
+ *
+ * `oyunBul` artık o kimliği tanımıyor ve yedek ham kimliğe düşüyordu:
+ * profil karnesinde oyunun adı **"kelime"** diye, küçük harfle ve
+ * ürünün dilinin dışında görünürdü. Bu harita o tek satırı kurtarıyor.
+ *
+ * ⚠️ Burası bir **mezar taşı listesi**, bir kayıt defteri değil. Yeni
+ * oyun buraya yazılmaz; yalnızca kaldırılan bir oyunun adı eklenir ve
+ * bir daha çıkarılmaz — çıkarıldığı gün eski turlar ham kimliğe döner.
+ */
+const EMEKLI_OYUNLAR: Record<string, string> = {
+  kelime: "Kelime",
+};
+
 export type OyunKarnesi = {
   oyunId: string;
   oyunAdi: string;
@@ -119,7 +140,7 @@ export async function kafeBazli(playerId: string): Promise<KafeGecmisi[]> {
     kafe.oyunlar.push({
       oyunId: r.game_id,
       // Listeden kaldırılmış bir oyunun geçmişteki kaydı kaybolmasın.
-      oyunAdi: oyun?.ad ?? r.game_id,
+      oyunAdi: oyun?.ad ?? EMEKLI_OYUNLAR[r.game_id] ?? r.game_id,
       kez: Number(r.kez),
       enIyi: r.en_iyi,
       son: r.son,

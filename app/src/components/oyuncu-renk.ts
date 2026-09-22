@@ -33,7 +33,15 @@
  * - `canli` — koyu zeminde ya da dolgu olarak kullanılan doygun ton.
  */
 
-export type OyuncuRengi = "kahve" | "buz" | "yesil" | "pembe" | "menekse" | "amber" | "gok";
+export type OyuncuRengi =
+  | "kahve"
+  | "buz"
+  | "yesil"
+  | "pembe"
+  | "menekse"
+  | "amber"
+  | "gok"
+  | "nane";
 
 /**
  * Oyuncu tarafındaki kartın yüzeyi — Ü67, Ü70, Ü71.
@@ -105,6 +113,23 @@ export const RENK: Record<OyuncuRengi, RenkTonu> = {
   menekse: { zemin: "#f1ecfe", ana: "#7c3aed", koyu: "#5b21b6", canli: "#a78bfa" },
   amber: { zemin: "#fff2d5", ana: "#c2740a", koyu: "#8a5206", canli: "#fbbf24" },
   gok: { zemin: "#e2f3fd", ana: "#0284c7", koyu: "#075985", canli: "#38bdf8" },
+  /*
+    🔴 Ü235 · palet oyun eklemek için genişledi.
+
+    Yedi tonun hepsi tutuluydu: beşi oyunlarda, ikisi (kahve, amber)
+    kupon kategorilerinde — aşağıdaki not bunları oyun rengi olarak
+    kullanmayı açıkça yasaklıyor. Bıçak'a boş ton kalmamıştı.
+
+    ⚠️ Yeni ton uydurulmadı, **çarktan** alındı: `cark.tsx` içindeki
+    dilim listesinde duran nane (#5eead4). Ü65'in kuralı buydu — bu
+    palet çarkın dilimlerinden geliyor. Çarkta kullanılmayan bir renk
+    seçilseydi iki yüzey akraba olmaktan çıkardı.
+
+    ⚠️ `ana` teal-700 (#0f766e), çarktaki parlak nane değil: dilim
+    rengi beyaz üstünde 1,5:1 kontrast veriyor ve ikon/sayı için
+    okunmuyor. `canli` çarkın kendi tonu, `ana` onun okunabilir eşi.
+  */
+  nane: { zemin: "#dcfaf4", ana: "#0f766e", koyu: "#134e4a", canli: "#5eead4" },
 };
 
 /**
@@ -123,11 +148,21 @@ export const RENK: Record<OyuncuRengi, RenkTonu> = {
  */
 export const OYUN_RENGI: Record<string, OyuncuRengi> = {
   blok: "gok",
-  kelime: "menekse",
   dusen: "pembe",
+  // Ü217: Sekme, Ü208'de Kelime'den boşalan menekşeyi devraldı.
+  sekme: "menekse",
   // Ü91: yılan yeşil. Kalan iki ton (kahve, amber) kupon kategorilerinin
   // — sıcak içecek ve yiyecek — ve oyun rengiyle karışmamalılar.
   yilan: "yesil",
+  /*
+    Ü235: Bıçak nane. Yukarıdaki yasak yüzünden ton kalmamıştı ve palet
+    çarktan bir renkle genişledi (bkz. `RENK.nane`).
+
+    ⚠️ Kalan dört oyun eklenirken aynı iş üç kez daha gerekecek:
+    çarkın dilim listesinde krem, sarı ve lavanta duruyor. Beşincisi
+    için çarkın kendisi de büyümek zorunda — palet oradan besleniyor.
+  */
+  bicak: "nane",
 };
 
 export function oyunRengi(oyunId: string): OyuncuRengi {
