@@ -102,10 +102,26 @@ export async function ac(opts: {
   const bitis = new Date(Date.now() + OTURUM_SAAT * 3_600_000);
 
   await withBypass("masa oturumu açma", async (db) => {
-    // Aynı masada açık oturum varsa süresini uzat — her karekod okutmada
-    // yeni ziyaret sayılmasın.
+    /*
+      Aynı masada açık oturum varsa süresini uzat — her karekod
+      okutmada yeni ziyaret sayılmasın.
+
+      🔴 `GREATEST` — Ü252. Eskiden `expires_at = $4` yazıyordu ve
+      "uzat" diyen bir işlem süreyi **kısaltabiliyordu**: bitişi
+      ileride olan bir oturum, karekod tekrar okutulunca `now() + 3
+      saat`e çekiliyordu.
+
+      Gerçek oyuncuda fark yok (her oturum aynı formülle açılıyor,
+      yani mevcut bitiş zaten bu değerden küçük). Fark demo
+      hesabında görünüyordu: bir yıllık oturum tek taramada üç saate
+      iniyor ve ürün sahibi *"oturumun doldu"* ekranına düşüyordu.
+
+      ⚠️ `last_seen_at` her zaman güncelleniyor — o "en son hangi
+      kafedesin" sorusunun cevabı (Ü248) ve uzatmadan bağımsız.
+    */
     const mevcut = await db.one<{ id: string }>(
-      `UPDATE table_sessions SET expires_at = $4, last_seen_at = now()
+      `UPDATE table_sessions
+          SET expires_at = GREATEST(expires_at, $4), last_seen_at = now()
         WHERE player_id = $1 AND cafe_id = $2 AND table_id = $3 AND expires_at > now()
       RETURNING id`,
       [opts.playerId, opts.cafeId, opts.tableId, bitis],
@@ -131,7 +147,35 @@ export async function ac(opts: {
   return id;
 }
 
-/** Oyuncunun açık masa oturumu. Yoksa oyuncu kafe dışındadır (Ü3). */
+/**
+ * Oyuncunun açık masa oturumu. Yoksa oyuncu kafe dışındadır (Ü3).
+ *
+ * ── 🔴 Sıralama `last_seen_at`, `started_at` DEĞİL — Ü248 ───
+ *
+ * İkisi aynı sanılıyordu ve değil. `ac()` aynı kafeye ikinci kez
+ * okutulduğunda yeni satır açmıyor, var olanı **uzatıyor**:
+ * `expires_at` ve `last_seen_at` güncelleniyor ama `started_at`
+ * ziyaretin başladığı an olarak duruyor — doğrusu da bu.
+ *
+ * Sonuç, ölçülen hata (aynı oyuncu, üç ard arda okutma):
+ *
+ *     A okutuldu  → aktif: Kafe A   ✅
+ *     B okutuldu  → aktif: Kafe B   ✅
+ *     A tekrar    → aktif: Kafe B   🔴
+ *
+ * Üçüncü adımda A'nın satırı uzatılıyor ama `started_at`i eski
+ * kaldığı için sıralamayı B kazanıyor. Yani **aynı gün ikinci kez
+ * uğradığın kafe seni tanımıyor**; arada gittiğin kafede sayılıyorsun.
+ * Oturum ömrü 3 saat, yani pencere dar değil.
+ *
+ * ⚠️ Aynı hata `konumDogrula`da da vardı ve orada daha ağır: konum
+ * **yanlış kafenin** koordinatına göre doğrulanıyordu. İkisi tek
+ * doğruluk kaynağından beslenmeli ve şimdi besleniyor.
+ *
+ * ⚠️ `last_seen_at` yalnızca `ac()` içinde yazılıyor — başka hiçbir
+ * yerde dokunulmuyor. Yani "bu kafe en son ne zaman okutuldu"
+ * sorusunun tek cevabı o.
+ */
 export async function aktif(playerId: string): Promise<MasaOturumu | null> {
   const r = await withBypass("aktif masa oturumu", (db) =>
     db.one<{
@@ -156,7 +200,7 @@ export async function aktif(playerId: string): Promise<MasaOturumu | null> {
          JOIN cafes c ON c.id = ts.cafe_id
          JOIN cafe_tables t ON t.id = ts.table_id
         WHERE ts.player_id = $1 AND ts.expires_at > now() AND c.status = 'approved'
-        ORDER BY ts.started_at DESC LIMIT 1`,
+        ORDER BY ts.last_seen_at DESC LIMIT 1`,
       [playerId],
     ),
   );
@@ -274,7 +318,7 @@ export async function konumDogrula(
       `SELECT ts.id, ts.cafe_id, c.lat AS c_lat, c.lng AS c_lng, ts.proof_mask
          FROM table_sessions ts JOIN cafes c ON c.id = ts.cafe_id
         WHERE ts.player_id = $1 AND ts.expires_at > now()
-        ORDER BY ts.started_at DESC LIMIT 1`,
+        ORDER BY ts.last_seen_at DESC LIMIT 1`,
       [playerId],
     );
 

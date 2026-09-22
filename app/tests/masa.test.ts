@@ -23,6 +23,8 @@ const KAFE_LNG = 28.9838;
 
 let kafeA = "";
 let masaA = "";
+let kafeB = "";
+let masaB = "";
 let yoneticiA = "";
 let oyuncuId = "";
 
@@ -41,12 +43,21 @@ before(async () => {
       "SELECT id FROM staff WHERE cafe_id = $1 AND role = 'manager' LIMIT 1",
       [c!.id],
     );
-    return { c: c?.id, t: t?.id, y: y?.id };
+    // İkinci kafe kafeler arası geçiş testi için (Ü248).
+    const c2 = await db.one<{ id: string }>("SELECT id FROM cafes WHERE slug = 'kafe-b'");
+    const t2 = await db.one<{ id: string }>(
+      "SELECT id FROM cafe_tables WHERE cafe_id = $1 AND active ORDER BY sort_order LIMIT 1",
+      [c2!.id],
+    );
+    return { c: c?.id, t: t?.id, y: y?.id, c2: c2?.id, t2: t2?.id };
   });
   assert.ok(v.c && v.t && v.y, "Tohum verisi yok — önce: npm run db:seed");
+  assert.ok(v.c2 && v.t2, "kafe-b tohumda yok — geçiş testi koşamaz");
   kafeA = v.c;
   masaA = v.t;
   yoneticiA = v.y;
+  kafeB = v.c2;
+  masaB = v.t2;
 
   // Kafenin koordinatı olmalı; yoksa konum doğrulaması hiç çalışmaz
   await yoneticiSorgu(`UPDATE cafes SET lat = $2, lng = $3 WHERE id = $1`, [
@@ -127,6 +138,139 @@ describe("masa oturumu", () => {
       `UPDATE table_sessions SET expires_at = now() + interval '1 hour' WHERE player_id = $1`,
       [oyuncuId],
     );
+  });
+});
+
+describe("kafeler arası geçiş (Ü248)", () => {
+  test("🔴 uzatma süreyi KISALTMIYOR", async () => {
+    /*
+      🔴 Ü252. `ac()` "aynı masada açık oturum varsa süresini uzat"
+      diyor ve eskiden `expires_at = now() + OTURUM_SAAT` yazıyordu —
+      yani bitişi daha ileride olan bir oturumu **geriye çekiyordu**.
+
+      Gerçek oyuncuda görünmüyordu: her oturum aynı formülle açıldığı
+      için mevcut bitiş zaten yeni değerden küçüktü. Demo hesabında
+      görünüyordu — uzun ömürlü oturum tek taramada üç saate iniyor ve
+      ürün sahibi test ortasında "masa oturumun doldu" ekranına
+      düşüyordu.
+
+      ⚠️ Testin kurduğu durum yapay (elle ileri atılmış bitiş) ama
+      sınadığı kural genel: uzatan bir işlem kısaltmamalı.
+    */
+    const { oyuncu } = await kaydet({
+      telefon: yeniTelefon(),
+      eposta: benzersizEposta(),
+      ad: "Uzatma",
+      soyad: "Testi",
+      dogumYili: 1990,
+      pazarlamaIzni: false,
+    });
+    const pid = oyuncu.id;
+
+    try {
+      await masa.ac({ cafeId: kafeA, tableId: masaA, playerId: pid });
+
+      // Bitişi çok ileriye at — demo oturumunun yaptığı şey.
+      await yoneticiSorgu(
+        `UPDATE table_sessions SET expires_at = now() + interval '10 years' WHERE player_id = $1`,
+        [pid],
+      );
+      const uzun = await withBypass("test: uzun oturum", (db) =>
+        db.one<{ expires_at: Date }>(
+          `SELECT expires_at FROM table_sessions WHERE player_id = $1`,
+          [pid],
+        ),
+      );
+      assert.ok(uzun);
+
+      // Karekodu tekrar okut.
+      await masa.ac({ cafeId: kafeA, tableId: masaA, playerId: pid });
+
+      const sonra = await withBypass("test: uzatma sonrası", (db) =>
+        db.one<{ expires_at: Date; n: string }>(
+          `SELECT expires_at, count(*) OVER ()::text AS n
+             FROM table_sessions WHERE player_id = $1`,
+          [pid],
+        ),
+      );
+      assert.ok(sonra);
+      assert.equal(sonra!.n, "1", "ikinci oturum açılmış — uzatma yerine yeni satır");
+      assert.equal(
+        sonra!.expires_at.getTime(),
+        uzun!.expires_at.getTime(),
+        "uzatma süreyi kısalttı — uzun ömürlü oturum taramayla öldü",
+      );
+    } finally {
+      for (const t of ["table_sessions", "player_aliases", "player_consents"]) {
+        await yoneticiSorgu(`DELETE FROM ${t} WHERE player_id = $1`, [pid]);
+      }
+      await yoneticiSorgu(`DELETE FROM audit_log WHERE target_id = $1`, [pid]);
+      await yoneticiSorgu(`DELETE FROM players WHERE id = $1`, [pid]);
+    }
+  });
+
+  test("🔴 ikinci kez uğranan kafe yeniden aktif oluyor", async () => {
+    /*
+      🔴 Ölçülerek bulunan hata; sıralama anahtarı yanlıştı.
+
+      `ac()` aynı kafeye ikinci kez okutulduğunda yeni satır açmıyor,
+      var olanı uzatıyor: `last_seen_at` güncelleniyor ama
+      `started_at` ziyaretin başladığı an olarak kalıyor. `aktif()`
+      ise `started_at`e göre sıralıyordu, yani:
+
+          A okutuldu  → Kafe A
+          B okutuldu  → Kafe B
+          A tekrar    → Kafe B   🔴
+
+      Oyuncu A'ya geri dönüyor, A onu tanımıyor ve arada uğradığı
+      B'de sayılıyor. Oturum ömrü 3 saat — pencere dar değil.
+
+      ⚠️ Bu testin üçüncü adımı olmadan hata görünmüyor: ilk iki adım
+      yanlış sürümde de geçiyor.
+    */
+    /*
+      🔴 KENDİ OYUNCUSU, dosyanın ortak oyuncusu değil.
+
+      İlk yazımda ortak `oyuncuId` kullanılıyordu ve testin sonundaki
+      temizlik (`DELETE FROM table_sessions`) **sonraki altı K2
+      testini düşürdü** — onlar önceki blokta açılan oturuma
+      dayanıyor. Paylaşılan tohum verisini bozan test, düştüğünde
+      değil geçtiğinde zarar verir.
+    */
+    const { oyuncu } = await kaydet({
+      telefon: yeniTelefon(),
+      eposta: benzersizEposta(),
+      ad: "Gecis",
+      soyad: "Testi",
+      dogumYili: 1990,
+      pazarlamaIzni: false,
+    });
+    const pid = oyuncu.id;
+
+    try {
+      await masa.ac({ cafeId: kafeA, tableId: masaA, playerId: pid });
+      assert.equal((await masa.aktif(pid))?.cafeId, kafeA, "A okutuldu, A olmalı");
+
+      await masa.ac({ cafeId: kafeB, tableId: masaB, playerId: pid });
+      assert.equal((await masa.aktif(pid))?.cafeId, kafeB, "B okutuldu, B olmalı");
+
+      await masa.ac({ cafeId: kafeA, tableId: masaA, playerId: pid });
+      assert.equal(
+        (await masa.aktif(pid))?.cafeId,
+        kafeA,
+        "A tekrar okutuldu ama oyuncu hâlâ B'de sayılıyor",
+      );
+    } finally {
+      for (const t of [
+        "table_sessions",
+        "player_aliases",
+        "player_consents",
+      ]) {
+        await yoneticiSorgu(`DELETE FROM ${t} WHERE player_id = $1`, [pid]);
+      }
+      await yoneticiSorgu(`DELETE FROM audit_log WHERE target_id = $1`, [pid]);
+      await yoneticiSorgu(`DELETE FROM players WHERE id = $1`, [pid]);
+    }
   });
 });
 
