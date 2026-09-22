@@ -5,7 +5,15 @@ import { randomInt } from "node:crypto";
 import { withBypass } from "@/db/context";
 import { closePools } from "@/db/pool";
 import { kodIste, kodDogrula, MAX_DENEME } from "@/domain/otp";
-import { masaCoz, basiliKod, biletUret, biletCoz, taramaKaydet } from "@/domain/qr";
+import {
+  masaCoz,
+  basiliKod,
+  biletUret,
+  biletCoz,
+  taramaKaydet,
+  kodUret,
+  EN_UZUN_KOD,
+} from "@/domain/qr";
 import {
   kaydet,
   telefonlaBul,
@@ -378,8 +386,8 @@ describe("küresel e-posta tavanı (G14'ün yeni kanaldaki hâli)", () => {
 describe("masa karekodu (K1)", () => {
   async function masaAl(cafeId: string) {
     return withBypass("test: masa", (db) =>
-      db.one<{ id: string; qr_secret: Buffer; label: string }>(
-        `SELECT id, qr_secret, label FROM cafe_tables WHERE cafe_id = $1 ORDER BY sort_order LIMIT 1`,
+      db.one<{ id: string; qr_secret: Buffer; label: string; print_code: string | null }>(
+        `SELECT id, qr_secret, label, print_code FROM cafe_tables WHERE cafe_id = $1 ORDER BY sort_order LIMIT 1`,
         [cafeId],
       ),
     );
@@ -388,20 +396,106 @@ describe("masa karekodu (K1)", () => {
   test("basılı kod masaya çözülüyor", async () => {
     const masa = await masaAl(kafeA);
     assert.ok(masa);
-    const cozum = await masaCoz(basiliKod(masa.qr_secret));
+    const cozum = await masaCoz(basiliKod(masa));
     assert.ok(cozum, "geçerli kod çözülmeliydi");
     assert.equal(cozum.cafeId, kafeA);
     assert.equal(cozum.masaAdi, masa.label);
   });
 
   test("uydurma kod çözülmüyor", async () => {
-    assert.equal(await masaCoz("0000000000000000"), null);
-    assert.equal(await masaCoz("kisa"), null);
+    assert.equal(await masaCoz("0000000000000000"), null, "olmayan hex kod");
+    assert.equal(await masaCoz("kisa"), null, "tiresiz — yeni biçime uymuyor");
+    assert.equal(await masaCoz("yok-boyle-bir-kod"), null, "biçimi doğru ama kayıtsız");
+    assert.equal(await masaCoz("-kafe-a"), null, "baştaki tire");
+    assert.equal(await masaCoz("kafe--a"), null, "ardışık tire");
+    assert.equal(await masaCoz("a".repeat(40) + "-ek"), null, "sınırdan uzun");
+  });
+
+  test("adlı kod da eski hex kod da aynı masaya çözülüyor (Ü247)", async () => {
+    /*
+      🔴 Bu testin bekçilik ettiği şey **geriye dönük uyum**.
+
+      Ü247'de basılı kod biçimi değişti: `ec3ebc4b9c1d3931` yerine
+      `kafe-a-7f3k9x2m`. Daha önce basılmış hiçbir karekod ölmemeli —
+      duvardaki etiket sunucu güncellendi diye çalışmayı bırakırsa
+      kimse fark etmez, müşteri "okutamadım" der ve gider.
+
+      İkisi aynı anda geçerli: yeni kod `print_code` kolonunda, eski
+      kod `qr_secret`in ilk 8 baytında.
+    */
+    const masa = await masaAl(kafeA);
+    assert.ok(masa);
+
+    const hexKod = masa.qr_secret.subarray(0, 8).toString("hex");
+    const adliKod = kodUret("Kafe A");
+
+    /*
+      🔴 Önceki değer saklanıyor ve sonunda GERİ KONUYOR, `NULL`a
+      çekilmiyor.
+
+      İlk yazımda `finally` bloğu `print_code = NULL` yapıyordu ve
+      ölçüldü: geliştirme veritabanında elle bağlanmış bir kodu
+      **test silmişti.** Testin paylaşılan tohum verisini bozması,
+      düştüğünde değil *geçtiğinde* zarar veren bir hata — kimse
+      bakmıyor.
+    */
+    const onceki = masa.print_code;
+    await yoneticiSorgu(`UPDATE cafe_tables SET print_code = $2 WHERE id = $1`, [
+      masa.id,
+      adliKod,
+    ]);
+
+    try {
+      const yeni = await masaCoz(adliKod);
+      assert.ok(yeni, `adlı kod çözülmeliydi: ${adliKod}`);
+      assert.equal(yeni.cafeId, kafeA);
+
+      const eski = await masaCoz(hexKod);
+      assert.ok(eski, "eski hex kod ölmüş — basılmış etiketler çalışmaz");
+      assert.equal(eski.cafeId, kafeA);
+
+      // Kâğıttan elle girilen kod büyük harfle yazılabiliyor.
+      assert.ok(await masaCoz(adliKod.toUpperCase()), "büyük harfli kod çözülmedi");
+
+      // `basiliKod` artık adlı kodu tercih ediyor.
+      assert.equal(basiliKod({ print_code: adliKod, qr_secret: masa.qr_secret }), adliKod);
+      assert.equal(basiliKod({ print_code: null, qr_secret: masa.qr_secret }), hexKod);
+    } finally {
+      await yoneticiSorgu(`UPDATE cafe_tables SET print_code = $2 WHERE id = $1`, [
+        masa.id,
+        onceki,
+      ]);
+    }
+  });
+
+  test("üretilen kod basılabilir sınırların içinde (Ü247)", () => {
+    /*
+      ⚠️ Sınır karekodun geometrisinden geliyor: 29 karakteri aşan kod
+      karekodu 7. sürüme taşıyor ve orada hizalama deseni sembolün tam
+      merkezine — Loopy rozetinin altına — düşüyor. O desen hata
+      düzeltmeyle kurtarılmıyor, yani kod hiç okunmaz. Basıldıktan
+      sonra anlaşılır.
+    */
+    for (const ad of [
+      "Kafe A",
+      "Kahve Durağı",
+      "ÇOK UZUN BİR KAFE ADI OLABİLİR BELKİ DE DAHA UZUN",
+      "☕",
+      "   ",
+    ]) {
+      const kod = kodUret(ad);
+      assert.ok(kod.length <= EN_UZUN_KOD, `"${ad}" -> ${kod} (${kod.length} > ${EN_UZUN_KOD})`);
+      assert.match(kod, /^[a-z0-9]+(?:-[a-z0-9]+)+$/, `"${ad}" -> ${kod} biçimi bozuk`);
+    }
+
+    // Rastgele ek gerçekten rastgele: aynı ad iki kez aynı kodu vermemeli.
+    const kumes = new Set(Array.from({ length: 200 }, () => kodUret("Kafe A")));
+    assert.equal(kumes.size, 200, "aynı ad aynı kodu üretti — ek rastgele değil");
   });
 
   test("onaysız kafenin karekodu çalışmıyor (G5)", async () => {
     const masa = await masaAl(kafeB);
-    const kod = basiliKod(masa!.qr_secret);
+    const kod = basiliKod(masa!);
     assert.ok(await masaCoz(kod), "kafe onaylıyken çalışmalı");
 
     await yoneticiSorgu(`UPDATE cafes SET status = 'pending' WHERE id = $1`, [kafeB]);

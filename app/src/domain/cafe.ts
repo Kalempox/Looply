@@ -7,6 +7,7 @@ import { env } from "@/lib/env";
 import { newId, safeCode } from "@/lib/ids";
 import { audit } from "@/lib/audit";
 import { log } from "@/lib/log";
+import { slugla } from "@/lib/slug";
 
 /**
  * Kafe başvurusu, onayı ve personeli.
@@ -108,21 +109,6 @@ export async function basvuruOlustur(opts: {
 
   log.info("kafe basvurusu alindi", { sehir: opts.sehir });
   return { cafeId };
-}
-
-function slugla(ad: string): string {
-  const harita: Record<string, string> = {
-    ç: "c", ğ: "g", ı: "i", ö: "o", ş: "s", ü: "u",
-    Ç: "c", Ğ: "g", İ: "i", Ö: "o", Ş: "s", Ü: "u",
-  };
-  return ad
-    .split("")
-    .map((h) => harita[h] ?? h)
-    .join("")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "")
-    .slice(0, 32);
 }
 
 /* ── Belge ────────────────────────────────────────────────── */

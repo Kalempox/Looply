@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { withCafe } from "@/db/context";
 import { newId } from "@/lib/ids";
-import { basiliKod } from "./qr";
+import { basiliKod, kodUret } from "./qr";
 
 /**
  * Kafenin karekodu — Ü127.
@@ -37,15 +37,18 @@ import { basiliKod } from "./qr";
  * ── Kodun fotoğrafı paylaşılırsa ────────────────────────────
  *
  * Bu katman onu durdurmuyor; durduran K2 (konum doğrulama). Basılı kod
- * tahmin edilemez olmak zorunda ama gizli olmak zorunda değil — 16 hex
- * hane, `qr_secret`in ilk 8 baytı.
+ * tahmin edilemez olmak zorunda ama gizli olmak zorunda değil.
+ *
+ * ⚠️ Ü247'den beri iki biçim var: yeni kodlar `kafe-a-7f3k9x2m`
+ * (ad + rastgele ek, `print_code` kolonunda), eskiler 16 hex hane
+ * (`qr_secret`in ilk 8 baytı). Seçimi `domain/qr.basiliKod` yapıyor.
  */
 
 export type Karekod = {
   id: string;
   /** Kafenin adı — kartın üstünde yazan. */
   ad: string;
-  /** Basılı 16 hex hane; `/m/{kod}` adresine giriyor. */
+  /** Basılı kod; `/m/{kod}` adresine giriyor. */
   kod: string;
 };
 
@@ -67,8 +70,8 @@ export type Karekod = {
 export async function kafeKarekodu(cafeId: string): Promise<Karekod> {
   const oku = () =>
     withCafe(cafeId, (db) =>
-      db.one<{ id: string; label: string; qr_secret: Buffer }>(
-        `SELECT id, label, qr_secret FROM cafe_tables WHERE active LIMIT 1`,
+      db.one<{ id: string; label: string; qr_secret: Buffer; print_code: string | null }>(
+        `SELECT id, label, qr_secret, print_code FROM cafe_tables WHERE active LIMIT 1`,
       ),
     );
 
@@ -83,7 +86,13 @@ export async function kafeKarekodu(cafeId: string): Promise<Karekod> {
       );
 
       if (aday) {
-        // Var olanı geri aç: basılı kod korunuyor.
+        /* Var olanı geri aç: basılı kod korunuyor.
+
+           🔴 `print_code` BURADA DOLDURULMUYOR ve bu kasten. Satır
+           zaten varsa kodu da basılmış olabilir; yeni bir kod yazmak
+           panelin gösterdiği kodu duvardakinden ayırırdı. Eski kod
+           `masaCoz`ta hâlâ geçerli (Ü247), yani kimse bir şey
+           kaybetmiyor. */
         await db.query(
           `UPDATE cafe_tables SET active = true, label = $2, sort_order = 0 WHERE id = $1`,
           [aday.id, ad],
@@ -94,10 +103,10 @@ export async function kafeKarekodu(cafeId: string): Promise<Karekod> {
       // Hiç satır yok — kafenin ilk karekodu. `ON CONFLICT DO NOTHING`
       // yalnızca iki sekmenin aynı anda üretmeye kalkma yarışı için.
       await db.query(
-        `INSERT INTO cafe_tables (id, cafe_id, label, sort_order, qr_secret, kind)
-         VALUES ($1,$2,$3,0,$4,'masa')
+        `INSERT INTO cafe_tables (id, cafe_id, label, sort_order, qr_secret, kind, print_code)
+         VALUES ($1,$2,$3,0,$4,'masa',$5)
          ON CONFLICT DO NOTHING`,
-        [newId("tbl"), cafeId, ad, randomBytes(16)],
+        [newId("tbl"), cafeId, ad, randomBytes(16), kodUret(ad)],
       );
     });
     r = await oku();
@@ -105,5 +114,5 @@ export async function kafeKarekodu(cafeId: string): Promise<Karekod> {
 
   if (!r) throw new Error("kafeKarekodu: karekod üretilemedi");
 
-  return { id: r.id, ad: r.label, kod: basiliKod(r.qr_secret) };
+  return { id: r.id, ad: r.label, kod: basiliKod(r) };
 }

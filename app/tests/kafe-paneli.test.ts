@@ -1215,7 +1215,15 @@ describe("kafe karekodu (Ü127)", () => {
     await yoneticiSorgu(`UPDATE cafe_tables SET active = false WHERE cafe_id = $1`, [kafeA]);
 
     const k = await masaYonetim.kafeKarekodu(kafeA);
-    assert.match(k.kod, /^[0-9a-f]{16}$/, "basılı kod beklenen biçimde değil");
+    /* ⚠️ İKİ biçim de geçerli — Ü247. Yeni kodlar `kafe-a-7f3k9x2m`
+       (ad + rastgele ek), Ü247 öncesinde açılmış satırlar 16 hex hane.
+       Test biçimi değil **kodun çözülebilir olduğunu** sınamalı; asıl
+       iddia aşağıdaki `masaCoz`. */
+    assert.match(
+      k.kod,
+      /^(?:[0-9a-f]{16}|[a-z0-9]+(?:-[a-z0-9]+)+)$/,
+      "basılı kod hiçbir geçerli biçime uymuyor",
+    );
 
     const cozum = await qr.masaCoz(k.kod);
     assert.equal(cozum?.tableId, k.id, "üretilen karekod çözülemiyor");

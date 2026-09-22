@@ -48,7 +48,9 @@ export default async function KarekodSayfasi() {
           {/* Karekodun kendi beyaz sessiz alanı — zemin beyaz olsa bile
               okuyucunun kenarı bulabilmesi için. */}
           <div className="mx-auto w-fit bg-white p-5">
-            <Karekod deger={adres} boyut={190} etiket={`${karekod.ad} karekodu`} />
+            {/* Ü246: panel önizlemesi basılacak şeyin AYNISI olmalı —
+                yoksa kafe ekranda başka, kâğıtta başka bir kod görür. */}
+            <Karekod deger={adres} boyut={190} etiket={`${karekod.ad} karekodu`} isaret />
           </div>
 
           <p className="mt-5 text-[14px] leading-relaxed text-yazi-sonuk">

@@ -55,10 +55,18 @@ export default async function KarekodYazdirSayfasi() {
         <div className="etiket-caps text-[12px] text-yazi-sonuk">{karekod.ad}</div>
 
         <div className="mx-auto mt-6 w-fit bg-white p-6">
+          {/* `isaret`: ortada Loopy, hata düzeltme `H` — Ü246.
+              Bu KÂĞIDA basılan kod; masada yıllarca duracak ve
+              çizilecek. Ölçüldü (`karekod.test.ts` sürümü bekçiliyor,
+              okunurluk tarayıcıda jsQR ile sınandı): rozetli kod
+              sade `M` koddan **daha** dayanıklı, çünkü seviye
+              M'den H'ye çıkıyor ve rozet o bütçenin dörtte birini
+              bile harcamıyor. */}
           <Karekod
             deger={`${sema}://${host}/m/${karekod.kod}`}
             boyut={280}
             etiket={`${karekod.ad} karekodu`}
+            isaret
           />
         </div>
 

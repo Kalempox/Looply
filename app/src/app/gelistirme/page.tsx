@@ -42,7 +42,7 @@ async function masaKisayollari(): Promise<Masa[]> {
     return satirlar.map((m) => ({
       cafeAdi: m.cafe_adi,
       masaAdi: m.masa_adi,
-      kod: basiliKod(m.qr_secret),
+      kod: basiliKod(m),
     }));
   } catch {
     return [];

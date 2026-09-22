@@ -268,7 +268,15 @@ describe("kafe karekodu (Ü127)", () => {
    */
   test("kafenin tek karekodu var ve ikincisi açılamıyor", async () => {
     const k = await masaYonetim.kafeKarekodu(kafeA);
-    assert.match(k.kod, /^[0-9a-f]{16}$/, "basılı kod 16 hex hane olmalı");
+    /* ⚠️ İKİ biçim de geçerli — Ü247. Yeni kodlar `kafe-a-7f3k9x2m`
+       (ad + rastgele ek), Ü247 öncesinde açılmış satırlar 16 hex hane.
+       Test biçimi değil **kodun çözülebilir olduğunu** sınamalı; asıl
+       iddia aşağıdaki `masaCoz`. */
+    assert.match(
+      k.kod,
+      /^(?:[0-9a-f]{16}|[a-z0-9]+(?:-[a-z0-9]+)+)$/,
+      "basılı kod hiçbir geçerli biçime uymuyor",
+    );
 
     const aktifler = await withBypass("test: aktif karekod sayısı", (db) =>
       db.one<{ n: string }>(
