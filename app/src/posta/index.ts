@@ -1,4 +1,5 @@
 import { withBypass } from "@/db/context";
+import { GIDEN_KUTUSU_GUN } from "@/domain/saklama";
 import { emailIndex } from "@/lib/crypto";
 import { env } from "@/lib/env";
 import { newId } from "@/lib/ids";
@@ -294,4 +295,22 @@ export async function gonder(mesaj: EpostaMesaji): Promise<GonderimSonucu> {
     log.error("eposta gonderilemedi", { sablon: mesaj.sablon, saglayici: s.ad });
     return { durum: "basarisiz" };
   }
+}
+
+/**
+ * Saklama süresi dolan giden kutusu kayıtlarını siler — madde 37.
+ *
+ * ⚠️ Süre `domain/saklama.GIDEN_KUTUSU_GUN`den geliyor, burada
+ * yazılmıyor: aynı sayı `docs/24` §6'da beyan ediliyor ve iki yerde
+ * ayrı durursa biri güncellenmeden kalır.
+ */
+export async function temizle(): Promise<number> {
+  return withBypass("e-posta giden kutusu temizliği", async (db) => {
+    const r = await db.query(
+      `DELETE FROM email_outbox WHERE created_at < now() - ($1 || ' days')::interval`,
+      [String(GIDEN_KUTUSU_GUN)],
+    );
+    if (r.rowCount) log.debug("eposta giden kutusu temizlendi", { adet: r.rowCount });
+    return r.rowCount ?? 0;
+  });
 }

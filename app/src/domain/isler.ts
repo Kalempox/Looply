@@ -6,6 +6,8 @@ import { silmeleriUygula } from "./player";
 import { temizle as otpTemizle } from "./otp";
 import { temizle as qrTemizle } from "./qr";
 import { temizle as hizSiniriTemizle } from "@/lib/ratelimit";
+import { temizle as smsGidenTemizle } from "@/sms";
+import { temizle as epostaGidenTemizle } from "@/posta";
 import { degerlendir as alarmDegerlendir } from "@/lib/alarm";
 
 /**
@@ -126,5 +128,25 @@ export const ISLER: readonly Is[] = [
     aciklama: "Süresi geçmiş hız sınırı sayaçlarını siler",
     aralikDk: 1440,
     calistir: hizSiniriTemizle,
+  },
+  /*
+    Madde 37 · giden kutuları. İKİ AYRI İŞ, tek iş değil: biri patlarsa
+    öteki yine koşsun. Kayıt defterinin hata yalıtımı iş düzeyinde
+    (`bakim.ts`), iş içinde değil.
+
+    ⚠️ Günde bir kez yeterli — silinen şey bir yıllık eşiği geçen kayıt,
+    saatlik koşmanın kazandıracağı bir şey yok.
+  */
+  {
+    ad: "sms_giden_temizlik",
+    aciklama: "Saklama süresi dolan SMS giden kutusu kayıtlarını siler (madde 37)",
+    aralikDk: 1440,
+    calistir: smsGidenTemizle,
+  },
+  {
+    ad: "eposta_giden_temizlik",
+    aciklama: "Saklama süresi dolan e-posta giden kutusu kayıtlarını siler (madde 37)",
+    aralikDk: 1440,
+    calistir: epostaGidenTemizle,
   },
 ];

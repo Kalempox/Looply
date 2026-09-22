@@ -1,6 +1,7 @@
 import { env } from "@/lib/env";
 import { log } from "@/lib/log";
 import { withBypass } from "@/db/context";
+import { GIDEN_KUTUSU_GUN } from "@/domain/saklama";
 import { newId } from "@/lib/ids";
 import { phoneIndex } from "@/lib/crypto";
 import { defteriYaz } from "./gelistirme-defteri";
@@ -305,4 +306,22 @@ export async function gonder(
     log.error("sms gonderilemedi", { sablon: mesaj.sablon, saglayici: s.ad });
     return { durum: "basarisiz", hata };
   }
+}
+
+/**
+ * Saklama süresi dolan giden kutusu kayıtlarını siler — madde 37.
+ *
+ * ⚠️ Süre `domain/saklama.GIDEN_KUTUSU_GUN`den geliyor, burada
+ * yazılmıyor: aynı sayı `docs/24` §6'da beyan ediliyor ve iki yerde
+ * ayrı durursa biri güncellenmeden kalır.
+ */
+export async function temizle(): Promise<number> {
+  return withBypass("sms giden kutusu temizliği", async (db) => {
+    const r = await db.query(
+      `DELETE FROM sms_outbox WHERE created_at < now() - ($1 || ' days')::interval`,
+      [String(GIDEN_KUTUSU_GUN)],
+    );
+    if (r.rowCount) log.debug("sms giden kutusu temizlendi", { adet: r.rowCount });
+    return r.rowCount ?? 0;
+  });
 }

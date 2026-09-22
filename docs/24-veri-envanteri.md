@@ -9,7 +9,12 @@
 > yazar."* Bu yüzden aşağıdaki her satır **koddan** çıkarıldı; dosya ve satır
 > referansları veriliyor. Kodun cevaplayamadığı yerler `[DOLDUR]` işaretli.
 
-**Son güncelleme:** 2026-09-13 · **Durum:** hukuk incelemesi bekliyor (S20)
+**Son güncelleme:** 2026-09-22 · **Durum:** hukuk incelemesi bekliyor (S20)
+
+> 🔴 **2026-09-22'de belgenin en riskli bölümü değişti.** §5 bugüne kadar
+> *"yurt dışına aktarım YOK ve olmayacak"* diyordu. E-posta sağlayıcısı
+> (Resend, ABD) kararıyla bu artık doğru değil — md. 9 devrede. Gerekçe ve
+> kapsam §5'te.
 
 ---
 
@@ -195,11 +200,12 @@ ekleneceği belgenin sonunda not olarak duruyor.
 
 ## 4 · Üçüncü taraflar (alt işlemciler)
 
-**Liste bilerek çok kısa** — bugün tek bir alt işlemci var.
+**Liste bilerek kısa** — bugün iki alt işlemci var.
 
 | Servis | Ne için | Hangi veri | Ülke |
 |---|---|---|---|
 | SMS sağlayıcısı — **Netgsm** veya **İletimerkezi** | OTP ve bildirim | **Telefon numarası + mesaj metni** | Türkiye |
+| **Resend** | Doğrulama kodu e-postası | **E-posta adresi + mesaj metni (kodun kendisi)** | **ABD** 🔴 |
 
 - Analitik aracı ❌ · Ödeme sağlayıcısı ❌ · Hata izleme (Sentry vb.) ❌ ·
   Müşteri destek aracı ❌ · Reklam pikseli ❌ · CDN ❌
@@ -220,25 +226,84 @@ entegrasyonu kodda henüz bağlı değil (`src/sms/index.ts`).
 yapılıyor ve operatör onayı birkaç iş günü sürüyor. Canlıya çıkışı
 bekleten maddelerden biri.
 
+### Resend — ne gidiyor, ne kalıyor
+
+Koddan (`src/posta/index.ts:147`): tek bir `POST https://api.resend.com/emails`
+ve gövdesinde dört alan — `from`, `to` (**oyuncunun adresi**), `subject`,
+`text` (**doğrulama kodunun kendisi**).
+
+⚠️ Kod mesajın içinde gidiyor. SMS tarafındaki durumun aynısı; yeni bir
+zafiyet değil ama aktarılan verinin **hassasiyetini** belirleyen şey bu.
+
+✅ Bizde kalan taraf zaten dar tutulmuş (göç 0044): `email_outbox` tablosunda
+adres **açık tutulmuyor** — yalnızca maskeli hâli (`b***@ornek.com`) ve kör
+indeks (HMAC) yazılıyor. **Mesaj gövdesi hiç saklanmıyor.** `sms_outbox` ile
+aynı desen.
+
+`[DOLDUR: Resend'in saklama süresi ve alt işleyenleri — sağlayıcının kendi
+beyanı; veri işleyen sözleşmesi (DPA) imzalanacak]`
+
+⚠️ **Gönderen alan adı doğrulanmalı.** `.env.example`teki varsayılan
+`Looply <onboarding@resend.dev>` Resend'in **test alanı**; canlıda kendi
+alan adımız doğrulanmadan gönderim reddedilir.
+
 ⚠️ Barındırma sağlayıcısı seçildiğinde **bu tabloya eklenmeli** (Türkiye).
 
 ---
 
 ## 5 · Uluslararası aktarım
 
-✅ **Yurt dışına aktarım YOK ve olmayacak.**
+🔴 **Yurt dışına aktarım VAR — tek kalem: e-posta.**
 
-- Sunucu **Türkiye**'de (karar verildi)
-- Tek alt işlemci (SMS) **Türkiye**'de
-- Tarayıcı üçüncü tarafa hiç istek atmıyor — yazı tipleri dahil kendi
-  sunucumuzdan
+Bu bölüm 2026-09-22'ye kadar *"aktarım yok ve olmayacak"* diyordu ve o cümle
+bir temenni değil, korunan bir karardı. Bozan şey şuydu:
 
-KVKK md. 9 devreye **girmiyor**; açık rıza, taahhütname ya da Kurul kararı
-gerekmiyor. Ürünlerin çoğunda en riskli olan bölüm bizde boş.
+- **Ü170**, doğrulama kodunu SMS'ten **e-postaya** taşıdı.
+- `src/lib/env.ts:92` canlı ortamın `EPOSTA_SAGLAYICI=console` ile
+  açılmasını **reddediyor** — yani yayına çıkmak gerçek bir sağlayıcıyı
+  zorunlu kılıyor.
+- Enum'daki tek gerçek seçenek **Resend** ve şirket **ABD**'de.
 
-⚠️ Bu, üç şartın üçü birden korunduğu sürece geçerli. İleride bir analitik
-aracı, hata izleme (Sentry) ya da yurt dışı CDN eklenirse **md. 9 geri
-gelir** — yeni bir servis eklenmeden önce bu belge güncellenmeli.
+Yani aktarım bir tercihle değil, **yayına çıkma koşuluyla** geldi.
+
+### Bugünkü tablo
+
+| | Nerede | Aktarım |
+|---|---|---|
+| Sunucu | Türkiye | yok |
+| Veritabanı ve yedekler | Türkiye | yok |
+| SMS sağlayıcısı | Türkiye | yok |
+| Yazı tipleri | kendi sunucumuz | yok |
+| **E-posta (Resend)** | **ABD** | **VAR** 🔴 |
+
+Tarayıcı hâlâ hiçbir üçüncü tarafa istek atmıyor; aktarım yalnızca
+**sunucudan sunucuya** ve yalnızca doğrulama kodu gönderilirken oluyor.
+
+### Ne gerekiyor
+
+KVKK md. 9 devrede. `[DOLDUR: hukuki dayanak — açık rıza mı, taahhütname mi,
+yeterlilik kararı mı; avukat seçecek (S20)]`
+
+- Aydınlatma metni bunu **açıkça yazmalı**: e-posta adresi doğrulama kodu
+  için ABD'deki bir sağlayıcıya aktarılıyor.
+  🔴 Bugünkü metin (`app/aydinlatma/page.tsx:87`) *"SMS gönderimi için
+  **yalnızca** operatör hizmet sağlayıcısıyla numaran paylaşılır"* diyor.
+  E-posta sağlayıcısı orada yok ve *"yalnızca"* kelimesi cümleyi yanlış
+  yapıyor — bölümün kendisi var, eksik olan bir satır.
+- Resend ile **veri işleyen sözleşmesi (DPA)**.
+- VERBİS kaydında yurt dışı aktarım alanı doldurulmalı.
+
+### ⚠️ Kapatmanın yolu duruyor
+
+Aktarım tek kalem ve kaynağı belli. Türkiye'de işlem e-postası gönderen bir
+sağlayıcı bulunursa bölüm yeniden kapanır: `EPOSTA_SAGLAYICI` bir enum ve
+SMS tarafında **zaten iki Türk sağlayıcı** var (`netgsm`, `iletimerkezi`) —
+aynı desen, küçük bir kod işi. Ürün sahibinin bugünkü kararı Resend'le
+devam etmek; seçenek kapanmadı.
+
+⚠️ Bundan sonra eklenecek her yurt dışı servis (analitik, hata izleme,
+CDN) **aynı bölüme satır ekler.** Artık "boş bölüm" korumamız yok; yeni
+servis eklenmeden önce bu belge güncellenmeli.
 
 ---
 
@@ -250,8 +315,29 @@ gelir** — yeni bir servis eklenmeden önce bu belge güncellenmeli.
 | Silme talebi sonrası | **30 gün**, sonra geri döndürülemez anonimleştirme (`silmeleriUygula`) |
 | Puan / kupon / bütçe defteri | **Kalıyor**, kişisel bağ kopuyor — ticari kayıt |
 | Denetim izi (`audit_log`) | Kalıyor; kişisel veri **içermiyor** (redaction) |
-| `sms_outbox` | ⚠️ **Temizlik işi yok — süre kararı gerekiyor.** Numara açık değil (maskeli + kör indeks) ama gönderim kaydı süresiz birikiyor. Öneri: **12 ay** (gönderim ispatı + itiraz penceresi), sonra silinsin. `[ONAY]` |
+| `sms_outbox` | ✅ **12 ay**, sonra siliniyor (`sms.temizle`, günlük iş). Numara açık değil — maskeli + kör indeks. Sayı `domain/saklama.GIDEN_KUTUSU_GUN`de, tek kopya. ⚠️ Süre hâlâ ürün sahibinin onayına açık; belgenin önerisi uygulandı `[ONAY]` |
+| `email_outbox` | ✅ **12 ay**, aynı kural (`posta.temizle`). Adres açık değil — maskeli + kör indeks, mesaj gövdesi hiç saklanmıyor |
 | Karekod tarama kayıtları | 1 saat (`qr.temizle`) |
+
+### 🔴 Bu satırlar yazılırken bulunan arıza — Ü249
+
+Giden kutusu temizliği yazılırken testi düştü: *"permission denied for
+table sms_outbox"*. Sorun testte değil üründeydi ve peşinden daha kötüsü
+çıktı.
+
+**`qr_temizlik` zaten kayıt defterindeydi, zaten koşuyordu ve her koşuda
+patlıyordu** — uygulama rolünde `qr_tokens` üzerinde DELETE yetkisi yoktu.
+Hata `bakim.ts`te yakalanıp günlüğe yazılıyor ve sonraki iş koşmaya devam
+ediyordu; yalıtım doğru çalıştığı için kimse fark etmemişti.
+
+Yani bu belge *"karekod tarama kayıtları: 1 saat"* diye beyan ederken
+kayıtlar **süresiz birikiyordu.** Yetki verilince (göç 0047) tek koşuda
+**1.117 satır** silindi.
+
+⚠️ Beyanla uygulamanın ayrıştığı bir yer daha olabilir; bu satırın
+öğrettiği ders, tablodaki her ✅'in koşan bir işe dayanması gerektiği.
+`tests/arka-plan-isleri.test.ts` artık her temizlik işini gerçekten
+koşturuyor — çağrıldığını değil, **çalıştığını** sınıyor.
 
 **Anonimleştirmede ne oluyor:** `phone_enc`, `first_name_enc`,
 `last_name_enc`, `birth_year_enc` boş şifreli değerle üzerine yazılıyor,

@@ -190,6 +190,40 @@ describe("arka plan işleri kayıt defteri (Ü113)", () => {
     );
   });
 
+  test("🔴 her temizlik işi GERÇEKTEN koşuyor — yalnızca çağrılmıyor", async () => {
+    /*
+      🔴 Ü249'da bulunan sınıf: **yazıldı, bağlandı, sessizce patlıyor.**
+
+      Yukarıdaki testler bir işin kayıt defterinde olduğunu ve
+      çağrıldığını sınıyor. İkisi de doğruyken `qr_temizlik` her
+      koşuda `permission denied for table qr_tokens` alıyordu:
+      uygulama rolünde DELETE yetkisi yoktu (göç 0001 yalnızca
+      SELECT/INSERT/UPDATE veriyor).
+
+      Hata `bakim.ts:60`ta yakalanıp `log.warn`a yazılıyor ve sonraki
+      iş koşmaya devam ediyor — yalıtım doğru çalıştığı için kimse
+      fark etmedi. Karekod tarama kayıtları "1 saat" diye beyan
+      edilmişken süresiz birikmişti; yetki verilince **1.117 satır**
+      silindi.
+
+      ⚠️ Yalnızca `_temizlik` ile biten işler koşturuluyor. Ötekiler
+      (kupon açma, hatırlatma gönderme) yan etkili; testte koşturmak
+      gerçek kupon açar, gerçek mesaj kuyruğa alır.
+
+      ⚠️ Silinen satır sayısı sınanmıyor, yalnızca **patlamadığı**.
+      Sayıya bakan bir test veritabanının o anki hâline bağlı olurdu.
+    */
+    const temizlikler = ISLER.filter((i) => i.ad.endsWith("_temizlik"));
+    assert.ok(temizlikler.length >= 3, `yalnızca ${temizlikler.length} temizlik işi bulundu`);
+
+    for (const is of temizlikler) {
+      await assert.doesNotReject(
+        () => Promise.resolve(is.calistir()),
+        `${is.ad} patlıyor — muhtemelen sildiği tabloda DELETE yetkisi yok (göç 0047)`,
+      );
+    }
+  });
+
   test("muafiyet listesindeki her satırın gerekçesi var", () => {
     for (const [etiket, gerekce] of Object.entries(MUAF)) {
       assert.ok(gerekce.length > 15, `${etiket}: gerekçe yetersiz`);
