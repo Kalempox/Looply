@@ -55,8 +55,14 @@ export type BiletVerisi = {
   baslik: string;
   gorsel: KuponGorseli;
   renk: OyuncuRengi;
-  /** "8 Eyl" — biletin son kullanım günü (bekleyende açılış günü). */
-  son: string;
+  /**
+   * "8 Eyl" — biletin son kullanım günü (bekleyende açılış günü).
+   *
+   * ⚠️ Ü256'da isteğe bağlı oldu: fırsat listesindeki **ödüller** henüz
+   * kazanılmamış, yani bir son kullanımları yok. Tarihi olmayan karta
+   * uydurma bir gün yazmak, oyuncuya verilmemiş bir söz olurdu.
+   */
+  son?: string;
   /**
    * Tarihin başındaki kelime — varsayılan "son".
    *
@@ -137,7 +143,42 @@ export type BiletVerisi = {
  * başlığı okutmak bilgi değil gürültü — bölümün anlamı yandaki
  * metinde.
  */
-export function Bilet({ veri, sus = false }: { veri: BiletVerisi; sus?: boolean }) {
+/**
+ * Bilgi kipi — Ü256.
+ *
+ * ── Neden dördüncü bir kip ──────────────────────────────────
+ *
+ * Ürün sahibi `/firsatlar` için *"kupon tasarımıyla aynı olsun"* dedi.
+ * O ekrandaki kartlar Ü71'in pastel ailesinde kalmıştı; ürünün geri
+ * kalanı Ü171–Ü191'de koyu bilete taşınmış, orası unutulmuştu.
+ *
+ * Var olan üç kipin üçü de yanlış şeyi söylüyordu:
+ *
+ *   · varsayılan → tıklanabilir ve *"Kasada göster →"* diyor. Fırsat
+ *     henüz **kazanılmamış** bir şey; kasaya göndermek yalan olurdu.
+ *   · `sonuk`    → soluyor ve karartıyor, yani *"olmuş bitmiş"*
+ *     diyor. Fırsat ise gelecek.
+ *   · `sus`      → `aria-hidden`. Vitrindeki yağan kartlar için doğru
+ *     ama burası gerçek içerik; ekran okuyucudan gizlenemez.
+ *
+ * `bilgi` üçünün arasındaki boşluk: **tam renkli, tıklanmayan, kendi
+ * cümlesini söyleyen** bilet.
+ *
+ * ⚠️ Fırsat kartı bilerek tıklanmıyor — `/firsatlar`ın kendi notu:
+ * *"bu ekranda yapılacak bir işlem yok, ödül oyunun sonunda ya da
+ * çarkta düşüyor. Tıklanır görünen bir kart, dokunup hiçbir şey
+ * olmadığında ekranı bozuk gösterir."*
+ */
+export function Bilet({
+  veri,
+  sus = false,
+  bilgi,
+}: {
+  veri: BiletVerisi;
+  sus?: boolean;
+  /** Kesikli çizginin altında yazacak cümle. Verilirse kart tıklanmıyor. */
+  bilgi?: string;
+}) {
   const r = RENK[veri.renk];
   const sonuk = veri.sonuk;
 
@@ -257,9 +298,11 @@ export function Bilet({ veri, sus = false }: { veri: BiletVerisi; sus?: boolean 
         */}
         <span className="block etiket-caps text-white/55">
           {veri.kafe}{" "}
-          <span className="text-white/35">
-            · {veri.tarihOneki ?? "son"} {veri.son}
-          </span>
+          {veri.son && (
+            <span className="text-white/35">
+              · {veri.tarihOneki ?? "son"} {veri.son}
+            </span>
+          )}
         </span>
         <span className="mt-1 block font-display text-xl leading-tight font-bold text-white">
           {veri.baslik}
@@ -273,8 +316,11 @@ export function Bilet({ veri, sus = false }: { veri: BiletVerisi; sus?: boolean 
           yere gitmeyi vaat ediyor.
         */}
         <span className="mt-2.5 block border-t border-dashed border-white/30 pt-2">
-          <span className="etiket-caps" style={{ color: sonuk ? "rgba(255,255,255,0.72)" : r.canli }}>
-            {sonuk ? sonuk.etiket : "Kasada göster →"}
+          <span
+            className="etiket-caps"
+            style={{ color: sonuk ? "rgba(255,255,255,0.72)" : r.canli }}
+          >
+            {sonuk ? sonuk.etiket : (bilgi ?? "Kasada göster →")}
           </span>
         </span>
       </div>
@@ -289,6 +335,15 @@ export function Bilet({ veri, sus = false }: { veri: BiletVerisi; sus?: boolean 
   };
 
   const ortak = "kart-golge relative block h-[124px] overflow-hidden rounded-2xl";
+
+  /* Bilgi: tıklanmıyor, sönmüyor, okunuyor — Ü256. */
+  if (bilgi) {
+    return (
+      <div className={ortak} style={zemin}>
+        {govde}
+      </div>
+    );
+  }
 
   /* Süs: tıklanmıyor, okunmuyor, sönmüyor — yalnızca yüzey. */
   if (sus) {

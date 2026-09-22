@@ -57,8 +57,28 @@ import { type KatalogKarti } from "@/oyunlar/katalog";
 
 export type KarusellOyun = KatalogKarti;
 
-/** Kartın genişliği (piksel). Yan kartların payı buna oranlı. */
-const KART_EN = 244;
+/**
+ * Kartın genişliği (piksel). Yan kartların payı buna oranlı.
+ *
+ * ⚠️ Ü255'te 244'ten 288'e, Ü258'de 312'ye çıktı — ürün sahibi iki kez
+ * *"kartlarımız daha büyümeli"* dedi. Büyütmenin bedeli yok: kartlar
+ * zaten kırpılıyor ve ekrana sığma işi `max-w`ye değil kırpmaya bağlı.
+ *
+ * 🔴 Üst sınır komşu kartlardan geliyor, ekrandan değil. 375 piksellik
+ * telefonda kapsayıcı 335 ve kart 312 olunca komşudan iki yanda 12'şer
+ * piksel görünüyor — halka hissi orada bitiyor. Daha genişi karuseli
+ * tek kartlık bir listeye çevirir.
+ */
+const KART_EN = 312;
+
+/**
+ * Kartın yüksekliği (piksel).
+ *
+ * ⚠️ Sabit oldu — önce üç yerde elle `356` yazılıydı (kutu, kart ve
+ * rozetin yüzde hesabı). Biri büyütülüp öteki unutulsaydı rozet kartın
+ * dışına taşardı.
+ */
+const KART_BOY = 444;
 
 /** Komşu kartın yatay kayması — kart genişliğinin oranı. */
 const ADIM_ORANI = 0.62;
@@ -319,10 +339,37 @@ export function OyunKaruseli({ oyunlar }: { oyunlar: KarusellOyun[] }) {
 
   return (
     <div>
+      {/*
+        🔴 YATAY KIRPMA — Ü255. Bu sarmalayıcı olmadan sayfa bozuluyordu.
+
+        Kartlar `left-1/2` + `translateX` ile yerleşiyor ve halkanın
+        dış kartları kutunun dışına taşıyor. Kırpma olmayınca taşan
+        kartlar **belgeyi genişletiyordu**: ölçüldü, `/oyunlar`
+        sayfasında `scrollWidth` 797, ekran 375 — 422 piksel taşma.
+
+        Bedeli üç ayrı belirti olarak göründü ve üçü de aynı sebepti:
+
+          1. Sayfa yana kaydırılabiliyordu
+          2. Karoseli yana sürüklerken sayfa dikey de kayıyordu
+             (`touch-action: pan-y` dikeyi tarayıcıya bırakıyor ve
+             belge yatay kaydırılabilir olunca çapraz jest sayfayı
+             sürüklüyor)
+          3. 🔴 **Oyun ekranı bomboş görünüyordu.** Oyun kabuğu
+             `fixed inset-0` ve `fixed` düzen görüş alanına çapalı;
+             sayfa sağa kaydırılmışken katman ekranın dışında kalıyor
+             ve oyuncu beyaz bir sayfa görüyordu. Bu hata dört tur
+             boyunca yanlış yerlerde arandı.
+
+        ⚠️ `overflow-x: clip`, `hidden` DEĞİL. `hidden` bir kaydırma
+        kapsayıcısı üretiyor ve `overflow-y`yi de `auto`ya zorluyor;
+        `clip` yalnızca kırpıyor, dikey görünür kalıyor (kartın gölgesi
+        ve rozeti yukarı taşabiliyor).
+      */}
+      <div className="overflow-x-clip">
       <div
         ref={kutuRef}
-        className="relative mx-auto h-[356px] w-full max-w-md touch-pan-y select-none"
-        style={{ perspective: "1100px" }}
+        className="relative mx-auto w-full max-w-md touch-pan-y select-none"
+        style={{ perspective: "1100px", height: KART_BOY }}
         role="group"
         aria-roledescription="oyun karuseli"
         aria-label="Oyunlar"
@@ -378,6 +425,7 @@ export function OyunKaruseli({ oyunlar }: { oyunlar: KarusellOyun[] }) {
             </div>
           );
         })}
+      </div>
       </div>
 
       {/*
@@ -445,8 +493,9 @@ function OyunKapagi({
 
   return (
     <div
-      className="kart-golge relative h-[356px] overflow-hidden rounded-3xl"
+      className="kart-golge relative overflow-hidden rounded-3xl"
       style={{
+        height: KART_BOY,
         /*
           🔴 Kart PASTELDEN KOYUYA geçti — Ü181.
 
@@ -501,16 +550,32 @@ function OyunKapagi({
           kaplamıyor"* · ve Ü187'de *"Düşen ve Yılan'ın kartlarındaki
           oyun görselimiz daha büyük olmalı."*
 
-            132 → kartın (356) %37'si, sağ üstte duran bir rozet
+            132 → kartın (KART_BOY) %32'si, sağ üstte duran bir rozet
             215 → üst yarı; ama dar çizimler yine kartın solunu boş
                   bırakıyordu
             290 → taban; sahnenin kendi `olcek`i ile Düşen 325'e çıkıyor
+            300 → Ü258'de kart 444'e çıkınca oranı korumak için
 
           Üstten ve sağdan taşması hareketin kaynağını kartın DIŞINA
           koyuyor — parçalar bir yerden geliyormuş gibi duruyor.
+
+          🔴 ÜST KAYMA metinle ÇAKIŞMAYI belirliyor — Ü258.
+
+          Ölçüldü: `-top-9` (−36) ve 290 boyla sahnenin dibi kartın
+          254. pikselindeydi, kategori etiketi ise 221–237 arasında —
+          yani sahne yazının üstüne biniyordu ve Blok'un beyaz
+          patlaması etiketi yutuyordu. Ü187'nin güçlendirdiği perde
+          bunu tam kapatamıyor.
+
+          Kart 444'e çıkınca metin bloğu aşağı iniyor (250) ve sahne
+          `-top-14` (−56) ile 244'te bitiyor: aralarında 6 piksel var.
+
+          ⚠️ İkisi BAĞLI. `KART_BOY`, sahne boyu ya da bu kayma
+          değişirse üçünü birlikte hesapla; metin bloğu `mt-auto` ile
+          alta yapışık ve yüksekliği ~194 piksel.
         */
-        <span aria-hidden className="pointer-events-none absolute -top-9 -right-8">
-          <OyunSahnesi oyun={oyun.id} boy={290} />
+        <span aria-hidden className="pointer-events-none absolute -top-14 -right-8">
+          <OyunSahnesi oyun={oyun.id} boy={300} />
         </span>
       ) : (
         <span

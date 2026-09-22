@@ -4,15 +4,8 @@ import * as oturum from "@/domain/session";
 import * as masaOturumu from "@/domain/masa";
 import { ozet } from "@/domain/puan";
 import { buradakiler } from "@/domain/firsat";
-import {
-  OyuncuSayfa,
-  SayfaBasi,
-  Sayac,
-  OyuncuBolum,
-  KartDokusu,
-  kartStili,
-} from "@/components/oyuncu";
-import { RENK } from "@/components/oyuncu-renk";
+import { OyuncuSayfa, SayfaBasi, Sayac, OyuncuBolum } from "@/components/oyuncu";
+import { Bilet } from "@/components/bilet";
 import { gorselSec, GORSEL_RENGI } from "@/components/oyuncu-gorsel";
 
 export const dynamic = "force-dynamic";
@@ -32,12 +25,23 @@ export const metadata = { title: "Fırsatlar · Looply" };
  * Kafenin maliyet verisi (`cost_kurus`) ve yüzde kampanyasının TL tavanı
  * bu ekrana hiç gelmiyor — biri kafenin ticari verisi, diğeri E9.
  *
- * ── Görsel dil (Ü66) ────────────────────────────────────────
+ * ── Görsel dil (Ü66 → Ü256) ─────────────────────────────────
  *
  * Ekran oyuncu tarafının geri kalanından kopuktu: `Baslik`, `MasaKunyesi`
- * ve düz beyaz satırlar. Şimdi diğer ekranlarla aynı kabuğa oturuyor ve
- * her fırsatın arkasında **neyle ilgili olduğu** duruyor — kahve
- * indiriminde fincan, tatlıda pasta.
+ * ve düz beyaz satırlar. Ü66'da ortak kabuğa oturdu.
+ *
+ * 🔴 Ü256'da ikinci kez geride kaldığı görüldü. Ü71'de bütün kartlar
+ * pastel yapılmıştı; Ü171–Ü191 arasında ana ekran, katalog, profil ve
+ * Ödüllerim **koyu bilete** taşındı ve bu ekran listede hiç yoktu.
+ * Ürün sahibi: *"bunlar da normal tanımlı kuponların tasarımıyla aynı
+ * olsun."*
+ *
+ * Kartlar artık `Bilet`in kendisi — taklidi değil. Yani kupon tasarımı
+ * değiştiği gün burası da kendiliğinden değişiyor (Ü71'in dersi: yüzey
+ * tek yerden gelmezse her turda bir ekran geride kalıyor).
+ *
+ * ⚠️ `bilgi` kipinde: tam renkli ama **tıklanmıyor**. Sebebi aşağıda
+ * `FirsatKarti`da yazılı ve değişmedi.
  */
 export default async function FirsatlarSayfasi() {
   const o = await oturum.oku();
@@ -109,12 +113,16 @@ export default async function FirsatlarSayfasi() {
             {firsatlar.kampanyalar.map((k) => (
               <li key={k.id}>
                 <FirsatKarti
-                  baslik={k.urunAdi}
-                  sag={`%${k.yuzde}`}
-                  alt={`${k.bitis.toLocaleDateString("tr-TR", {
+                  kafe={masa.cafeAdi}
+                  baslik={`${k.urunAdi} · %${k.yuzde}`}
+                  /* Kampanyanın bitişi VAR — biletin tarih satırına o
+                     giriyor. Ödülde yok; orası boş kalıyor. */
+                  son={k.bitis.toLocaleDateString("tr-TR", {
                     day: "numeric",
-                    month: "long",
-                  })} tarihine kadar`}
+                    month: "short",
+                  })}
+                  tarihOneki="son"
+                  bilgi="Kasada geçerli"
                 />
               </li>
             ))}
@@ -128,11 +136,11 @@ export default async function FirsatlarSayfasi() {
             {firsatlar.oduller.map((odul) => (
               <li key={odul.id}>
                 <FirsatKarti
+                  kafe={masa.cafeAdi}
                   baslik={odul.baslik}
-                  aciklama={odul.aciklama ?? undefined}
                   /* E9: ödülün TL değeri oyuncuya GÖSTERİLMİYOR. Kasiyer
                      ekranında ortaya çıkıyor; burada yalnızca adı var. */
-                  alt={
+                  bilgi={
                     odul.kanitSeviyesi >= 3 ? "Masada 5 dakika sonra" : "Konum doğrulanınca"
                   }
                 />
@@ -154,61 +162,51 @@ export default async function FirsatlarSayfasi() {
 }
 
 /**
- * Tek fırsat.
+ * Tek fırsat — kuponun kendi bileti (Ü256).
  *
- * Kart tıklanabilir **değil**: bu ekranda yapılacak bir işlem yok, ödül
- * oyunun sonunda ya da çarkta düşüyor. Tıklanır görünen bir kart,
- * dokunup hiçbir şey olmadığında ekranı bozuk gösterir.
+ * ⚠️ Kart tıklanabilir **değil** ve bu kural Ü66'dan beri aynı: bu
+ * ekranda yapılacak bir işlem yok, ödül oyunun sonunda ya da çarkta
+ * düşüyor. Tıklanır görünen bir kart, dokunup hiçbir şey olmadığında
+ * ekranı bozuk gösterir.
+ *
+ * `Bilet`in `bilgi` kipi tam bunun için eklendi: tam renkli bilet,
+ * tıklanmıyor, kesikli çizginin altında "Kasada göster →" yerine
+ * fırsatın kendi cümlesi duruyor.
+ *
+ * Renk de çizim de fırsatın kendisinden geliyor (Ü67): "Tiramisu"
+ * pasta, "50 TL" para. Bölüm başlığının rengiyle eşleşmesi gerekmiyor
+ * — kart neyi anlatıyorsa o.
  */
 function FirsatKarti({
+  kafe,
   baslik,
-  aciklama,
-  sag,
-  alt,
+  son,
+  tarihOneki,
+  bilgi,
 }: {
+  kafe: string;
   baslik: string;
-  aciklama?: string;
-  /** Sağ üstte duran büyük değer — yalnızca yüzde kampanyalarında. */
-  sag?: string;
-  alt: string;
+  /** Kampanyanın bitişi. Ödülde yok — henüz kazanılmadı. */
+  son?: string;
+  tarihOneki?: string;
+  /** Kesikli çizginin altındaki cümle. */
+  bilgi: string;
 }) {
-  // Renk de çizim de fırsatın kendisinden geliyor (Ü67): "Tiramisu"
-  // pasta ve gül, "50 TL" para ve nane. Bölüm başlığının rengiyle
-  // eşleşmesi gerekmiyor — kart neyi anlatıyorsa o.
   const gorsel = gorselSec(baslik);
-  const renk = GORSEL_RENGI[gorsel];
-  const r = RENK[renk];
 
   return (
-    <div
-      className="kart-golge kart-gel relative overflow-hidden rounded-2xl px-5 py-4"
-      style={kartStili(renk)}
-    >
-      <KartDokusu renk={renk} gorsel={gorsel} />
-
-      <div className="relative">
-        <div className="flex items-baseline justify-between gap-3">
-          <span className="font-display text-lg leading-tight font-bold text-yazi">{baslik}</span>
-          {sag && (
-            <span
-              className="shrink-0 font-data text-2xl leading-none font-bold tabular"
-              style={{ color: r.koyu }}
-            >
-              {sag}
-            </span>
-          )}
-        </div>
-
-        {aciklama && (
-          <p className="mt-1 text-[13px] leading-relaxed" style={{ color: r.koyu }}>
-            {aciklama}
-          </p>
-        )}
-
-        <div className="mt-2.5 etiket-caps" style={{ color: r.koyu }}>
-          {alt}
-        </div>
-      </div>
-    </div>
+    <Bilet
+      veri={{
+        // Tıklanmayan kart; adres yalnızca tipin istediği alan.
+        href: "#",
+        kafe,
+        baslik,
+        gorsel,
+        renk: GORSEL_RENGI[gorsel],
+        son,
+        tarihOneki,
+      }}
+      bilgi={bilgi}
+    />
   );
 }
