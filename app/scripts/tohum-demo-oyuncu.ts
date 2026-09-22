@@ -196,6 +196,21 @@ async function main() {
     `expires_at > now()` koşulundan geliyor (bkz. `masa.aktif`). Eski
     oturumları kapatmak için geçmişe çekmek yeterli — silmek, oyuncunun
     geçmişini defterden koparırdı.
+
+    🔴 Demo oturumu 10 YIL — Ü252. Ürün sahibi: *"bu deneme hesabına
+    hiç oturumun doldu dememeli, hep kafede gibi olsun her şeyi test
+    edebilmem için."*
+
+    Önce 6 saatti ve test ortasında doluyordu; ürün sahibi ekranın
+    yarısını göremeden "masa seç" ekranına düşüyordu.
+
+    ⚠️ Bu **yalnızca demo hesabında**: gerçek oturum ömrü
+    `masa.OTURUM_SAAT` ve ona dokunulmadı. Betik `tohumKapisi`nin
+    arkasında, yani canlıda hiç koşmuyor.
+
+    ⚠️ Tek başına yetmiyordu: `masa.ac` karekod tekrar okutulunca
+    süreyi **kısaltıyordu** (`expires_at = now() + 3 saat`). Ü252'de
+    orası `GREATEST` oldu — "uzat" artık gerçekten uzatıyor.
   */
   await db.query(
     "UPDATE table_sessions SET expires_at = now() - interval '1 minute' WHERE player_id = $1 AND expires_at > now()",
@@ -207,7 +222,7 @@ async function main() {
     `INSERT INTO table_sessions
        (id, cafe_id, table_id, player_id, device_id_hash, proof_mask, proof_level,
         started_at, expires_at, last_seen_at, geo_distance_m, geo_checked_at)
-     VALUES ($1,$2,$3,$4,$5,$6,$7, now(), now() + interval '6 hours', now(), 12, now())`,
+     VALUES ($1,$2,$3,$4,$5,$6,$7, now(), now() + interval '10 years', now(), 12, now())`,
     [
       oturumId,
       cafeId,
@@ -561,7 +576,7 @@ async function main() {
   console.log("  ─────────────────────────────────────────────");
   console.log(`  telefon : ${TELEFON}`);
   console.log(`  parola  : ${PAROLA}`);
-  console.log(`  kafe    : ${cafeAdi} · masa oturumu açık (K2), 6 saat`);
+  console.log(`  kafe    : ${cafeAdi} · masa oturumu açık (K2) — dolmuyor`);
   console.log("");
   console.log("  Hazır olanlar:");
   console.log(
@@ -577,7 +592,7 @@ async function main() {
   console.log("    · Seri      → 14 günlük geçmiş; bugün oynanmadı (seri riskte)");
   console.log("    · Puan      → 5.600 puan · dört oyunda 18 tur");
   console.log("");
-  console.log("  Oturum dolarsa tekrar çalıştır: npm run db:demo");
+  console.log("  Hesabı tazelemek için: npm run db:demo");
   console.log("");
 }
 

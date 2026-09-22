@@ -404,8 +404,13 @@ export function SekmeEkrani({ tohum, bitti, kazandirir, cik }: OyunEkraniProps) 
                   if (kazandirir !== true) return null;
                   return (
                     <span key={`o-${n.k}-${n.s}-${i}`} className="absolute" style={ortak}>
-                      {/* `inset`, `padding` değil — yukarıdaki nota bak. */}
-                      <span className="absolute inset-[9%]" style={sekmeOdulu()} />
+                      {/* `inset`, `padding` değil — yukarıdaki nota bak.
+                          Ü251: ödül havadan düşüyor — `key` hücreden
+                          türediği için animasyon bir kez koşuyor. */}
+                      <span
+                        className="sekme-odul-dus absolute inset-[9%]"
+                        style={sekmeOdulu()}
+                      />
                     </span>
                   );
                 })}

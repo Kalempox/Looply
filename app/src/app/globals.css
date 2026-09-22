@@ -234,6 +234,21 @@ body {
 }
 .nabiz { animation: nabiz 1.4s ease-in-out infinite; }
 
+/*
+  Ayır — kuraldışı aktarımda tüpün sarsılması (Ü261).
+
+  ⚠️ Sesle birlikte çalışıyor ama sese BAĞLI değil: oyuncu sesi
+  kapatmış olabilir ve "bu hamle olmaz" geri bildirimi tek kanala
+  bırakılamaz. Kısa tutuldu (220 ms) — daha uzunu ard arda dokunan
+  oyuncuyu bekletirdi.
+*/
+@keyframes ayir-sarsinti {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+.ayir-sarsinti { animation: ayir-sarsinti 0.22s ease-in-out; }
+
 @keyframes patla {
   from { transform: scale(0.7); opacity: 0; }
   60%  { transform: scale(1.06); opacity: 1; }
@@ -2281,5 +2296,93 @@ body {
   .avatar-yuvaya,
   .avatar-yuva {
     animation: none !important;
+  }
+}
+
+/*
+  Sekme'nin ödülü havadan düşüyor — Ü251.
+
+  Ürün sahibi: *"sekme oyununda ödül havadan düşmeli."* Ödül motorda
+  tahtanın en üst satırında beliriyor (`sekme.ts`) ve duvarla birlikte
+  iniyor; ekranda ise bir anda **beliriyordu** — öteki bloklardan
+  ayırt edilmiyordu.
+
+  ⚠️ Yalnızca görünüm. Ödülün yeri, hangi hücrede olduğu ve ne zaman
+  teslim edildiği motorun kararı; burada değişen tek şey o hücreye
+  nasıl geldiği. Motor değişseydi replay saparadı (S5).
+
+  ⚠️ Bir kez koşuyor: `key` ödülün hücresinden türüyor, yani ödül
+  yerinde durduğu sürece animasyon tekrarlamıyor.
+*/
+@keyframes sekme-odul-dus {
+  0% {
+    transform: translateY(-320%) rotate(-14deg);
+    opacity: 0;
+  }
+  60% {
+    opacity: 1;
+  }
+  78% {
+    transform: translateY(6%) rotate(3deg);
+  }
+  100% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+.sekme-odul-dus {
+  animation: sekme-odul-dus 620ms cubic-bezier(0.34, 0.9, 0.32, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sekme-odul-dus {
+    animation: none;
+  }
+}
+
+/*
+  ⚠️ BURAYA `html, body { overflow-x: clip }` KOYMA — Ü257.
+
+  Ü255'te ikinci savunma olarak konuldu ve **her sayfada kaydırmayı
+  bozdu**: kök ögelerde `overflow-x` görünürden çıkınca kaydırma
+  kapsayıcısı değişiyor, sayfa yanlış yerden başlıyor ve çapalama
+  (scroll anchoring) şaşıyor. Ürün sahibi tek turda fark etti.
+
+  Yatay taşmanın gerçek bedeli duruyor ve ciddi (oyun kabuğu
+  `fixed inset-0`; sayfa yana kayarsa katman ekranın dışına düşüyor ve
+  oyuncu beyaz bir sayfa görüyor). Ama çözümü **kaynağında kırpmak** —
+  `karusel.tsx` bunu `overflow-x-clip` ile yapıyor.
+
+  Taşma yine olursa aranacak yer taşan ögedir, kök değil.
+*/
+
+/*
+  2048'in karosu belirirken büyüyor — Ü259.
+
+  ⚠️ Yalnızca **beliren** karo: `key` değeri taşıdığı için React
+  birleşen karoyu yeni bir öge sayıyor ve animasyon orada koşuyor.
+  Kıpırdamayan karolar aynı `key`i koruyor, yani her hamlede bütün
+  tahta zıplamıyor.
+*/
+@keyframes ikibin-karo {
+  0% {
+    transform: scale(0.72);
+  }
+  70% {
+    transform: scale(1.06);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.ikibin-karo {
+  animation: ikibin-karo 160ms cubic-bezier(0.3, 0.8, 0.4, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ikibin-karo {
+    animation: none;
   }
 }
