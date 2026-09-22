@@ -141,7 +141,7 @@ export function OyunKaruseli({ oyunlar }: { oyunlar: KarusellOyun[] }) {
         ortasına aynı tıklama:
 
           pointerdown'da yakala (eski)  → click hedefi DIV, gitmedi
-          yön kararında yakala (yeni)   → click hedefi A,   /oyna/kelime
+          yön kararında yakala (yeni)   → click hedefi A,   /oyna/<oyun>
 
         Yakalanan işaretçide tarayıcı `click` hedefini yakalayan ögeye
         kaydırıyor; bağlantı hiç tetiklenmiyor. Yani Ü162'den beri
@@ -562,8 +562,21 @@ function OyunKapagi({
       )}
 
       <div className="pointer-events-none relative flex h-full flex-col p-5">
-        <span className="flex size-16 items-center justify-center rounded-2xl bg-yuzey shadow-sm">
-          <OyunIkonu oyunId={oyun.id} boy={36} />
+        {/*
+          🔴 Ü238: beyaz kutu KALKTI.
+
+          İkonlar ürün sahibinin referansına göre **karo** oldu: her
+          biri kendi koyu zemini ve neon çerçevesiyle gelen bir
+          uygulama ikonu. 36 pikselde beyaz bir kutunun ortasına
+          konunca karo küçülüyor, kendi çerçevesi de beyazın içinde
+          kayboluyordu — kutunun içinde kutu.
+
+          ⚠️ `overflow-hidden` şart: karonun köşeleri görselin
+          kendisinde yuvarlak ama dışında koyu lacivert alan var;
+          kırpılmazsa kutunun köşelerinde o lacivert görünür.
+        */}
+        <span className="flex size-16 overflow-hidden rounded-2xl shadow-sm">
+          <OyunIkonu oyunId={oyun.id} boy={64} />
         </span>
 
         <div className="mt-auto">

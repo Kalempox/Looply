@@ -48,7 +48,29 @@ GELEN = os.path.join(os.path.dirname(KOK), "gelen", "ikon")
 KLASOR = os.path.join(KOK, "public", "oyun")
 
 # Kaynak dosya adları: üretim turları `gelen/`de duruyor, seçilen tur burada.
-KARELER = {"dusen": "dusen.png", "blok": "blok.png", "yilan": "yilan-3.png"}
+#
+# ── Ü238: ürün sahibinin referansına göre, neon karo ─────────
+#
+# Ürün sahibi bir referans görseli verdi: koyu lacivert zeminde, neon
+# çerçeveli yuvarlak kare karolar; her karo kendi oyununu anlatan
+# canlı bir sahne taşıyor. *"Bu referanslara göre yap."*
+#
+# Beş karo referanstan kesilip kareye tamamlandı ve her biri fal'a
+# **görsel referans** olarak verildi (`flux/dev/image-to-image`,
+# strength 0,42). Ü237'de metinle stil tarif etmek altı turda
+# tutmamıştı; referans zinciri ilk turda tuttu.
+#
+# ⚠️ `blok` ilk turda üretilemedi: hesap iş ortasında kredi sınırına
+# takıldı ("User is locked. Reason: TOP_UP") ve geçici olarak referans
+# karosundan alındı (325→256, küçültme olduğu için kayıpsız). Kredi
+# yüklenince öbür dördü gibi üretildi; beşi de artık fal çıktısı.
+KARELER = {
+    "blok": "blok-karo.png",
+    "dusen": "dusen-karo.png",
+    "sekme": "sekme-karo.png",
+    "yilan": "yilan-karo.png",
+    "bicak": "bicak-karo.png",
+}
 
 BOY = 256
 # Kenar payı — kare kutunun içinde nefes alsın diye.
@@ -60,22 +82,32 @@ ESIK = 8
 def isle(oyun: str, dosya: str) -> None:
     im = Image.open(os.path.join(GELEN, dosya)).convert("RGBA")
     al = np.asarray(im)[:, :, 3]
-    ys, xs = np.nonzero(al > ESIK)
-    kutu = im.crop((int(xs.min()), int(ys.min()), int(xs.max()) + 1, int(ys.max()) + 1))
 
-    # Kareye tamamla: uzun kenar ölçü, kısa kenar ortalanıyor.
-    kenar = max(kutu.size)
-    pay = int(kenar * PAY)
-    tuval = Image.new("RGBA", (kenar + 2 * pay, kenar + 2 * pay), (0, 0, 0, 0))
-    tuval.alpha_composite(
-        kutu,
-        (pay + (kenar - kutu.width) // 2, pay + (kenar - kutu.height) // 2),
-    )
+    if (al > ESIK).all():
+        # ── Karo (Ü238) ──────────────────────────────────────
+        # Görselin tamamı ikon: kendi zemini, kendi çerçevesi var.
+        # Alfaya göre kırpmak burada hiçbir şey yapmaz (her piksel
+        # dolu) ama PAY eklemek karoyu kutunun içine küçültür ve
+        # çerçevesinin etrafında boşluk bırakır — karo dili bozulur.
+        tuval = im
+    else:
+        ys, xs = np.nonzero(al > ESIK)
+        kutu = im.crop(
+            (int(xs.min()), int(ys.min()), int(xs.max()) + 1, int(ys.max()) + 1)
+        )
+        # Kareye tamamla: uzun kenar ölçü, kısa kenar ortalanıyor.
+        kenar = max(kutu.size)
+        pay = int(kenar * PAY)
+        tuval = Image.new("RGBA", (kenar + 2 * pay, kenar + 2 * pay), (0, 0, 0, 0))
+        tuval.alpha_composite(
+            kutu,
+            (pay + (kenar - kutu.width) // 2, pay + (kenar - kutu.height) // 2),
+        )
 
     yol = os.path.join(KLASOR, f"ikon-{oyun}-{BOY}.webp")
     tuval.resize((BOY, BOY), Image.LANCZOS).save(yol, quality=90, method=6)
     kb = os.path.getsize(yol) // 1024
-    print(f"  ikon-{oyun}  {kutu.width}x{kutu.height} -> {BOY}x{BOY}  {kb} KB")
+    print(f"  ikon-{oyun}  {tuval.width}x{tuval.height} -> {BOY}x{BOY}  {kb} KB")
 
 
 if __name__ == "__main__":
