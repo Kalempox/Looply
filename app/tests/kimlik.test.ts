@@ -13,6 +13,7 @@ import {
   taramaKaydet,
   kodUret,
   EN_UZUN_KOD,
+  basiliKoduTasi,
 } from "@/domain/qr";
 import {
   kaydet,
@@ -392,6 +393,112 @@ describe("masa karekodu (K1)", () => {
       ),
     );
   }
+
+  test("🔴 basılı kodun yönlendirmesi başka KAFEYE taşınıyor (Ü266)", async () => {
+    /*
+      🔴 Ürün sahibinin "301 redirect" dediği şey bu: toptan basılan
+      karekod aynen kalıyor, değişen tek şey o kodun hangi masaya —
+      dolayısıyla hangi **kafeye** düştüğü.
+
+      Bu işlem kiracı sınırını aşıyor ve testsiz bırakılamaz: yanlış
+      çalışırsa bir kafenin müşterisi sessizce başka kafeye gider.
+
+      ⚠️ İki masanın da önceki kodu saklanıp `finally` içinde GERİ
+      KONUYOR. Daha önce bir test `print_code`u `NULL`a çekip bırakmış
+      ve geliştirme veritabanındaki bağlı kodu silmişti — düştüğünde
+      değil *geçtiğinde* zarar veren hata.
+    */
+    const a = await masaAl(kafeA);
+    const b = await masaAl(kafeB);
+    assert.ok(a);
+    assert.ok(b);
+
+    const kod = kodUret("Tasima Testi");
+    const oncekiA = a.print_code;
+    const oncekiB = b.print_code;
+
+    await yoneticiSorgu(`UPDATE cafe_tables SET print_code = NULL WHERE id = ANY($1)`, [
+      [a.id, b.id],
+    ]);
+    await yoneticiSorgu(`UPDATE cafe_tables SET print_code = $2 WHERE id = $1`, [a.id, kod]);
+
+    try {
+      // Taşımadan önce kod A kafesine gidiyor.
+      const once = await masaCoz(kod);
+      assert.equal(once?.cafeId, kafeA, "kod başlangıçta A kafesinde olmalıydı");
+
+      const sonuc = await basiliKoduTasi({
+        kod,
+        hedefTableId: b.id,
+        bakanId: "plt_test",
+        gerekce: "test taşıması",
+      });
+      assert.equal(sonuc.ok, true, `taşıma reddedildi: ${JSON.stringify(sonuc)}`);
+
+      // 🔴 Asıl iddia: aynı kâğıt artık öteki kafeye gidiyor.
+      const sonra = await masaCoz(kod);
+      assert.equal(sonra?.cafeId, kafeB, "kod taşındıktan sonra B kafesine gitmeliydi");
+
+      // Kaynak masada kod kalmamalı — iki masada aynı kod olamaz.
+      const kaynak = await withBypass("test: kaynak masa", (db) =>
+        db.one<{ print_code: string | null }>(
+          `SELECT print_code FROM cafe_tables WHERE id = $1`,
+          [a.id],
+        ),
+      );
+      assert.equal(kaynak?.print_code, null, "kaynak masa kodu bırakmadı");
+
+      // Denetim izi — "kim, hangi kodu, nereden nereye, neden".
+      const iz = await withBypass("test: denetim", (db) =>
+        db.one<{ detail: Record<string, unknown> }>(
+          `SELECT detail FROM audit_log
+            WHERE action = 'table.print_code_move' AND target_id = $1
+            ORDER BY id DESC LIMIT 1`,
+          [b.id],
+        ),
+      );
+      assert.ok(iz, "taşıma denetim izine yazılmadı");
+      assert.equal(iz.detail.kod, kod);
+      assert.equal(iz.detail.gerekce, "test taşıması");
+
+      // Gerekçesiz taşıma reddediliyor.
+      const gerekcesiz = await basiliKoduTasi({
+        kod,
+        hedefTableId: a.id,
+        bakanId: "plt_test",
+        gerekce: "  ",
+      });
+      assert.equal(gerekcesiz.ok, false, "gerekçesiz taşıma kabul edildi");
+
+      // 🔴 Kodu olan masanın üstüne ikinci kod bağlanamıyor: bağlansaydı
+      // eskisi sessizce kaybolur ve elindeki kâğıt bir gün ölürdü.
+      const ikinciKod = kodUret("Ikinci");
+      await yoneticiSorgu(`UPDATE cafe_tables SET print_code = $2 WHERE id = $1`, [
+        a.id,
+        ikinciKod,
+      ]);
+      const dolu = await basiliKoduTasi({
+        kod,
+        hedefTableId: a.id,
+        bakanId: "plt_test",
+        gerekce: "dolu masaya taşıma",
+      });
+      assert.equal(dolu.ok, false, "kodu olan masaya ikinci kod bağlandı");
+    } finally {
+      await yoneticiSorgu(`UPDATE cafe_tables SET print_code = NULL WHERE id = ANY($1)`, [
+        [a.id, b.id],
+      ]);
+      await yoneticiSorgu(`UPDATE cafe_tables SET print_code = $2 WHERE id = $1`, [
+        a.id,
+        oncekiA,
+      ]);
+      await yoneticiSorgu(`UPDATE cafe_tables SET print_code = $2 WHERE id = $1`, [
+        b.id,
+        oncekiB,
+      ]);
+      await yoneticiSorgu(`DELETE FROM audit_log WHERE actor_id = 'plt_test'`);
+    }
+  });
 
   test("basılı kod masaya çözülüyor", async () => {
     const masa = await masaAl(kafeA);

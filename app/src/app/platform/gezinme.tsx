@@ -23,6 +23,7 @@ import { usePathname } from "next/navigation";
 const DURAKLAR = [
   { yol: "/platform/basvurular", ad: "Başvurular" },
   { yol: "/platform/kafeler", ad: "Kafeler" },
+  { yol: "/platform/karekodlar", ad: "Karekodlar" },
   { yol: "/platform/oyuncular", ad: "Oyuncular" },
   { yol: "/platform/mesaj", ad: "Mesaj" },
   { yol: "/platform/acil", ad: "Acil durdurma" },

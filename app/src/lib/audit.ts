@@ -40,6 +40,12 @@ export type Islem =
   | "table.create"
   | "table.enable"
   | "table.disable"
+  /* Ü266: basılı kodun başka bir masaya taşınması. `table.*` ailesinin
+     içinde ama ayrı bir işlem — basılı bir kâğıdın hangi kafeye
+     gittiğini değiştirmek, masayı açıp kapatmakla aynı ağırlıkta
+     değil. "Kim, hangi kodu, nereden nereye, neden" sorusunun cevabı
+     kayıtta tek satırda durmalı. */
+  | "table.print_code_move"
   // Ü109: kafenin oyun tercihi. Para başlığı altında çünkü kapalı oyun
   // dağıtımı değiştiriyor — "bu hafta neden daha az kupon çıktı"
   // sorusunun cevabı burada olabilir.

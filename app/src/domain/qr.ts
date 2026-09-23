@@ -3,6 +3,7 @@ import { withBypass } from "@/db/context";
 import { slugla } from "@/lib/slug";
 import { sha256, randomToken, imzala, imzaGecerliMi } from "@/lib/crypto";
 import { log } from "@/lib/log";
+import { audit } from "@/lib/audit";
 
 /** İmza amacı — misafir talebiyle aynı anahtarı kullanıyor, aynı uzayı değil. */
 const AMAC = "masa-bileti";
@@ -245,5 +246,159 @@ export async function temizle(): Promise<number> {
     );
     if (r.rowCount) log.debug("tarama kayitlari temizlendi", { adet: r.rowCount });
     return r.rowCount ?? 0;
+  });
+}
+
+/* ══════════════════════════════════════════════════════════
+   Basılı kodun yönlendirmesi — Ü266
+   ══════════════════════════════════════════════════════════ */
+
+/**
+ * Ürün sahibinin istediği "301 redirect" bu.
+ *
+ * ── Neden ayrı bir yönlendirme tablosu YOK ──────────────────
+ *
+ * Basılı karekod `…/m/<kod>` taşıyor ve `masaCoz` o kodu
+ * `cafe_tables.print_code` üzerinden bir masaya bağlıyor. Yani
+ * yönlendirmenin hedefi zaten bir satır: kodu başka bir masaya
+ * bağlamak, karekodun gittiği yeri değiştirmek demek.
+ *
+ * Araya ikinci bir "kod → adres" tablosu koymak aynı bilgiyi iki yerde
+ * tutardı ve ikisi ayrıştığı gün hangisinin doğru olduğu bilinmezdi.
+ *
+ * ⚠️ Bu **kiracı sınırını aşan** bir işlem: kod bir kafeden ötekine
+ * geçiyor. Bu yüzden yalnızca platform tarafında ve denetim iziyle
+ * yapılıyor; kafe yöneticisi kendi kodunu başka kafeye veremiyor.
+ */
+export type BasiliKodSatiri = {
+  kod: string;
+  cafeId: string;
+  cafeAdi: string;
+  tableId: string;
+  masaAdi: string;
+  aktif: boolean;
+  sonTarama: Date | null;
+};
+
+/** Bağlı bütün basılı kodlar — platform ekranının listesi. */
+export async function basiliKodlar(): Promise<BasiliKodSatiri[]> {
+  return withBypass("platform: basılı kod listesi", async (db) => {
+    const r = await db.all<{
+      print_code: string;
+      cafe_id: string;
+      cafe_adi: string;
+      table_id: string;
+      masa_adi: string;
+      active: boolean;
+      son_tarama: Date | null;
+    }>(
+      `SELECT t.print_code, c.id AS cafe_id, c.name AS cafe_adi,
+              t.id AS table_id, t.label AS masa_adi, t.active,
+              (SELECT max(s.created_at) FROM qr_scans s WHERE s.table_id = t.id) AS son_tarama
+         FROM cafe_tables t
+         JOIN cafes c ON c.id = t.cafe_id
+        WHERE t.print_code IS NOT NULL
+        ORDER BY c.name, t.label`,
+    );
+    return r.map((x) => ({
+      kod: x.print_code,
+      cafeId: x.cafe_id,
+      cafeAdi: x.cafe_adi,
+      tableId: x.table_id,
+      masaAdi: x.masa_adi,
+      aktif: x.active,
+      sonTarama: x.son_tarama,
+    }));
+  });
+}
+
+/** Kodu devralabilecek masalar — hedef seçicinin kaynağı. */
+export async function kodsuzMasalar(): Promise<
+  { cafeId: string; cafeAdi: string; tableId: string; masaAdi: string }[]
+> {
+  return withBypass("platform: kodsuz masa listesi", async (db) => {
+    const r = await db.all<{
+      cafe_id: string;
+      cafe_adi: string;
+      table_id: string;
+      masa_adi: string;
+    }>(
+      `SELECT c.id AS cafe_id, c.name AS cafe_adi, t.id AS table_id, t.label AS masa_adi
+         FROM cafe_tables t
+         JOIN cafes c ON c.id = t.cafe_id
+        WHERE t.print_code IS NULL AND t.active
+        ORDER BY c.name, t.label`,
+    );
+    return r.map((x) => ({
+      cafeId: x.cafe_id,
+      cafeAdi: x.cafe_adi,
+      tableId: x.table_id,
+      masaAdi: x.masa_adi,
+    }));
+  });
+}
+
+export type TasimaSonucu = { ok: true } | { ok: false; hata: string };
+
+/**
+ * Basılı kodu başka bir masaya taşır — yönlendirmeyi değiştirir.
+ *
+ * ⚠️ Hedef masanın kodu **olmamalı**. Olsaydı iki kod tek masaya
+ * bağlanır, eskisi sessizce kaybolur ve elindeki basılı kâğıt bir gün
+ * çalışmamaya başlardı. Benzersizlik kısıtı zaten engelliyor; buradaki
+ * kontrol hatayı kısıt patlamadan **anlaşılır** hâle getiriyor.
+ *
+ * ⚠️ Gerekçe zorunlu: bu işlem bir kafenin müşterisini ötekine
+ * yönlendiriyor. "Neden" sorusunun cevabı kayıtta olmalı.
+ */
+export async function basiliKoduTasi(opts: {
+  kod: string;
+  hedefTableId: string;
+  bakanId: string;
+  gerekce: string;
+}): Promise<TasimaSonucu> {
+  const kod = opts.kod.toLowerCase();
+  if (!kodGecerli(kod)) return { ok: false, hata: "Kod biçimi geçersiz." };
+  if (opts.gerekce.trim().length < 3) return { ok: false, hata: "Gerekçe yazılmalı." };
+
+  return withBypass("platform: basılı kod taşıma", async (db) => {
+    const kaynak = await db.one<{ id: string; cafe_id: string }>(
+      `SELECT id, cafe_id FROM cafe_tables WHERE print_code = $1`,
+      [kod],
+    );
+    if (!kaynak) return { ok: false, hata: "Kod hiçbir masaya bağlı değil." };
+
+    const hedef = await db.one<{ id: string; cafe_id: string; print_code: string | null }>(
+      `SELECT id, cafe_id, print_code FROM cafe_tables WHERE id = $1 AND active`,
+      [opts.hedefTableId],
+    );
+    if (!hedef) return { ok: false, hata: "Hedef masa bulunamadı." };
+    if (hedef.id === kaynak.id) return { ok: false, hata: "Kod zaten bu masada." };
+    if (hedef.print_code) {
+      return { ok: false, hata: "Hedef masanın zaten bir basılı kodu var." };
+    }
+
+    /* Önce sök, sonra tak: benzersizlik kısıtı aynı anda iki satırda
+       aynı kodu kabul etmiyor. */
+    await db.query(`UPDATE cafe_tables SET print_code = NULL WHERE id = $1`, [kaynak.id]);
+    await db.query(`UPDATE cafe_tables SET print_code = $1 WHERE id = $2`, [kod, hedef.id]);
+
+    await audit(db, {
+      actorType: "platform",
+      actorId: opts.bakanId,
+      action: "table.print_code_move",
+      targetType: "table",
+      targetId: hedef.id,
+      detail: {
+        kod,
+        kaynakMasa: kaynak.id,
+        kaynakKafe: kaynak.cafe_id,
+        hedefKafe: hedef.cafe_id,
+        gerekce: opts.gerekce.trim(),
+      },
+    });
+
+    log.info("basili kod tasindi");
+    return { ok: true };
   });
 }
