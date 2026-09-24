@@ -6,7 +6,7 @@
 > Yan dosyalar: neyin **var** olduğu → `21-looply-kapsam-haritasi.md` ·
 > demoda neyin **yapılabildiği** → `22-demo-yapilabilirlik.md`
 
-**Son güncelleme:** 2026-09-24 · **Kararlar:** Ü76 – Ü159, **Ü186 – Ü242**, **Ü259 – Ü274**
+**Son güncelleme:** 2026-09-24 · **Kararlar:** Ü76 – Ü159, **Ü186 – Ü242**, **Ü259 – Ü275**
 
 > ⚠️ **BU LİSTEDE İKİ BOŞLUK VAR.**
 >
@@ -38,6 +38,146 @@
 ⚠️ U3 test sırasında **bilerek** değiştirilmedi: yerel testte telefonla
 okutulan karekodun LAN sunucusuna gitmesi tam da bu davranış sayesinde
 çalışıyor.
+
+## ⬅️ Ü275 · Ödül paketi "görünürse kesin" · çark ayrı hak · iPhone'da akıcılık · ana ekran — 2026-09-24
+
+✅ Commitlendi (2026-09-24).
+
+Ürün sahibi 3001'deki hızlı sürümü telefonda denedi: *"yine de çok
+kasıyor, blok kırıcıda ödülü kazanmama rağmen ödül yine gelmedi, çark
+kapalıyken ana ekranda hiç çark olmamalı, streak ilk kez gösterildikten
+sonra ana ekranda olmamalı, alttaki şerit kaydırırken yok olsun, tüm
+oyunlar çok takılıyor, donuyor."* Ayrıca bir test kuponu istedi.
+
+- [x] **Test kuponu** ✅ — "25 TL indirim", kazınmamış, hemen
+  kullanılabilir (`carkOduluVer` + açılma anı geçmişe; kupon-kazima
+  testindeki yolun aynısı).
+
+### 🔴 Ödül neden gelmedi — iki ayrı sebep (veritabanından)
+
+1. **Çark oyunun günlük hakkını tüketiyordu.** 02:37'de çarktan "Tatlıda
+   %10 indirim" kazanıldı. Çark da `kind = 'instant'` ödül listesinden
+   veriyor ve `anlikOdulVer`in "bugün anlık ödül aldı mı" sorgusu onu
+   sayıyordu. Sonraki Blok Kırıcı (1.705) ve Bıçak (605) turları bu
+   yüzden kupon üretmedi.
+2. **Paket bir söz değildi.** Paket 500'ü geçen her turda çıkıyor, kupon
+   ise tur sonunda %22–45 şansla veriliyordu. Bloğu kırmak ödül demek
+   değildi; ekran "kazandın" diyordu.
+
+### Kararlar (ürün sahibi)
+
+- **"Ayrı olsun"** — günde bir çark ödülü + bir oyun ödülü.
+- **"Görünürse kesin"** — şans paket görünmeden atılıyor; görünen paketi
+  alan kuponu kesin alıyor; sıklık bugünkü gibi.
+
+### Uygulama
+
+- [x] **Çark ayrı** ✅ — günlük sorgu `issued` gerekçesi `cark` olan
+  kuponu saymıyor; çarkın kendi kilidiyle (`cark.ts · sonCevirme`)
+  **aynı tanım**.
+- [x] **Sözleşme** ✅ — `odulVar(durum)` (paket tahtada mı) ve
+  `odulTeslim(durum)` (oyuncuya ulaştı mı) dokuz motorda. ⚠️ Ayır ve
+  Bağla'da `odulVerildi` bölüm sonunda alınmamış paket için de kalkıyordu
+  → ayrı `odulAlindi` bayrağı. Yılan'da altın yem yenince sayılıyor.
+- [x] **Karar anı** ✅ — ekran paket ilk belirdiğinde soruyor
+  (`odulSorEylemi` / misafirde `misafirOdulSor`). Sunucu turu o ana
+  kadarki kayıtla **yeniden oynatıp** paketin gerçekten tahtada olduğunu
+  görüyor; doğrulanamayan soru karar YAZMIYOR (turun şansı yanmıyor).
+- [x] **Sert şartlar** ✅ (`kupon.odulSozuVer`) — acil durdurma, kafe
+  açık, bugünkü oyun hakkı, günlük adedi dolmamış ve kanıtı yeten aday,
+  bütçenin en ucuz adaya yetmesi (`butce.dagitilabilirIle`, rezervasyonla
+  **aynı hesap**: `kalanHesapla`).
+- [x] **Zar** ✅ — `paketSansi` = bugünkü aralığın ortası (%33,5) ×
+  bıkkınlık. Tohumdan **anahtarlı** (`paketZari`, HMAC): aynı tur hep
+  aynı cevap; soruyu tekrarlamak ya da misafirde eski çereze dönmek zarı
+  yenilemiyor. Oyuncu tohumu biliyor, anahtarı bilmiyor.
+- [x] **Karar bir kez** ✅ — girişlide `play_sessions.odul_sozu`
+  (göç `0051`), misafirde imzalı açık oyun çerezi → talep → kayıtta
+  `misafirOyunuYaz`.
+- [x] **Kesin kupon** ✅ — `anlikOdulVer({ garanti: true })`: zar yok,
+  hangi ödülün çıkacağı yine skordan (Ü77'nin skor ağırlığı duruyor).
+  Söz yoksa oyun yolunda kupon hiç denenmiyor.
+- [x] **Söz tutulamazsa ekran söylüyor** ✅ — nadir (arada bütçe dolmuş
+  ya da oyun ödülü başka turda alınmış): `odulYok: "verilemedi"`.
+- [x] **Ekran** ✅ — dokuz ekran ortak `useOdulPaketi`, kabuklar
+  `useOdulIzni`. İzin gelene kadar paket çizilmiyor; "hayır"da sıradan
+  parça (Ü207'deki gibi). ⚠️ Yılan'da altın yem hiç gizlenmiyordu —
+  artık izinsiz hâlde **sıradan elma** (görünmez olsaydı yılan boş bir
+  kareden büyürdü). Ödül sesi de izne bağlı; Ayır'da bölümle kaybolan
+  paket ödül sesi çalıyordu, düzeldi.
+- [x] **Misafir sonuç ekranı** ✅ — paket alındıysa "Ödül paketini
+  aldın — kuponun hesabına geçecek".
+
+### 🔴 "Çok kasıyor, donuyor" — ölçüm ve sebep
+
+- **Hesap değil.** Bilgisayarda işlemci 4 kat yavaşlatılınca bile Blok
+  Kırıcı atışı 60 kare/sn (en kötü kare 33 ms). Oyun ilerledikçe (23
+  top) `atisIzi` 1 ms'nin altında.
+- **Görseller değil.** Oyun kartları 90–180 KB, toplam `public/` 5,4 MB.
+- **Çizim.** Bilgisayar tarayıcısı efektleri ekran kartında boyuyor;
+  iPhone Safari birçoğunu **işlemcide ve her karede** boyuyor. Atış
+  sırasında Chromium izinde (3 atış) 567 boyama, 378 görsel boyama:
+  toplar tahtanın içinde kaydıkça bloklar degradeleriyle yeniden
+  çiziliyor, Loopy her atışta yüz değiştirip üç katmanlı görselini
+  yeniden çözdürüyordu.
+
+⚠️ iPhone'un kendisinde ölçülemedi (Safari'nin geliştirici aracı Mac
+istiyor); düzeltmeler Safari'nin bilinen ağır kalıpları.
+
+- [x] **Blok Kırıcı** ✅ — her top kendi katmanında, `transform` ile
+  (yüzde topun kendi boyuna göre; ölçüm gerekmiyor). Nişan çizgisi kendi
+  katmanında. Loopy `left` geçişi yerine `transform`, atış sırasında
+  **yüz değiştirmiyor**.
+- [x] **Tuğla Kırıcı** ✅ — top ve palet `left/top` yerine `transform`;
+  duvar ve tehlike perdesi kendi katmanında.
+- [x] **Bıçak Ustası** ✅ — dönen kütük kendi katmanında (bıçaklar ve
+  ışımaları bir kez boyanıyor).
+- [x] **Yılan** ✅ — gövdeye tek `drop-shadow` filtresi veriliyordu ve
+  halkalar kaydıkça her karede yeniden hesaplanıyordu. Aynı görüntü
+  filtresiz: halkaların koyu kopyası 3 px aşağıda, saydamlık katmanda
+  (örtüşen halkalar iki kez koyulaşmıyor). 2 px bulanıklık gitti.
+- [x] **Loopy** ✅ — `sizes` verildi: 82 px'lik avatar için 1080'lik
+  görsel isteniyordu (sunucu 512'yi döndürüyor) — üç katman × 512×512.
+- [x] **Cam efektleri** ✅ — alt şerit, üst şerit, Loopy yuvası, kazıma
+  düğmesi, ödül açılışı, profil düğmesi: `backdrop-blur` → düz renk.
+  Kaydırırken bulanıklık her karede yeniden hesaplanıyordu.
+
+### Ana ekran
+
+- [x] **Çark kartı** ✅ — yalnızca çevrilebilirken. Önceki gerekçe
+  ("kaybolan kart 'özellik kaldırıldı' diye okunur") ürün sahibinin
+  kararıyla bırakıldı.
+- [x] **Seri kartı** ✅ — ana ekranda yok; sahne günde bir kez
+  kendiliğinden açılıyor (Ü68), seri sayısı profilde.
+- [x] **Şeritler** ✅ — aşağı kaydırınca çekiliyor, yukarı kaydırınca
+  geliyor (`SeritGizleyici` yalnızca `<html data-serit-gizli>` yazıyor,
+  kayma CSS'te; React çizmiyor). Tepeye yakınken hep görünür.
+
+### Görseller — yapılmadı, karar bekliyor
+
+Sahneler ekranda 210–300 px çiziliyor; 3x ekranda 630–900 px gerekiyor,
+kaynak 512. Blok/Düşen/Yılan/Tüm Oyunlar'ın 1024'lük kesikleri var ama
+yayındakiler sonradan başka işlemden geçmiş (aynı kırpmayla ortalama
+fark 7–35) — 2 kat sürüm aynı görünümle çıkmıyor. Yeni altı sahne kart
+ekran görüntülerinden kesildi, daha büyüğü yok. **Keskin sahne için
+yeniden üretim gerekiyor — sormadan görsel üretilmiyor.**
+
+### Testler
+
+`tests/odul-sozu.test.ts` — **14 test**: çark sonrası oyun ödülü, günde
+bir oyun ödülü, kapalı kafe / bütçesiz kafe / acil durdurma → paket yok,
+zar anahtarlı ve oranı %33,5 ± 3, erken soru kararı yakmıyor, karar bir
+kez ve zarla aynı, söz + teslim → kupon kesin, söz yoksa ya da paket
+alınmadıysa kupon yok, misafirde eski çerezle zar yenilenemiyor, K2'siz
+soru karar yazmıyor. Kendi kafesini kuruyor, Kafe A'ya dokunmuyor.
+
+**A/B:** çark ayıklaması kaldırılınca, bitişte söz yok sayılınca,
+doğrulanamayan soru karar yazınca ilgili test düşüyor; üçü de geri
+yüklendi (cmp).
+
+**Doğrulama:** **791 test · 784 geçti · 0 hata · 7 atlandı** · tsc · eslint · `next build` · 3001 yeniden başlatıldı. Chromium izi, Blok Kırıcı'da üç atış: **boyama 567 → 37, düzen 272 → 14**, konsol hatası yok. Misafir oyununda Blok Kırıcı (uçuş ortası), Tuğla Kırıcı, Yılan, Bıçak ekran görüntüsüyle görüldü. Ana ekran demo hesabıyla (kısa oturum, sonra iptal): bulanık katman 0, aşağı kaydırınca şeritler çekiliyor, yukarıda geliyor. ⚠️ iPhone'daki sonuç ürün sahibinin testinde.
+
+---
 
 ## ⬅️ Ü274 · Telefon testinden on iki madde — 2026-09-24
 

@@ -6,6 +6,7 @@ import { mesafeMetre } from "./masa";
 import * as ayar from "./ayar";
 import { withBypass } from "@/db/context";
 import { basariliMi } from "./puan";
+import { odulSozuVer } from "./kupon";
 
 /**
  * Misafir oyun akışı — Ü35'in vitrin katmanı.
@@ -168,6 +169,13 @@ type AcikOyun = {
   tableId: string;
   baslangic: number;
   son: number;
+  /**
+   * Ü275: paket göründüğünde verilen karar — `odulSor` yazıyor.
+   *
+   * Çerez imzalı; oyuncu "evet"e çeviremez. Eski çereze dönüp yeniden
+   * sormak da işe yaramıyor: zar tohumdan anahtarlı (`kupon.paketZari`).
+   */
+  odulSozu?: boolean;
 };
 
 export type BaslaSonucu =
@@ -206,6 +214,68 @@ export async function basla(opts: {
   return { ok: true, tohum: veri.tohum, cerez: paketle(AMAC_OYUN, veri) };
 }
 
+/* ── Ödül paketi: "görünürse kesin" (Ü275) ─────────────────── */
+
+export type MisafirOdulSonucu = {
+  izin: boolean;
+  /** Karar yazıldıysa yenilenmiş açık oyun çerezi; değişmediyse null. */
+  cerez: string | null;
+};
+
+/**
+ * Misafirin ödül paketi tahtaya çıktı — gösterilsin mi?
+ *
+ * Kayıtlı oyuncudaki `oyun.odulSor` ile aynı kural (Ü35: "iki yol aynı
+ * kuraldan geçmeli"). İki fark:
+ *
+ *   · Karar veritabanına değil **açık oyun çerezine** yazılıyor — misafir
+ *     oyunu hiçbir deftere yazılmıyor (Ü35).
+ *   · Oyuncu henüz belli değil: günlük oyun hakkı ve bıkkınlık kayıtta,
+ *     `anlikOdulVer`in içinde soruluyor.
+ *
+ * Konum doğrulanmadıysa (K2 yok) paket zaten gösterilmiyor; karar yazılmıyor
+ * ki oyun ortasında konumu doğrulayan misafir yeniden sorabilsin.
+ */
+export async function odulSor(opts: {
+  acikOyunCerezi: string | undefined;
+  konumCerezi: string | undefined;
+  girdiler: unknown;
+  /** Ü90: kafe açıklığı ve tempo için okunan an. Yalnızca testler için. */
+  an?: Date;
+}): Promise<MisafirOdulSonucu> {
+  const acik = ac<AcikOyun>(AMAC_OYUN, opts.acikOyunCerezi);
+  if (!acik || suresiGecti(acik.son)) return { izin: false, cerez: null };
+  if (typeof acik.odulSozu === "boolean") return { izin: acik.odulSozu, cerez: null };
+
+  const konum = konumOku(opts.konumCerezi, acik.cafeId);
+  if (!konum?.k2) return { izin: false, cerez: null };
+
+  const oyun = oyunBul(acik.oyunId);
+  if (!oyun) return { izin: false, cerez: null };
+
+  // Paket gerçekten tahtada mı — istemcinin sözü değil, turun kendisi.
+  const r = tekrarOyna(oyun, acik.tohum, opts.girdiler);
+  if (!r.gecerli || !(r.odulVar || r.odulTeslim)) {
+    log.warn("misafir odul sorusu dogrulanamadi", {
+      sebep: r.gecerli ? "paket yok" : r.sebep,
+    });
+    return { izin: false, cerez: null };
+  }
+
+  const izin = await withBypass("misafir ödül paketi kararı", (db) =>
+    odulSozuVer(db, {
+      playerId: null,
+      cafeId: acik.cafeId,
+      oyunId: acik.oyunId,
+      // Konumu doğrulanmış misafir K2'de (Ü3) — ödüller K2 (Ü268).
+      kanitSeviyesi: 2,
+      tohum: acik.tohum,
+      an: opts.an,
+    }),
+  );
+  return { izin, cerez: paketle(AMAC_OYUN, { ...acik, odulSozu: izin }) };
+}
+
 /* ── Oyun bitişi → talep ──────────────────────────────────── */
 
 export type Talep = {
@@ -223,10 +293,22 @@ export type Talep = {
   k2: boolean;
   mesafeM: number | null;
   son: number;
+  /** Ü275: paket göründüğünde verilen karar (yoksa null). */
+  odulSozu?: boolean | null;
+  /** Ü275: paket oyuncuya ulaştı mı — sunucunun tekrarından. */
+  odulTeslim?: boolean;
 };
 
 export type BitirSonucu =
-  | { ok: true; skor: number; basarili: boolean; k2: boolean; cerez: string }
+  | {
+      ok: true;
+      skor: number;
+      basarili: boolean;
+      k2: boolean;
+      cerez: string;
+      /** Ü275: söz verilmiş paket alındı — kayıtta kupon kesin. */
+      odulPaketi: boolean;
+    }
   | { ok: false; hata: string; reddedildi?: boolean };
 
 /**
@@ -283,6 +365,8 @@ export function bitir(opts: {
     k2: !!konum?.k2,
     mesafeM: konum?.mesafeM ?? null,
     son: Date.now() + TALEP_OMRU_SN * 1000,
+    odulSozu: acik.odulSozu ?? null,
+    odulTeslim: sonuc.odulTeslim,
   };
 
   return {
@@ -291,6 +375,7 @@ export function bitir(opts: {
     basarili: talep.basarili,
     k2: talep.k2,
     cerez: paketle(AMAC_TALEP, talep),
+    odulPaketi: talep.odulSozu === true && talep.odulTeslim === true,
   };
 }
 

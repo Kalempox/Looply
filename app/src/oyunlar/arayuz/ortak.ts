@@ -1,3 +1,5 @@
+import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
+
 /**
  * Oyun ekranlarının ortak sözleşmesi.
  *
@@ -53,6 +55,15 @@ export type OyunEkraniProps = {
    */
   kazandirir?: boolean;
   /**
+   * Ödül paketinin izni — Ü275 · "görünürse kesin".
+   *
+   * Motor paketi eşikten sonra her turda aynı yerde çıkarıyor (replay
+   * determinizmi) ama ödül çıkıp çıkmayacağını BİLEMEZ. O karar
+   * sunucuda, paket ilk belirdiği an veriliyor (`useOdulPaketi`).
+   * Verilmediyse ekran kabuğu yoktur ve paket hiç çizilmez.
+   */
+  odul?: OdulIzni;
+  /**
    * Tam ekrandan çıkış — Ü203.
    *
    * Oyun tam ekrana geçince sayfanın kendi geri bağlantısı görünmez
@@ -61,3 +72,82 @@ export type OyunEkraniProps = {
    */
   cik?: () => void;
 };
+
+/**
+ * Kabuğun ekrana verdiği paket izni — Ü275.
+ *
+ * `izin`:
+ *   · `true`  → paket ödül olarak çiziliyor; alan kuponu kesin alıyor
+ *   · `false` → paket sıradan parça gibi çiziliyor (kafe dışındaki
+ *               oyuncuda Ü207'den beri olduğu gibi)
+ *   · `null`  → henüz sorulmadı; soru yoldayken de paket ÇİZİLMİYOR —
+ *               "evet"ten önce görünüp "hayır"la kaybolan paket, ürün
+ *               sahibinin yakaladığı yalanın kısa bir kopyası olurdu
+ */
+export type OdulIzni = {
+  izin: boolean | null;
+  /** Motor paketi çıkardı — kabuk sunucuya sorsun. Kayıt o ana kadarki hâliyle. */
+  belirdi: (girdiler: readonly unknown[]) => void;
+};
+
+/**
+ * Paket bu karede ödül olarak çizilsin mi — dokuz ekranın ortak kuralı.
+ *
+ * `varMi`: motor paketi şu an tahtada tutuyor mu (sözleşmedeki
+ * `odulVar`). Paket ilk belirdiğinde soru bir kez gidiyor; kabuk ikinci
+ * soruyu zaten yutuyor (`izin` artık null değil).
+ *
+ * ⚠️ `girdiler` bir ALICI, dizi değil: kayıt bazı ekranlarda ref'te
+ * duruyor ve her tick uzuyor. Soru anında okunuyor ki sunucu paketi
+ * gördüğü kareye kadar oynatsın.
+ */
+export function useOdulPaketi(
+  odul: OdulIzni | undefined,
+  kazandirir: boolean | undefined,
+  varMi: boolean,
+  girdiler: () => readonly unknown[],
+): boolean {
+  const sorulacak = varMi && kazandirir === true && odul?.izin === null;
+  const sor = useEffectEvent(() => {
+    odul?.belirdi([...girdiler()]);
+  });
+  useEffect(() => {
+    if (sorulacak) sor();
+  }, [sorulacak]);
+  return varMi && kazandirir === true && odul?.izin === true;
+}
+
+/**
+ * Kabuğun tarafı: turun paket kararını tutar, soruyu bir kez gönderir.
+ *
+ * `anahtar` turun kimliği (girişlide oturum, misafirde tohum). Yeni tur
+ * yeni anahtar demek ve önceki turun kararı ona sızmıyor.
+ *
+ * ⚠️ Soru başarısız olursa karar null kalıyor ve paket çizilmiyor —
+ * sunucu da bir şey yazmadığı için tur sonunda kupon yok. İkisi tutarlı:
+ * görünmeyen paket için söz yok.
+ */
+export function useOdulIzni(
+  anahtar: string | null,
+  sor: (anahtar: string, girdiler: readonly unknown[]) => Promise<{ izin: boolean }>,
+): OdulIzni {
+  const [karar, setKarar] = useState<{ anahtar: string; izin: boolean } | null>(null);
+  const yolda = useRef<string | null>(null);
+  const izin = karar && karar.anahtar === anahtar ? karar.izin : null;
+
+  const belirdi = useCallback(
+    (girdiler: readonly unknown[]) => {
+      if (!anahtar || izin !== null || yolda.current === anahtar) return;
+      yolda.current = anahtar;
+      sor(anahtar, girdiler).then(
+        (c) => setKarar({ anahtar, izin: c.izin }),
+        () => {
+          yolda.current = null;
+        },
+      );
+    },
+    [anahtar, izin, sor],
+  );
+
+  return useMemo(() => ({ izin, belirdi }), [izin, belirdi]);
+}

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SeritGizleyici } from "./serit-gizleyici";
 
 /**
  * Oyuncu tarafının alt gezinme şeridi.
@@ -44,7 +45,12 @@ export function OyuncuNav({ aktif }: { aktif: Durak }) {
     ana ekrana eklenmiş tam ekran modda çizgi şeridin üstüne binmesin.
   */
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-cizgi bg-cukur/95 pb-[env(safe-area-inset-bottom)] backdrop-blur">
+    /* 🔴 Ü275: arkası bulanık cam DEĞİL, düz renk — kaydırırken iPhone
+       Safari bulanıklığı her karede yeniden hesaplıyordu (sayfa
+       takılıyordu). Aşağı kaydırınca çekiliyor, yukarı kaydırınca geri
+       geliyor (`SeritGizleyici`, `.serit-alt`). */
+    <nav className="serit-alt fixed inset-x-0 bottom-0 z-20 border-t border-cizgi bg-cukur pb-[env(safe-area-inset-bottom)]">
+      <SeritGizleyici />
       <ul className="mx-auto flex w-full max-w-md">
         {DURAKLAR.map((d) => {
           const secili = d.href === aktif;

@@ -432,6 +432,14 @@ export const blok: Oyun<BlokDurumu, BlokGirdisi> = {
   skor(durum) {
     return durum.skor;
   },
+  /* Ü275 · "görünürse kesin": sunucu paketin gerçekten tahtada olduğunu
+     ve oyuncuya ulaştığını bu ikisiyle görüyor (sözleşmedeki not). */
+  odulVar(durum) {
+    return durum.odulTeklifi >= 0;
+  },
+  odulTeslim(durum) {
+    return durum.odulVerildi;
+  },
 
   girdiOku(ham) {
     if (typeof ham !== "object" || ham === null) return null;

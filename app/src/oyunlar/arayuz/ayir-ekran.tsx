@@ -12,7 +12,7 @@ import {
   ayirSahnesi,
 } from "./ayir-yuzey";
 import { useOyunSesi } from "./oyun-ses";
-import type { OyunEkraniProps } from "./ortak";
+import { useOdulPaketi, type OyunEkraniProps } from "./ortak";
 
 /**
  * Ayır ekranı — Ü261.
@@ -37,7 +37,7 @@ type Yerel = {
   girdiler: AyirGirdisi[];
 };
 
-export function AyirEkrani({ tohum, bitti, kazandirir, cik }: OyunEkraniProps) {
+export function AyirEkrani({ tohum, bitti, kazandirir, odul, cik }: OyunEkraniProps) {
   const [y, setY] = useState<Yerel>(() => ({ durum: ayir.baslat(tohum), girdiler: [] }));
   const [secili, setSecili] = useState<number | null>(null);
   const [sarsilan, setSarsilan] = useState<number | null>(null);
@@ -45,7 +45,11 @@ export function AyirEkrani({ tohum, bitti, kazandirir, cik }: OyunEkraniProps) {
   const ses = useOyunSesi();
 
   const durum = y.durum;
-  const paketVar = kazandirir === true;
+  // Ü275: ödül sesi yalnızca ödül varken — izinsiz paket sıradan parça.
+  const odulIzinli = kazandirir === true && odul?.izin === true;
+  // Ü275 · "görünürse kesin": paket ödül olarak yalnızca sunucu "evet"
+  // dediyse çiziliyor; "hayır"da sıradan parça (Ü207'deki gibi).
+  const paketVar = useOdulPaketi(odul, kazandirir, durum.paket !== null, () => y.girdiler);
 
   const dokun = useCallback(
     (i: number) => {
@@ -78,14 +82,14 @@ export function AyirEkrani({ tohum, bitti, kazandirir, cik }: OyunEkraniProps) {
       }
 
       const bolumAtladi = sonraki.bolum > durum.bolum;
-      if (sonraki.odulVerildi && !durum.odulVerildi) ses.cal("odul");
+      if (odulIzinli && sonraki.odulAlindi && !durum.odulAlindi) ses.cal("odul");
       else if (bolumAtladi) ses.cal("kombo");
       else ses.cal("yerlesti");
 
       setSecili(null);
       setY((p) => ({ durum: sonraki, girdiler: [...p.girdiler, girdi] }));
     },
-    [durum, secili, ses],
+    [durum, secili, odulIzinli, ses],
   );
 
   // ── Bitiş bildirimi ──────────────────────────────────

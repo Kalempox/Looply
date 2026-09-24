@@ -263,6 +263,15 @@ export const yilan: Oyun<YilanDurumu, YilanGirdisi> = {
   skor(durum) {
     return durum.skor;
   },
+  /* Ü275 · "görünürse kesin": sunucu paketin gerçekten tahtada olduğunu
+     ve oyuncuya ulaştığını bu ikisiyle görüyor (sözleşmedeki not).
+     Altın yem süresi dolunca kaçıyor; yalnızca YENEN sayılıyor. */
+  odulVar(durum) {
+    return durum.odul !== null;
+  },
+  odulTeslim(durum) {
+    return durum.odulYakalanan > 0;
+  },
 
   gecenMs(durum) {
     return durum.tick * TICK_MS;

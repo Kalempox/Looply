@@ -24,7 +24,7 @@ import {
   bicakSahnesi,
 } from "./bicak-yuzey";
 import { useOyunSesi } from "./oyun-ses";
-import type { OyunEkraniProps } from "./ortak";
+import { useOdulPaketi, type OyunEkraniProps } from "./ortak";
 
 /**
  * Bıçak ekranı — Ü235.
@@ -140,7 +140,7 @@ type Yerel = {
   girdiler: BicakGirdisi[];
 };
 
-export function BicakEkrani({ tohum, bitti, kazandirir, cik }: OyunEkraniProps) {
+export function BicakEkrani({ tohum, bitti, kazandirir, odul, cik }: OyunEkraniProps) {
   const [y, setY] = useState<Yerel>(() => ({
     durum: bicak.baslat(tohum),
     girdiler: [],
@@ -230,6 +230,8 @@ export function BicakEkrani({ tohum, bitti, kazandirir, cik }: OyunEkraniProps) 
      kez çağırıyor ve içine ses konsa her ses ikiye katlanırdı). */
   const sonSaplanan = useRef(0);
   const sonTur = useRef(1);
+  // Ü275: ödül sesi yalnızca ödül varken — izinsiz paket sıradan parça.
+  const odulIzinli = kazandirir === true && odul?.izin === true;
   const sonOdul = useRef(false);
   useEffect(() => {
     const d = y.durum;
@@ -239,7 +241,7 @@ export function BicakEkrani({ tohum, bitti, kazandirir, cik }: OyunEkraniProps) 
     }
     if (d.odulVerildi && !sonOdul.current) {
       sonOdul.current = true;
-      ses.cal("odul");
+      ses.cal(odulIzinli ? "odul" : "yerlesti");
     } else if (d.tur !== sonTur.current) {
       sonTur.current = d.tur;
       ses.cal("temizlik");
@@ -247,7 +249,7 @@ export function BicakEkrani({ tohum, bitti, kazandirir, cik }: OyunEkraniProps) 
       ses.cal("yerlesti");
     }
     sonSaplanan.current = d.saplanan.length;
-  }, [y.durum, ses]);
+  }, [y.durum, odulIzinli, ses]);
 
   // ── Klavye (masaüstünde test için) ───────────────────
   useEffect(() => {
@@ -266,7 +268,9 @@ export function BicakEkrani({ tohum, bitti, kazandirir, cik }: OyunEkraniProps) 
 
   const durum = y.durum;
   const carpan = carpilanBicak(durum);
-  const paketVar = durum.odulAcisi !== null && kazandirir === true;
+  // Ü275 · "görünürse kesin": paket ödül olarak yalnızca sunucu "evet"
+  // dediyse çiziliyor; "hayır"da sıradan parça (Ü207'deki gibi).
+  const paketVar = useOdulPaketi(odul, kazandirir, durum.odulAcisi !== null, () => y.girdiler);
 
   return (
     <div className="fixed inset-0 z-40 flex flex-col" style={bicakSahnesi()}>
@@ -362,7 +366,12 @@ export function BicakEkrani({ tohum, bitti, kazandirir, cik }: OyunEkraniProps) 
           }}
         >
           {/* Kütükle birlikte dönen her şey. */}
-          <div ref={kutukRef} className="absolute inset-0">
+          {/* 🔴 Ü275: kütük her karede dönüyor — `will-change` ile KENDİ
+              KATMANINDA. Yoksa iPhone Safari kütüğü, saplı bıçakları ve
+              onların ışıma filtrelerini her karede işlemcide yeniden
+              boyuyordu. Katmanda bir kez boyanıyor, dönüşü ekran kartı
+              yapıyor; yalnızca yeni bıçak saplanınca yeniden boyanıyor. */}
+          <div ref={kutukRef} className="absolute inset-0" style={{ willChange: "transform" }}>
             <span
               aria-hidden
               className="absolute"

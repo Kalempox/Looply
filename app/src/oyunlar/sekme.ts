@@ -711,6 +711,14 @@ export const sekme: Oyun<SekmeDurumu, SekmeGirdisi> = {
   skor(durum) {
     return durum.skor;
   },
+  /* Ü275 · "görünürse kesin": sunucu paketin gerçekten tahtada olduğunu
+     ve oyuncuya ulaştığını bu ikisiyle görüyor (sözleşmedeki not). */
+  odulVar(durum) {
+    return durum.nesneler.some((n) => n.tur === "odul");
+  },
+  odulTeslim(durum) {
+    return durum.odulVerildi;
+  },
 
   gecenMs(durum) {
     return durum.tick * TICK_MS;

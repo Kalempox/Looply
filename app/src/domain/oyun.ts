@@ -25,7 +25,7 @@ import {
 import { yazIle as xpYaz } from "./xp";
 import * as xp from "./xp";
 import { degerlendir, tanimlar as rozetTanimlari } from "./rozet";
-import { anlikOdulVer, kampanyaKuponuVer } from "./kupon";
+import { anlikOdulVer, kampanyaKuponuVer, odulSozuVer } from "./kupon";
 import { kafeAcikMi } from "./butce";
 
 /**
@@ -187,8 +187,12 @@ export type Kazanim = {
    * söylemiyordu: ürün sahibi gece ödüllü bloğu kırdı, tur bitti, hiçbir
    * şey olmadı. Şans yüzünden çıkmayan ödül burada YOK — o bir sebep
    * değil, oyunun kendisi.
+   *
+   * Ü275 · `verilemedi`: paket göründü ve alındı ama kupon üretilemedi —
+   * arada bugünkü oyun ödülü başka turdan alınmış ya da kafenin bütçesi
+   * dolmuş. Nadir; olduğunda ekran söylüyor, sessizce geçmiyor.
    */
-  odulYok: { sebep: "kafe_kapali"; acilis: number } | null;
+  odulYok: { sebep: "kafe_kapali"; acilis: number } | { sebep: "verilemedi" } | null;
   taht: taht.DevirmeSonucu | null;
   /**
    * Skor eşiği bonusu (Ü48) — ulaşıldıysa hangi eşik ve ne yazıldı.
@@ -247,8 +251,16 @@ async function kazanimIsle(
     basarili: boolean;
     kazandirir: boolean;
     bonusMu: boolean;
-    /** Ü91: turda yakalanan ödül işareti sayısı — motorun şans girdisi. */
-    odulIsareti?: number;
+    /**
+     * Ü275: söz verilmiş paket bu turda teslim edildi mi.
+     *
+     * Oyun yolunda anlık ödülün TEK kapısı bu. Zar paket görünmeden
+     * atıldı (`odulSor`); burada yalnızca hangi ödülün çıkacağı seçiliyor.
+     * Paket hiç görünmediyse ya da alınmadıysa kupon denenmiyor bile.
+     */
+    odulGarantisi?: boolean;
+    /** Ü90: kafe açıklığı ve bütçe temposunun okuduğu an. Yalnızca testler için. */
+    an?: Date;
   },
 ): Promise<Kazanim> {
   const bos: Kazanim = {
@@ -315,25 +327,34 @@ async function kazanimIsle(
       // 🔴 Ü274: kafe kapalıysa ödül DENENMİYOR ve sebep oyuncuya gidiyor.
       // Denenseydi bütçe temposu (0) rezervi reddeder ve oyuncu sessizce
       // eli boş dönerdi.
-      const saat = await kafeAcikMi(opts.cafeId);
+      const saat = await kafeAcikMi(opts.cafeId, opts.an);
       if (!saat.acik) sonuc.odulYok = { sebep: "kafe_kapali", acilis: saat.acilis };
 
-      // E2: anlık ödül puan istemez ve günde bir kez düşer. İlk kez
-      // oynayanın puanı sıfırdır; eli boş çıkarsa bir daha gelmez.
-      // Ü27: hangi ödülün düşeceği kafenin sırasından, döngüsel.
-      const anlik = !saat.acik ? null : await anlikOdulVer(db, {
+      /*
+        E2: anlık ödül puan istemez ve günde bir kez düşer.
+
+        🔴 Ü275 · "görünürse kesin": zar burada ATILMIYOR. Ürün sahibi
+        Blok Kırıcı'da ödüllü bloğu kırdı ve hiçbir şey almadı — paket
+        500'ü geçen her turda çıkıyor, kupon ise burada %22–45 şansla
+        veriliyordu. Zar artık paket görünmeden atılıyor (`odulSor`) ve
+        paketi ALAN oyuncunun kuponu kesin: `garanti` yalnızca hangi
+        ödülün çıkacağını seçiyor (Ü77'nin skor ağırlığı burada duruyor).
+      */
+      const kesin = saat.acik && opts.odulGarantisi === true;
+      const anlik = !kesin ? null : await anlikOdulVer(db, {
         playerId: opts.playerId,
         cafeId: opts.cafeId,
         kanitSeviyesi: opts.proofLevel,
-        // Ü77: motor skoru ve hangi oyun olduğunu bilmek zorunda.
+        // Ü77: seçim skoru ve hangi oyun olduğunu bilmek zorunda.
         skor: opts.skor,
         oyunId: opts.oyunId,
-        // Ü91: oyuncu ödülü ekranda yakaladıysa şans yükseliyor.
-        odulIsareti: opts.odulIsareti,
         kaynakId: opts.oturumId,
         // Ü141: oyun ödülü kapalı doğuyor — adı kazınınca öğreniliyor.
         kapali: true,
+        garanti: true,
+        an: opts.an,
       });
+      if (kesin && !anlik?.ok) sonuc.odulYok = { sebep: "verilemedi" };
       if (anlik?.ok) {
         // Ü97: kimlik ve aktifleşme anı bekleme metni için taşınıyor —
         // metin kupona göre sabit kalmalı ve "yarın" derken doğru söylemeli.
@@ -694,6 +715,8 @@ export async function bitir(opts: {
   oturumId: string;
   girdiler: unknown;
   iddiaEdilenSkor: number;
+  /** Ü90: kafe açıklığı ve tempo için okunan an. Yalnızca testler için. */
+  an?: Date;
 }): Promise<BitirSonucu> {
   return withBypass("oyun bitirme ve doğrulama", async (db) => {
     // ── Oyuncu düzeyinde kilit ──────────────────────────────
@@ -720,9 +743,10 @@ export async function bitir(opts: {
       proof_mask: number;
       proof_level: number;
       table_session_id: string | null;
+      odul_sozu: boolean | null;
     }>(
       `SELECT id, cafe_id, table_id, game_id, level, seed, status, started_at,
-              proof_mask, proof_level, table_session_id
+              proof_mask, proof_level, table_session_id, odul_sozu
          FROM play_sessions
         WHERE id = $1 AND player_id = $2
         FOR UPDATE`,
@@ -854,7 +878,9 @@ export async function bitir(opts: {
       basarili,
       kazandirir,
       bonusMu,
-      odulIsareti: sonuc.odulIsareti,
+      // Ü275: söz verildi VE paket oyuncuya ulaştı — ikisi birden.
+      odulGarantisi: oturum.odul_sozu === true && sonuc.odulTeslim,
+      an: opts.an,
     });
 
     return {
@@ -920,6 +946,91 @@ export async function bitir(opts: {
   });
 }
 
+/* ── Ödül paketi: "görünürse kesin" (Ü275) ─────────────────── */
+
+/**
+ * Ödül paketi tahtaya çıktı — gösterilsin mi?
+ *
+ * ── Neden sunucuya soruluyor ────────────────────────────────
+ *
+ * Ürün sahibi ödüllü bloğu kırdı ve hiçbir şey almadı: paket 500'ü geçen
+ * her turda çıkıyor, kupon tur sonunda şansla veriliyordu. Kararı
+ * *"görünürse kesin"* — zar paket görünmeden atılıyor. Motor kararı
+ * bilemez (replay determinizmi), o yüzden ekran paketi motor çıkardığı
+ * an buraya soruyor ve "hayır" gelirse paketi sıradan parça gibi
+ * çiziyor.
+ *
+ * ── İstemcinin sözü yetmiyor ────────────────────────────────
+ *
+ * Tur o ana kadarki girdi kaydıyla YENİDEN OYNATILIYOR ve paketin
+ * gerçekten tahtada olduğu görülüyor (`odulVar`). "Paket çıktı" diyen
+ * sahte bir istek, turu oynamadan zarı öğrenemiyor.
+ *
+ * ── Karar bir kez veriliyor ─────────────────────────────────
+ *
+ * `odul_sozu` yazıldıktan sonra her soru aynı cevabı alıyor; zar da
+ * turun tohumundan anahtarlı türüyor (`kupon.paketZari`). Soruyu
+ * tekrarlamak zarı yenilemiyor. Doğrulanamayan soru ise karar YAZMIYOR:
+ * istemcideki bir zamanlama hatası turun şansını yakmamalı.
+ */
+export async function odulSor(opts: {
+  playerId: string;
+  oturumId: string;
+  girdiler: unknown;
+  /** Ü90: kafe açıklığı ve tempo için okunan an. Yalnızca testler için. */
+  an?: Date;
+}): Promise<{ izin: boolean }> {
+  return withBypass("ödül paketi kararı", async (db) => {
+    const o = await db.one<{
+      id: string;
+      cafe_id: string | null;
+      game_id: string;
+      seed: string;
+      status: string;
+      proof_mask: number;
+      proof_level: number;
+      odul_sozu: boolean | null;
+    }>(
+      `SELECT id, cafe_id, game_id, seed, status, proof_mask, proof_level, odul_sozu
+         FROM play_sessions
+        WHERE id = $1 AND player_id = $2
+        FOR UPDATE`,
+      [opts.oturumId, opts.playerId],
+    );
+    if (!o || o.status !== "open") return { izin: false };
+    if (o.odul_sozu !== null) return { izin: o.odul_sozu };
+
+    const oyun = oyunBul(o.game_id);
+    const kazandirir = !!o.cafe_id && (o.proof_mask & K2) !== 0;
+    if (!oyun || !o.cafe_id || !kazandirir) return { izin: false };
+
+    const r = tekrarOyna(oyun, o.seed, opts.girdiler);
+    if (!r.gecerli || !(r.odulVar || r.odulTeslim)) {
+      log.warn("odul sorusu dogrulanamadi", {
+        oyun: o.game_id,
+        sebep: r.gecerli ? "paket yok" : r.sebep,
+      });
+      return { izin: false };
+    }
+
+    const izin = await odulSozuVer(db, {
+      playerId: opts.playerId,
+      cafeId: o.cafe_id,
+      oyunId: o.game_id,
+      kanitSeviyesi: o.proof_level,
+      tohum: o.seed,
+      an: opts.an,
+    });
+    await db.query(
+      `UPDATE play_sessions SET odul_sozu = $2, odul_soruldu_at = now()
+        WHERE id = $1 AND odul_sozu IS NULL`,
+      [o.id, izin],
+    );
+    log.info("odul paketi karari", { izin, oyun: o.game_id });
+    return { izin };
+  });
+}
+
 /* ── Misafir talebinin bozdurulması (Ü35) ───────────────────── */
 
 export type MisafirYazSonucu =
@@ -981,6 +1092,10 @@ export async function misafirOyunuYaz(opts: {
   basarili: boolean;
   iddia: number;
   sureMs: number;
+  /** Ü275: paket göründüğünde verilen karar — imzalı talepten. */
+  odulSozu?: boolean | null;
+  /** Ü275: paket oyuncuya ulaştı mı — sunucunun tekrarından. */
+  odulTeslim?: boolean;
 }): Promise<MisafirYazSonucu> {
   const oyun = oyunBul(opts.oyunId);
   if (!oyun) return { ok: false, hata: "Oyun tanımı bulunamadı." };
@@ -1037,9 +1152,10 @@ export async function misafirOyunuYaz(opts: {
       `INSERT INTO play_sessions
          (id, cafe_id, table_id, player_id, device_id_hash, game_id, seed,
           table_session_id, proof_mask, proof_level, business_date, status,
-          ended_at, duration_ms, server_score, claimed_score, is_qualified)
+          ended_at, duration_ms, server_score, claimed_score, is_qualified,
+          odul_sozu)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'completed',
-               now(),$12,$13,$14,$15)`,
+               now(),$12,$13,$14,$15,$16)`,
       [
         oturumId,
         opts.cafeId,
@@ -1056,6 +1172,7 @@ export async function misafirOyunuYaz(opts: {
         opts.skor,
         opts.iddia,
         nitelikli,
+        opts.odulSozu ?? null,
       ],
     );
 
@@ -1070,6 +1187,8 @@ export async function misafirOyunuYaz(opts: {
       basarili: opts.basarili,
       kazandirir,
       bonusMu,
+      // Ü275: misafirde de aynı kural — söz verildi VE paket alındı.
+      odulGarantisi: opts.odulSozu === true && opts.odulTeslim === true,
     });
 
     return {

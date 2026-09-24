@@ -447,6 +447,14 @@ export const bicak: Oyun<BicakDurumu, BicakGirdisi> = {
   skor(durum) {
     return durum.skor;
   },
+  /* Ü275 · "görünürse kesin": sunucu paketin gerçekten tahtada olduğunu
+     ve oyuncuya ulaştığını bu ikisiyle görüyor (sözleşmedeki not). */
+  odulVar(durum) {
+    return durum.odulAcisi !== null;
+  },
+  odulTeslim(durum) {
+    return durum.odulVerildi;
+  },
 
   gecenMs(durum) {
     return durum.sonTick * TICK_MS;

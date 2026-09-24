@@ -216,18 +216,19 @@ export function yilanHalkaRengi(basMi: boolean): CSSProperties {
 }
 
 /**
- * Yılanın çimene düşürdüğü gölge.
+ * Yılanın çimene düşürdüğü gölge — gölge KATMANININ stili.
  *
- * 🔴 Katmanın **tamamına** uygulanıyor, halka başına değil. Halka
- * başına verilseydi gölge örtüşen yerlerde de görünür ve zincir kirli
- * dururdu.
+ * 🔴 Ü275: önce `filter: drop-shadow(0 3px 2px …)` idi ve katmanın
+ * tamamına uygulanıyordu. Halkalar her adımda kaydığı için filtre her
+ * karede yeniden hesaplanıyordu; iPhone Safari bunu işlemcide yapıyor ve
+ * oyun takılıyordu. Artık ekran halkaların koyu bir kopyasını 3 piksel
+ * aşağıya çiziyor (`yilan-ekran.tsx`) ve saydamlık bu katmana veriliyor
+ * — örtüşen halkalar iki kez koyulaşmıyor, gölge tek parça kalıyor.
  *
- * ⚠️ Kaydırma **piksel**, yüzde DEĞİL. Ü213'te `0 4% 0` yazılmıştı ve
- * hiç gölge çıkmadı: `drop-shadow()` yüzde kabul etmiyor, geçersiz
- * değer filtrenin tamamını sessizce düşürüyor.
+ * ⚠️ 2 piksellik bulanıklık gitti; o bulanıklık filtrenin ta kendisiydi.
  */
 export function yilanGolgesi(): CSSProperties {
-  return { filter: "drop-shadow(0 3px 2px rgba(30,56,18,.45))" };
+  return { opacity: 0.45 };
 }
 
 /** Elma — referansın kırmızısı, ışıyan. */

@@ -195,6 +195,9 @@ async function talebiBozdur(playerId: string): Promise<void> {
       basarili: talep.basarili,
       iddia: talep.iddia,
       sureMs: talep.sureMs,
+      // Ü275: "görünürse kesin" — söz ve teslim imzalı talepte.
+      odulSozu: talep.odulSozu ?? null,
+      odulTeslim: talep.odulTeslim === true,
     });
 
     if (!sonuc.ok) log.warn("misafir talebi bozdurulamadi", { sebep: sonuc.hata });

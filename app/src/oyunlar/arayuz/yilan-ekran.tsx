@@ -26,7 +26,7 @@ import {
   yilanTahtasi,
 } from "./yilan-yuzey";
 import { useOyunSesi } from "./oyun-ses";
-import type { OyunEkraniProps } from "./ortak";
+import { useOdulPaketi, type OyunEkraniProps } from "./ortak";
 
 /**
  * Yılan ekranı — Ü215'te `snake.png` referansına göre.
@@ -73,7 +73,7 @@ type Yerel = {
  */
 const KAYDIRMA_ESIGI = 11;
 
-export function YilanEkrani({ tohum, bitti, cik }: OyunEkraniProps) {
+export function YilanEkrani({ tohum, bitti, kazandirir, odul, cik }: OyunEkraniProps) {
   const [y, setY] = useState<Yerel>(() => ({
     durum: yilan.baslat(tohum),
     girdiler: [],
@@ -149,15 +149,17 @@ export function YilanEkrani({ tohum, bitti, cik }: OyunEkraniProps) {
   */
   const sonYenen = useRef(0);
   const sonOdul = useRef(0);
+  // Ü275: izin yoksa altın yem sıradan elma gibi çiziliyor — sesi de öyle.
+  const altinIzni = kazandirir === true && odul?.izin === true;
   useEffect(() => {
     if (y.durum.odulYakalanan !== sonOdul.current) {
       sonOdul.current = y.durum.odulYakalanan;
-      ses.cal("odul");
+      ses.cal(altinIzni ? "odul" : "yerlesti");
     } else if (y.durum.yenen !== sonYenen.current) {
       sonYenen.current = y.durum.yenen;
       ses.cal("yerlesti");
     }
-  }, [y.durum.yenen, y.durum.odulYakalanan, ses]);
+  }, [y.durum.yenen, y.durum.odulYakalanan, altinIzni, ses]);
 
   // ── Klavye (masaüstünde test için) ───────────────────
   useEffect(() => {
@@ -188,6 +190,25 @@ export function YilanEkrani({ tohum, bitti, cik }: OyunEkraniProps) {
   const durum = y.durum;
   const kacisi = durum.odulKalanAdim <= 6;
   const adim = 100 / YILAN_EN;
+
+  /*
+    Ü275 · "görünürse kesin": altın yem ödül olarak yalnızca sunucu
+    "evet" dediyse çiziliyor.
+
+    ⚠️ Yılan'da altın yem hiç gizlenmiyordu — kafe dışındaki oyuncu da
+    görüyordu (öteki sekiz oyun Ü207'den beri gizliyor). Artık "hayır"da
+    ve kafe dışında SIRADAN ELMA gibi çiziliyor: motor onu yine üretiyor,
+    yiyen yine uzuyor ve puan alıyor (replay aynı kalmalı); görünmez
+    yapılsaydı yılan boş bir kareden büyürdü.
+
+    ⚠️ Kayda o anki tick EKLENİYOR: altın yem zamanla (bir elma yenince)
+    doğuyor ve yalnızca yön hamleleriyle oynatılan kayıt sunucuya onu
+    göstermezdi — bitişteki `bekle` işaretiyle aynı gerekçe.
+  */
+  const altinGorunur = useOdulPaketi(odul, kazandirir, durum.odul !== null, () => [
+    ...y.girdiler,
+    { tick: tickRef.current, y: "bekle" },
+  ]);
 
   /*
     Kaydırmanın süresi = bir adımın süresi — Ü216.
@@ -336,8 +357,9 @@ export function YilanEkrani({ tohum, bitti, cik }: OyunEkraniProps) {
               />
             </span>
 
-            {/* Ödül kuponu */}
-            {durum.odul !== null && (
+            {/* Ödül kuponu — izin yoksa sıradan elma (yukarıdaki not). */}
+            {durum.odul !== null && !altinGorunur && <Elma hucre={durum.odul} adim={adim} />}
+            {durum.odul !== null && altinGorunur && (
               <span
                 aria-hidden
                 className="nabiz absolute"
@@ -353,15 +375,43 @@ export function YilanEkrani({ tohum, bitti, cik }: OyunEkraniProps) {
               />
             )}
 
-            {/* ── Solucan ───────────────────────────
-                🔴 Tek katman, tek `drop-shadow`. Halka başına gölge
-                verilseydi örtüşen yerlerde de görünür ve zincir kirli
-                dururdu.
+            {/* ── Solucanın gölgesi — 🔴 Ü275 ────────────
+                Önce bütün yılana tek bir `drop-shadow` FİLTRESİ
+                veriliyordu. Halkalar her adımda kayarken filtrenin her
+                karede yeniden hesaplanması gerekiyordu; iPhone Safari bu
+                filtreyi ekran kartında değil işlemcide çiziyor. Ürün
+                sahibi: *"yılan gibi tüm oyunlar çok takılıyor, donuyor."*
 
+                Aynı görüntü filtresiz: halkaların koyu bir kopyası
+                3 piksel aşağıda, altta. Saydamlık tek tek halkaya değil
+                KATMANA veriliyor — örtüşen halkalar ikinci kez
+                koyulaşmıyor, filtreli hâldeki gibi tek parça gölge.
+                Halka başına `box-shadow` bu yüzden seçilmedi (gölge
+                önceki halkanın üstüne düşer, zincir kirli durur). */}
+            <div
+              aria-hidden
+              className="absolute inset-0"
+              style={{ ...yilanGolgesi(), transform: "translateY(3px)" }}
+            >
+              {durum.govde.map((hucre, sira) => (
+                <span
+                  key={sira}
+                  style={yilanHalkaTasiyicisi(
+                    Math.floor(hucre / YILAN_EN),
+                    hucre % YILAN_EN,
+                    gecisMs,
+                  )}
+                >
+                  <span style={{ ...yilanHalkaKutusu(), background: "rgb(30,56,18)" }} />
+                </span>
+              ))}
+            </div>
+
+            {/* ── Solucan ───────────────────────────
                 ⚠️ Halkalar **ters sırada** çiziliyor: kuyruk önce, baş
                 en sonra. Böylece baş üstte kalıyor ve gözler boyun
                 halkasının altında kaybolmuyor. */}
-            <div aria-hidden className="absolute inset-0" style={yilanGolgesi()}>
+            <div aria-hidden className="absolute inset-0">
               {[...durum.govde].reverse().map((hucre, tersSira) => {
                 const sira = durum.govde.length - 1 - tersSira;
                 return (
@@ -407,7 +457,7 @@ export function YilanEkrani({ tohum, bitti, cik }: OyunEkraniProps) {
           <span className="px-4 py-2 text-center text-[13px] font-semibold text-white" style={yilanHapi()}>
             Başlamak için parmağını bir yöne kaydır
           </span>
-        ) : durum.odul !== null ? (
+        ) : durum.odul !== null && altinGorunur ? (
           <div
             className="flex w-full items-center gap-3 px-3.5 py-2"
             style={yilanHapi()}
@@ -530,3 +580,39 @@ function SesDugmesi({ acik, degistir }: { acik: boolean; degistir: () => void })
 }
 
 export { adimTickiHesapla };
+
+/**
+ * Sıradan elma — Ü275.
+ *
+ * İzin verilmeyen altın yem bununla çiziliyor. Tahtadaki asıl elmayla
+ * aynı görünüm (yaprak dahil): oyuncu için ikisi de "ye, uza".
+ */
+function Elma({ hucre, adim }: { hucre: number; adim: number }) {
+  return (
+    <span
+      aria-hidden
+      className="absolute"
+      style={{
+        ...yilanElmasi(),
+        left: `${((hucre % YILAN_EN) + 0.5) * adim}%`,
+        top: `${(Math.floor(hucre / YILAN_EN) + 0.5) * adim}%`,
+        width: `${adim * 0.78}%`,
+        height: `${adim * 0.78}%`,
+        transform: "translate(-50%, -50%)",
+      }}
+    >
+      <span
+        className="absolute"
+        style={{
+          left: "60%",
+          top: "-20%",
+          width: "48%",
+          height: "32%",
+          background: SNAKE_RENK.yaprak,
+          borderRadius: "0 100% 0 100%",
+          transform: "rotate(-18deg)",
+        }}
+      />
+    </span>
+  );
+}

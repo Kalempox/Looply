@@ -219,6 +219,7 @@ Yılan · Bıçak Ustası · Tuğla Kırıcı** (bugünkü Blok Kırıcı eskide
 | 4.5 | Bitişte "sunucuda doğrulandı" | **"Kayıt doğrulanamadı"** — oyun ve süreyi not et |
 | 4.6 | Ses açılıp kapanıyor | — |
 | 4.7 | Çık düğmesi çalışıyor | tur bitmeden çıkılamıyor |
+| 4.8 | **Akıcı** (Ü275): Blok Kırıcı'da toplar, Tuğla Kırıcı'da top ve duvar, Bıçak'ta kütük, Yılan'da gövde takılmadan akıyor | takılma, donma — **hangi oyun, ne yaparken** yaz |
 
 Oyuna özel: **2048** sayılar karoyu doldurmalı · **Renkli Çizgiler**
 hızlı kaydırınca çizgi kopmamalı · **Renkli Tüpler** kuraldışı dökme hak
@@ -230,16 +231,22 @@ ya da düzgün biter. 🔴 "doğrulanamadı" ile reddediliyorsa.
 
 ## 5 · Ödül ve bütçe
 
-### 5.1 · İlk kupon
-**Yap:** Konumu doğrulanmış hesapla **skor 500+** yap.
-✅ Oyunda **ödül nesnesi** belirir (paket / altın yem / hedef); tur bitince
-kupon çıkar ve **bekler** (Ü269).
-🔴 Skor 500'ün altında kupon çıkıyorsa; konumsuz (K1) oturuma kupon
-çıkıyorsa.
+### 5.1 · İlk kupon — "görünürse kesin" (Ü275)
+**Yap:** Konumu doğrulanmış hesapla **skor 500+** yap. Ödül nesnesi
+(paket / altın yem / ödüllü blok) çıkarsa **al**.
+✅ Paketi alınca tur sonunda kupon **kesin** çıkar ve **bekler** (Ü269).
+✅ **Çarktan kazanmış olsan da** oyundan ödül alabilirsin — çark ve oyun
+ayrı haklar (günde 1 çark + 1 oyun ödülü).
+🔴 Paketi aldın ve kupon çıkmadıysa (ekranda sebep de yoksa); skor 500'ün
+altında kupon çıkıyorsa; konumsuz (K1) oturuma kupon çıkıyorsa.
 
-### 5.2 · Ödül garanti değil
+### 5.2 · Paket her turda çıkmaz
 **Yap:** 500'ü geçen 10 tur oyna.
-✅ Hepsinde çıkmıyor (şans). 🔴 Her turda ya da hiç çıkmıyorsa.
+✅ Paket turların yaklaşık **üçte birinde** çıkar. Çıkmayan turda kupon da
+yok — ekran kazandırmayan bir paket göstermiyor.
+✅ Bugünkü oyun ödülünü aldıktan sonra paket hiç çıkmaz (Yılan'da altın
+yem sıradan elma gibi görünür).
+🔴 Her turda çıkıyorsa, ya da paket çıkıp kupon gelmiyorsa.
 
 ### 5.3 · 🔴 Bütçe temposu — "havuz 2 saatte boşalmamalı"
 Kafe açılırken bütçenin **%10'u** hazır, kalanı açılıştan kapanışa
@@ -266,9 +273,15 @@ yeniden düşmez. Oynarken sayfa kaymaz, aşağı çekince yenilenmez.
 **Yap:** `/cark` → çevir.
 ✅ Varsayılan **24 saatte bir** (kafe 1–168 saat ayarlıyor). Çıkan ödül de
 **bekler**. iPhone'da Loopy'nin arkası saydam (siyah kutu yok).
-✅ Kafe **kapalıyken** çark "hazır" demez: "Kafe şu an kapalı — ödüller
-09:00'da açılıyor". Misafire çark hiç gösterilmez (Ü274).
+✅ Kafe **kapalıyken** ya da çark bekleme süresindeyken **ana ekranda çark
+kartı hiç yoktur** (Ü275). Misafire çark hiç gösterilmez (Ü274).
 🔴 Süre dolmadan ikinci kez çevrilebiliyorsa.
+
+### 5.6b · Ana ekran (Ü275)
+✅ Günlük seri tam ekran **günde bir kez** gelir; kapatınca ana ekranda seri
+kartı **kalmaz** (seri sayısı Profil'de).
+✅ Aşağı kaydırınca üstteki kafe şeridi ve alttaki Oyna/Ödüllerim/Profil
+şeridi **çekilir**, yukarı kaydırınca geri gelir. Kaydırma takılmaz.
 
 ### 5.7 · Kazıma kartı
 ✅ Kapalı kupon kazınınca adı görünür. Henüz açılmadıysa **bekleyenlere**

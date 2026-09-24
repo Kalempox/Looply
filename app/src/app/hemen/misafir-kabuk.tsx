@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useState, useTransition } from "react";
 import { OyunEkrani } from "@/oyunlar/arayuz";
+import { useOdulIzni } from "@/oyunlar/arayuz/ortak";
 import { OyunIkonu } from "@/components/oyuncu-ikon";
 import { GecisKarti } from "@/components/gecis-karti";
 import { oyunGorseli } from "@/components/oyuncu-gorsel";
@@ -13,6 +14,7 @@ import { RENK, oyunRengi } from "@/components/oyuncu-renk";
 import {
   misafirBasla,
   misafirBitir,
+  misafirOdulSor,
   konumBildir,
   demoKafedeSay,
   type BitirCevabi,
@@ -34,6 +36,12 @@ import {
  * istiyor — ayrı bir tip tutmak o iki alanı burada eksik bırakırdı.
  */
 export type Oyun = KatalogKarti;
+
+/**
+ * Ü275: `useOdulIzni` turun anahtarını (tohum) veriyor ama sunucuya
+ * göndermeye gerek yok — karar açık oyun çerezinde, imzalı.
+ */
+const misafirSor = (_anahtar: string, girdiler: readonly unknown[]) => misafirOdulSor(girdiler);
 
 type Durum =
   | { tur: "secim" }
@@ -61,6 +69,8 @@ export function MisafirKabugu({
   const [bekliyor, basla] = useTransition();
   const [konum, setKonum] = useState(konumBaslangic);
   const [konumNotu, setKonumNotu] = useState<string | null>(null);
+  // Ü275 · "görünürse kesin": misafirin kararı açık oyun çerezinde (imzalı).
+  const odulIzni = useOdulIzni(durum.tur === "oynuyor" ? durum.tohum : null, misafirSor);
 
   /*
     ⚠️ Kimlikle çağrılıyor, nesneyle değil — Ü195. Karusel kartı
@@ -138,6 +148,7 @@ export function MisafirKabugu({
              beri ödül paketi de buna bakıyor: doğrulanmadıysa paket
              hiç gösterilmiyor, çünkü kupon açılmayacak. */
           kazandirir={!!konum?.dogrulandi}
+          odul={odulIzni}
           /* Misafirde katalog sayfası yok; çıkış oyun seçimine dönüyor. */
           cik={() => setDurum({ tur: "secim" })}
           bitti={oyunBitti(durum.oyun)}
@@ -449,9 +460,14 @@ function SonucEkrani({
         oyuncuyu kaydolduktan sonra hayal kırıklığına uğratırdı.
       */}
       <div className="mt-4 rounded-2xl border border-odul bg-cukur px-5 py-5">
-        <div className="etiket-caps text-odul-koyu">🎟️ Sonucun saklandı</div>
+        <div className="etiket-caps text-odul-koyu">
+          {cevap.odulPaketi ? "🎟️ Ödül paketini aldın" : "🎟️ Sonucun saklandı"}
+        </div>
         <p className="mt-2 text-[14px] leading-relaxed text-yazi-sonuk">
-          {cevap.basarili && cevap.k2
+          {/* Ü275: paket söz verilmiş ve alınmışsa kupon kayıtta kesin. */}
+          {cevap.odulPaketi
+            ? "Hesabına girdiğin anda kuponun hesabına geçecek — puan ve XP de birlikte."
+            : cevap.basarili && cevap.k2
             ? "Hesabına girdiğin anda bu oyun hesabına işlenecek: puan, XP ve varsa ödül birlikte gelecek."
             : cevap.basarili
               ? "Hesabına girdiğin anda bu oyun hesabına işlenecek. Konumun doğrulanmadığı için puan ve ödül açılmayacak — istersen geri dönüp konumunu doğrula ve tekrar oyna."

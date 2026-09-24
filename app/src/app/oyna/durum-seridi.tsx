@@ -99,7 +99,9 @@ export function DurumSeridi({
   return (
     /* Ü274: şerit inceldi — `py-3` → `py-1.5`, alt boşluk 8 → 5, ikinci
        satır 11 px, avatar ve düğmeler küçüldü. Bkz. `OyuncuNav` notu. */
-    <div className={`sticky top-0 z-10 -mx-5 mb-5 border-b bg-yuzey/90 px-5 py-1.5 backdrop-blur ${stil}`}>
+    /* Ü275: düz renk (bulanık cam kaydırmayı takıltıyordu) ve aşağı
+       kaydırınca yukarı çekiliyor — `.serit-ust`, bkz. `SeritGizleyici`. */
+    <div className={`serit-ust sticky top-0 z-10 -mx-5 mb-5 border-b bg-yuzey px-5 py-1.5 ${stil}`}>
       <div className="flex items-center gap-3">
         <Nokta tur={durum.tur} />
 

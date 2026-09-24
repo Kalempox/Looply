@@ -16,7 +16,7 @@ import { BiletYuzeyi, KoyuKart, SiraJetonu } from "@/components/oyuncu";
 import { GecisKarti } from "@/components/gecis-karti";
 import { RENK, oyunRengi, type OyuncuRengi } from "@/components/oyuncu-renk";
 import { Gorsel, oyunGorseli } from "@/components/oyuncu-gorsel";
-import { OyunIkonu, CarkIkonu, KupaIkonu, TacIkonu, MadalyaIkonu } from "@/components/oyuncu-ikon";
+import { OyunIkonu, KupaIkonu, TacIkonu, MadalyaIkonu } from "@/components/oyuncu-ikon";
 import { LooplyLogo } from "@/components/logo";
 import { LoopySozu } from "@/components/loopy-sozu";
 import { OyunSahnesi, sahneVarMi } from "@/components/oyun-sahnesi";
@@ -153,7 +153,8 @@ export default async function OynaSayfasi() {
 
         {seriDurumu && seriDurumu.gun > 0 && <SeriKarti seri={seriDurumu} />}
 
-        {carkDurumu && <CarkKarti durum={carkDurumu} aralikSaat={carkAralik} />}
+        {/* Ü275: çark kullanılamıyorken kart HİÇ yok (aşağıdaki not). */}
+        {carkDurumu?.acik && <CarkKarti durum={carkDurumu} aralikSaat={carkAralik} />}
 
         {lider && (
           <LiderKarti
@@ -737,25 +738,23 @@ function GorevKarti({ ilerleme: i }: { ilerleme: challenge.Ilerleme }) {
 function SeriKarti({ seri: s }: { seri: seri.Seri }) {
   const bonus = seri.bonusPuani(s.gun + (s.bugunOynadi ? 1 : 0));
 
-  // Kart artık sahneyi de taşıyor (Ü66): dokununca tam ekran seri
-  // animasyonu açılıyor. Kart ile sahne aynı bileşende çünkü sahne
-  // istemci tarafı ve karta dokunmakla açılıyor.
-  return (
-    <section className="mb-10">
-      <h2 className="etiket-caps mb-3" style={{ color: RENK.amber.ana }}>
-        Günlük seri
-      </h2>
-      <SeriSahnesi gun={s.gun} riskte={s.riskte} bonus={bonus} />
-    </section>
-  );
+  /*
+    🔴 Ü275: ana ekranda KART YOK, yalnızca sahne.
+
+    Ürün sahibi: *"streak animasyonundan sonra, ilk kez gösterildikten
+    sonra ana ekranda olmamalı."* Sahne günde bir kez kendiliğinden
+    açılıyor (Ü68); kapanınca ekranda hiçbir şey kalmıyor. Seri sayısı
+    profildeki satırda duruyor.
+  */
+  return <SeriSahnesi gun={s.gun} riskte={s.riskte} bonus={bonus} kart={false} />;
 }
 
 /**
  * Günlük çark kartı (Ü49).
  *
  * Kart çarkın kendisini göstermiyor, yalnızca durumunu: çarkın SVG'si ve
- * animasyonu bu ekranı ikiye katlardı. Kapalıyken de duruyor — kaybolan
- * bir kart "özellik kaldırıldı" diye okunuyor.
+ * animasyonu bu ekranı ikiye katlardı. Ü275'ten beri yalnızca çark
+ * HAZIRKEN çiziliyor (ürün sahibinin kararı).
  *
  * ── Açıkken dolu, kapalıyken sakin (Ü64, Ü65) ───────────────
  *
@@ -777,36 +776,15 @@ function CarkKarti({
   /** Kafenin çevirme aralığı (Ü158) — sabit değil. */
   aralikSaat: number;
 }) {
-  const acik = durum.acik;
+  /*
+    🔴 Ü275: çark kullanılamıyorken kart HİÇ görünmüyor; çağıran da
+    yalnızca açıkken çiziyor.
 
-  if (!acik) {
-    return (
-      <section className="mb-10">
-        <h2 className="etiket-caps mb-3 text-yazi-sonuk">Şans çarkı</h2>
-        <Link
-          href="/cark"
-          className="block rounded-2xl border border-cizgi bg-yuzey px-5 py-5 transition-colors hover:border-yazi-sonuk/40"
-        >
-          <div className="flex items-center gap-4">
-            <span className="shrink-0 opacity-50">
-              <CarkIkonu boy={40} />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block font-display text-lg leading-tight font-bold">
-                Çark kapalı
-              </span>
-              <span className="mt-1 block text-[13px] leading-relaxed text-yazi-sonuk">
-                {cark.durumMetni(durum)}
-              </span>
-            </span>
-            <span aria-hidden className="text-yazi-sonuk">
-              →
-            </span>
-          </div>
-        </Link>
-      </section>
-    );
-  }
+    Önceki gerekçe "kaybolan bir kart 'özellik kaldırıldı' diye
+    okunuyor" idi. Ürün sahibinin kararı ters: *"çark kapalıyken ana
+    ekranda hiç çark olmamalı."* Kapalı kart yalnızca yer kaplıyordu.
+  */
+  if (!durum.acik) return null;
 
   return (
     <section className="mb-10">

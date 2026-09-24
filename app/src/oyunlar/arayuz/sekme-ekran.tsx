@@ -28,7 +28,7 @@ import {
 } from "./sekme-yuzey";
 import { useOyunSesi } from "./oyun-ses";
 import { Avatar } from "@/components/avatar";
-import type { OyunEkraniProps } from "./ortak";
+import { useOdulPaketi, type OyunEkraniProps } from "./ortak";
 
 /**
  * Sekme ekranı — Ü217.
@@ -84,7 +84,7 @@ type Yerel = {
   ucus: Ucus | null;
 };
 
-export function SekmeEkrani({ tohum, bitti, kazandirir, cik }: OyunEkraniProps) {
+export function SekmeEkrani({ tohum, bitti, kazandirir, odul, cik }: OyunEkraniProps) {
   const [y, setY] = useState<Yerel>(() => ({
     durum: sekme.baslat(tohum),
     girdiler: [],
@@ -97,6 +97,15 @@ export function SekmeEkrani({ tohum, bitti, kazandirir, cik }: OyunEkraniProps) 
 
   const durum = y.durum;
   const ucus = y.ucus;
+
+  // Ü275 · "görünürse kesin": paket ödül olarak yalnızca sunucu "evet"
+  // dediyse çiziliyor; "hayır"da sıradan parça (Ü207'deki gibi).
+  const paketGorunur = useOdulPaketi(
+    odul,
+    kazandirir,
+    sekme.odulVar?.(durum) ?? false,
+    () => y.girdiler,
+  );
 
   // ── Bitiş bildirimi ──────────────────────────────────
   useEffect(() => {
@@ -395,13 +404,13 @@ export function SekmeEkrani({ tohum, bitti, kazandirir, cik }: OyunEkraniProps) 
                   }
 
                   /*
-                    🔴 `kazandirir` false ise paket ÇİZİLMİYOR — Ü207.
+                    🔴 İzin yoksa paket ÇİZİLMİYOR — Ü207 · Ü275.
 
                     Motor paketi yine üretiyor ve üretmek zorunda
                     (konumu bilseydi replay sapardı); gizleyen ekran.
                     Ürün sahibi bu hatayı Blok'ta yakalamıştı.
                   */
-                  if (kazandirir !== true) return null;
+                  if (!paketGorunur) return null;
                   return (
                     <span key={`o-${n.k}-${n.s}-${i}`} className="absolute" style={ortak}>
                       {/* `inset`, `padding` değil — yukarıdaki nota bak.
@@ -423,25 +432,46 @@ export function SekmeEkrani({ tohum, bitti, kazandirir, cik }: OyunEkraniProps) 
                   );
                 })}
 
-                {/* Uçan toplar */}
+                {/*
+                  Uçan toplar — 🔴 Ü275: her top KENDİ KATMANINDA.
+
+                  Ürün sahibi: *"tüm oyunlar çok takılıyor, donuyor."*
+                  Toplar `left/top` ile tahtanın içinde taşınıyordu; her
+                  karede tahtanın o bölgesi, blokların degradeleri ve
+                  gölgeleriyle birlikte yeniden boyanıyordu. Bilgisayar
+                  tarayıcısı bunu ekran kartında yaptığı için fark
+                  edilmiyor (4 kat yavaşlatılmış işlemcide bile 60 kare);
+                  iPhone Safari aynı işi işlemcide yapıyor.
+
+                  Artık top sol-üst köşede duruyor ve `transform` ile
+                  taşınıyor (`will-change` → ayrı katman). Kaydırma yüzdesi
+                  topun KENDİ boyuna göre: top 2R birim, yani `x / 2R`
+                  kat kadar kaydırmak onu x birimine götürüyor. Ölçüm
+                  gerekmiyor; tahta 7:9 olduğu için iki eksende birim aynı.
+                */}
                 {gorunen?.toplar.map((t, i) => (
                   <span
                     key={i}
                     aria-hidden
-                    className="absolute"
+                    className="pointer-events-none absolute top-0 left-0"
                     style={{
                       ...sekmeTopu(),
-                      left: `${(t.x / SEKME_OLCEK.GENISLIK) * 100}%`,
-                      top: `${(t.y / SEKME_OLCEK.YUKSEKLIK) * 100}%`,
                       width: `${(SEKME_OLCEK.TOP_R * 2 / SEKME_OLCEK.GENISLIK) * 100}%`,
                       height: `${(SEKME_OLCEK.TOP_R * 2 / SEKME_OLCEK.YUKSEKLIK) * 100}%`,
-                      transform: "translate(-50%, -50%)",
+                      transform: `translate3d(${(t.x / (SEKME_OLCEK.TOP_R * 2) - 0.5) * 100}%, ${(t.y / (SEKME_OLCEK.TOP_R * 2) - 0.5) * 100}%, 0)`,
+                      willChange: "transform",
                     }}
                   />
                 ))}
 
-                {/* Nişan kılavuzu — noktalı çizgi. */}
-                {nisan !== null && !ucus && <Kilavuz durum={durum} aci={nisan} />}
+                {/* Nişan kılavuzu — noktalı çizgi. Ü275: kendi katmanında;
+                    parmak her kıpırdadığında çizgi yeniden çiziliyor ve
+                    altındaki bloklar bununla birlikte boyanmamalı. */}
+                {nisan !== null && !ucus && (
+                  <div className="pointer-events-none absolute inset-0" style={{ willChange: "transform" }}>
+                    <Kilavuz durum={durum} aci={nisan} />
+                  </div>
+                )}
 
                 {/* Kaybetme çizgisi — blok buraya değince tur biter. */}
                 <span
@@ -477,15 +507,22 @@ export function SekmeEkrani({ tohum, bitti, kazandirir, cik }: OyunEkraniProps) 
               alt kenarına değiyor ve top tam oradan çıkıyor. Kutu
               yüksekliği başın taşan kısmını saymıyor, yoksa tahta
               yukarı itilirdi. */}
+          {/* 🔴 Ü275: Loopy `left` geçişiyle değil `transform`la kayıyor
+              (tam genişlikte taşıyıcı, yüzde onun boyuna göre) ve atış
+              sırasında YÜZ DEĞİŞTİRMİYOR. Her atışta "neşeli"ye geçip
+              geri dönmek, üç katmanlı görseli iki kez yeniden çözdürüp
+              boyatıyordu — atışın başında ve sonunda takılmanın kaynağı. */}
           <div className="relative h-[62px] shrink-0">
             <div
-              className="absolute -top-3 transition-[left] duration-200 ease-out"
+              className="absolute inset-x-0 -top-3 transition-transform duration-200 ease-out"
               style={{
-                left: `${(durum.firlatici / SEKME_OLCEK.GENISLIK) * 100}%`,
-                transform: "translateX(-50%)",
+                transform: `translateX(${(durum.firlatici / SEKME_OLCEK.GENISLIK) * 100}%)`,
+                willChange: "transform",
               }}
             >
-              <Avatar ifade={bitti_ ? "sakin" : ucus ? "neseli" : "mutlu"} boy={82} />
+              <div className="w-fit -translate-x-1/2">
+                <Avatar ifade={bitti_ ? "sakin" : "mutlu"} boy={82} />
+              </div>
             </div>
           </div>
 

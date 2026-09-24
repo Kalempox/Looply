@@ -48,12 +48,22 @@ export function SeriSahnesi({
   gun,
   riskte,
   bonus,
+  kart = true,
 }: {
   gun: number;
   /** Bugün henüz oynanmadı — seri bugün kırılabilir. */
   riskte: boolean;
   /** Bir sonraki oyunun getireceği seri bonusu. */
   bonus: number;
+  /**
+   * Sayfada kart dursun mu — Ü275.
+   *
+   * Ürün sahibi: *"streak animasyonundan sonra, ilk kez gösterildikten
+   * sonra ana ekranda olmamalı."* Ana ekran `false` veriyor: sahne günde
+   * bir kez kendiliğinden açılıyor, kapanınca geriye hiçbir şey kalmıyor.
+   * Seri sayısı profilde duruyor.
+   */
+  kart?: boolean;
 }) {
   const [acik, setAcik] = useState(false);
   const r = RENK.amber;
@@ -125,6 +135,7 @@ export function SeriSahnesi({
   return (
     <>
       {/* ── Sayfadaki kart ────────────────────────────── */}
+      {kart && (
       <button
         type="button"
         onClick={() => setAcik(true)}
@@ -198,6 +209,7 @@ export function SeriSahnesi({
           </span>
         </span>
       </button>
+      )}
 
       {/* ── Sahne ─────────────────────────────────────── */}
       {acik && (

@@ -23,7 +23,7 @@ import {
   kiriciTuglasi,
 } from "./kirici-yuzey";
 import { useOyunSesi } from "./oyun-ses";
-import type { OyunEkraniProps } from "./ortak";
+import { useOdulPaketi, type OyunEkraniProps } from "./ortak";
 
 const { GENISLIK, YUKSEKLIK, TOP_R, TUGLA_BOY, TUGLA_PAY, PALET_Y, PALET_BOY } =
   KIRICI_OLCEK;
@@ -116,7 +116,7 @@ function imzala(d: KiriciDurumu): string {
   return `${d.tur}|${d.skor}|${d.kalan}|${d.bitti}|${d.odulHucre}|${d.tuglalar.join("")}`;
 }
 
-export function KiriciEkrani({ tohum, bitti, kazandirir, cik }: OyunEkraniProps) {
+export function KiriciEkrani({ tohum, bitti, kazandirir, odul, cik }: OyunEkraniProps) {
   const [y, setY] = useState<Yerel>(() => {
     const durum = kirici.baslat(tohum);
     return { durum, imza: imzala(durum) };
@@ -210,12 +210,16 @@ export function KiriciEkrani({ tohum, bitti, kazandirir, cik }: OyunEkraniProps)
       const tx = Math.max(TOP_R, Math.min(GENISLIK - TOP_R, s.topX + s.vx * pay));
       const ty = Math.max(TOP_R, Math.min(YUKSEKLIK, s.topY + s.vy * pay));
 
-      if (topRef.current) {
-        topRef.current.style.left = `${(tx / GENISLIK) * 100}%`;
-        topRef.current.style.top = `${(ty / YUKSEKLIK) * 100}%`;
-      }
+      /*
+        🔴 Ü275: `left/top` DEĞİL, `transform` — ürün sahibi *"tüm
+        oyunlar takılıyor, donuyor."* `left/top` her karede düzen ve
+        boyama demekti; iPhone Safari boyamayı işlemcide yapıyor ve
+        tuğla duvarı topun geçtiği her karede yeniden çiziliyordu.
+        `transform` yalnızca katmanı kaydırıyor (bkz. `topYeri`).
+      */
+      if (topRef.current) topRef.current.style.transform = topYeri(tx, ty);
       if (paletRef.current) {
-        paletRef.current.style.left = `${(s.palet / GENISLIK) * 100}%`;
+        paletRef.current.style.transform = paletYeri(s.palet, kiriciPaletEni(s.tur));
       }
       const duvar = kiriciDuvarUstu(s, s.tick);
       if (duvarRef.current) {
@@ -242,6 +246,8 @@ export function KiriciEkrani({ tohum, bitti, kazandirir, cik }: OyunEkraniProps)
   // ── Sesler ───────────────────────────────────────────
   const sonKalan = useRef(y.durum.kalan);
   const sonTur = useRef(1);
+  // Ü275: ödül sesi yalnızca ödül varken — izinsiz paket sıradan parça.
+  const odulIzinli = kazandirir === true && odul?.izin === true;
   const sonOdul = useRef(false);
   useEffect(() => {
     const d = y.durum;
@@ -251,7 +257,7 @@ export function KiriciEkrani({ tohum, bitti, kazandirir, cik }: OyunEkraniProps)
     }
     if (d.odulVerildi && !sonOdul.current) {
       sonOdul.current = true;
-      ses.cal("odul");
+      ses.cal(odulIzinli ? "odul" : "yerlesti");
     } else if (d.tur !== sonTur.current) {
       sonTur.current = d.tur;
       ses.cal("temizlik");
@@ -259,7 +265,7 @@ export function KiriciEkrani({ tohum, bitti, kazandirir, cik }: OyunEkraniProps)
       ses.cal("yerlesti");
     }
     sonKalan.current = d.kalan;
-  }, [y.durum, ses]);
+  }, [y.durum, odulIzinli, ses]);
 
   /** Parmağın ekrandaki yerini tahta birimine çevirir. */
   const nokta = useCallback((istemciX: number) => {
@@ -284,7 +290,14 @@ export function KiriciEkrani({ tohum, bitti, kazandirir, cik }: OyunEkraniProps)
   }, []);
 
   const durum = y.durum;
-  const paketVar = durum.odulHucre !== null && kazandirir === true;
+  // Ü275 · "görünürse kesin": paket ödül olarak yalnızca sunucu "evet"
+  // dediyse çiziliyor; "hayır"da sıradan parça (Ü207'deki gibi).
+  const paketVar = useOdulPaketi(
+    odul,
+    kazandirir,
+    durum.odulHucre !== null,
+    () => girdiler.current,
+  );
 
   return (
     <div className="fixed inset-0 z-40 flex flex-col" style={kiriciSahnesi()}>
@@ -387,6 +400,9 @@ export function KiriciEkrani({ tohum, bitti, kazandirir, cik }: OyunEkraniProps)
             className="absolute inset-0"
             style={{
               transform: `translateY(${(kiriciDuvarUstu(durum, durum.tick) / YUKSEKLIK) * 100}%)`,
+              /* Ü275: duvar her karede iniyor — kendi katmanında,
+                 tuğlalar bir kez boyanıp katmanla birlikte kayıyor. */
+              willChange: "transform",
             }}
           >
             {durum.tuglalar.map((can, hucre) =>
@@ -419,6 +435,7 @@ export function KiriciEkrani({ tohum, bitti, kazandirir, cik }: OyunEkraniProps)
               top: `${((PALET_Y - 3500) / YUKSEKLIK) * 100}%`,
               height: `${(3500 / YUKSEKLIK) * 100}%`,
               opacity: 0,
+              willChange: "opacity",
             }}
           />
 
@@ -431,9 +448,10 @@ export function KiriciEkrani({ tohum, bitti, kazandirir, cik }: OyunEkraniProps)
               ...kiriciTopu(),
               width: `${((TOP_R * 2) / GENISLIK) * 100}%`,
               aspectRatio: "1",
-              left: `${(durum.topX / GENISLIK) * 100}%`,
-              top: `${(durum.topY / YUKSEKLIK) * 100}%`,
-              transform: "translate(-50%, -50%)",
+              left: 0,
+              top: 0,
+              transform: topYeri(durum.topX, durum.topY),
+              willChange: "transform",
             }}
           />
 
@@ -448,8 +466,9 @@ export function KiriciEkrani({ tohum, bitti, kazandirir, cik }: OyunEkraniProps)
               top: `${(PALET_Y / YUKSEKLIK) * 100}%`,
               height: `${(PALET_BOY / YUKSEKLIK) * 100}%`,
               width: `${(kiriciPaletEni(durum.tur) / GENISLIK) * 100}%`,
-              left: `${(durum.palet / GENISLIK) * 100}%`,
-              transform: "translateX(-50%)",
+              left: 0,
+              transform: paletYeri(durum.palet, kiriciPaletEni(durum.tur)),
+              willChange: "transform",
             }}
           />
         </div>
@@ -496,4 +515,21 @@ function SesDugmesi({ acik, degistir }: { acik: boolean; degistir: () => void })
       </svg>
     </button>
   );
+}
+
+/**
+ * Topun yeri — `transform` olarak (Ü275).
+ *
+ * Top tahtanın sol-üst köşesinde duruyor ve kendi boyuna göre yüzdeyle
+ * kaydırılıyor: top 2R birim, `x / 2R` kat kaydırmak onu x birimine
+ * götürüyor; `- 0.5` merkezini oraya oturtuyor. Tahta 9:10 ve birimler
+ * iki eksende aynı piksele denk geliyor (yukarıdaki oran notu).
+ */
+function topYeri(x: number, y: number): string {
+  return `translate3d(${(x / (TOP_R * 2) - 0.5) * 100}%, ${(y / (TOP_R * 2) - 0.5) * 100}%, 0)`;
+}
+
+/** Paletin yeri — merkezi `x`te, genişliği `en` birim (Ü275). */
+function paletYeri(x: number, en: number): string {
+  return `translate3d(${(x / en - 0.5) * 100}%, 0, 0)`;
 }

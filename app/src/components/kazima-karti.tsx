@@ -513,7 +513,7 @@ export function KazimaKarti({
         type="button"
         onClick={() => void acmayiIste()}
         disabled={aciliyor}
-        className="absolute right-2.5 bottom-2.5 z-30 rounded-full bg-black/35 px-3 py-1.5 etiket-caps text-[10px] text-white backdrop-blur-sm transition-colors hover:bg-black/55 disabled:opacity-60"
+        className="absolute right-2.5 bottom-2.5 z-30 rounded-full bg-black/50 px-3 py-1.5 etiket-caps text-[10px] text-white transition-colors hover:bg-black/55 disabled:opacity-60"
       >
         {aciliyor ? "Açılıyor" : "Kazımadan aç"}
       </button>

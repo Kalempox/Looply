@@ -64,8 +64,25 @@ export async function misafirBasla(oyunId: string): Promise<BaslaCevabi> {
   return { ok: true, tohum: sonuc.tohum };
 }
 
+/**
+ * Misafirin ödül paketi tahtaya çıktı — gösterilsin mi? (Ü275)
+ *
+ * Kayıtlı oyuncudaki `odulSorEylemi`nin eşi. Karar açık oyun çerezine
+ * imzalı yazılıyor; misafir oyunu hiçbir deftere yazılmıyor (Ü35).
+ */
+export async function misafirOdulSor(girdiler: unknown): Promise<{ izin: boolean }> {
+  const c = await cookies();
+  const sonuc = await misafir.odulSor({
+    acikOyunCerezi: c.get(misafir.OYUN_COOKIE)?.value,
+    konumCerezi: c.get(misafir.KONUM_COOKIE)?.value,
+    girdiler,
+  });
+  if (sonuc.cerez) c.set(misafir.OYUN_COOKIE, sonuc.cerez, cerezAyari());
+  return { izin: sonuc.izin };
+}
+
 export type BitirCevabi =
-  | { ok: true; skor: number; basarili: boolean; k2: boolean }
+  | { ok: true; skor: number; basarili: boolean; k2: boolean; odulPaketi: boolean }
   | { ok: false; hata: string; reddedildi?: boolean };
 
 export async function misafirBitir(
@@ -88,7 +105,13 @@ export async function misafirBitir(
   if (!sonuc.ok) return sonuc;
 
   c.set(misafir.TALEP_COOKIE, sonuc.cerez, cerezAyari());
-  return { ok: true, skor: sonuc.skor, basarili: sonuc.basarili, k2: sonuc.k2 };
+  return {
+    ok: true,
+    skor: sonuc.skor,
+    basarili: sonuc.basarili,
+    k2: sonuc.k2,
+    odulPaketi: sonuc.odulPaketi,
+  };
 }
 
 const konumSemasi = z.object({

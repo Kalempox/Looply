@@ -700,6 +700,14 @@ export const kirici: Oyun<KiriciDurumu, KiriciGirdisi> = {
   skor(durum) {
     return durum.skor;
   },
+  /* Ü275 · "görünürse kesin": sunucu paketin gerçekten tahtada olduğunu
+     ve oyuncuya ulaştığını bu ikisiyle görüyor (sözleşmedeki not). */
+  odulVar(durum) {
+    return durum.odulHucre !== null;
+  },
+  odulTeslim(durum) {
+    return durum.odulVerildi;
+  },
 
   gecenMs(durum) {
     return durum.tick * TICK_MS;

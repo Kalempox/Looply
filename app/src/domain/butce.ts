@@ -436,20 +436,10 @@ export async function rezerveEt(
     ekHavuzKurus?: number;
   },
 ): Promise<boolean> {
-  const gun = opts.gun ?? isGunu();
-  const donem = await donemOku(db, opts.cafeId, gun);
-  if (!donem || opts.kurus <= 0) return false;
-
-  const h = await hareketler(db, opts.cafeId, donem.id);
-  const kullanilan = h.acikRezerve + h.harcanan;
-
-  // Ü87: iki tavan birden. Günlük taahhüt (E10) hiçbir zaman aşılmıyor;
-  // tempo tavanı ise günün o saatine kadar açılmış payı sınırlıyor.
-  const ek = Math.max(0, opts.ekHavuzKurus ?? 0);
-  const gunlukKalan = donem.taahhutKurus + ek - kullanilan;
-  const tempoTavani = await tempoTavaniHesapla(opts.cafeId, donem.taahhutKurus, opts.an);
-  const tempoKalan = tempoTavani + ek - kullanilan;
-  const dagitilabilir = Math.min(gunlukKalan, tempoKalan);
+  if (opts.kurus <= 0) return false;
+  const k = await kalanHesapla(db, opts);
+  if (!k) return false;
+  const { donem, gunlukKalan, tempoKalan, tempoTavani, dagitilabilir } = k;
 
   if (opts.kurus > dagitilabilir) {
     log.info("rezervasyon reddedildi: butce yetmiyor", {
@@ -465,6 +455,58 @@ export async function rezerveEt(
 
   await defterYaz(db, donem.id, opts.cafeId, "reserve", opts.kurus, opts.kuponId, opts.not);
   return true;
+}
+
+/**
+ * Şu an en fazla ne kadarlık kupon verilebilir — YAZMADAN (Ü275).
+ *
+ * "Görünürse kesin" paketi, bütçe yetmeyecekse hiç göstermemeli: paket
+ * göründükten sonra "bütçe doldu" demek, ürün sahibinin yakaladığı
+ * yalanın aynısı olurdu. Karar anında bu sorulup en ucuz adayla
+ * karşılaştırılıyor.
+ *
+ * ⚠️ `rezerveEt`le AYNI hesap (`kalanHesapla`) — ikisi ayrı yazılsaydı
+ * paket "sığar" deyip kupon "sığmaz" diyebilirdi.
+ */
+export async function dagitilabilirIle(
+  db: Db,
+  opts: { cafeId: string; gun?: string; an?: Date; ekHavuzKurus?: number },
+): Promise<number> {
+  const k = await kalanHesapla(db, opts);
+  return k ? Math.max(0, k.dagitilabilir) : 0;
+}
+
+/** Rezervasyonun ve salt okumanın ortak hesabı — bkz. `rezerveEt`, `dagitilabilirIle`. */
+async function kalanHesapla(
+  db: Db,
+  opts: { cafeId: string; gun?: string; an?: Date; ekHavuzKurus?: number },
+): Promise<{
+  donem: Donem;
+  gunlukKalan: number;
+  tempoKalan: number;
+  tempoTavani: number;
+  dagitilabilir: number;
+} | null> {
+  const gun = opts.gun ?? isGunu();
+  const donem = await donemOku(db, opts.cafeId, gun);
+  if (!donem) return null;
+
+  const h = await hareketler(db, opts.cafeId, donem.id);
+  const kullanilan = h.acikRezerve + h.harcanan;
+
+  // Ü87: iki tavan birden. Günlük taahhüt (E10) hiçbir zaman aşılmıyor;
+  // tempo tavanı ise günün o saatine kadar açılmış payı sınırlıyor.
+  const ek = Math.max(0, opts.ekHavuzKurus ?? 0);
+  const gunlukKalan = donem.taahhutKurus + ek - kullanilan;
+  const tempoTavani = await tempoTavaniHesapla(opts.cafeId, donem.taahhutKurus, opts.an);
+  const tempoKalan = tempoTavani + ek - kullanilan;
+  return {
+    donem,
+    gunlukKalan,
+    tempoKalan,
+    tempoTavani,
+    dagitilabilir: Math.min(gunlukKalan, tempoKalan),
+  };
 }
 
 /**

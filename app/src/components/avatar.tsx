@@ -248,6 +248,7 @@ function Katman({
   renk,
   ad2,
   oncelik,
+  boy,
 }: {
   kare: string;
   ad: "sabit" | "govde" | "serit";
@@ -255,6 +256,8 @@ function Katman({
   /** Ekran okuyucu metni — yalnızca `sabit` katmanında. */
   ad2?: string;
   oncelik: boolean;
+  /** Ü275: ekranda çizilen boy (px) — görsel bu boya göre isteniyor. */
+  boy: number;
 }) {
   const yol = `/avatar/loopy-${kare}-${ad}-512.webp`;
 
@@ -265,6 +268,10 @@ function Katman({
         alt={ad2 ?? ""}
         width={512}
         height={512}
+        /* 🔴 Ü275: çizilen boy. Verilmediğinde tarayıcı 3x ekranda
+           82 piksellik Loopy için 1080'lik görseli istiyordu (sunucu
+           512'yi döndürüyor) — üç katman × 512×512 çözme. */
+        sizes={`${Math.ceil(boy)}px`}
         className="absolute inset-0 size-full"
         aria-hidden={ad2 ? undefined : true}
         priority={oncelik}
@@ -429,13 +436,15 @@ export function Avatar({
           ad="govde"
           renk={govde ? govdeRengi(govde) : GOVDE_DEGISKENI}
           oncelik={oncelikli}
+          boy={boy}
         />
-        <Katman kare={KARE[ifade]} ad="sabit" ad2={ad} oncelik={oncelikli} />
+        <Katman kare={KARE[ifade]} ad="sabit" ad2={ad} oncelik={oncelikli} boy={boy} />
         <Katman
           kare={KARE[ifade]}
           ad="serit"
           renk={serit ? seritRengi(serit) : SERIT_DEGISKENI}
           oncelik={oncelikli}
+          boy={boy}
         />
       </div>
 

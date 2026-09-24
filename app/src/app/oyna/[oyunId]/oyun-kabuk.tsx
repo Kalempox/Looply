@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { OyunEkrani } from "@/oyunlar/arayuz";
+import { useOdulIzni } from "@/oyunlar/arayuz/ortak";
 import { BiletYuzeyi } from "@/components/oyuncu";
 import { OyunSahnesi, sahneVarMi } from "@/components/oyun-sahnesi";
 import { RENK, oyunRengi } from "@/components/oyuncu-renk";
@@ -13,7 +14,13 @@ import { Gorsel, oyunGorseli } from "@/components/oyuncu-gorsel";
 import { SeviyeKutlamasi } from "@/components/seviye-kutlamasi";
 import { SeviyeSahnesi } from "@/components/seviye-sahnesi";
 import { RozetKutlamasi } from "@/components/rozet-kutlamasi";
-import { baslaEylemi, bitirEylemi, type BitirCevabi, teklifAlEylemi } from "./actions";
+import {
+  baslaEylemi,
+  bitirEylemi,
+  odulSorEylemi,
+  type BitirCevabi,
+  teklifAlEylemi,
+} from "./actions";
 
 /**
  * Oyun kabuğu — oyna, sonucu gör.
@@ -79,6 +86,8 @@ export function OyunKabugu(ayar: Ayar) {
   const router = useRouter();
   const otomatikBasladi = useRef(false);
   const r = RENK[oyunRengi(ayar.oyunId)];
+  // Ü275 · "görünürse kesin": paket ilk belirdiğinde sunucuya bir kez soruluyor.
+  const odulIzni = useOdulIzni(durum.tur === "oynuyor" ? durum.oturumId : null, odulSorEylemi);
 
   const turBaslat = useCallback(() => {
     setHata(null);
@@ -182,6 +191,7 @@ export function OyunKabugu(ayar: Ayar) {
           tohum={durum.tohum}
           demoKapisi={ayar.demoKapisi}
           kazandirir={ayar.kazandirir}
+          odul={odulIzni}
           /* Ü203: tam ekran oyunda sayfanın geri bağlantısı görünmüyor;
              çıkış oyuncuyu katalog karuseline götürüyor. */
           cik={() => router.push("/oyunlar")}
@@ -523,6 +533,17 @@ function SonucEkrani({
               <strong className="text-yazi">Kafe şu an kapalı</strong>, bu turda ödül
               çıkmadı. Ödüller {String(odulYok.acilis).padStart(2, "0")}:00&apos;da açılıyor;
               puanın ve XP&apos;n yazıldı.
+            </p>
+          )}
+          {/* Ü275: paket alındı ama söz tutulamadı — nadir, ama sessiz kalmıyor. */}
+          {!kupon && odulYok?.sebep === "verilemedi" && (
+            <p
+              className="gir rounded-2xl border border-cizgi bg-yuzey px-4 py-3.5 text-[13px] leading-relaxed text-yazi-sonuk"
+              style={{ animationDelay: `${190 + satirlar.length * 90}ms` }}
+            >
+              <strong className="text-yazi">Ödül paketini aldın ama bu kez verilemedi</strong>:
+              bugünkü oyun ödülünü başka bir turda almışsın ya da kafenin bugünkü ödül bütçesi
+              az önce doldu. Puanın ve XP&apos;n yazıldı.
             </p>
           )}
           {kupon && (

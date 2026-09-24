@@ -21,7 +21,7 @@ import {
   type BlokRengi,
 } from "./blok-yuzey";
 import { useOyunSesi } from "./oyun-ses";
-import type { OyunEkraniProps } from "./ortak";
+import { useOdulPaketi, type OyunEkraniProps } from "./ortak";
 
 /**
  * Blok ekranı — parçayı sürükle, nereye ineceğini gör, bırak.
@@ -156,9 +156,18 @@ function parcacikUret(kareler: Set<number>, renk: BlokRengi): Parcacik[] {
   geçti (`blok-yuzey.ts`). Oyunun kimlik rengi kaybolmadı — kart,
   ikon ve başlık hâlâ `oyunRengi`den geliyor, tahta gelmiyor.
 */
-export function BlokEkrani({ tohum, bitti, kazandirir = true, cik }: OyunEkraniProps) {
+export function BlokEkrani({
+  tohum,
+  bitti,
+  kazandirir = true,
+  odul: odulIzni,
+  cik,
+}: OyunEkraniProps) {
   const [durum, setDurum] = useState<BlokDurumu>(() => blok.baslat(tohum));
   const [girdiler, setGirdiler] = useState<BlokGirdisi[]>([]);
+  // Ü275 · "görünürse kesin": paketli parça ödül olarak yalnızca sunucu
+  // "evet" dediyse çiziliyor; "hayır"da sıradan parça (Ü207'deki gibi).
+  const paketGorunur = useOdulPaketi(odulIzni, kazandirir, durum.odulTeklifi >= 0, () => girdiler);
   const [secili, setSecili] = useState<number | null>(null);
   const [patlama, setPatlama] = useState<Patlama | null>(null);
   /** Son yerleşme — sekme, halka ve 2 piksellik vuruş buradan. */
@@ -386,7 +395,7 @@ export function BlokEkrani({ tohum, bitti, kazandirir = true, cik }: OyunEkraniP
       */
       // ⚠️ Kutlama da yalnızca kazandıran turda: paket kafe dışında
       // sessizce kullanılıyor, çünkü kupon açılmayacak.
-      if (durum.odulTeklifi === t && kazandirir) {
+      if (durum.odulTeklifi === t && paketGorunur) {
         setOdul({ anahtar: yeniGirdiler.length, s, k });
         ses.cal("odul");
       }
@@ -395,7 +404,7 @@ export function BlokEkrani({ tohum, bitti, kazandirir = true, cik }: OyunEkraniP
         bitti(yeniGirdiler, blok.skor(sonraki));
       }
     },
-    [durum, girdiler, secili, bitti, renkler, kazandirir, ses],
+    [durum, girdiler, secili, bitti, renkler, paketGorunur, ses],
   );
 
   /**
@@ -903,7 +912,7 @@ export function BlokEkrani({ tohum, bitti, kazandirir = true, cik }: OyunEkraniP
               bilseydi aynı girdi kaydı iki farklı durum üretir ve
               sunucunun tekrarı sapardı. Gizleyen şey ekran.
             */
-            const paketli = durum.odulTeklifi === t && parca >= 0 && kazandirir;
+            const paketli = durum.odulTeklifi === t && parca >= 0 && paketGorunur;
             const renk = BLOK_RENKLERI[blokRengi(durum.tur, t)];
             return (
               <button

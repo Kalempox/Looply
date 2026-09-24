@@ -26,6 +26,21 @@ export async function baslaEylemi(oyunId: string): Promise<BaslatCevabi> {
   return oyunDomain.basla({ playerId: o.ozneId, oyunId });
 }
 
+/**
+ * Ödül paketi tahtaya çıktı — gösterilsin mi? (Ü275 · "görünürse kesin")
+ *
+ * Girdi kaydı o ana kadarki hâliyle geliyor; sunucu turu yeniden oynatıp
+ * paketin gerçekten çıktığını görüyor. Karar bir kez veriliyor.
+ */
+export async function odulSorEylemi(
+  oturumId: string,
+  girdiler: unknown,
+): Promise<{ izin: boolean }> {
+  const o = await oturum.oku();
+  if (!o || o.rol !== "oyuncu") return { izin: false };
+  return oyunDomain.odulSor({ playerId: o.ozneId, oturumId, girdiler });
+}
+
 export type BitirCevabi = Awaited<ReturnType<typeof oyunDomain.bitir>>;
 
 export async function bitirEylemi(

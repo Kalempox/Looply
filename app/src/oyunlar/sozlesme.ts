@@ -95,6 +95,38 @@ export type Oyun<Durum, Girdi> = {
    * Tanımlamayan oyunlarda motor yalnızca skora bakıyor.
    */
   odulIsareti?(durum: Durum): number;
+  /**
+   * Ödül paketi şu an tahtada mı — Ü275.
+   *
+   * ── "Görünürse kesin" ───────────────────────────────────────
+   *
+   * Ürün sahibi ödüllü bloğu kırdı ve hiçbir şey almadı: paket 500'ü
+   * geçen her turda çıkıyor, kupon ise tur sonunda şansla veriliyordu.
+   * Artık şans paket **görünmeden önce** atılıyor. Ekran paketi motor
+   * çıkardığı an sunucuya soruyor; sunucu turu o ana kadar yeniden
+   * oynatıp paketin gerçekten tahtada olduğunu bu fonksiyonla görüyor
+   * — istemcinin "paket çıktı" iddiası tek başına yetmiyor.
+   *
+   * ⚠️ Motor kararı BİLMİYOR ve bilmemeli: paket her durumda aynı yerde
+   * çıkıyor (replay determinizmi). Kararı uygulayan ekran — "hayır"
+   * cevabında paket sıradan bir parça gibi çiziliyor, tıpkı kafe
+   * dışındaki oyuncuda olduğu gibi (Ü207).
+   */
+  odulVar?(durum: Durum): boolean;
+  /**
+   * Paket bu turda oyuncuya **ulaştı** mı — kırıldı, yendi, yerleşti,
+   * birleşti. Ü275.
+   *
+   * Kesin kuponun ikinci şartı bu: "görünürse kesin" sözü paketi
+   * **alan** oyuncuya. Kaçırılan paket (süresi dolan altın yem, bölümle
+   * birlikte giden tüp paketi) teslim sayılmıyor.
+   *
+   * ⚠️ `odulVerildi` bayrağıyla aynı şey DEĞİL: bazı motorlarda o bayrak
+   * "paketin bu turdaki sırası geçti" demek ve bölüm sonunda alınmamış
+   * paket için de kalkıyor (Ayır, Bağla). Bu fonksiyon yalnızca gerçek
+   * teslimi söylüyor.
+   */
+  odulTeslim?(durum: Durum): boolean;
 
   /**
    * Günün görevinin "iyi bir tur" saydığı skor — Ü245.
@@ -224,6 +256,10 @@ export type TekrarSonucu =
       oyunMs: number | null;
       /** Ü91: yakalanan ödül işareti sayısı. Oyun tanımlamıyorsa 0. */
       odulIsareti: number;
+      /** Ü275: kaydın sonunda paket tahtada mı. */
+      odulVar: boolean;
+      /** Ü275: paket bu turda oyuncuya ulaştı mı. */
+      odulTeslim: boolean;
     }
   | { gecerli: false; sebep: string };
 
@@ -282,6 +318,8 @@ export function tekrarOyna<Durum, Girdi>(
     skor: oyun.skor(durum),
     oyunMs: oyun.gecenMs ? oyun.gecenMs(durum) : null,
     odulIsareti: oyun.odulIsareti ? oyun.odulIsareti(durum) : 0,
+    odulVar: oyun.odulVar ? oyun.odulVar(durum) : false,
+    odulTeslim: oyun.odulTeslim ? oyun.odulTeslim(durum) : false,
     kullanilmayan: hamGirdiler.length - i,
   };
 }

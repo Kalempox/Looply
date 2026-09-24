@@ -1,6 +1,6 @@
 import { withBypass, withCafe, type Db } from "@/db/context";
 import { newId, couponCode } from "@/lib/ids";
-import { randomToken } from "@/lib/crypto";
+import { imzala, randomToken } from "@/lib/crypto";
 import { log } from "@/lib/log";
 import { isGunu } from "@/lib/tarih";
 import * as butce from "./butce";
@@ -370,53 +370,64 @@ async function olayYaz(
 /* ── Anlık ödül (Ü27) ──────────────────────────────────────── */
 
 /**
- * Anlık ödül verir — oyun başarıyla bitince, günde bir kez.
+ * Anlık ödülün sert şartları — Ü275'te `anlikOdulVer`den ayrıldı.
  *
- * **Ü27: döngüsel seçim.** Kafenin sıraladığı listeden sırayla. Sıra için
- * ayrı bir sayaç kolonu yok: kafenin bugüne kadar dağıttığı anlık kupon
- * sayısının aktif anlık ödül sayısına bölümünden kalan. Defter zaten sayıyı
- * taşıyor.
+ * Paket kararı (`odulSozuVer`) ile kupon üretimi AYNI soruları soruyor:
+ * oyuncu bugünkü oyun ödülünü aldı mı, Happy Hour penceresi açık mı,
+ * günlük adedi dolmamış aday var mı. İki kopya ayrışsaydı paket "ödül
+ * var" deyip kupon "yok" diyebilirdi — ürün sahibinin yakaladığı
+ * yalanın ta kendisi.
  *
- * Rastgele seçim **bilerek yok**: E8 öngörülemezliği reddetti, arka kapıdan
- * geri girmesin.
- *
- * Var olan bir işlemin içinde çalışır — oyun bitişiyle aynı işlemde olmalı.
+ * `playerId` null → misafir. Kim olduğu kayıtta belli oluyor; günlük hak
+ * o zaman `anlikOdulVer`in içinde yeniden soruluyor.
  */
-export async function anlikOdulVer(
+type Uygunluk =
+  | { uygun: false }
+  | {
+      uygun: true;
+      pencere: happy.Pencere | null;
+      /** Bugünkü oyun ödülü alınmış, bu kupon Happy Hour penceresinden. */
+      pencereden: boolean;
+      uygunlar: OdulSatiri[];
+    };
+
+async function anlikUygunluk(
   db: Db,
-  opts: {
-    playerId: string;
-    cafeId: string;
-    kanitSeviyesi: number;
-    /** Ü77: motorun şans ve ağırlık hesabı bu skordan türüyor. */
-    skor: number;
-    /** Ü77: azalan getiri **oyun başına**; hangi oyun olduğu şart. */
-    oyunId: string;
-    /** Ü91: turda yakalanan ödül işareti sayısı — şansı yükseltiyor. */
-    odulIsareti?: number;
-    /** Ü88: kuponu doğuran oyun oturumu — artık kolona yazılıyor. */
-    kaynakId?: string;
-    /**
-     * Ü141: kupon kapalı doğsun mu — oyun yolundan gelen her çağrı
-     * `true` gönderiyor. Testler açık kupon isteyebiliyor.
-     */
-    kapali?: boolean;
-    /** Ü90: bütçe temposunun okuduğu an. Yalnızca testler için. */
-    an?: Date;
-  },
-): Promise<KuponSonucu | null> {
-  // Bugün zaten anlık ödül aldıysa ikincisi yok (docs/06 §3).
-  const bugunku = await db.one(
-    `SELECT 1 FROM coupons c
-       JOIN rewards r ON r.id = c.reward_id
-      WHERE c.player_id = $1 AND c.cafe_id = $2 AND r.kind = 'instant'
-        AND c.issued_at >= ($3::date::timestamp AT TIME ZONE 'Europe/Istanbul')
-      LIMIT 1`,
-    // Günün başlangıcı İSTANBUL gece yarısı. `date_trunc('day', now())`
-    // sunucunun (UTC) gününü verir ve gece 00:00–03:00 arasında dünün
-    // akşamını da "bugün" sayar.
-    [opts.playerId, opts.cafeId, isGunu()],
-  );
+  opts: { playerId: string | null; cafeId: string },
+): Promise<Uygunluk> {
+  /*
+    Bugün zaten OYUNDAN anlık ödül aldıysa ikincisi yok (docs/06 §3).
+
+    🔴 Ü275: ÇARK kuponları sayılmıyor. Çark da aynı ödül listesinden
+    (`kind = 'instant'`) veriyor ve eskiden bu sorguya takılıyordu:
+    çarktan kazanan oyuncu o gün hiçbir oyundan ödül alamıyordu. Ürün
+    sahibi çarkta kazandı, sonra 1.705 puanlık bir turda ödüllü bloğu
+    kırdı ve eli boş kaldı. Kararı: *"ayrı olsun"* — günde bir çark
+    ödülü + bir oyun ödülü.
+
+    ⚠️ Çark kuponu, çarkın kendi kilidiyle AYNI tanımla ayıklanıyor:
+    `issued` olayının gerekçesi `cark` (`cark.ts` · `sonCevirme`). Başka
+    bir tanım (ör. "oyun oturumu dolu") iki kuralın ayrışmasına kapı
+    açardı.
+
+    Günün başlangıcı İSTANBUL gece yarısı. `date_trunc('day', now())`
+    sunucunun (UTC) gününü verir ve gece 00:00–03:00 arasında dünün
+    akşamını da "bugün" sayar.
+  */
+  const bugunku = opts.playerId
+    ? await db.one(
+        `SELECT 1 FROM coupons c
+           JOIN rewards r ON r.id = c.reward_id
+          WHERE c.player_id = $1 AND c.cafe_id = $2 AND r.kind = 'instant'
+            AND c.issued_at >= ($3::date::timestamp AT TIME ZONE 'Europe/Istanbul')
+            AND NOT EXISTS (
+              SELECT 1 FROM coupon_events e
+               WHERE e.coupon_id = c.id AND e.event = 'issued' AND e.reason = 'cark')
+          LIMIT 1`,
+        [opts.playerId, opts.cafeId, isGunu()],
+      )
+    : null;
+
   /**
    * Ö3 · Happy Hour: açık pencerede günlük sınır bir kez daha açılıyor.
    *
@@ -430,7 +441,7 @@ export async function anlikOdulVer(
    */
   const pencere = await happy.acikPencereIle(db, opts.cafeId);
 
-  if (bugunku && !pencere) return null;
+  if (bugunku && !pencere) return { uygun: false };
 
   // Pencere açık ama oyuncu bugün pencereden zaten ödül aldıysa üçüncüsü yok:
   // sınır "günde bir + pencerede bir", sınırsız değil.
@@ -440,7 +451,7 @@ export async function anlikOdulVer(
         WHERE player_id = $1 AND happy_hour_id = $2 LIMIT 1`,
       [opts.playerId, pencere.id],
     );
-    if (pencereden) return null;
+    if (pencereden) return { uygun: false };
   }
 
   /**
@@ -470,14 +481,8 @@ export async function anlikOdulVer(
       ORDER BY r.sort_order, r.id`,
     [opts.cafeId, isGunu()],
   );
-  if (adaylar.length === 0) return null;
+  if (adaylar.length === 0) return { uygun: false };
 
-  // ── Ödül motoru (Ü77) ──────────────────────────────────
-  //
-  // Ü27'nin döngüsel sırası kalktı: sıradaki ödül veriliyordu, skorun ve
-  // oyuncunun geçmişinin hiçbir etkisi yoktu. Artık üç girdi var — şans,
-  // skor ağırlığı ve aynı oyundan gelen kazanımların kıstığı pay.
-  //
   // Pencereden çıkan ödül havuza sığmalı, o yüzden süzgeç seçimden ÖNCE:
   // motor havuza sığmayan bir ödül seçerse tur boşa giderdi ve oyuncu
   // "şansım tuttu ama ödül gelmedi" derdi.
@@ -486,22 +491,93 @@ export async function anlikOdulVer(
     pencereden && pencere
       ? adaylar.filter((a) => Number(a.cost_kurus) <= pencere.kalanKurus)
       : adaylar;
+  if (uygunlar.length === 0) return { uygun: false };
+
+  return { uygun: true, pencere, pencereden, uygunlar };
+}
+
+/**
+ * Anlık ödül verir — oyun başarıyla bitince, günde bir kez.
+ *
+ * **Ü27: döngüsel seçim** kalktı (Ü77): skor, şans ve aynı oyundan gelen
+ * kazanımlar karar veriyor. Rastgele seçim yine de `randomInt` ile ve
+ * sunucuda — E8 öngörülemezliği reddetti, arka kapıdan geri girmesin.
+ *
+ * ── Ü275: `garanti` ─────────────────────────────────────────
+ *
+ * Oyun yolu artık zarı burada ATMIYOR. Zar paket görünmeden önce atıldı
+ * (`odulSozuVer`) ve paketi alan oyuncuya söz verildi: `garanti` ile
+ * yalnızca **hangi** ödülün çıkacağı seçiliyor. Şanslı yol (`garanti`
+ * yok) testler için duruyor.
+ *
+ * Var olan bir işlemin içinde çalışır — oyun bitişiyle aynı işlemde olmalı.
+ */
+export async function anlikOdulVer(
+  db: Db,
+  opts: {
+    playerId: string;
+    cafeId: string;
+    kanitSeviyesi: number;
+    /** Ü77: motorun şans ve ağırlık hesabı bu skordan türüyor. */
+    skor: number;
+    /** Ü77: azalan getiri **oyun başına**; hangi oyun olduğu şart. */
+    oyunId: string;
+    /** Ü91: turda yakalanan ödül işareti sayısı — şansı yükseltiyor. */
+    odulIsareti?: number;
+    /** Ü88: kuponu doğuran oyun oturumu — artık kolona yazılıyor. */
+    kaynakId?: string;
+    /**
+     * Ü141: kupon kapalı doğsun mu — oyun yolundan gelen her çağrı
+     * `true` gönderiyor. Testler açık kupon isteyebiliyor.
+     */
+    kapali?: boolean;
+    /**
+     * Ü275: söz verilmiş paket teslim edildi — zar YOK, yalnızca seçim.
+     * Sert şartlar (günlük hak, bütçe) yine soruluyor: söz verildikten
+     * sonra dolmuş olabilirler ve kafenin bütçesi hiçbir sözle aşılmıyor.
+     */
+    garanti?: boolean;
+    /** Ü90: bütçe temposunun okuduğu an. Yalnızca testler için. */
+    an?: Date;
+  },
+): Promise<KuponSonucu | null> {
+  const u = await anlikUygunluk(db, { playerId: opts.playerId, cafeId: opts.cafeId });
+  if (!u.uygun) return null;
+  const { pencere, pencereden } = u;
+
+  // Söz verilen kupon, oyuncunun kanıtının yetmediği bir ödüle dönmemeli:
+  // `kuponUret` onu reddeder ve söz bozulurdu.
+  const uygunlar = opts.garanti
+    ? u.uygunlar.filter((a) => a.min_proof_level <= opts.kanitSeviyesi)
+    : u.uygunlar;
   if (uygunlar.length === 0) return null;
 
+  // ── Ödül motoru (Ü77) ──────────────────────────────────
+  //
+  // Üç girdi: şans, skor ağırlığı ve aynı oyundan gelen kazanımların
+  // kıstığı pay. Ü275'ten sonra oyun yolunda şans burada değil, paket
+  // görünmeden önce (`odulSozuVer`).
   const sonKazanim = await ayniOyundanKazanim(db, opts.playerId, opts.cafeId, opts.oyunId);
-  const karar = motor.karar({
-    skor: opts.skor,
-    sonKazanim,
-    odulIsareti: opts.odulIsareti,
-    kurusDegerleri: uygunlar.map((a) => Number(a.cost_kurus)),
-  });
+  const kurusDegerleri = uygunlar.map((a) => Number(a.cost_kurus));
 
-  if (!karar.dusuyor) {
-    log.info("anlik odul dusmedi", { sebep: karar.sebep, sonKazanim });
-    return null;
+  let indeks: number;
+  if (opts.garanti) {
+    indeks = motor.kesinSecim({ skor: opts.skor, sonKazanim, kurusDegerleri });
+  } else {
+    const karar = motor.karar({
+      skor: opts.skor,
+      sonKazanim,
+      odulIsareti: opts.odulIsareti,
+      kurusDegerleri,
+    });
+    if (!karar.dusuyor) {
+      log.info("anlik odul dusmedi", { sebep: karar.sebep, sonKazanim });
+      return null;
+    }
+    indeks = karar.indeks;
   }
 
-  const odul = uygunlar[karar.indeks];
+  const odul = uygunlar[indeks];
 
   return kuponUret(db, {
     playerId: opts.playerId,
@@ -516,6 +592,76 @@ export async function anlikOdulVer(
     kapali: opts.kapali,
     an: opts.an,
   });
+}
+
+/**
+ * Ödül paketi göründüğünde verilen karar — Ü275 · "görünürse kesin".
+ *
+ * ── Ürün sahibinin yakaladığı hata ──────────────────────────
+ *
+ * Paket 500'ü geçen her turda çıkıyordu; kupon ise tur sonunda şansla
+ * (%22–45) veriliyordu. Ürün sahibi Blok Kırıcı'da ödüllü bloğu kırdı ve
+ * hiçbir şey almadı. Kararı: *"görünürse kesin"*. Zar paket görünmeden
+ * atılıyor ve paket yalnızca şunların HEPSİ tutuyorsa görünüyor:
+ *
+ *   · kupon dağıtımı acil durdurulmamış
+ *   · kafe açık (Ü90 · Ü274)
+ *   · oyuncu bugünkü oyun ödülünü almamış (çark ayrı — Ü275)
+ *   · günlük adedi dolmamış, kanıtı yeten bir aday var
+ *   · bütçe en ucuz adaya yetiyor (`butce.dagitilabilirIle`)
+ *   · zar tuttu (`motor.paketSansi`)
+ *
+ * Hiçbiri kupon ÜRETMİYOR — o, paket teslim edilince `anlikOdulVer`
+ * (`garanti`) ile oluyor. Arada bütçe dolabilir; o zaman ekran bunu
+ * söylüyor (`oyun.ts` · `odulYok`), sessizce eli boş bırakmıyor.
+ *
+ * `playerId` null → misafir: günlük hak ve bıkkınlık kayıtta soruluyor.
+ */
+export async function odulSozuVer(
+  db: Db,
+  opts: {
+    playerId: string | null;
+    cafeId: string;
+    oyunId: string;
+    kanitSeviyesi: number;
+    /** Turun tohumu — zarın anahtarı (`paketZari`). */
+    tohum: string;
+    /** Ü90: tempo ve açıklık için okunan an. Yalnızca testler için. */
+    an?: Date;
+  },
+): Promise<boolean> {
+  if (await acil.durduruldu(acil.ANAHTARLAR.kupon)) return false;
+  if (!(await butce.kafeAcikMi(opts.cafeId, opts.an)).acik) return false;
+
+  const u = await anlikUygunluk(db, { playerId: opts.playerId, cafeId: opts.cafeId });
+  if (!u.uygun) return false;
+  const uygunlar = u.uygunlar.filter((a) => a.min_proof_level <= opts.kanitSeviyesi);
+  if (uygunlar.length === 0) return false;
+
+  const enUcuz = Math.min(...uygunlar.map((a) => Number(a.cost_kurus)));
+  const kalan = await butce.dagitilabilirIle(db, {
+    cafeId: opts.cafeId,
+    an: opts.an,
+    ekHavuzKurus: u.pencereden && u.pencere ? u.pencere.kalanKurus : undefined,
+  });
+  if (enUcuz > kalan) return false;
+
+  const sonKazanim = opts.playerId
+    ? await ayniOyundanKazanim(db, opts.playerId, opts.cafeId, opts.oyunId)
+    : 0;
+  return paketZari(opts.tohum) < motor.paketSansi(sonKazanim);
+}
+
+/**
+ * Turun zarı (0..1) — tohumdan ANAHTARLI türüyor. Ü275.
+ *
+ * Aynı tur için hep aynı sayı: soruyu tekrarlamak zarı yenilemiyor.
+ * Misafirde bu tek koruma — kararı taşıyan çerez istemcide ve eski
+ * çereze dönmek yeni bir zar demek olurdu. Oyuncu tohumu biliyor (motor
+ * onunla oynuyor) ama anahtarı bilmiyor; sonucu önceden hesaplayamıyor.
+ */
+export function paketZari(tohum: string): number {
+  return parseInt(imzala("odul-sozu", tohum).slice(0, 8), 16) / 0x1_0000_0000;
 }
 
 /**

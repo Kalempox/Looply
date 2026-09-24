@@ -30,7 +30,7 @@ import {
   satirAdi,
 } from "./dusen-yuzey";
 import { useOyunSesi } from "./oyun-ses";
-import type { OyunEkraniProps } from "./ortak";
+import { useOdulPaketi, type OyunEkraniProps } from "./ortak";
 
 /**
  * Düşen ekranı — Ü209'da baştan yazıldı.
@@ -220,7 +220,7 @@ const BASILI_ESIK_MS = 180;
  */
 const YUMUSAK_INIS_MS = 140;
 
-export function DusenEkrani({ tohum, bitti, kazandirir, cik }: OyunEkraniProps) {
+export function DusenEkrani({ tohum, bitti, kazandirir, odul, cik }: OyunEkraniProps) {
   const [y, setY] = useState<Yerel>(() => ({
     durum: dusen.baslat(tohum),
     girdiler: [],
@@ -437,7 +437,14 @@ export function DusenEkrani({ tohum, bitti, kazandirir, cik }: OyunEkraniProps) 
     ödüllü blok geldi, o ne için?"* Motor paketi yine üretiyor ve
     üretmek zorunda (konumu bilseydi replay sapardı); gizleyen ekran.
   */
-  const paketDusuyor = durum.odulParcasi && kazandirir === true;
+  // Ü275 · "görünürse kesin": paket ödül olarak yalnızca sunucu "evet"
+  // dediyse çiziliyor. ⚠️ Kayda o anki tick EKLENİYOR: paket parçası
+  // zamanla doğuyor ve yalnızca hamlelerle oynatılan kayıt sunucuya onu
+  // hiç göstermezdi (bitişteki `bekle` işaretiyle aynı gerekçe).
+  const paketDusuyor = useOdulPaketi(odul, kazandirir, durum.odulParcasi, () => [
+    ...y.girdiler,
+    { tick: tickRef.current, a: "bekle" },
+  ]);
   const patlama = y.patlama;
   const patlayanSatirlar = new Set(patlama?.satirlar ?? []);
 

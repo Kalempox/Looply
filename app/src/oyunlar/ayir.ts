@@ -145,6 +145,14 @@ export type AyirDurumu = {
   /** Ödül paketini taşıyan tüp (Ü234) — yoksa null. */
   paket: number | null;
   odulVerildi: boolean;
+  /**
+   * Paket gerçekten ALINDI mı — Ü275.
+   *
+   * `odulVerildi` bölüm sonunda alınmamış paket için de kalkıyor ("bu
+   * turdaki sırası geçti"). Kesin kupon yalnızca alana verildiği için
+   * ikisi ayrı tutuluyor.
+   */
+  odulAlindi: boolean;
   bitti: boolean;
 };
 
@@ -352,6 +360,7 @@ export const ayir: Oyun<AyirDurumu, AyirGirdisi> = {
       skor: 0,
       paket: null,
       odulVerildi: false,
+      odulAlindi: false,
       bitti: false,
     };
   },
@@ -384,9 +393,11 @@ export const ayir: Oyun<AyirDurumu, AyirGirdisi> = {
     /* 🔴 Paket kaynak tüpten alınıyor ve PUAN VERMİYOR (Ü234). */
     let paket = durum.paket;
     let odulVerildi = durum.odulVerildi;
+    let odulAlindi = durum.odulAlindi;
     if (paket === k) {
       paket = null;
       odulVerildi = true;
+      odulAlindi = true;
     }
 
     if (bolumBittiMi(tupler)) {
@@ -406,7 +417,7 @@ export const ayir: Oyun<AyirDurumu, AyirGirdisi> = {
 
     const bitti = havuz <= 0 || !hamleVarMi(sonraki);
 
-    return { ...durum, tupler: sonraki, bolum, havuz, skor, paket, odulVerildi, bitti };
+    return { ...durum, tupler: sonraki, bolum, havuz, skor, paket, odulVerildi, odulAlindi, bitti };
   },
 
   bittiMi(durum) {
@@ -415,6 +426,15 @@ export const ayir: Oyun<AyirDurumu, AyirGirdisi> = {
 
   skor(durum) {
     return durum.skor;
+  },
+  /* Ü275 · "görünürse kesin": sunucu paketin gerçekten tahtada olduğunu
+     ve oyuncuya ulaştığını bu ikisiyle görüyor (sözleşmedeki not).
+     ⚠️ `odulVerildi` değil `odulAlindi`: bölümle giden paket alınmadı. */
+  odulVar(durum) {
+    return durum.paket !== null;
+  },
+  odulTeslim(durum) {
+    return durum.odulAlindi;
   },
 
   girdiOku(ham) {

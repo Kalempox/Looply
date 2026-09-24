@@ -19,7 +19,7 @@ import {
   ikibinYaziBoyu,
 } from "./ikibin-yuzey";
 import { useOyunSesi } from "./oyun-ses";
-import type { OyunEkraniProps } from "./ortak";
+import { useOdulPaketi, type OyunEkraniProps } from "./ortak";
 
 /**
  * 2048 ekranı — Ü259.
@@ -47,7 +47,7 @@ type Yerel = {
   girdiler: IkibinGirdisi[];
 };
 
-export function IkibinEkrani({ tohum, bitti, kazandirir, cik }: OyunEkraniProps) {
+export function IkibinEkrani({ tohum, bitti, kazandirir, odul, cik }: OyunEkraniProps) {
   const [y, setY] = useState<Yerel>(() => ({
     durum: ikibin.baslat(tohum),
     girdiler: [],
@@ -77,6 +77,8 @@ export function IkibinEkrani({ tohum, bitti, kazandirir, cik }: OyunEkraniProps)
 
   // ── Sesler ───────────────────────────────────────────
   const sonSkor = useRef(0);
+  // Ü275: ödül sesi yalnızca ödül varken — izinsiz paket sıradan parça.
+  const odulIzinli = kazandirir === true && odul?.izin === true;
   const sonOdul = useRef(false);
   useEffect(() => {
     const d = y.durum;
@@ -86,13 +88,13 @@ export function IkibinEkrani({ tohum, bitti, kazandirir, cik }: OyunEkraniProps)
     }
     if (d.odulVerildi && !sonOdul.current) {
       sonOdul.current = true;
-      ses.cal("odul");
+      ses.cal(odulIzinli ? "odul" : "yerlesti");
     } else {
       const s = ikibin.skor(d);
       if (s > sonSkor.current) ses.cal(s - sonSkor.current >= 32 ? "kombo" : "yerlesti");
       sonSkor.current = s;
     }
-  }, [y.durum, ses]);
+  }, [y.durum, odulIzinli, ses]);
 
   // ── Klavye ───────────────────────────────────────────
   useEffect(() => {
@@ -115,7 +117,14 @@ export function IkibinEkrani({ tohum, bitti, kazandirir, cik }: OyunEkraniProps)
 
   const durum = y.durum;
   const skor = ikibin.skor(durum);
-  const paketVar = kazandirir === true;
+  // Ü275 · "görünürse kesin": paket ödül olarak yalnızca sunucu "evet"
+  // dediyse çiziliyor; "hayır"da sıradan parça (Ü207'deki gibi).
+  const paketVar = useOdulPaketi(
+    odul,
+    kazandirir,
+    durum.paket.some(Boolean),
+    () => y.girdiler,
+  );
 
   return (
     <div className="fixed inset-0 z-40 flex flex-col" style={ikibinSahnesi()}>

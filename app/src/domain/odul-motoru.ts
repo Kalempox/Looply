@@ -253,3 +253,45 @@ export function karar(opts: {
   const taban = agirlikTabani(opts.skor, opts.sonKazanim);
   return { dusuyor: true, indeks: agirlikliSec(opts.kurusDegerleri, taban) };
 }
+
+/* ── Ü275 · "Görünürse kesin" ─────────────────────────────── */
+
+/**
+ * Ödül paketinin bu turda **görünme** şansı.
+ *
+ * ── Neden şans paketten önceye taşındı ──────────────────────
+ *
+ * Ürün sahibi Blok Kırıcı'da ödüllü bloğu kırdı ve hiçbir şey almadı.
+ * Paket 500'ü geçen her turda çıkıyordu; `karar` ise tur sonunda
+ * `dusmeSansi` ile (%22–45) zar atıyordu. Ekran "kazandın" diyor,
+ * sunucu çoğu zaman vermiyordu. Kararı: *"görünürse kesin"* — zar paket
+ * görünmeden atılıyor, görünen paketi alan kuponu kesin alıyor.
+ *
+ * ── Oran ────────────────────────────────────────────────────
+ *
+ * Bugünkü aralığın **ortası** (%33,5): tur sonundaki zar skorla %22'den
+ * %45'e çıkıyordu ama paket skor daha 500'deyken çıkıyor ve son skoru
+ * bilmiyor. Ürün sahibi "ödül sıklığı bugünkü gibi kalsın" dedi; ortası
+ * o sözün en yakın karşılığı. Bıkkınlık (aynı oyundan son kazanımlar)
+ * aynen uygulanıyor.
+ *
+ * ⚠️ Skorun ödüle etkisi KAYBOLMADI, yer değiştirdi: hangi ödülün
+ * çıkacağı hâlâ son skordan (`kesinSecim`).
+ */
+export function paketSansi(sonKazanim: number): number {
+  return ((EN_AZ_SANS + EN_COK_SANS) / 2) * bikkinlikKatsayisi(sonKazanim);
+}
+
+/**
+ * Söz verilmiş paketin hangi ödüle döneceği — zar YOK, yalnızca seçim.
+ *
+ * `karar`ın ikinci yarısı: skor listeyi düzleştiriyor, bıkkınlık geri
+ * dikleştiriyor. Şans sorusu paket görünmeden cevaplandı.
+ */
+export function kesinSecim(opts: {
+  skor: number;
+  sonKazanim: number;
+  kurusDegerleri: readonly number[];
+}): number {
+  return agirlikliSec(opts.kurusDegerleri, agirlikTabani(opts.skor, opts.sonKazanim));
+}

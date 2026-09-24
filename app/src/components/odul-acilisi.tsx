@@ -75,7 +75,7 @@ export function OdulAcilisi({
   return (
     <div
       className={`relative flex flex-col items-center overflow-hidden rounded-2xl border px-5 py-5 text-center ${
-        koyuZemin ? "border-white/20 bg-white/10 backdrop-blur-sm" : "border-odul bg-cukur"
+        koyuZemin ? "border-white/20 bg-white/15" : "border-odul bg-cukur"
       }`}
     >
       {/* Işık halkası — kutu açıldığı anda dışa doğru yayılıyor. */}

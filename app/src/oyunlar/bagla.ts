@@ -140,6 +140,8 @@ export type BaglaDurumu = {
   /** Ödül paketini taşıyan kare (Ü234) — yoksa null. */
   paket: number | null;
   odulVerildi: boolean;
+  /** Paket gerçekten ALINDI mı — Ü275 (Ayır'daki notla aynı gerekçe). */
+  odulAlindi: boolean;
   bitti: boolean;
 };
 
@@ -395,6 +397,7 @@ export const bagla: Oyun<BaglaDurumu, BaglaGirdisi> = {
       skor: 0,
       paket: null,
       odulVerildi: false,
+      odulAlindi: false,
       bitti: false,
     };
   },
@@ -430,9 +433,11 @@ export const bagla: Oyun<BaglaDurumu, BaglaGirdisi> = {
     /* 🔴 Paket çizilen yolun altında kalınca teslim — PUAN VERMİYOR. */
     let paket = durum.paket;
     let odulVerildi = durum.odulVerildi;
+    let odulAlindi = durum.odulAlindi;
     if (paket !== null && yeniKareler.has(paket)) {
       paket = null;
       odulVerildi = true;
+      odulAlindi = true;
     }
 
     if (bolumBittiMi(tahta)) {
@@ -457,6 +462,7 @@ export const bagla: Oyun<BaglaDurumu, BaglaGirdisi> = {
       skor,
       paket,
       odulVerildi,
+      odulAlindi,
       bitti: havuz <= 0,
     };
   },
@@ -467,6 +473,15 @@ export const bagla: Oyun<BaglaDurumu, BaglaGirdisi> = {
 
   skor(durum) {
     return durum.skor;
+  },
+  /* Ü275 · "görünürse kesin": sunucu paketin gerçekten tahtada olduğunu
+     ve oyuncuya ulaştığını bu ikisiyle görüyor (sözleşmedeki not).
+     ⚠️ `odulVerildi` değil `odulAlindi`: bölümle giden paket alınmadı. */
+  odulVar(durum) {
+    return durum.paket !== null;
+  },
+  odulTeslim(durum) {
+    return durum.odulAlindi;
   },
 
   girdiOku(ham) {

@@ -2386,3 +2386,27 @@ body {
     animation: none;
   }
 }
+
+/* ── Ü275 · kaydırınca çekilen şeritler ─────────────────────
+   Ürün sahibi: "sayfayı aşağı kaydırırken alttaki şerit yok olsun;
+   üstte saat/Wi-Fi adası, altta Safari'nin link çubuğu var, ekran çok
+   kısalıyor." `SeritGizleyici` yalnızca <html>'e `data-serit-gizli`
+   yazıyor; kayma burada, CSS'le. `will-change` şeritleri kendi
+   katmanına alıyor: kayarken sayfa yeniden boyanmıyor. */
+.serit-alt,
+.serit-ust {
+  transition: transform 220ms ease;
+  will-change: transform;
+}
+html[data-serit-gizli] .serit-alt {
+  transform: translateY(100%);
+}
+html[data-serit-gizli] .serit-ust {
+  transform: translateY(-100%);
+}
+@media (prefers-reduced-motion: reduce) {
+  .serit-alt,
+  .serit-ust {
+    transition: none;
+  }
+}

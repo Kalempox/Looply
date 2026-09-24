@@ -17,7 +17,7 @@ import {
   baglaYolRengi,
 } from "./bagla-yuzey";
 import { useOyunSesi } from "./oyun-ses";
-import type { OyunEkraniProps } from "./ortak";
+import { useOdulPaketi, type OyunEkraniProps } from "./ortak";
 
 /**
  * Bağla ekranı — Ü262.
@@ -46,7 +46,7 @@ import type { OyunEkraniProps } from "./ortak";
 
 type Taslak = { renk: number; yol: number[] };
 
-export function BaglaEkrani({ tohum, bitti, kazandirir, cik }: OyunEkraniProps) {
+export function BaglaEkrani({ tohum, bitti, kazandirir, odul, cik }: OyunEkraniProps) {
   const [durum, setDurum] = useState<BaglaDurumu>(() => bagla.baslat(tohum));
   const [girdiler, setGirdiler] = useState<BaglaGirdisi[]>([]);
   const [taslak, setTaslak] = useState<Taslak | null>(null);
@@ -55,7 +55,11 @@ export function BaglaEkrani({ tohum, bitti, kazandirir, cik }: OyunEkraniProps) 
   const tahtaRef = useRef<HTMLDivElement | null>(null);
 
   const en = durum.en;
-  const paketVar = kazandirir === true;
+  // Ü275: ödül sesi yalnızca ödül varken — izinsiz paket sıradan parça.
+  const odulIzinli = kazandirir === true && odul?.izin === true;
+  // Ü275 · "görünürse kesin": paket ödül olarak yalnızca sunucu "evet"
+  // dediyse çiziliyor; "hayır"da sıradan parça (Ü207'deki gibi).
+  const paketVar = useOdulPaketi(odul, kazandirir, durum.paket !== null, () => girdiler);
 
   /** Koordinatın altındaki karenin indisi. */
   const kareBul = useCallback((x: number, y: number): number | null => {
@@ -163,12 +167,12 @@ export function BaglaEkrani({ tohum, bitti, kazandirir, cik }: OyunEkraniProps) 
       ses.cal("gecersiz");
       return;
     }
-    if (sonraki.odulVerildi && !durum.odulVerildi) ses.cal("odul");
+    if (odulIzinli && sonraki.odulAlindi && !durum.odulAlindi) ses.cal("odul");
     else if (sonraki.bolum > durum.bolum) ses.cal("kombo");
     else ses.cal("yerlesti");
     setDurum(sonraki);
     setGirdiler((p) => [...p, girdi]);
-  }, [taslak, durum, ses]);
+  }, [taslak, durum, odulIzinli, ses]);
 
   // ── Bitiş bildirimi ──────────────────────────────────
   useEffect(() => {

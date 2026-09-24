@@ -154,7 +154,7 @@ export default async function ProfilSayfasi() {
               genişliğine hiç dokunmuyor — balonu daraltmak cümleyi üç
               satıra bölerdi.
             */
-            className="absolute top-10 -right-2 z-10 flex size-9 items-center justify-center rounded-full bg-white/20 text-white backdrop-blur-sm transition-colors hover:bg-white/30"
+            className="absolute top-10 -right-2 z-10 flex size-9 items-center justify-center rounded-full bg-white/25 text-white transition-colors hover:bg-white/35"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
               <path
