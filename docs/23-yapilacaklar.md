@@ -6,7 +6,7 @@
 > Yan dosyalar: neyin **var** olduğu → `21-looply-kapsam-haritasi.md` ·
 > demoda neyin **yapılabildiği** → `22-demo-yapilabilirlik.md`
 
-**Son güncelleme:** 2026-09-24 · **Kararlar:** Ü76 – Ü159, **Ü186 – Ü242**, **Ü259 – Ü283**
+**Son güncelleme:** 2026-09-24 · **Kararlar:** Ü76 – Ü159, **Ü186 – Ü242**, **Ü259 – Ü284**
 
 > ⚠️ **BU LİSTEDE İKİ BOŞLUK VAR.**
 >
@@ -38,6 +38,27 @@
 ⚠️ U3 test sırasında **bilerek** değiştirilmedi: yerel testte telefonla
 okutulan karekodun LAN sunucusuna gitmesi tam da bu davranış sayesinde
 çalışıyor.
+
+## ⬅️ Ü284 · Güvenlik yükseltmesi: Next.js 16.3.6, sharp 0.35.4 — 2026-09-24
+
+Ürün sahibi: *"bunları da yap ve commitle."*
+
+- **next 16.3.2 → 16.3.6**: iki kritik açık kapandı — Windows'ta çalışan
+  sunucuda kimliksiz uzaktan kod çalıştırma (GHSA-p293-qw3h-jr36; test
+  sunucusu Windows'ta ve ağa açıktı) ve AVIF ile görsel optimizasyonunda
+  uzaktan kod çalıştırma (GHSA-2xp9-vwfh-vxw4). **sharp 0.35.3 → 0.35.4**
+  (libheif, yüksek) next'in kendi bağımlılığı olarak geldi.
+  `eslint-config-next` de 16.3.6. `npm audit --omit=dev`: **0 açık**.
+- Kilit dosyası: npm 11 başka platformların (wasm32) dört isteğe bağlı
+  kaydını silip dosyayı tutarsız bırakıyordu (paketler hâlâ onları
+  istiyordu) — eski kayıtlar geri konuldu; `@img/sharp-wasm32` 0.35.4
+  `@emnapi/runtime` ^1.11.3 istiyor, kayıt 1.11.3.
+- **Doğrulama:** tsc · eslint · `next build` (16.3.6, Turbopack) · tam
+  takım geçici kopyada 847 test: 833 geçti, 0 düştü, 14 atlandı (23:14 —
+  happy hour ve hatırlatma testleri saate bağlı kendini atlıyor; gündüz
+  koşusunda geçmişlerdi).
+
+---
 
 ## ⬅️ Ü283 · iPhone kasada kamerayla kupon okuyor — 2026-09-24
 
@@ -79,7 +100,7 @@ bir tarayıcıdan (büyük ihtimalle bilgisayardan) yapılmış. Kod hatası yok
 (Windows'ta çalışan sunucuda kimliksiz uzaktan kod çalıştırma
 GHSA-p293-qw3h-jr36; AVIF ile görsel optimizasyonunda RCE
 GHSA-2xp9-vwfh-vxw4) — düzeltme **16.3.6**. sharp <0.35.4 yüksek
-(libheif). Test sunucusu Windows'ta ve ağa açık. Ürün sahibine soruldu.
+(libheif). Test sunucusu Windows'ta ve ağa açık. → **Ü284'te kapandı.**
 
 ---
 
