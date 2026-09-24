@@ -8,7 +8,7 @@
 > `31` butik işletme · `32` butik kasiyeri · `33` platform. Bu liste
 > hepsini **tek sırada** topluyor.
 
-**Son güncelleme:** 2026-09-24 · Ü273'e kadar olan her değişiklik içinde.
+**Son güncelleme:** 2026-09-24 · Ü276'ya kadar olan her değişiklik içinde.
 
 📍 **Şu an buradasın: 2.1** — 1. bölüm bitti.
 
@@ -17,11 +17,10 @@
 ## 0 · Hazırlık
 
 ### 0.1 · Sunucu ve adres
-- Sunucu **HTTPS** açık olmalı (`npm run dev:https`). Düz `http` ile konum
-  doğrulaması hiç çalışmaz ve ödül tarafı sessizce ölü kalır.
 - Adres: **https://192.168.1.175:3001** — derlenmiş, **hızlı** sürüm
-  (`npm run telefon`). 3000 geliştirme sunucusu: çok daha yavaş, her
-  sayfayı ilk açılışta derliyor. Paneli ve telefonu **aynı porttan** aç —
+  (`npm run telefon`; kod değişince ben yeniden derleyip açıyorum). 3000
+  geliştirme sunucusu: çok daha yavaş, her sayfayı ilk açılışta derliyor.
+  Düz `http` ile konum doğrulaması hiç çalışmaz — ikisi de HTTPS. Paneli ve telefonu **aynı porttan** aç —
   karekod panelin açıldığı adresi taşır. ⚠️ IP değişebiliyor:
   `ipconfig` → IPv4.
 - **Tam ekran:** Safari'de Paylaş → **Ana Ekrana Ekle**. Oradan açınca
@@ -160,12 +159,15 @@ başka kafe açılıyorsa.
 ### 2.2 · Misafir oynasın
 **Yap:** Bir oyun oyna, bitir.
 ✅ Skor **"sunucuda doğrulandı"**; hesap açmaya yönlendiriyor.
-🔴 Misafire kupon veriliyorsa.
+✅ Konumu doğrulanmış misafir 500'ü geçip ödül paketini alırsa sonuçta
+**"Ödül paketini aldın"** yazar; kupon hesap açılınca gelir (Ü275).
+🔴 Misafire hesap açmadan kupon veriliyorsa.
 
 ### 2.3 · Hesap aç (Ü270)
 **Yap:** Telefon, **e-posta**, ad, soyad, doğum yılı, parola → kod
 (ekranda sarı kutuda).
-✅ Kodu girince hesap açılır; misafirken oynadığın tur hesaba geçer.
+✅ Kodu girince hesap açılır; misafirken oynadığın tur hesaba geçer (paket
+aldıysan kupon **Ödüllerim**'de, bekliyor).
 ✅ **"Google / Apple ile devam et" yok.**
 ✅ 1.8'de kapattığın oyun listede yok (sonra tekrar aç).
 🔴 Kodu doğru girdiğin hâlde **"E-posta adresi eksik"** diyorsa.
@@ -220,6 +222,7 @@ Yılan · Bıçak Ustası · Tuğla Kırıcı** (bugünkü Blok Kırıcı eskide
 | 4.6 | Ses açılıp kapanıyor | — |
 | 4.7 | Çık düğmesi çalışıyor | tur bitmeden çıkılamıyor |
 | 4.8 | **Akıcı** (Ü275): Blok Kırıcı'da toplar, Tuğla Kırıcı'da top ve duvar, Bıçak'ta kütük, Yılan'da gövde takılmadan akıyor | takılma, donma — **hangi oyun, ne yaparken** yaz |
+| 4.9 | **Görseller keskin** (Ü276): oyun kartlarındaki sahneler ve çark/seri kartındaki görseller telefonda bulanık değil, eskisiyle aynı | bulanık ya da değişmiş görsel — hangi kart |
 
 Oyuna özel: **2048** sayılar karoyu doldurmalı · **Renkli Çizgiler**
 hızlı kaydırınca çizgi kopmamalı · **Renkli Tüpler** kuraldışı dökme hak

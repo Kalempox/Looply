@@ -84,6 +84,20 @@ const SAHNE: Record<string, { en: number; boy: number; olcek?: number }> = {
   kirici: { en: 626, boy: 512 },
 };
 
+/**
+ * Kaynak dosyaların tablodakine göre çarpanı — Ü276.
+ *
+ * Ürün sahibi: *"görselleri yeniden üret ama aynı görseller olsun,
+ * kalite cihazdan cihaza bozulmasın."* Sahneler ekranda 104–336 px
+ * yüksekliğinde çiziliyor; 3x ekranda ~1.000 piksel gerekiyordu, kaynak
+ * 512'ydi ve büyütülerek bulanıklaşıyordu. Aynı görseller yapay zekâ
+ * büyütücüsüyle (Real-ESRGAN, fal.ai) 2 kat keskinleştirildi: renk
+ * önçarpımlı hâliyle, şeffaflık ayrı büyütüldü; küçültülünce kaynaktan
+ * farkı ortalama 1,7–3,4 / 255. Tablo ORAN tuttuğu için 512 biriminde
+ * kaldı; kaynak `-1024.webp`.
+ */
+const KAYNAK_CARPANI = 2;
+
 /** Bu oyunun üretilmiş sahnesi var mı? Çağıran yoksa eski çizime düşüyor. */
 export function sahneVarMi(oyunId: string): boolean {
   return oyunId in SAHNE;
@@ -117,11 +131,16 @@ export function OyunSahnesi({
 
   return (
     <Image
-      src={`/oyun/${oyun}-512.webp`}
+      src={`/oyun/${oyun}-1024.webp`}
       alt=""
       aria-hidden
-      width={olcu.en}
-      height={olcu.boy}
+      width={olcu.en * KAYNAK_CARPANI}
+      height={olcu.boy * KAYNAK_CARPANI}
+      /* Ü276: çizilen genişlik — her cihaz kendi piksel yoğunluğuna göre
+         doğru boyu alıyor (1x ~300, 3x ~1.000). 90 kalite: ışımalar 75'te
+         bantlaşıyor (`next.config.ts` · qualities). */
+      sizes={`${en}px`}
+      quality={90}
       className={className}
       style={{ height: gercekBoy, width: en }}
     />

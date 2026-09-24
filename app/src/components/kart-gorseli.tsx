@@ -63,7 +63,7 @@ export function KartDalgalari({ vurgu }: { vurgu: string }) {
 /**
  * Kart illüstrasyonları.
  *
- * ⚠️ Hepsi KARE ve 512: kartta sabit bir kutuya oturuyorlar. Üretim ve
+ * ⚠️ Hepsi KARE (Ü276'dan beri 1024; önce 512): kartta sabit bir kutuya oturuyorlar. Üretim ve
  * kesim `scripts/kart-gorsel-uret.py`de, oradaki iki turluk arayış da
  * (hamurumsu → parlak) orada yazılı.
  */
@@ -110,11 +110,16 @@ export function KartResmi({
 }) {
   return (
     <Image
-      src={`/kart/${ad}-512.webp`}
+      /* Ü276: 2 kat keskin kaynak (aynı görsel, Real-ESRGAN) — ayrıntı
+         `oyun-sahnesi.tsx` · `KAYNAK_CARPANI`. `sizes` çizilen boy: her
+         cihaz kendi yoğunluğuna göre doğru boyu alıyor. */
+      src={`/kart/${ad}-1024.webp`}
       alt=""
       aria-hidden
-      width={512}
-      height={512}
+      width={1024}
+      height={1024}
+      sizes={`${boy}px`}
+      quality={90}
       className={className}
       style={{ width: boy, height: boy }}
     />

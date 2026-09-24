@@ -6,7 +6,7 @@
 > Yan dosyalar: neyin **var** olduğu → `21-looply-kapsam-haritasi.md` ·
 > demoda neyin **yapılabildiği** → `22-demo-yapilabilirlik.md`
 
-**Son güncelleme:** 2026-09-24 · **Kararlar:** Ü76 – Ü159, **Ü186 – Ü242**, **Ü259 – Ü275**
+**Son güncelleme:** 2026-09-24 · **Kararlar:** Ü76 – Ü159, **Ü186 – Ü242**, **Ü259 – Ü276**
 
 > ⚠️ **BU LİSTEDE İKİ BOŞLUK VAR.**
 >
@@ -38,6 +38,67 @@
 ⚠️ U3 test sırasında **bilerek** değiştirilmedi: yerel testte telefonla
 okutulan karekodun LAN sunucusuna gitmesi tam da bu davranış sayesinde
 çalışıyor.
+
+## ⬅️ Ü276 · Görseller 2 kat keskin — aynı görsel, her cihazda doğru boy — 2026-09-24
+
+⚠️ **Commitlenmedi.**
+
+Ürün sahibi: *"görselleri yeniden üret ama aynı görseller olsun ve kalite
+cihazdan cihaza bozulmasın."*
+
+### Sorun
+
+Oyun sahneleri ekranda 104–336 px yüksekliğinde çiziliyor; 3x ekranda
+~1.000 piksel gerekiyordu, kaynak **512**'ydi ve büyütülerek
+bulanıklaşıyordu. Kart görselleri (184 px → 552 gerekiyor) de 512'ydi.
+Daha büyük aslı yoktu: dört sahnenin 1024'lük kesikleri sonradan başka
+işlemden geçmişti (aynı kırpmayla fark 7–35), altısı kart ekran
+görüntülerinden kesilmişti.
+
+### Yöntem — yeniden çizim değil, süper çözünürlük
+
+"Aynı görsel" şartı yüzünden istemden üretim yapılmadı; mevcut görseller
+yapay zekâ büyütücüsüyle 2 kat keskinleştirildi (fal.ai, **Real-ESRGAN
+x4plus**, 4x → 2x'e küçültme).
+
+- Renk **önçarpımlı** hâliyle (siyah zeminde) büyütüldü — sahneler zaten
+  siyah zeminden ayıklanmıştı, model onları doğal hâlleriyle görüyor.
+  Şeffaflık ayrı ve yumuşak (Lanczos) büyütüldü, sonra renk şeffaflığa
+  bölünerek açıldı.
+- Dört aday denendi (Blok Kırıcı): ESRGAN genel · ESRGAN anime · Aura ·
+  ESRGAN + yumuşak şeffaflık. **Anime** kenarlara koyu çizgi ekleyip
+  görseli değiştirdi, **Aura** renkleri kaydırdı; seçilen en sadık olanı.
+- **Sadakat:** 2x görsel 512'ye küçültülünce kaynaktan önçarpımlı farkı
+  sahnelerde **1,7–3,4**, kartlarda **1,4–2,1** / 255. Keskinlik
+  (Laplace varyansı) Lanczos büyütmeye göre 1,4–9 kat. Neon sahnelerde
+  uydurma gürültü yok, yakın planda bakıldı.
+
+### Dosyalar ve sunum
+
+- [x] `public/oyun/<id>-1024.webp` (10) ve `public/kart/<ad>-1024.webp`
+  (7) — WebP 92, şeffaflık kayıpsız; eski 512'likler silindi.
+- [x] **Her cihaza doğru boy** ✅ — `OyunSahnesi` ve `KartResmi` artık
+  `sizes` veriyor: 3x telefonda sahne 384, çark kartı 640; 1x ekranda
+  96–128 ve 256 isteniyor (ölçüldü).
+- [x] **Kalite 90** ✅ — ışıma ve degradeler 75'te bantlaşıyordu.
+  `next.config.ts` · `images.qualities: [75, 90]` (Next 16'da izin
+  listesi; listede olmayan kalite en yakına düşüyor).
+
+### Yapılmayanlar
+
+- **Loopy avatarı** (512, katmanlı): en büyük çizimi 220 px (evcil
+  penceresi) → 3x'te hafif yumuşak. Üç katman ayrı ayrı büyütülürse
+  kenarlar kayabilir; ayrı iş.
+- **Hareketli görseller:** çarktaki dönen Loopy (300 px, ~150 px
+  çiziliyor) ve koşan Loopy şeridi (720 px, tam genişlik) 3x'te
+  1,5–1,6 kat kısa. Kare kare büyütme gerekiyor; ayrı iş.
+
+**Doğrulama:** tsc · eslint · `next build` · 3001 yeniden başlatıldı ·
+misafir sayfası 3x ve 1x ekranda açıldı: bütün sahne ve kart istekleri
+200, kalite 90, boylar cihaza göre; ekran görüntüsü keskin, konsol
+hatası yok.
+
+---
 
 ## ⬅️ Ü275 · Ödül paketi "görünürse kesin" · çark ayrı hak · iPhone'da akıcılık · ana ekran — 2026-09-24
 

@@ -109,6 +109,21 @@ const nextConfig: NextConfig = {
   // Geliştirmede LAN üzerinden bakılabilsin — bkz. `yerelAdresler`.
   allowedDevOrigins: yerelAdresler(),
 
+  /**
+   * Görsel kalitesi — Ü276.
+   *
+   * Ürün sahibi: *"kalite cihazdan cihaza bozulmasın."* Oyun sahneleri ve
+   * kart görselleri (`OyunSahnesi`, `KartResmi`) 90 ile isteniyor: ışıma
+   * ve degradeler 75'te bantlaşıyor. Geri kalan her şey varsayılan 75'te.
+   *
+   * ⚠️ Next 16'dan beri bu bir İZİN LİSTESİ: listede olmayan kalite en
+   * yakın izinliye düşüyor, doğrudan istek 400 alıyor
+   * (`docs/01-app/03-api-reference/02-components/image.md` · qualities).
+   */
+  images: {
+    qualities: [75, 90],
+  },
+
   async headers() {
     return [{ source: "/:path*", headers: guvenlikBasliklari }];
   },
