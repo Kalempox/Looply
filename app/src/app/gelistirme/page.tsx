@@ -375,9 +375,9 @@ function Kisayollar({ masalar, kuponlar }: { masalar: Masa[]; kuponlar: Kupon[] 
             Kodu <Link href="/kasa" className="underline">kasa ekranındaki</Link> alana
             yaz — kamerayla okutmakla aynı kupona çözülür (Ü19).{" "}
             <strong className="text-yazi">
-              Kasa ekranı yalnızca kayıtlı cihazda açılıyor
+              Kasa ekranı yalnızca kafenin içinden açılıyor
             </strong>{" "}
-            (G11): önce panelden <em>Personel → Bu cihazı kaydet</em>.
+            (Ü285): girişte konum kafenin yarıçapında olmalı.
           </p>
         </>
       )}

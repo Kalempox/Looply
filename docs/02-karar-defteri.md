@@ -159,7 +159,7 @@
 | G8 | **Çalışma ritmi** | Her fazın **başında onay alınır**, sonunda sonuç gösterilir. |
 | G9 | **Platform ekibi ikiye ayrılır** | `platform_destek` günlük işi yapar ama **kişisel veri göremez**. Telefon/ad/soyad yalnızca `platform_admin`'de ve **her erişim kayıtlı**. → `08` §1 |
 | G10 | **Ham konum saklanmaz** | Sunucu enlem/boylamı alır, kafeye **uzaklığı metre olarak** yazar ve koordinatı atar. Oyuncunun nerede olduğu değil, kafeye yakın olup olmadığı tutulur. |
-| G11 | **Kasiyer PIN'i yalnızca kayıtlı cihazda çalışır** | 4 hane tek başına yeterli güvenlik değil. Cihaz kaydı yöneticinin onayıyla bir kez yapılır. |
+| G11 | ~~**Kasiyer PIN'i yalnızca kayıtlı cihazda çalışır**~~ → **Ü285: PIN yalnızca kafenin içinde çalışır** | 4 hane tek başına yeterli güvenlik değil. Önce cihaz kaydı yöneticinin onayıyla bir kez yapılıyordu; ürün sahibi: *"kafe sahibi tüm kasiyerlerin telefonundan giriş yapamaz — önemli olan PIN ve konum."* Artık kasiyer her cihazdan girer, konum kafenin yarıçapında olmalı; kafe konumdan çözülür. Konum uydurulabildiği için asıl kalkan kafe başına deneme sayacı (20/saat, 60/gün). |
 | G12 | **Kiracı izolasyonu iki katmanlı** | Uygulama süzgeci + PostgreSQL satır düzeyi güvenliği (RLS). Biri geliştirici hatasına, diğeri yapılandırma hatasına karşı. |
 | G13 | **Hesap ancak SMS doğrulandıktan sonra yazılır** | Doğrulanmamış telefon numarası veritabanında kalıcı olarak durmaz. |
 

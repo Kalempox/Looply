@@ -21,9 +21,14 @@ export const LIMITS = {
   otp_per_ip_hour: { hits: 5, windowSeconds: 3600 },
   request_per_ip_minute: { hits: 20, windowSeconds: 60 },
   session_per_device_hour: { hits: 6, windowSeconds: 3600 },
-  // Kasiyer PIN'i 4 hane = 10.000 ihtimal. Cihaz bağlama tek başına yetmez;
-  // kayıtlı cihaz çalınırsa deneme sayısı da sınırlı olmalı (docs/08 §4.7).
+  // Oyuncu parola girişi (`parola.ts`) — adı PIN'li günlerden kaldı.
   pin_per_device_15min: { hits: 5, windowSeconds: 900 },
+  // Kasiyer PIN'i 4 hane = 10.000 ihtimal. Ü285'ten beri PIN her cihazdan
+  // ve yalnızca (uydurulabilir) konum kapısıyla deneniyor: asıl kalkan kafe
+  // başına sayaç — IP değiştirerek tarayan ona takılıyor (docs/08 §4.7).
+  pin_per_ip_15min: { hits: 5, windowSeconds: 900 },
+  pin_per_cafe_hour: { hits: 20, windowSeconds: 3600 },
+  pin_per_cafe_day: { hits: 60, windowSeconds: 86_400 },
 } as const satisfies Record<string, Limit>;
 
 export type LimitAdi = keyof typeof LIMITS;

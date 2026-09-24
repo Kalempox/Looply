@@ -6,7 +6,7 @@
 > Yan dosyalar: neyin **var** olduğu → `21-looply-kapsam-haritasi.md` ·
 > demoda neyin **yapılabildiği** → `22-demo-yapilabilirlik.md`
 
-**Son güncelleme:** 2026-09-24 · **Kararlar:** Ü76 – Ü159, **Ü186 – Ü242**, **Ü259 – Ü284**
+**Son güncelleme:** 2026-09-24 · **Kararlar:** Ü76 – Ü159, **Ü186 – Ü242**, **Ü259 – Ü285**
 
 > ⚠️ **BU LİSTEDE İKİ BOŞLUK VAR.**
 >
@@ -38,6 +38,44 @@
 ⚠️ U3 test sırasında **bilerek** değiştirilmedi: yerel testte telefonla
 okutulan karekodun LAN sunucusuna gitmesi tam da bu davranış sayesinde
 çalışıyor.
+
+## ⬅️ Ü285 · Kasa girişi: PIN ve konum — cihaz kaydı kalktı — 2026-09-24
+
+Ürün sahibi: *"kasiyer her cihazdan girebilir ama kasiyer cihazının da kafe
+konumunun içinde olması gerekir; sonuçta kafe sahibi tüm kasiyerlerin
+telefonundan giriş yapamaz. Önemli olan PIN ve konum."* **G11 değişti.**
+
+- [x] **Kafe konumdan çözülüyor** (`staff.konumdakiKafe`): yarıçapının
+  içinde olunan onaylı kafelerin **en yakını**; "içinde" oyuncunun K2
+  kuralıyla aynı (mesafe ≤ kafenin yarıçapı; dışarıda ama doğruluk payı
+  içeri taşıyorsa belirsiz → giriş yok). Kafe formdan gelmiyor.
+  Koordinat saklanmıyor, loglanmıyor — yalnızca mesafe.
+- [x] **PIN taramasına kalkan** — cihaz kapısı kalkınca 10.000 ihtimal
+  internete açıldı ve konum istemciden geliyor, uydurulabilir. Sayaçlar:
+  bağlantı (IP) başına 5/15 dk, **kafe başına 20/saat ve 60/gün** — IP
+  değiştirerek tarayan kafe sayacına takılıyor; 10.000'in tamamı ~5,5 ay.
+  ⚠️ Bedeli: biri bilerek doldurursa o kafede yeni kasa girişi bir süre
+  kapanır; açık oturumlar (8 saat) sürer.
+- [x] Kasa giriş ekranı konumu "Giriş"e basınca bir kez okuyor; izin reddi,
+  zaman aşımı, yarıçap dışı ("en yakın kafeye X m") ve belirsiz ayrı
+  cümleler. Eksik PIN'de konum hiç sorulmuyor.
+- [x] Panel: "Bu cihazı kaydet" ve kayıtlı cihaz listesi kalktı. Personel
+  sayfasında **Kasa girişi** bölümü — kasiyerlere verilecek adres, üç adım,
+  kafenin yarıçapı; konum yoksa kırmızı uyarı. Ana sayfada "Cihaz" sayacı
+  yerine "Kasiyer". Tohum betiği cihaz eklemiyor.
+- `cafe_devices` tablosu duruyor (eski kayıtlar, `coupons.redeemed_device_id`
+  yabancı anahtarı); yeni kayıt yazılmıyor, hiçbir yer okumuyor.
+- Testler: `tests/kasa-giris.test.ts` (8) — kafenin içi, iki kafeden en
+  yakını, yarıçap dışı + en yakın mesafe, belirsiz, kafenin kendi yarıçapı,
+  onaysız/konumsuz kafe, 🔴 IP değiştirerek tarama kafe sayacına takılıyor
+  (doğru PIN'de bile), tek bağlantıdan 5 denemede kilit. `kimlik` PIN
+  testi yeni modele çevrildi.
+- **Doğrulama:** tsc · eslint · tam takım geçici kopyada 855 test: 841
+  geçti, 0 düştü, 14 atlandı (saate bağlı) · `next build` · 3001'de
+  `/kasa/giris` yeni metinle açılıyor, konsol temiz. **Doğrulanmadı:**
+  telefondan gerçek giriş — ürün sahibinin 6.2'sinde.
+
+---
 
 ## ⬅️ Ü284 · Güvenlik yükseltmesi: Next.js 16.3.6, sharp 0.35.4 — 2026-09-24
 

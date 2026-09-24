@@ -32,7 +32,8 @@ export default async function KasaGirisi() {
       <KasaGirisFormu />
 
       <p className="mt-10 max-w-xs text-center text-[12px] leading-relaxed text-yazi-sonuk">
-        PIN yalnızca işletme yöneticisinin kaydettiği cihazlarda çalışır.
+        Kasaya yalnızca kafenin içinden girilir: giriş anında konumun bir kez kontrol edilir,
+        tarayıcı izin ister.
       </p>
     </main>
   );

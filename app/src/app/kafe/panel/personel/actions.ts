@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { kafeYoneticisiGerekli } from "@/domain/yetki";
-import { personelEkle, pinDegistir, personelPasiflestir, cihazKaydet } from "@/domain/staff";
+import { personelEkle, pinDegistir, personelPasiflestir } from "@/domain/staff";
 import { isimSemasi, pinSemasi, dogrula } from "@/lib/validate";
 import { withCafe } from "@/db/context";
 
@@ -88,20 +88,4 @@ export async function pasiflestirEylemi(
   await personelPasiflestir(staffId, o.ozneId);
   revalidatePath("/kafe/panel/personel");
   return { bilgi: "Personel kapatıldı ve açık oturumları düşürüldü." };
-}
-
-export async function cihazKaydetEylemi(
-  _onceki: PersonelDurumu,
-  form: FormData,
-): Promise<PersonelDurumu> {
-  const o = await kafeYoneticisiGerekli();
-
-  const etiket = String(form.get("etiket") ?? "").trim();
-  const cihazId = String(form.get("cihazId") ?? "").trim();
-  if (etiket.length < 2) return { hata: "Cihaza bir ad ver (örn. Kasa tableti)" };
-  if (cihazId.length < 8) return { hata: "Cihaz kimliği okunamadı. Sayfayı yenileyip tekrar dene." };
-
-  await cihazKaydet({ cafeId: o.cafeId, etiket, cihazId, kaydedenId: o.ozneId });
-  revalidatePath("/kafe/panel/personel");
-  return { bilgi: `${etiket} kaydedildi. Kasiyer artık bu cihazdan PIN'le girebilir.` };
 }

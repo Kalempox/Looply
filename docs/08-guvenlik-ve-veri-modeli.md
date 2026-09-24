@@ -205,15 +205,17 @@ Telefon + SMS kodu. Ek olarak **kritik işlemlerde ikinci doğrulama**: bütçe 
 ## 4.7 · Kasiyer girişi
 
 ```
-cihaz kafeye kaydedilir (yönetici tarafından, bir kez)
+kasiyer kafenin içinde, herhangi bir telefon/tablette /kasa/giris açar
         ↓
-kasiyer 4 haneli PIN girer → oturum 8 saat
+4 haneli PIN + o anki konum → kafe konumdan çözülür → oturum 8 saat
         ↓
 5 dk hareketsizlik → ekran kilitlenir, PIN tekrar istenir
 ```
 
-- PIN yalnızca **kayıtlı cihazda** çalışır. Cihaz kaydı olmadan PIN hiçbir işe yaramaz — 4 hane tek başına yeterli güvenlik değildir.
-- 5 yanlış PIN → o cihazda 15 dk kilit + yöneticiye bildirim
+- PIN yalnızca **kafenin içinde** çalışır (Ü285 — önce kayıtlı cihazdaydı, G11). Konum kafenin yarıçapında olmalı; kafe formdan değil konumdan çözülür, yarıçapların kesiştiği yerde en yakın kafe.
+- ⚠️ Konum istemciden gelir ve uydurulabilir: bir kural, kalkan değil. 4 hane tek başına yeterli güvenlik olmadığı için asıl kalkan **kafe başına deneme sayacı** — 20/saat, 60/gün (IP değiştirerek tarayan ona takılır; 10.000'in tamamı ~5,5 ay). Bağlantı başına 5 deneme / 15 dk.
+- Bedeli: biri sayacı bilerek doldurursa o kafede yeni kasa girişi bir süre kapanır; açık oturumlar sürer.
+- 5 yanlış PIN → o bağlantıda 15 dk kilit + yöneticiye bildirim
 - Yönetici personeli pasifleştirince oturumu **anında** düşer
 
 ### PIN paylaşımı — engellenemez, ama görünür kılınır
@@ -424,7 +426,7 @@ CREATE TABLE staff (
 -- nonce'a göre dizilir ve her yazmada sıra değişir. Sıralama, ad
 -- çözüldükten sonra uygulamada yapılır (`domain/staff.ts`).
 
-CREATE TABLE cafe_devices (              -- kasiyer PIN'i yalnızca kayıtlı cihazda çalışır
+CREATE TABLE cafe_devices (              -- Ü285'e kadar kasiyer PIN'inin kapısıydı; artık okunmuyor
   id             text PRIMARY KEY,
   cafe_id        text NOT NULL REFERENCES cafes(id),
   label          text NOT NULL,            -- 'Kasa tableti'

@@ -1,6 +1,10 @@
+import Link from "next/link";
+import { headers } from "next/headers";
 import { kafeYoneticisiGerekli } from "@/domain/yetki";
 import { personelListele, PIN_ROTASYON_GUNU } from "@/domain/staff";
+import * as ayar from "@/domain/ayar";
 import { withCafe } from "@/db/context";
+import { istektenTabanAdres } from "@/lib/karekod-adresi";
 import {
   IsletmeSayfa,
   IsletmeBaslik,
@@ -9,11 +13,7 @@ import {
   IkiKolon,
 } from "@/components/isletme";
 import { SayiKarti, CubukListe, IKON } from "@/components/gosterge";
-import {
-  PersonelEkleFormu,
-  PersonelSatiri,
-  CihazKaydiFormu,
-} from "./kontroller";
+import { PersonelEkleFormu, PersonelSatiri } from "./kontroller";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Personel · Looply" };
@@ -22,11 +22,17 @@ export default async function PersonelSayfasi() {
   const o = await kafeYoneticisiGerekli();
 
   const personel = await personelListele(o.cafeId);
-  const cihazlar = await withCafe(o.cafeId, (db) =>
-    db.all<{ id: string; label: string; created_at: Date }>(
-      `SELECT id, label, created_at FROM cafe_devices WHERE active = true ORDER BY created_at`,
-    ),
+
+  /**
+   * Ü285: kasa girişi cihaz kaydına değil kafenin konumuna bağlı. Konum
+   * işaretli değilse hiçbir kasiyer giremez — ekran bunu söylüyor.
+   */
+  const kafe = await withCafe(o.cafeId, (db) =>
+    db.one<{ lat: number | null; lng: number | null }>(`SELECT lat, lng FROM cafes`),
   );
+  const konumVar = kafe?.lat != null && kafe?.lng != null;
+  const yaricap = await ayar.sayiOku(o.cafeId, ayar.ANAHTARLAR.konumYaricapi);
+  const kasaAdresi = `${istektenTabanAdres(await headers())}/kasa`;
 
   /**
    * Ü62: kasiyer başına onay sayısı.
@@ -64,9 +70,9 @@ export default async function PersonelSayfasi() {
     <IsletmeSayfa genis>
       <IsletmeBaslik
         ust="İşletme paneli"
-        alt="Kasada kupon onaylayacak kişileri ve cihazları buradan yönetirsin."
+        alt="Kasada kupon onaylayacak kişileri buradan yönetirsin."
       >
-        Personel ve cihazlar
+        Personel ve kasa
       </IsletmeBaslik>
 
       <section className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -78,9 +84,9 @@ export default async function PersonelSayfasi() {
           alan="kisi"
         />
         <SayiKarti
-          etiket="Kayıtlı cihaz"
-          deger={String(cihazlar.length)}
-          alt="PIN yalnızca bunlarda çalışır"
+          etiket="Kasa girişi"
+          deger={konumVar ? `${yaricap} m` : "Konum yok"}
+          alt={konumVar ? "PIN yalnızca bu yarıçapta çalışır" : "önce kafenin konumunu işaretle"}
           ikon={IKON.masa}
           alan="masa"
         />
@@ -106,7 +112,7 @@ export default async function PersonelSayfasi() {
           <>
             <Bolum
               baslik="Kasiyerler"
-              alt={`Kasiyer telefonla değil PIN'le giriyor — vardiya değişiminde SMS beklemek gerçekçi değil. PIN yalnızca aşağıda kayıtlı cihazlarda çalışır ve ${PIN_ROTASYON_GUNU} günde bir değiştirilmelidir.`}
+              alt={`Kasiyer telefonla değil PIN'le giriyor — vardiya değişiminde SMS beklemek gerçekçi değil. PIN her telefon ya da tablette çalışır ama yalnızca kafenin içinde; ${PIN_ROTASYON_GUNU} günde bir değiştirilmelidir.`}
             >
               {kasiyerler.length === 0 ? (
                 <p className="rounded-2xl border border-cizgi bg-yuzey px-4 py-6 text-center text-[14px] text-yazi-sonuk">
@@ -126,6 +132,44 @@ export default async function PersonelSayfasi() {
                 <PersonelEkleFormu />
               </div>
             </Bolum>
+          </>
+        }
+        sag={
+          <>
+            {/* Ü285: cihaz kaydı kalktı — kasiyer kendi telefonundan ya da
+                kasadaki tabletten, kafenin içindeyken giriyor. */}
+            <Bolum
+              baslik="Kasa girişi"
+              alt="Cihaz kaydı yok: kasiyer herhangi bir telefon ya da tabletten girer."
+            >
+              {!konumVar && (
+                <p className="mb-4 rounded-2xl border border-tehlike/60 bg-yuzey px-4 py-3 text-[14px] text-tehlike">
+                  Kafenin konumu işaretli değil — şu an hiçbir kasiyer giremez.{" "}
+                  <Link href="/kafe/panel/konum" className="underline">
+                    Konumu işaretle
+                  </Link>
+                </p>
+              )}
+              <div className="rounded-2xl border border-cizgi bg-yuzey p-5">
+                <div className="etiket-caps text-yazi-sonuk">Kasiyerlere bu adresi ver</div>
+                <p className="mt-2 break-all font-data text-[15px]">{kasaAdresi}</p>
+                <ol className="mt-4 list-decimal space-y-1.5 pl-5 text-[14px] text-yazi-sonuk">
+                  <li>Adresi kafenin içindeyken aç.</li>
+                  <li>Tarayıcı konum isterse izin ver.</li>
+                  <li>
+                    PIN&apos;ini yaz — konum kafenin {yaricap} m yarıçapındaysa kasa açılır, oturum
+                    sekiz saat sürer.
+                  </li>
+                </ol>
+                <p className="mt-4 text-[12px] text-yazi-sonuk">
+                  Yarıçapı{" "}
+                  <Link href="/kafe/panel/konum" className="underline">
+                    Konum
+                  </Link>{" "}
+                  sayfasından değiştirirsin; oyuncuların &ldquo;kafedesin&rdquo; kuralı da aynı.
+                </p>
+              </div>
+            </Bolum>
 
             <Bolum
               baslik="Son 7 günde onay"
@@ -142,46 +186,6 @@ export default async function PersonelSayfasi() {
               />
             </Bolum>
           </>
-        }
-        sag={
-          <Bolum
-            baslik="Kayıtlı cihazlar"
-            alt="PIN yalnızca bu cihazlarda çalışır. Kayıtlı olmayan bir telefondan PIN denemek işe yaramaz."
-          >
-            {cihazlar.length === 0 ? (
-              <p className="rounded-2xl border border-cizgi bg-yuzey px-4 py-6 text-center text-[14px] text-yazi-sonuk">
-                Kayıtlı cihaz yok. Kasada kullanacağın tableti veya telefonu
-                kaydet.
-              </p>
-            ) : (
-              <ul className="divide-y divide-cizgi border-y border-cizgi">
-                {cihazlar.map((c) => (
-                  <li
-                    key={c.id}
-                    className="flex items-center justify-between py-3.5"
-                  >
-                    <span className="text-[15px]">{c.label}</span>
-                    <span className="font-data text-[11px] text-yazi-sonuk">
-                      {c.created_at.toLocaleDateString("tr-TR", {
-                        day: "numeric",
-                        month: "long",
-                      })}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-
-            <div className="mt-6 rounded-2xl border border-cizgi bg-yuzey p-5">
-              <h3 className="mb-1 text-[15px] font-semibold">
-                Bu cihazı kaydet
-              </h3>
-              <p className="mb-4 text-[13px] text-yazi-sonuk">
-                Kasada kullanacağın cihazdan bu sayfayı aç ve kaydet.
-              </p>
-              <CihazKaydiFormu />
-            </div>
-          </Bolum>
         }
       />
 

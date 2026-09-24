@@ -176,13 +176,13 @@ yazılsa da açılmaz (2.3). **Sonra tekrar aç** — 4. bölümde dokuzu da
 lazım. Ben: oyun kafede kapalı mı, açınca geri geldi mi.
 🔴 Kapalı oyun "Bugünün oyunu" olarak çıkıyorsa.
 
-### 1.9 · Personel ve kasa cihazı
-**Yap:** Personel → kasiyer ekle (**Adı** + 4 haneli **PIN**). Sonra
-**kasada kullanacağın telefon/tabletten** paneli aç → Personel → **Cihaz
-adı** ("Kasa tableti") → kaydet. Cihaz kimliği o tarayıcıda tutuluyor.
-🔗 **Etki:** O cihazda `/kasa/giris` PIN'i kabul eder (6.2). Ben: kasiyer
-ve cihaz kayıtta mı.
-🔴 Kayıtsız bir cihazda `/kasa/giris` PIN'i kabul ediyorsa.
+### 1.9 · Personel ve kasa (Ü285)
+**Yap:** Personel → kasiyer ekle (**Adı** + 4 haneli **PIN**).
+✅ Cihaz kaydı **yok**. Sağda **Kasa girişi**: kasiyerlere verilecek adres
+(`…:3001/kasa`), üç adım ve kafenin yarıçapı; üstteki kartta "Kasa girişi ·
+150 m". Konum işaretli değilse kırmızı uyarı ("hiçbir kasiyer giremez").
+🔗 **Etki:** Kasiyer kafenin içinden, herhangi bir telefondan girer (6.2).
+Ben: kasiyer kayıtta mı.
 
 ### 1.10 · Happy Hour (Ü277)
 **Yap:** Happy Hour sayfasını aç. Sonra **Haftalık program** → bir günün
@@ -423,14 +423,19 @@ geçer, kaybolmaz.
 yerine bir bekleme cümlesi (bilerek, Ü97).
 ✅ Açılınca kullanılabilir olur ve "yeni açıldı" diye kutlanır.
 
-### 6.2 · Kasa girişi
-**Önce:** Kasada kullanacağın cihazı **o cihazın kendisinden** kaydet —
-aynı adresle (`…:3001`), aynı tarayıcıda, gizli sekme olmadan: panele gir →
-Personel → **Bu cihazı kaydet**. Bilgisayardan yapılan kayıt telefonu
-tanıtmaz (Ü283).
-**Yap:** Kayıtlı cihazdan (1.9) `/kasa/giris` → PIN `1234`.
+### 6.2 · Kasa girişi — PIN ve konum (Ü285)
+**Yap:** Kafenin içindeyken **herhangi bir telefondan** `…:3001/kasa/giris`
+→ kasiyer PIN'i → **Giriş** → tarayıcı konum isterse **izin ver**.
 ✅ **"Kupon onayı"** ekranı: tarayıcı + bugünün özeti. Başka iş yok.
-🔴 Kayıtsız cihazda PIN kabul ediliyorsa.
+✅ Konum izni reddedilirse: "Kasaya girmek için konum izni gerekli…".
+✅ Kafenin yarıçapı dışında: "Kasaya yalnızca kafenin içinden girilebilir —
+en yakın kafeye X m uzaktasın." Konum bulanıksa "yeterince net değil".
+✅ Yanlış PIN: "PIN yanlış."; aynı telefondan 5 yanlıştan sonra "Çok fazla
+deneme".
+⚠️ Bilgisayarda konum ±5 km yanılabiliyor (1.3) — kasayı telefon ya da
+tabletle dene.
+🔴 Kafenin dışından (yarıçap dışı) PIN kabul ediliyorsa; başka kafenin
+kasası açılıyorsa.
 
 ### 6.3 · Yetki sınırı
 **Yap:** Kasiyerle `/kafe/panel`, `/kafe/panel/butce`, `/platform` yaz.

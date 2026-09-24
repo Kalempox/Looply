@@ -5,9 +5,9 @@ import { useSyncExternalStore } from "react";
 /**
  * Cihaz kimliği — tarayıcıda üretilir, sunucuda yalnızca hash'i tutulur.
  *
- * İki yerde kullanılıyor:
- *   · Kasa cihazı kaydı — PIN yalnızca kayıtlı cihazda çalışır (G11)
- *   · Yeni cihazdan giriş bildirimi
+ * Oturumun kaydında "hangi cihazdan açıldı" için kullanılıyor (yeni
+ * cihazdan giriş bildirimi). Ü285'e kadar kasa PIN'i yalnızca kayıtlı
+ * cihazda çalışıyordu (G11); o kapı kalktı, kasa artık konuma bakıyor.
  *
  * Kimliğin kendisi kişisel veri değil; sunucuya gidince `identifierHash`
  * ile anahtarlı hash'e çevriliyor, yani gökkuşağı tablosuyla çözülemiyor.

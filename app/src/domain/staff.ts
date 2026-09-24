@@ -6,6 +6,8 @@ import { newId } from "@/lib/ids";
 import { audit } from "@/lib/audit";
 import { tuket } from "@/lib/ratelimit";
 import { log } from "@/lib/log";
+import * as ayar from "./ayar";
+import { mesafeMetre } from "./masa";
 
 const scrypt = promisify(scryptCb) as (
   parola: string,
@@ -15,15 +17,15 @@ const scrypt = promisify(scryptCb) as (
 ) => Promise<Buffer>;
 
 /**
- * Personel, PIN ve kayıtlı cihazlar.
+ * Personel ve PIN.
  *
  * Kasiyerin girişi telefonla değil PIN'le: vardiya değişiminde SMS beklemek
  * gerçekçi değil. Ama 4 hane tek başına 10.000 ihtimal demek — bu yüzden PIN
- * **yalnızca kayıtlı cihazda** çalışıyor (G11) ve yanlış denemede kilitleniyor.
+ * **yalnızca kafenin içinde** çalışıyor (Ü285; önce kayıtlı cihazdaydı, G11)
+ * ve denemeler kafe başına sayılıyor.
  */
 
 export const PIN_ROTASYON_GUNU = 90;
-const MAX_PIN_DENEME = 5;
 const PIN_KILIT_DK = 15;
 
 /**
@@ -32,7 +34,7 @@ const PIN_KILIT_DK = 15;
  * docs/08 §5.4 argon2id yazıyordu; scrypt'e geçildi çünkü Node'un içinde
  * geliyor ve yerel derleme gerektiren bir bağımlılık eklemiyor. İkisi de
  * bellek-zorlayıcı; 4 haneli bir PIN için belirleyici olan zaten hash değil,
- * **cihaz bağlama ve kilitleme**.
+ * **konum kapısı ve deneme sayacı** (Ü285).
  */
 const SCRYPT = { N: 32768, r: 8, p: 1, maxmem: 64 * 1024 * 1024 };
 
@@ -178,32 +180,77 @@ export async function personelPasiflestir(staffId: string, yapanId: string) {
   log.warn("personel pasiflestirildi");
 }
 
-/* ── Kayıtlı cihaz ────────────────────────────────────────── */
+/* ── Kasiyerin kafesi — konumdan (Ü285) ───────────────────── */
 
-export async function cihazKaydet(opts: {
-  cafeId: string;
-  etiket: string;
-  cihazId: string;
-  kaydedenId: string;
-}): Promise<void> {
-  await withBypass("cihaz kaydı", (db) =>
-    db.query(
-      `INSERT INTO cafe_devices (id, cafe_id, label, device_id_hash, registered_by)
-       VALUES ($1,$2,$3,$4,$5)
-       ON CONFLICT (cafe_id, device_id_hash) DO UPDATE SET active = true, label = excluded.label`,
-      [newId("dev"), opts.cafeId, opts.etiket, identifierHash(opts.cihazId), opts.kaydedenId],
+/**
+ * Aranan en geniş çevre (metre). Kafenin yarıçapı en çok 500 m; daha
+ * uzağa bakılması yalnızca "en yakın kafe X m" cümlesi için.
+ */
+const ARAMA_METRE = 5_000;
+
+export type KonumdakiKafe =
+  | { durum: "bulundu"; cafeId: string; ad: string; mesafeM: number }
+  /** Nokta yarıçapın dışında ama doğruluk payı içeri taşıyor. */
+  | { durum: "belirsiz"; mesafeM: number }
+  | { durum: "yok"; enYakinM: number | null };
+
+/**
+ * Kasiyerin bulunduğu kafe — Ü285.
+ *
+ * Ürün sahibi: *"kasiyer her cihazdan girebilir ama cihazının kafe
+ * konumunun içinde olması gerekir — kafe sahibi bütün kasiyerlerin
+ * telefonundan giriş yapamaz. Önemli olan PIN ve konum."* Cihaz kaydı
+ * (G11) kalktı.
+ *
+ * Kafe formdan gelmiyor, konumdan çözülüyor: yarıçapının içinde olunan
+ * onaylı kafelerin **en yakını**. "İçinde" oyuncunun K2 kuralıyla aynı
+ * (`masa.konumDogrula`): mesafe ≤ kafenin yarıçapı; dışarıda ama
+ * doğruluk payı yarıçapa taşıyorsa belirsiz.
+ *
+ * ⚠️ Konum istemciden geliyor ve uydurulabilir — bu bir güvenlik kalkanı
+ * değil, "kasiyer kafede olsun" kuralı. PIN taramaya karşı asıl kalkan
+ * `pinGiris`in kafe başına sayacı.
+ */
+export async function konumdakiKafe(
+  lat: number,
+  lng: number,
+  dogrulukM?: number,
+): Promise<KonumdakiKafe> {
+  if (!(Math.abs(lat) <= 90 && Math.abs(lng) <= 180)) return { durum: "yok", enYakinM: null };
+
+  const dLat = ARAMA_METRE / 111_320;
+  const dLng = ARAMA_METRE / (111_320 * Math.max(0.01, Math.cos((lat * Math.PI) / 180)));
+  const adaylar = await withBypass("konumdaki kafe", (db) =>
+    db.all<{ id: string; name: string; lat: number; lng: number }>(
+      `SELECT id, name, lat, lng FROM cafes
+        WHERE status = 'approved' AND lat IS NOT NULL AND lng IS NOT NULL
+          AND lat BETWEEN $1 AND $2 AND lng BETWEEN $3 AND $4`,
+      [lat - dLat, lat + dLat, lng - dLng, lng + dLng],
     ),
   );
-}
 
-export async function cihazKayitliMi(cafeId: string, cihazId: string): Promise<boolean> {
-  const r = await withBypass("cihaz kontrolü", (db) =>
-    db.one(`SELECT 1 FROM cafe_devices WHERE cafe_id = $1 AND device_id_hash = $2 AND active = true`, [
-      cafeId,
-      identifierHash(cihazId),
-    ]),
-  );
-  return !!r;
+  const payM = dogrulukM != null && Number.isFinite(dogrulukM) ? Math.max(0, dogrulukM) : 0;
+  const enGenisYaricap = ayar.SINIRLAR[ayar.ANAHTARLAR.konumYaricapi].en_cok;
+  let icinde: { cafeId: string; ad: string; mesafeM: number } | null = null;
+  let belirsizM: number | null = null;
+  let enYakinM: number | null = null;
+
+  for (const k of adaylar) {
+    const mesafe = mesafeMetre(lat, lng, Number(k.lat), Number(k.lng));
+    enYakinM = enYakinM === null ? mesafe : Math.min(enYakinM, mesafe);
+    // Kafenin ayarı yalnızca yarıçapın yetişebileceği yerde okunuyor.
+    if (mesafe - payM > enGenisYaricap) continue;
+    const yaricap = await ayar.sayiOku(k.id, ayar.ANAHTARLAR.konumYaricapi);
+    if (mesafe <= yaricap) {
+      if (!icinde || mesafe < icinde.mesafeM) icinde = { cafeId: k.id, ad: k.name, mesafeM: mesafe };
+    } else if (mesafe - payM <= yaricap) {
+      belirsizM = belirsizM === null ? mesafe : Math.min(belirsizM, mesafe);
+    }
+  }
+
+  if (icinde) return { durum: "bulundu", ...icinde };
+  if (belirsizM !== null) return { durum: "belirsiz", mesafeM: belirsizM };
+  return { durum: "yok", enYakinM };
 }
 
 /* ── Kasiyer girişi ───────────────────────────────────────── */
@@ -211,26 +258,30 @@ export async function cihazKayitliMi(cafeId: string, cihazId: string): Promise<b
 export type PinSonucu =
   | { durum: "gecerli"; staffId: string; ad: string }
   | { durum: "yanlis"; kalanDeneme: number }
-  | { durum: "kilitli" }
-  | { durum: "cihaz_kayitsiz" };
+  | { durum: "kilitli" };
 
 /**
- * PIN girişi. Üç şart birden: kafe onaylı, cihaz kayıtlı, PIN doğru.
- * Cihaz kayıtlı değilse PIN hiç denenmez — 10.000 ihtimali internete açmayalım.
+ * PIN girişi — kafe konumdan çözüldükten sonra (`konumdakiKafe`).
+ *
+ * Ü285'e kadar PIN yalnızca kayıtlı cihazda deneniyordu ve 10.000 ihtimal
+ * internete kapalıydı. Artık her cihazdan deneniyor ve konum uydurulabilir;
+ * bu yüzden üç sayaç var: bağlantı (IP) başına, kafe başına saatlik ve
+ * günlük. IP değiştirerek tarayan biri kafe sayacına takılıyor — günde 60
+ * deneme, 10.000'in tamamı ~5,5 ay. Bedeli: biri bilerek doldurursa o
+ * kafede yeni kasa girişi bir süre kapanır; açık oturumlar sürer.
  */
 export async function pinGiris(opts: {
   cafeId: string;
-  cihazId: string;
   pin: string;
+  /** İstemcinin IP'sinden türetilmiş — kişisel veri İÇERMEZ (docs/08 §7.1). */
+  ipAnahtari: string;
 }): Promise<PinSonucu> {
-  if (!(await cihazKayitliMi(opts.cafeId, opts.cihazId))) {
-    return { durum: "cihaz_kayitsiz" };
-  }
-
-  const anahtar = identifierHash(`${opts.cafeId}:${opts.cihazId}`).subarray(0, 8).toString("hex");
-  const kota = await tuket("pin_per_device_15min", anahtar);
-  if (!kota.izinli) {
-    log.warn("pin kilitlendi", { kilitDk: PIN_KILIT_DK });
+  const kafeAnahtari = identifierHash(`pin:${opts.cafeId}`).subarray(0, 8).toString("hex");
+  const ip = await tuket("pin_per_ip_15min", opts.ipAnahtari);
+  const saat = await tuket("pin_per_cafe_hour", kafeAnahtari);
+  const gun = await tuket("pin_per_cafe_day", kafeAnahtari);
+  if (!ip.izinli || !saat.izinli || !gun.izinli) {
+    log.warn("pin kilitlendi", { kilitDk: PIN_KILIT_DK, kafeSayaci: !saat.izinli || !gun.izinli });
     return { durum: "kilitli" };
   }
 
@@ -250,7 +301,7 @@ export async function pinGiris(opts: {
     }
   }
 
-  return { durum: "yanlis", kalanDeneme: Math.max(0, MAX_PIN_DENEME - (MAX_PIN_DENEME - kota.kalan)) };
+  return { durum: "yanlis", kalanDeneme: Math.min(ip.kalan, saat.kalan, gun.kalan) };
 }
 
 /* ── Platform kullanıcısı ─────────────────────────────────── */
@@ -286,29 +337,4 @@ export async function platformKullanicisiEkle(opts: {
     ),
   );
   return id;
-}
-
-/**
- * Cihazın kayıtlı olduğu kafeyi bulur.
- *
- * Kasiyerin hangi kafede çalıştığını **yazması gerekmiyor**: tablet bir kez
- * kaydediliyor (G11), sonrası kendiliğinden. Sahada her vardiya başında kafe
- * seçtirmek, üç saniyede bitmesi gereken akışa gereksiz bir adım eklerdi.
- *
- * Kayıtsız cihazda null döner ve PIN hiç denenmez.
- */
-export async function cihazinKafesi(cihazId: string): Promise<{ cafeId: string; ad: string } | null> {
-  if (!cihazId) return null;
-
-  const r = await withBypass("cihazın kafesi", (db) =>
-    db.one<{ cafe_id: string; name: string }>(
-      `SELECT d.cafe_id, c.name
-         FROM cafe_devices d JOIN cafes c ON c.id = d.cafe_id
-        WHERE d.device_id_hash = $1 AND d.active AND c.status = 'approved'
-        LIMIT 1`,
-      [identifierHash(cihazId)],
-    ),
-  );
-
-  return r ? { cafeId: r.cafe_id, ad: r.name } : null;
 }

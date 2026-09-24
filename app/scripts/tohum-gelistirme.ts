@@ -2,7 +2,7 @@
 import { tohumKapisi } from "./_env";
 import { adminPool, closePools } from "@/db/pool";
 import { newId, aliasCode, couponCode } from "@/lib/ids";
-import { encryptPII, phoneIndex, normalizePhone, identifierHash, randomToken } from "@/lib/crypto";
+import { encryptPII, phoneIndex, normalizePhone, randomToken } from "@/lib/crypto";
 import { platformKullanicisiEkle, pinHashle } from "@/domain/staff";
 import { donemAraligi, tabanKurus } from "@/domain/butce";
 import { isGunu } from "@/lib/tarih";
@@ -125,11 +125,7 @@ async function kafeKur(t: KafeTohum, playerId: string) {
     ],
   );
 
-  await db.query(
-    `INSERT INTO cafe_devices (id, cafe_id, label, device_id_hash, registered_by)
-     VALUES ($1,$2,'Kasa tableti',$3,$4)`,
-    [newId("dev"), cafeId, identifierHash(`kasa-cihazi-${t.slug}`), managerId],
-  );
+  // Ü285: kasa cihazı kaydı yok — kasiyer kafenin konumundan PIN'le giriyor.
 
   // Taban altına düşen bir tohum değeri şemadan geri döner; sessizce
   // yükseltmek yerine burada yükseltiyoruz ki tohum her zaman geçerli olsun.

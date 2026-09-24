@@ -41,7 +41,6 @@ import {
 } from "@/posta";
 import { basvuruOlustur, basvurulariListele, telefonuAc, onayla, yoneticiBul } from "@/domain/cafe";
 import {
-  cihazKaydet,
   personelEkle,
   personelListele,
   pinGiris,
@@ -56,7 +55,6 @@ import {
   encryptPII,
   decryptPII,
   hashOtp,
-  identifierHash,
 } from "@/lib/crypto";
 import { yoneticiSorgu, benzersizEposta } from "./_yardim";
 
@@ -1273,15 +1271,8 @@ describe("beni hatırla (Ü36)", () => {
 describe("ad şifreleme — işletme tarafı (Ü115)", () => {
   const olusturulanPersonel: string[] = [];
   const olusturulanPlatform: string[] = [];
-  const olusturulanCihazlar: string[] = [];
 
   after(async () => {
-    // Cihaz önce: `cafe_devices.registered_by` personele bağlı (FK).
-    for (const cihazId of olusturulanCihazlar) {
-      await yoneticiSorgu(`DELETE FROM cafe_devices WHERE device_id_hash = $1`, [
-        identifierHash(cihazId),
-      ]);
-    }
     for (const id of olusturulanPersonel) {
       await yoneticiSorgu(`DELETE FROM audit_log WHERE target_id = $1`, [id]);
       await yoneticiSorgu(`DELETE FROM staff WHERE id = $1`, [id]);
@@ -1328,7 +1319,9 @@ describe("ad şifreleme — işletme tarafı (Ü115)", () => {
   test("🔴 kasiyer PIN'le girebiliyor ve adı doğru çözülüyor", async () => {
     const ad = `TEST Kasa ${randomInt(100000)}`;
     const pin = "8642"; // tohumdaki 1234/9999 ile çakışmasın
-    const cihazId = `test-kasa-cihazi-${randomInt(1_000_000)}`;
+    // Ü285: kapı artık cihaz değil konum (`konumdakiKafe`, tests/kasa-giris);
+    // burada yalnızca PIN'in ve adın yolu.
+    const ipAnahtari = `test-ip-${randomInt(1_000_000)}`;
 
     const staffId = await personelEkle({
       cafeId: kafeA,
@@ -1338,21 +1331,12 @@ describe("ad şifreleme — işletme tarafı (Ü115)", () => {
     });
     olusturulanPersonel.push(staffId);
 
-    await cihazKaydet({
-      cafeId: kafeA,
-      etiket: "TEST tablet",
-      cihazId,
-      kaydedenId: staffId,
-    });
-    olusturulanCihazlar.push(cihazId);
-
-    const sonuc = await pinGiris({ cafeId: kafeA, cihazId, pin });
-    assert.equal(sonuc.durum, "gecerli", "doğru PIN ve kayıtlı cihazla giriş reddedildi");
+    const sonuc = await pinGiris({ cafeId: kafeA, pin, ipAnahtari });
+    assert.equal(sonuc.durum, "gecerli", "doğru PIN'le giriş reddedildi");
     assert.equal(sonuc.durum === "gecerli" && sonuc.ad, ad, "kasa ekranına yanlış ad gitti");
 
-    // Kayıtsız cihazda PIN hiç denenmiyor (G11) — şifreleme bu kapıyı açmadı.
-    const kayitsiz = await pinGiris({ cafeId: kafeA, cihazId: "kayitli-olmayan-cihaz", pin });
-    assert.equal(kayitsiz.durum, "cihaz_kayitsiz");
+    const yanlis = await pinGiris({ cafeId: kafeA, pin: "8643", ipAnahtari });
+    assert.equal(yanlis.durum, "yanlis");
   });
 
   test("platform çalışanının adı da şifreli", async () => {

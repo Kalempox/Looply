@@ -72,15 +72,16 @@ export default async function KafePaneli({
     const personel = await db.one<{ n: string }>(
       `SELECT count(*) AS n FROM staff WHERE active = true`,
     );
-    const cihaz = await db.one<{ n: string }>(
-      `SELECT count(*) AS n FROM cafe_devices WHERE active = true`,
+    // Ü285: cihaz kaydı kalktı; kasa için sayılan şey kasiyer.
+    const kasiyer = await db.one<{ n: string }>(
+      `SELECT count(*) AS n FROM staff WHERE active = true AND role = 'cashier'`,
     );
     return {
       kafe,
       konumVar: kafe?.lat != null && kafe?.lng != null,
       masa: Number(masa?.n ?? 0),
       personel: Number(personel?.n ?? 0),
-      cihaz: Number(cihaz?.n ?? 0),
+      kasiyer: Number(kasiyer?.n ?? 0),
     };
   });
 
@@ -277,8 +278,8 @@ export default async function KafePaneli({
             yol="/kafe/panel/personel"
           />
           <KucukKart
-            etiket="Cihaz"
-            deger={veri.cihaz}
+            etiket="Kasiyer"
+            deger={veri.kasiyer}
             yol="/kafe/panel/personel"
           />
         </div>
@@ -288,7 +289,7 @@ export default async function KafePaneli({
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <Kart
             baslik="Kafe konumu"
-            aciklama="Oyuncunun kafede olduğunu doğrulamanın tek yolu"
+            aciklama="Oyuncunun ve kasanın kafede olduğunu doğrulamanın tek yolu"
             yol="/kafe/panel/konum"
             eksik={!veri.konumVar}
             ikon="konum"
@@ -359,7 +360,7 @@ export default async function KafePaneli({
           )}
           <Kart
             baslik="Personel ve PIN"
-            aciklama="Kasiyer hesabı aç, PIN ver, kasa cihazını kaydet"
+            aciklama="Kasiyer hesabı aç, PIN ver — kasa yalnızca kafenin içinde açılır"
             yol="/kafe/panel/personel"
             ikon="personel"
             alan="kisi"

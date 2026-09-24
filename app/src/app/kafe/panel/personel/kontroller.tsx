@@ -5,11 +5,9 @@ import {
   personelEkleEylemi,
   pinDegistirEylemi,
   pasiflestirEylemi,
-  cihazKaydetEylemi,
   type PersonelDurumu,
 } from "./actions";
 import { IsletmeAlan, isletmeGirdi, IsletmeDugme, IsletmeUyari, Rozet } from "@/components/isletme";
-import { useCihazId } from "@/lib/cihaz";
 
 type Personel = {
   id: string;
@@ -133,41 +131,6 @@ function Pasiflestir({ staffId, ad }: { staffId: string; ad: string }) {
           Hesabı kapat
         </IsletmeDugme>
       )}
-    </form>
-  );
-}
-
-/**
- * Cihaz kimliği tarayıcıda üretilip saklanıyor.
- *
- * Sunucu bunun hash'ini tutuyor (G11) — kayıtlı olmayan bir cihazdan
- * PIN denemesi hiç işleme alınmıyor.
- */
-export function CihazKaydiFormu() {
-  const [durum, action, bekliyor] = useActionState(cihazKaydetEylemi, BOS);
-  const cihazId = useCihazId();
-
-  return (
-    <form action={action} className="space-y-4">
-      <input type="hidden" name="cihazId" value={cihazId} />
-      {durum.hata && <IsletmeUyari>{durum.hata}</IsletmeUyari>}
-      {durum.bilgi && <IsletmeUyari tur="bilgi">{durum.bilgi}</IsletmeUyari>}
-
-      {/*
-        ⚠️ Alan adı `etiket` — `etiket-caps` DEĞİL (Ü114).
-        `etiket-caps` bir CSS sınıfı; bir bul-değiştir turunda HTML
-        `name` özniteliğine de bulaşmış ve eylem `form.get("etiket")`
-        okuduğu için cihaz kaydı **hiç çalışmıyordu**. Kasiyer PIN'i
-        yalnızca kayıtlı cihazda geçtiğinden (G11), bu hiçbir kasiyerin
-        giriş yapamaması demekti.
-      */}
-      <IsletmeAlan etiket="Cihaz adı" ipucu="Örn. Kasa tableti, Bar telefonu">
-        <input name="etiket" className={isletmeGirdi} required />
-      </IsletmeAlan>
-
-      <IsletmeDugme type="submit" disabled={bekliyor || !cihazId}>
-        {bekliyor ? "Kaydediliyor…" : "Bu cihazı kaydet"}
-      </IsletmeDugme>
     </form>
   );
 }
