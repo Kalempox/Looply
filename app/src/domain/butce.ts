@@ -288,6 +288,264 @@ async function donemOku(db: Db, cafeId: string, gun: string): Promise<Donem | nu
 }
 
 /**
+ * Günün dönemi — yoksa kafenin günlük tutarıyla AÇILIYOR (Ü45 → Ü286).
+ *
+ * Ü45 *"kafe günlük tutarını bir kez söyler, her günün dönemi ilk
+ * ihtiyaçta o tutarla açılır"* dedi ama açan kod hiç yazılmamıştı:
+ * `budget_periods`'a yalnızca paneldeki kaydet düğmesi yazıyordu. Kafe o
+ * gün panele girip kaydetmezse dönem yoktu, kupon "henüz bütçesini
+ * belirlememiş" diye reddediliyordu. Ürün sahibi: *"her gün her gün bütçe
+ * belirlemek zorunda kalmasın."*
+ *
+ * Yalnızca **bugün** açılıyor. Geçmiş bir güne sonradan dönem açmak o
+ * günün raporunu uydurmak olurdu; gelecek bir güne önceden açmak da o güne
+ * sonradan değişen haftalık planı (Ü287) yansıtmazdı. Tutar planın
+ * kendisinden (`planIle`). Aynı anda iki istek açmaya kalkarsa
+ * `ON CONFLICT` birini boşa çıkarıyor.
+ */
+export async function gununDonemiIle(
+  db: Db,
+  cafeId: string,
+  gun: string = isGunu(),
+): Promise<Donem | null> {
+  const mevcut = await donemOku(db, cafeId, gun);
+  if (mevcut || gun !== isGunu()) return mevcut;
+
+  const tutar = (await planIle(db, cafeId, gun)).tutarKurus;
+  const aralik = donemAraligi(gun);
+  const id = newId("bdg");
+  const r = await db.query(
+    `INSERT INTO budget_periods (id, cafe_id, period_start, period_end, committed_kurus)
+     VALUES ($1,$2,$3,$4,$5)
+     ON CONFLICT (cafe_id, period_start) DO NOTHING`,
+    [id, cafeId, aralik.baslangic, aralik.bitis, tutar],
+  );
+  if ((r.rowCount ?? 0) > 0) {
+    await audit(db, {
+      actorType: "system",
+      actorId: "butce",
+      cafeId,
+      action: "budget.create",
+      targetType: "budget_period",
+      targetId: id,
+      detail: { taahhutKurus: tutar, gunSayisi: aralik.gunSayisi, otomatik: true },
+    });
+    log.info("butce kendiliginden acildi", { taahhutKurus: tutar });
+  }
+  return donemOku(db, cafeId, gun);
+}
+
+/* ── Haftalık plan (Ü287) ─────────────────────────────────── */
+
+/**
+ * Ürün sahibi: *"tüm hafta için bütçe belirleme olsun, otomatik; o günü
+ * özel olarak değiştirebilsin ya da tüm günlerin bütçesini."* Kararı: bir
+ * günü değiştirirken **"yalnızca bu tarih"** ya da **"her <gün>"**
+ * seçilebilsin; **"Tüm günler"** özel günler dahil hepsini değiştirsin.
+ *
+ * Bir günün tutarı, en özelden en genele:
+ *   1. o tarihe özel kayıt (`butce_gun_ozel`, göç 0056)
+ *   2. haftanın o gününün tutarı (`ayar` · `butceGun1..7`)
+ *   3. her günün tutarı (`ayar` · `gunlukButce`)
+ * Dönem o gün gelince bu tutarla açılıyor (`gununDonemiIle`).
+ */
+
+/** ISO sırası — 1 pazartesi … 7 pazar. */
+export const GUN_ADLARI = [
+  "Pazartesi",
+  "Salı",
+  "Çarşamba",
+  "Perşembe",
+  "Cuma",
+  "Cumartesi",
+  "Pazar",
+] as const;
+
+const GUN_ANAHTARLARI = [
+  ayar.ANAHTARLAR.butceGun1,
+  ayar.ANAHTARLAR.butceGun2,
+  ayar.ANAHTARLAR.butceGun3,
+  ayar.ANAHTARLAR.butceGun4,
+  ayar.ANAHTARLAR.butceGun5,
+  ayar.ANAHTARLAR.butceGun6,
+  ayar.ANAHTARLAR.butceGun7,
+] as const;
+
+/** Planda değiştirilebilen gün sayısı — bugün ve önümüzdeki altı gün. */
+export const PLAN_GUN_SAYISI = 7;
+
+/** ISO haftanın günü: 1 pazartesi … 7 pazar. */
+export function haftaninGunu(gun: string): number {
+  // 12:00 UTC: gün sınırından uzak, saat dilimi karışmıyor.
+  const g = new Date(`${gun}T12:00:00Z`).getUTCDay();
+  return g === 0 ? 7 : g;
+}
+
+export type PlanKaynagi = "ozel" | "haftanin_gunu" | "her_gun";
+
+async function planIle(
+  db: Db,
+  cafeId: string,
+  gun: string,
+): Promise<{ tutarKurus: number; kaynak: PlanKaynagi }> {
+  const ozel = await db.one<{ taahhut_kurus: string }>(
+    `SELECT taahhut_kurus FROM butce_gun_ozel WHERE cafe_id = $1 AND gun = $2`,
+    [cafeId, gun],
+  );
+  if (ozel) return { tutarKurus: Number(ozel.taahhut_kurus), kaynak: "ozel" };
+
+  const herGun = await ayar.sayiOku(cafeId, ayar.ANAHTARLAR.gunlukButce);
+  const haftaninGununde = await ayar.varsaOku(cafeId, GUN_ANAHTARLARI[haftaninGunu(gun) - 1]);
+  // "Tüm günler" haftanın günlerini de aynı tutara yazıyor; o durumda
+  // kaynak "her gün" — ekran "her Perşembe" dememeli.
+  if (haftaninGununde !== null && haftaninGununde !== herGun) {
+    return { tutarKurus: haftaninGununde, kaynak: "haftanin_gunu" };
+  }
+  return { tutarKurus: herGun, kaynak: "her_gun" };
+}
+
+export type PlanGunu = {
+  gun: string;
+  haftaninGunu: number;
+  tutarKurus: number;
+  kaynak: PlanKaynagi;
+  bugunMu: boolean;
+};
+
+/** Bugün ve önümüzdeki altı gün — Bütçe ekranının haftalık planı. */
+export async function haftalikPlan(
+  cafeId: string,
+  bugun: string = isGunu(),
+): Promise<{ herGunKurus: number; gunler: PlanGunu[] }> {
+  return withCafe(cafeId, async (db) => {
+    const gunler: PlanGunu[] = [];
+    for (let i = 0; i < PLAN_GUN_SAYISI; i++) {
+      const gun = gunEkle(bugun, i);
+      const p = await planIle(db, cafeId, gun);
+      // Bugünün dönemi açıldıysa geçerli olan dönemin taahhüdü.
+      const donem = i === 0 ? await donemOku(db, cafeId, gun) : null;
+      gunler.push({
+        gun,
+        haftaninGunu: haftaninGunu(gun),
+        tutarKurus: donem?.taahhutKurus ?? p.tutarKurus,
+        kaynak: p.kaynak,
+        bugunMu: i === 0,
+      });
+    }
+    return { herGunKurus: await ayar.sayiOku(cafeId, ayar.ANAHTARLAR.gunlukButce), gunler };
+  });
+}
+
+function tutarHatasi(tutarKurus: number): string | null {
+  const sinir = ayar.SINIRLAR[ayar.ANAHTARLAR.gunlukButce];
+  if (!Number.isInteger(tutarKurus) || tutarKurus < sinir.en_az) {
+    return `Günlük bütçe en az ${tl(sinir.en_az)} TL olmalı.`;
+  }
+  if (tutarKurus > sinir.en_cok) return `Günlük bütçe en çok ${tl(sinir.en_cok)} TL olabilir.`;
+  return null;
+}
+
+/**
+ * Tek bir günü değiştirir — "yalnızca bu tarih" ya da "her <gün>".
+ *
+ * Bugün değişiyorsa önce bugünün dönemi yazılıyor: dağıtılmış kuponların
+ * altına inilemiyor ve o hata planı yarım bırakmadan dönüyor. "Her <gün>"
+ * o satırın tarihindeki özel kaydı da kaldırıyor — kafe o satırı
+ * değiştirdi, satır yeni tutarı göstermeli.
+ */
+export async function gunuBelirle(opts: {
+  cafeId: string;
+  gun: string;
+  tutarKurus: number;
+  kapsam: "tarih" | "hafta";
+  aktorId: string;
+}): Promise<{ ok: true } | { ok: false; hata: string }> {
+  const bugun = isGunu();
+  if (opts.gun < bugun || opts.gun > gunEkle(bugun, PLAN_GUN_SAYISI - 1)) {
+    return { ok: false, hata: "Yalnızca bugün ve önümüzdeki altı gün değiştirilebilir." };
+  }
+  const hata = tutarHatasi(opts.tutarKurus);
+  if (hata) return { ok: false, hata };
+
+  if (opts.gun === bugun) {
+    const d = await donemBelirle({ cafeId: opts.cafeId, taahhutKurus: opts.tutarKurus, aktorId: opts.aktorId });
+    if (!d.ok) return d;
+  }
+
+  if (opts.kapsam === "hafta") {
+    const s = await ayar.sayiYaz({
+      cafeId: opts.cafeId,
+      anahtar: GUN_ANAHTARLARI[haftaninGunu(opts.gun) - 1],
+      deger: opts.tutarKurus,
+      aktorId: opts.aktorId,
+    });
+    if (!s.ok) return s;
+  }
+
+  await withCafe(opts.cafeId, async (db) => {
+    if (opts.kapsam === "tarih") {
+      await db.query(
+        `INSERT INTO butce_gun_ozel (cafe_id, gun, taahhut_kurus) VALUES ($1,$2,$3)
+         ON CONFLICT (cafe_id, gun) DO UPDATE SET taahhut_kurus = EXCLUDED.taahhut_kurus, updated_at = now()`,
+        [opts.cafeId, opts.gun, opts.tutarKurus],
+      );
+    } else {
+      await db.query(`DELETE FROM butce_gun_ozel WHERE cafe_id = $1 AND gun = $2`, [opts.cafeId, opts.gun]);
+    }
+    await audit(db, {
+      actorType: "staff",
+      actorId: opts.aktorId,
+      cafeId: opts.cafeId,
+      action: "budget.plan",
+      targetType: "cafe",
+      targetId: opts.cafeId,
+      detail: { gun: opts.gun, kapsam: opts.kapsam, taahhutKurus: opts.tutarKurus },
+    });
+  });
+  return { ok: true };
+}
+
+/**
+ * Bütün günleri tek tutara çeker — özel günler dahil (ürün sahibinin
+ * kararı). Her günün tutarı, haftanın yedi günü ve bugünün dönemi aynı
+ * tutar oluyor; bugünden sonraki özel kayıtlar siliniyor.
+ */
+export async function tumGunleriBelirle(opts: {
+  cafeId: string;
+  tutarKurus: number;
+  aktorId: string;
+}): Promise<{ ok: true } | { ok: false; hata: string }> {
+  const hata = tutarHatasi(opts.tutarKurus);
+  if (hata) return { ok: false, hata };
+
+  const d = await donemBelirle({ cafeId: opts.cafeId, taahhutKurus: opts.tutarKurus, aktorId: opts.aktorId });
+  if (!d.ok) return d;
+
+  await withCafe(opts.cafeId, async (db) => {
+    await db.query(
+      `INSERT INTO cafe_config (cafe_id, key, value)
+       SELECT $1, k, $2 FROM unnest($3::text[]) AS k
+       ON CONFLICT (cafe_id, key) DO UPDATE SET value = EXCLUDED.value`,
+      [opts.cafeId, String(opts.tutarKurus), [ayar.ANAHTARLAR.gunlukButce, ...GUN_ANAHTARLARI]],
+    );
+    await db.query(`DELETE FROM butce_gun_ozel WHERE cafe_id = $1 AND gun >= $2`, [
+      opts.cafeId,
+      isGunu(),
+    ]);
+    await audit(db, {
+      actorType: "staff",
+      actorId: opts.aktorId,
+      cafeId: opts.cafeId,
+      action: "budget.plan",
+      targetType: "cafe",
+      targetId: opts.cafeId,
+      detail: { kapsam: "tum_gunler", taahhutKurus: opts.tutarKurus },
+    });
+  });
+  return { ok: true };
+}
+
+/**
  * Bütçenin dört sayısı.
  *
  * Hepsi `budget_ledger`'ın toplamı. `dagitilabilir` negatife düşemez (E10):
@@ -299,7 +557,7 @@ export async function durum(
   an?: Date,
 ): Promise<ButceDurumu> {
   return withCafe(cafeId, async (db) => {
-    const donem = await donemOku(db, cafeId, gun);
+    const donem = await gununDonemiIle(db, cafeId, gun);
 
     if (!donem) {
       return {
@@ -506,7 +764,7 @@ async function kalanHesapla(
   dagitilabilir: number;
 } | null> {
   const gun = opts.gun ?? isGunu();
-  const donem = await donemOku(db, opts.cafeId, gun);
+  const donem = await gununDonemiIle(db, opts.cafeId, gun);
   if (!donem) return null;
 
   const h = await hareketler(db, opts.cafeId, donem.id);

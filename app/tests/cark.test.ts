@@ -32,7 +32,7 @@ import { benzersizEposta, testKafeleriniSil } from "./_yardim";
  *      buluyor mu.
  *   3. **Talep imzalı.** Misafirin elindeki çerez kurcalanınca çözülmüyor;
  *      aksi hâlde ziyaretçi kendi ödülünü yazardı.
- *   4. **Bütçe dışına çıkmıyor.** Bütçesi olmayan kafede çark ödül vermiyor.
+ *   4. **Bütçe dışına çıkmıyor.** Bütçesi tükenmiş kafede çark ödül vermiyor.
  */
 
 let cafeId = "";
@@ -77,12 +77,21 @@ async function kafeKur(ad: string, butceli: boolean): Promise<string> {
       );
     }
 
-    if (butceli) {
-      const gun = isGunu();
+    // Ü286: bütçesi hiç açılmamış kafe artık yok — gün, kafenin günlük
+    // tutarıyla kendiliğinden açılıyor. "Bütçesiz" kafe, bütçesi TÜKENMİŞ
+    // kafe: en düşük günlük tutar (1.500 TL) tamamen bağlanmış.
+    const gun = isGunu();
+    const donem = newId("bp");
+    await db.query(
+      `INSERT INTO budget_periods (id, cafe_id, period_start, period_end, committed_kurus)
+       VALUES ($1,$2,$3,$4,$5)`,
+      [donem, id, gun, gunEkle(gun, 1), butceli ? 5_000_00 : 1_500_00],
+    );
+    if (!butceli) {
       await db.query(
-        `INSERT INTO budget_periods (id, cafe_id, period_start, period_end, committed_kurus)
-         VALUES ($1,$2,$3,$4,$5)`,
-        [newId("bp"), id, gun, gunEkle(gun, 1), 5_000_00],
+        `INSERT INTO budget_ledger (id, cafe_id, budget_period_id, kind, amount_kurus, note)
+         VALUES ($1,$2,$3,'reserve',150000,'test: tükenmiş bütçe')`,
+        [newId("bl"), id, donem],
       );
     }
   });
@@ -266,7 +275,7 @@ describe("çark · günlük sınır", () => {
     assert.equal(durum.acik, true, "bir oyuncunun çevirmesi diğerini kilitledi");
   });
 
-  test("bütçesi olmayan kafede ödül çıkmıyor", async () => {
+  test("bütçesi tükenmiş kafede ödül çıkmıyor", async () => {
     const s = await carkOduluVer({
       playerId: oyuncu2,
       cafeId: cafeId2,

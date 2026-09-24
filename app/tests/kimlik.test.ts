@@ -1331,11 +1331,11 @@ describe("ad şifreleme — işletme tarafı (Ü115)", () => {
     });
     olusturulanPersonel.push(staffId);
 
-    const sonuc = await pinGiris({ cafeId: kafeA, pin, ipAnahtari });
+    const sonuc = await pinGiris({ cafeIdler: [kafeA], pin, ipAnahtari });
     assert.equal(sonuc.durum, "gecerli", "doğru PIN'le giriş reddedildi");
     assert.equal(sonuc.durum === "gecerli" && sonuc.ad, ad, "kasa ekranına yanlış ad gitti");
 
-    const yanlis = await pinGiris({ cafeId: kafeA, pin: "8643", ipAnahtari });
+    const yanlis = await pinGiris({ cafeIdler: [kafeA], pin: "8643", ipAnahtari });
     assert.equal(yanlis.durum, "yanlis");
   });
 

@@ -6,7 +6,7 @@
 > Yan dosyalar: neyin **var** olduğu → `21-looply-kapsam-haritasi.md` ·
 > demoda neyin **yapılabildiği** → `22-demo-yapilabilirlik.md`
 
-**Son güncelleme:** 2026-09-24 · **Kararlar:** Ü76 – Ü159, **Ü186 – Ü242**, **Ü259 – Ü285**
+**Son güncelleme:** 2026-09-24 · **Kararlar:** Ü76 – Ü159, **Ü186 – Ü242**, **Ü259 – Ü289**
 
 > ⚠️ **BU LİSTEDE İKİ BOŞLUK VAR.**
 >
@@ -38,6 +38,185 @@
 ⚠️ U3 test sırasında **bilerek** değiştirilmedi: yerel testte telefonla
 okutulan karekodun LAN sunucusuna gitmesi tam da bu davranış sayesinde
 çalışıyor.
+
+## ⬅️ Ü289 · Kasa onay defteri · bugün çıkan ödüller ayrı · açık kupon yükü · panelde dağıtılan — 2026-09-25
+
+⚠️ **Commitlenmedi.**
+
+Ürün sahibi: *"tüm onaylarda ürün, saat, dakika ve hangi kasiyer olduğu
+yazmalı"* · *"bunlar hangi ödüllerin çıktığı değil ki — 2.000 TL limit var
+ama en üstteki bile 2.000'i geçiyor"* · *"ödüller 12 saat sonra açılıp 7 gün
+sürdüğü için 2–3 gün sonra aşırı yüklenebilir, ya hepsi bir güne
+yüklenirse?"* · *"panel özetinde dağıtılan yazmıyor, sadece kullanılan"*.
+
+- [x] **Onay defteri** (`rapor.kasaOnaylari`): her onay — saat:dakika,
+  ödül, ürün, kasiyer (adı şifreli, yalnızca burada çözülüyor), müşteri
+  kodu, tutar. Bütçe'de **bugün**, Rapor'da seçili dönem (en yeni 300).
+  Bilgi zaten kuponun satırındaydı (`redeemed_at`, `redeemed_by_staff_id`).
+- [x] Bütçe tablosu **"Bugün çıkan ödüller"**: yalnızca bugün verilen
+  (adet + bugünün bütçesinden bağlanan TL) ve bugün kasada ödenen. Önceki
+  günlerin açık kuponları bu tabloda karışıyordu.
+- [x] **Açık kupon yükü** tablosu: açık kuponlar verildiği güne göre
+  (adet, TL, son kullanım) ve cümle: *"her kupon verildiği günün
+  bütçesinden düşer; en kötü durumda bir günde kasadan çıkabilecek tutar X
+  TL; küçültmek için geçerlilik süresini kısalt."* Kafe A: 18–24 Eylül, 216
+  kupon, ~5.639 TL (çoğu test oyuncusu).
+- [x] Panel özeti: **Dağıtılan kupon** (TL, adet — bütçeden bağlanan) ve
+  **Kullanılan kupon** (TL, adet — kasada ödenen). "Verilen indirim" adı
+  dağıtılan gibi okunuyordu, kalktı. "Açık kuponlarda" kartının alt yazısı
+  "bugün verilen, kullanılmayan".
+- **Yığılma sorusu — nasıl işliyor:** günlük bütçe VERİLEN kupona tavan,
+  kasadan ÇIKANA değil. Haftalık toplam yine ≤ 7 × günlük bütçe; ama tek
+  günde kasadan çıkan, açık kuponların toplamına kadar çıkabilir. Araçlar:
+  yük tablosu (görünürlük), geçerlilik süresi (Ödüller sayfası; 3 gün →
+  en kötü 3 × günlük). Günlük kasa tavanı önerilmedi: geçerli kuponu kasada
+  reddetmek güveni bozar.
+- **Arşiv önerisi (ürün sahibi: "aylık yedekleyip veritabanından
+  kaldıralım"):** önerilen — silmemek. Onay bir satır (~1 KB); büyük
+  ölçekte bile yıllarca sorun değil. Silmek raporları, bütçe geçmişini,
+  itirazları ve yasal saklama yükümlülüklerini bozar (avukatla
+  netleşecek). Yerine: şifreli otomatik yedek (var), büyürse aylık
+  bölümleme, süre dolunca oyuncu bağını anonimleştirme.
+  🔴 **Karar (2026-09-25): "silmeyelim, senin önerinle ilerleyelim."**
+  Kasa kayıtları silinmiyor. Açık iş: saklama süresi avukatla netleşince
+  oyuncu bağını anonimleştiren iş; tablolar büyürse aylık bölümleme.
+- **Açık, sorulacak:** yığılmayı algoritmayla sınırlamak (ürün sahibi:
+  *"bunu algoritmamızı değiştirerek çözebilir miyiz?"*) — seçenekler
+  sunuldu: dolaşımdaki kupon tavanı, kuponu kullanım gününe bağlamak,
+  geçerliliği kısaltmak.
+
+**Testler:** `kupon-kasa` +1 (onay defterinde ödül, saat, kasiyer).
+**Doğrulama:** tsc · eslint · tam takım geçici kopyada 874 test: 866
+geçti, 0 düştü, 8 atlandı (saate bağlı) · `next build` · 3001 açık.
+
+---
+
+## ⬅️ Ü288 · Bütçe ayarı en üstte, çalışma saatleri Panel'de — 2026-09-25
+
+⚠️ **Commitlenmedi.**
+
+Ürün sahibi: *"günlük bütçe ayarlama kısmı sayfanın üstünde, kafe
+sahibinin kolayca bakıp anlayacağı yerde olmalı; güne özel değiştir
+düğmesi belirgin olsun, siyah olabilir; kafenin açılış saati panelde
+olmalı — ben zor buluyorum, müşteri hiç bulamaz."*
+
+- [x] Bütçe sayfasında **Haftalık bütçe** başlığın hemen altında; günlerin
+  **Değiştir** düğmesi siyah (açıkken çerçeveli "Kapat").
+- [x] **Çalışma saatlerin** Panel ana sayfasının başında (saat formu
+  oradan; kaydetmek Panel'i de yeniliyor). Bütçe sayfasında yalnızca
+  "bütçe 00:00–23:00 saatlerinde açılır · saatleri Panel'den değiştir".
+- [x] "Şu an dağıtılabilir" → **"Şu ana kadar açılan"**. Ürün sahibi
+  *"bütçe 2.000, bugün bir şey harcanmadı — neden 572?"* diye sordu: sayı
+  doğruydu (tempo, Ü87 + Ü281), ad yanıltıyordu. Kafe A'da açılış **00:00**
+  (0.3'ün gece testi talimatı); gece 02:00'de günün ~%29'u açıktı. Gece
+  payı büyük çünkü 24 Eylül 00:06–04:41'de testlerin 37 turu profilde
+  "gece kalabalığı" gibi duruyor.
+- **Veri sorusu** (*"sayılan ziyaret, gelen kişi, oynanan oyun, verilen
+  kupon mock mu, doğru mu?"*): kodda sahte veri yok, sayılar veritabanından.
+  Ama Kafe A'nın verisinin çoğu testlerden ve benzetimden: 24–25 Eylül'de 39
+  kişinin 37'si ve 53 oyunun 37'si test oyuncusu (ortak veritabanında
+  koşan testler); Kafe A'da 18 Ağustos'tan beri 1.656 test/benzetim
+  oyuncusu, 4.272 tur; açık 217 kuponun 202'si test oyuncularında. Temizlik
+  ürün sahibine önerildi (silme — onay ister).
+- Dünkü onay: Rapor 24.09 → **İndirim gideri 25 TL** (A3STZQ).
+
+**Doğrulama:** tsc · eslint · `next build` · 3001 açık. Ekranlar görülmedi
+— ürün sahibinin 1.6'sında.
+
+---
+
+## ⬅️ Ü287 · Haftalık bütçe planı — 2026-09-25
+
+⚠️ **Commitlenmedi.** Göç 0056 asıl veritabanında.
+
+Ürün sahibi: *"her gün bütçe belirlemek zorunda kalmasın; tüm hafta için
+bütçe belirleme olsun, otomatik; o günü özel olarak değiştirebilsin ya da
+tüm günlerin bütçesini."* Kararları: bir günü değiştirirken **ikisi de
+seçilebilsin** ("yalnızca bu tarih" / "her <gün>"); **"Tüm günler" özel
+günler dahil hepsini değiştirsin**.
+
+- Bir günün tutarı, en özelden en genele: o tarihe özel kayıt
+  (`butce_gun_ozel`, göç 0056 — RLS, silme yetkisi yalnızca bu tabloya) →
+  haftanın o günü (`ayar` · `gunluk_butce_gun_1..7`) → her gün
+  (`gunluk_butce_kurus`). `ayar.varsaOku` "hiç yazılmamış" ile "1.500
+  yazılmış"ı ayırıyor.
+- Dönem yalnızca **bugün** kendiliğinden açılıyor (Ü286'da gelecek güne de
+  açılabiliyordu → önceden açılmış dönem sonradan değişen planı o güne
+  yansıtmazdı).
+- `butce.gunuBelirle`: bugün değişiyorsa önce bugünün dönemi (dağıtılmış
+  kuponun altına inilemiyor — hata planı yarım bırakmıyor); "her <gün>" o
+  satırın özel kaydını da kaldırıyor. `butce.tumGunleriBelirle`: her gün +
+  haftanın yedi günü aynı tutar, bugünden sonraki özel kayıtlar siliniyor,
+  bugünün dönemi değişiyor. Denetim izinde `budget.plan`.
+- Ekran: Bütçe sayfasında "Bütçeyi güncelle" yerine **Haftalık bütçe** —
+  "Bütün günler" formu ve bugün + 6 günün listesi (tutar, kaynak,
+  Değiştir → "Yalnızca <tarih>" / "Her <gün>").
+- Testler: `butce-otomatik` → 11 (otomatik açılış 4 + plan 7: yedi güne
+  yayılma, yalnızca bu tarih, her <gün>, bugünün dönemi, tüm günler özel
+  dahil, dağıtılmışın altına inilemez + plan yarım kalmaz, sınırlar).
+- **Doğrulama:** tsc · eslint · tam takım geçici kopyada 873 test: 863
+  geçti, 0 düştü, 10 atlandı (saate bağlı) · göç 0056 asıl veritabanında ·
+  Kafe A'nın planı okundu (yedi gün 1.500 TL, "her gün") · `next build` ·
+  3001 açık. Ekranın kendisi görülmedi — ürün sahibinin 1.6'sında.
+
+---
+
+## ⬅️ Ü286 · Kasa uyarısı PIN'in kafesini söylüyor · bütçe her gün kendiliğinden açılıyor · rapor günü İstanbul'da — 2026-09-25
+
+⚠️ **Commitlenmedi.**
+
+Ürün sahibi: *"'en yakın kafeye X m uzaktasın' değil — bu PIN'in geçerli
+olduğu kafeden uzaktasın demeli"* · *"her gün her gün bütçe belirlemek
+zorunda kalmasın"* · *"karekoddan ödülü onayladım ama panelde görünmüyor,
+23'ü geçti diye dünde mi kaldı?"*
+
+### Kasa: PIN'in kafesi (`staff.kasaGirisi`)
+- PIN'ler kafeden kafeye tekrar edebildiği için PIN'in kafesi adaylardan
+  bulunuyor: konumun içindeki kafe (hep ilk — kiracı sınırı), cihazın son
+  girdiği kafe (`kasa_kafe` çerezi, yalnızca ipucu), çevredeki en yakın üç
+  kafe (25 km). PIN hangisinde tutarsa konum O kafeye göre: içindeyse
+  giriş; dışındaysa *"Bu PIN'in geçerli olduğu kafeden (Kafe A) 350 m
+  uzaktasın"*. Kafenin içinde yanlış PIN "PIN yanlış."; dışarıda PIN hiçbir
+  adayda tutmadıysa cümle bir şey iddia etmiyor ("PIN yanlış ya da kafenin
+  içinde değilsin"). Denenen her kafenin PIN sayacı işliyor.
+- "Konum sormadı": tarayıcı bu adrese oyuncu tarafında izin vermişti, bir
+  daha sormadan okudu — günlükte üç girişin üçünde de 45 m.
+
+### 🔴 Bütçe: Ü45'in sözü hiç tutulmamıştı
+- Ü45 *"kafe günlük tutarını bir kez söyler, her günün dönemi ilk
+  ihtiyaçta o tutarla açılır"* dedi; **açan kod yazılmamıştı**:
+  `budget_periods`'a yalnızca paneldeki kaydet düğmesi yazıyordu. Kafe o
+  gün kaydetmezse dönem yoktu → kupon "henüz bütçesini belirlememiş",
+  paket şansı 0. Kafe A'nın günleri açık görünüyordu çünkü testler ve
+  ürün sahibinin kaydetmeleri her gün açıyordu.
+- [x] `butce.gununDonemiIle`: dönem yoksa kafenin günlük tutarıyla açılıyor
+  (yalnızca bugün ve sonrası; `ON CONFLICT DO NOTHING`; denetim izinde
+  `otomatik: true`). Panel durumu, kalan bütçe/rezervasyon ve kupon üretimi
+  aynı yoldan geçiyor. Kafenin o güne özel kaydı ezilmiyor.
+- Kafe A'da bugünün bütçesi 1.500 TL: ürün sahibi 01:01'de kaydetti ve
+  kaydetmek varsayılan günlük tutarı da 1.500'e çekti.
+- Haftalık plan ürün sahibine soruldu ve **Ü287**'de yapıldı.
+
+### Rapor: gün İstanbul gece yarısında başlıyor
+- 23:36'daki onay doğru günde (24 Eylül); panel gece yarısından sonra 25
+  Eylül'ü gösterdiği için görünmüyordu — bir gün geri gidince görünüyor.
+- Ama yol boyunca gerçek bir hata: veritabanı oturumu UTC ve rapor
+  `redeemed_at >= $1::date` ile günü **03:00'te** başlatıyordu; gece
+  00:00–03:00 arasındaki onay bir önceki güne yazılıyordu. 22 karşılaştırma
+  İstanbul gece yarısına çevrildi (kasa özeti zaten öyleydi). Sınıf testi:
+  `tests/gun-siniri.test.ts` — kaynakta `…_at` ile çıplak `$N::date`
+  karşılaştıran satır kalırsa düşüyor (eski rapor.ts'e karşı düştüğü
+  görüldü).
+
+**Testler:** `kasa-giris` +5 (PIN'in kafesi: içeride giriş, dışarıda
+kafe adı ve mesafe, komşu kafenin içindeyken PIN bu kafenin, uzakta
+ipucuyla bulunuyor, yanlış PIN'de iddia yok) · `butce-otomatik` (4) ·
+`gun-siniri` (2) · `cark` ve `odul-sozu`nun "bütçesiz kafe"si artık
+"bütçesi tükenmiş kafe" (E10 aynı). **Doğrulama:** tsc · eslint · tam takım
+geçici kopyada 866 test: 856 geçti, 0 düştü, 10 atlandı (saate bağlı) ·
+`next build` · derlenmiş pakette yeni cümle ve İstanbul günü.
+
+---
 
 ## ⬅️ Ü285 · Kasa girişi: PIN ve konum — cihaz kaydı kalktı — 2026-09-24
 

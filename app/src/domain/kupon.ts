@@ -204,15 +204,11 @@ async function kuponUret(
     return { ok: false, hata: "Bu ödül için daha yüksek doğrulama gerekiyor." };
   }
 
-  // Kafe süzgeci sorguda AÇIKÇA: bu kod `withBypass` içinde koşuyor ve orada
-  // RLS kapalı. Süzgeç yalnızca politikada olsaydı başka kafenin dönemi
-  // dönerdi ve kupon yanlış kafenin bütçesinden rezerve edilirdi.
-  const donem = await db.one<{ id: string }>(
-    `SELECT id FROM budget_periods
-      WHERE cafe_id = $1 AND period_start <= $2 AND period_end > $2
-      ORDER BY period_start DESC LIMIT 1`,
-    [opts.cafeId, isGunu()],
-  );
+  // Kafe süzgeci sorguda AÇIKÇA (`gununDonemiIle` → `cafe_id = $1`): bu
+  // kod `withBypass` içinde koşuyor ve orada RLS kapalı. Süzgeç yalnızca
+  // politikada olsaydı başka kafenin dönemi dönerdi. Ü286: dönem yoksa
+  // kafenin günlük tutarıyla açılıyor — kafe her gün kaydetmek zorunda değil.
+  const donem = await butce.gununDonemiIle(db, opts.cafeId, isGunu());
   if (!donem) {
     return { ok: false, hata: "Bu kafe henüz bütçesini belirlememiş." };
   }
@@ -1414,34 +1410,26 @@ export async function bekleyenleriAc(): Promise<number> {
 
 export type OdulDokumSatiri = {
   baslik: string;
-  /** Verildi, henüz kasada gösterilmedi. Bütçede rezerve duruyor (Ü7). */
-  acik: number;
-  /** Açık kuponların bütçeden bağladığı tutar. */
-  acikKurus: number;
   bugunVerilen: number;
+  /** Bugün verilenlerin bugünün bütçesinden bağladığı tutar. */
+  bugunVerilenKurus: number;
   bugunOnaylanan: number;
   /** Bugün kasada fiilen ödenen. */
   bugunKurus: number;
 };
 
 /**
- * Bu kafede hangi ödüller dolaşımda ve bugün ne oldu.
+ * Bugün hangi ödüller çıktı ve kasada ne ödendi — Ü93, Ü289.
  *
  * ⚠️ Ürün sahibi: *"kazanılan ödüllerin ne olduğu gözükmeli."* Bütçe ekranı
- * bugüne kadar yalnızca **para** gösteriyordu — "açık kuponlarda 160 TL".
- * İşletmeci bütçesinin bağlandığını görüyor ama karşılığında ne verdiğini
- * göremiyordu; "çok fazla ödül dağıtılıyor" şikâyeti de buradan çıktı.
- * Parayı yönetmek için önce neyin gittiğini görmek gerekiyor.
+ * yalnızca **para** gösteriyordu; işletmeci karşılığında ne verdiğini
+ * göremiyordu.
  *
- * ⚠️ **Pencere neden "bugün" değil.** İlk sürüm yalnızca bugün verilenleri
- * sayıyordu ve panelde şu çıktı: *"açık kuponlarda 160 TL"* ile *"bugün 0
- * kupon"* yan yana. İkisi de doğruydu — kuponlar dünden kalmıştı — ama
- * ekran kendi kendisiyle çelişiyor görünüyordu. Açık kupon **tarihten
- * bağımsız** sayılıyor artık: para orada duruyorsa dökümü de durmalı.
- *
- * ⚠️ `bugunkuOzet` bunun yerini tutmuyor: o yalnızca onaylananları sayıyor
- * ve kasiyerin gün sonu mutabakatı için. Bütçeyi bağlayan şey ise VERİLEN
- * kupon (Ü7).
+ * ⚠️ Ü289: pencere yeniden **bugün**. Bir süre bütün açık kuponlar da bu
+ * tablodaydı ve ürün sahibi okuyamadı: *"bunlar bugün çıkan ödüller değil
+ * ki — 2.000 TL limit var ama en üstteki bile 2.000'i geçiyor."* Açık
+ * kuponlar birkaç günün bütçesinden geliyor; artık ayrı tabloda, verildiği
+ * güne göre (`acikKuponYuku`).
  *
  * E9 burada oyuncuya değil KAFEYE bakıyor; kafenin tutarı görmesi zaten
  * ürün kararı ("kullanılan miktarı kafe görmek zorunda").
@@ -1451,18 +1439,17 @@ export async function odulDokumu(cafeId: string): Promise<OdulDokumSatiri[]> {
     const gunBasi = "($1::date::timestamp AT TIME ZONE 'Europe/Istanbul')";
     const satirlar = await db.all<{
       baslik: string;
-      acik: string;
-      acik_kurus: string;
       bugun_verilen: string;
+      bugun_verilen_kurus: string;
       bugun_onaylanan: string;
       bugun_kurus: string;
     }>(
       `SELECT COALESCE(r.title, '%' || kmp.percent || ' · ' || u.name, 'Diğer') AS baslik,
-              count(*) FILTER (WHERE c.status IN ('pending','active'))        AS acik,
-              COALESCE(sum(c.reserved_kurus)
-                       FILTER (WHERE c.status IN ('pending','active')), 0)    AS acik_kurus,
               count(*) FILTER (WHERE c.issued_at >= ${gunBasi}
                                  AND c.status <> 'undone')                    AS bugun_verilen,
+              COALESCE(sum(c.reserved_kurus)
+                       FILTER (WHERE c.issued_at >= ${gunBasi}
+                                 AND c.status <> 'undone'), 0)                AS bugun_verilen_kurus,
               count(*) FILTER (WHERE c.redeemed_at >= ${gunBasi})             AS bugun_onaylanan,
               COALESCE(sum(c.committed_kurus)
                        FILTER (WHERE c.redeemed_at >= ${gunBasi}), 0)         AS bugun_kurus
@@ -1470,21 +1457,59 @@ export async function odulDokumu(cafeId: string): Promise<OdulDokumSatiri[]> {
          LEFT JOIN rewards r ON r.id = c.reward_id
          LEFT JOIN percentage_campaigns kmp ON kmp.id = c.campaign_id
          LEFT JOIN products u ON u.id = kmp.product_id
+        WHERE c.issued_at >= ${gunBasi} OR c.redeemed_at >= ${gunBasi}
         GROUP BY COALESCE(r.title, '%' || kmp.percent || ' · ' || u.name, 'Diğer')
-       HAVING count(*) FILTER (WHERE c.status IN ('pending','active')) > 0
-           OR count(*) FILTER (WHERE c.issued_at >= ${gunBasi}) > 0
-           OR count(*) FILTER (WHERE c.redeemed_at >= ${gunBasi}) > 0
-        ORDER BY count(*) FILTER (WHERE c.status IN ('pending','active')) DESC, baslik`,
+        ORDER BY count(*) FILTER (WHERE c.issued_at >= ${gunBasi}) DESC, baslik`,
       [isGunu()],
     );
 
     return satirlar.map((x) => ({
       baslik: x.baslik,
-      acik: Number(x.acik),
-      acikKurus: Number(x.acik_kurus),
       bugunVerilen: Number(x.bugun_verilen),
+      bugunVerilenKurus: Number(x.bugun_verilen_kurus),
       bugunOnaylanan: Number(x.bugun_onaylanan),
       bugunKurus: Number(x.bugun_kurus),
+    }));
+  });
+}
+
+export type AcikYukGunu = {
+  /** Kuponun verildiği gün — bütçesinden düştüğü gün. */
+  gun: string;
+  adet: number;
+  kurus: number;
+  /** Bu günün kuponlarından en geç biteninin son kullanımı. */
+  sonKullanim: Date;
+};
+
+/**
+ * Açık kupon yükü — verildiği güne göre (Ü289).
+ *
+ * Ürün sahibi: *"ödüller 12 saat sonra açılıp 7 gün sürdüğü için
+ * kullanıcılar 2–3 gün sonra aşırı yüklenebilir; ya hepsi bir güne
+ * yüklenirse?"* Her kupon **verildiği günün** bütçesinden düşüyor (Ü7):
+ * günlük bütçe bir günde VERİLEBİLECEK en yüksek tutar, bir günde kasadan
+ * ÇIKABİLECEK tutar değil. Birkaç günün kuponu aynı güne yığılabilir; en
+ * kötü durumda bir günde kasadan çıkabilecek tutar, bu tablonun toplamı.
+ * Ekran bu yükü saklamıyor, gün gün gösteriyor.
+ */
+export async function acikKuponYuku(cafeId: string): Promise<AcikYukGunu[]> {
+  return withCafe(cafeId, async (db) => {
+    const satirlar = await db.all<{ gun: string; adet: string; kurus: string; son: Date }>(
+      `SELECT (issued_at AT TIME ZONE 'Europe/Istanbul')::date::text AS gun,
+              count(*) AS adet,
+              COALESCE(sum(reserved_kurus), 0) AS kurus,
+              max(expires_at) AS son
+         FROM coupons
+        WHERE status IN ('pending','active') AND expires_at > now()
+        GROUP BY 1
+        ORDER BY 1 DESC`,
+    );
+    return satirlar.map((r) => ({
+      gun: r.gun,
+      adet: Number(r.adet),
+      kurus: Number(r.kurus),
+      sonKullanim: r.son,
     }));
   });
 }

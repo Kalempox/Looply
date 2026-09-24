@@ -44,7 +44,9 @@ Doğrulama kodları geliştirmede **ekranda sarı kutuda** görünür.
 | Platform desteği | `/platform/giris` | `05310000002` + ekrandaki kod |
 
 ### 0.3 · Gece test ediyorsan
-- Kafe kapalıyken **hiç ödül çıkmaz** → Panel → Bütçe → **Açılış 00:00**.
+- Kafe kapalıyken **hiç ödül çıkmaz** → Panel'in başındaki **Çalışma
+  saatlerin** → **Açılış 00:00** (Ü288). Test bitince gerçek saate döndür —
+  bütçe bu saatlere yayılıyor.
 - Her kupon önce **bekler** (Ü269) → beklemeden denemek için Panel →
   Ödüller → **Aktivasyon saati 1**. Ya da kupon kazanınca bana yaz, açılma
   saatini öne çekerim.
@@ -142,14 +144,27 @@ kayıtlı değeri (ürün = fiyat, yüzde = fiyat × oran) ve çark dilimleri.
 🔴 Ürün seçince yine fiyat soruyorsa; yüzde "en fazla indirim" soruyorsa;
 TL karşılığı yanlışsa; tavanı aşan ödül kaydedilebiliyorsa.
 
-### 1.6 · Bütçe
-**Yap:** Bütçe → **Bu dönemin bütçesi (TL)**. Önce alt sınırın altında bir
-tutar dene, sonra geçerli bir tutar kaydet.
-✅ Alt sınırın altı reddedilir — alt sınır günde 1.500 TL × dönemin gün
-sayısı (tam haftada 10.500 TL); kutunun altındaki ipucu tam rakamı yazar.
-✅ **Şu an dağıtılabilir** dolu. Bütçe güne yayılır; sabah erken ya da gece
-yarısından hemen sonra küçük görünmesi normal.
-✅ **Açılış / Kapanış** burada (0.3).
+### 1.6 · Bütçe — haftalık plan (Ü286 · Ü287)
+**Yap:** Bütçe → **Haftalık bütçe**:
+1. **Bütün günler (TL)** → bir tutar → **Bütün günlere uygula**. Önce
+   1.500'ün altını dene.
+2. Listeden yarından sonraki günü **Değiştir** → tutar → **Yalnızca
+   <tarih>** → Kaydet.
+3. Başka bir günü **Değiştir** → **Her <gün>** → Kaydet.
+4. Tekrar **Bütün günler**'e farklı bir tutar yaz → uygula.
+✅ 1.500 TL'nin altı reddedilir.
+✅ Liste bugün + 6 gün; her satırda tutar ve kaynağı: "her gün" / "her
+Cumartesi" / "yalnızca bu gün".
+✅ 2'de yalnızca o satır değişir; 3'te o satır "her <gün>" olur; 4'te
+**özel günler dahil** hepsi yeni tutara döner (ürün sahibinin kararı).
+✅ Bugünü değiştirince üstteki kartlar da değişir; bugünün bütçesi
+dağıtılmış kuponların altına indirilemez.
+✅ **Her gün kendiliğinden açılır**: panelden her gün kaydetmen gerekmez.
+✅ **Şu ana kadar açılan** (Ü288 — eski adı "Şu an dağıtılabilir"): bütçe
+çalışma saatlerinde kalabalığa göre gün boyu açılır; hiç harcama olmasa da
+sabah ya da gece küçük görünmesi normal. Altında "bugün kalan X TL".
+✅ **Haftalık bütçe** sayfanın en üstünde; günlerin **Değiştir** düğmesi
+siyah (Ü288). Çalışma saatleri artık Panel'in başında (0.3).
 ✅ **Yoğun saatlerin ve bugünkü dağıtım** (Ü281): açık saatlerin grafiği,
 en yoğun üç saat vurgulu ("en yoğun 16:00–19:00 · günün kalabalığının
 %X'i"), bu saate kadar açılan / dağıtılan, bugün 500'ü geçen tur ve
@@ -157,7 +172,8 @@ en yoğun üç saat vurgulu ("en yoğun 16:00–19:00 · günün kalabalığın�
 ✅ "500'ü geçen tur" kutusundaki **bugün beklenen ~N**, üstteki sayıdan hiç
 küçük olmaz (bugün kalabalıksa beklenen de artar).
 🔗 **Etki:** Bütçe biterse oyunda ödül paketi hiç çıkmaz, çark ödül
-vermez (5.3); kafe kapalıyken de öyle. Ben: dönemin tutarı kayıtta mı.
+vermez (5.3); kafe kapalıyken de öyle. Ben: planın kayıtları (güne özel,
+haftanın günü, her gün) ve bugünün dönemi.
 
 ### 1.7 · Karekod (Ü270)
 **Yap:** Karekod → **Yazdır**.
@@ -428,9 +444,12 @@ yerine bir bekleme cümlesi (bilerek, Ü97).
 → kasiyer PIN'i → **Giriş** → tarayıcı konum isterse **izin ver**.
 ✅ **"Kupon onayı"** ekranı: tarayıcı + bugünün özeti. Başka iş yok.
 ✅ Konum izni reddedilirse: "Kasaya girmek için konum izni gerekli…".
-✅ Kafenin yarıçapı dışında: "Kasaya yalnızca kafenin içinden girilebilir —
-en yakın kafeye X m uzaktasın." Konum bulanıksa "yeterince net değil".
-✅ Yanlış PIN: "PIN yanlış."; aynı telefondan 5 yanlıştan sonra "Çok fazla
+✅ Konum izni daha önce verildiyse tarayıcı bir daha sormaz; konum yine
+okunur.
+✅ Kafenin yarıçapı dışında, doğru PIN'le (Ü286): "Bu PIN'in geçerli olduğu
+kafeden (Kafe A) X m uzaktasın." Konum bulanıksa "yeterince net değil".
+✅ Yanlış PIN: kafenin içindeysen "PIN yanlış.", dışarıdaysan "PIN yanlış ya
+da kafenin içinde değilsin."; aynı telefondan 5 yanlıştan sonra "Çok fazla
 deneme".
 ⚠️ Bilgisayarda konum ±5 km yanılabiliyor (1.3) — kasayı telefon ya da
 tabletle dene.

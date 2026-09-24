@@ -78,12 +78,21 @@ async function kafeKur(ad: string, butceli: boolean): Promise<{ id: string; masa
         [rid, id, baslik, kurus],
       );
     }
-    if (butceli) {
-      const gun = isGunu();
+    // Ü286: bütçesi hiç açılmamış kafe artık yok — gün, kafenin günlük
+    // tutarıyla kendiliğinden açılıyor. "Bütçesiz" kafe, bütçesi TÜKENMİŞ
+    // kafe: en düşük günlük tutar (1.500 TL) tamamen bağlanmış.
+    const gun = isGunu();
+    const donem = newId("bp");
+    await db.query(
+      `INSERT INTO budget_periods (id, cafe_id, period_start, period_end, committed_kurus)
+       VALUES ($1,$2,$3,$4,$5)`,
+      [donem, id, gun, gunEkle(gun, 1), butceli ? 5_000_00 : 1_500_00],
+    );
+    if (!butceli) {
       await db.query(
-        `INSERT INTO budget_periods (id, cafe_id, period_start, period_end, committed_kurus)
-         VALUES ($1,$2,$3,$4,$5)`,
-        [newId("bp"), id, gun, gunEkle(gun, 1), 5_000_00],
+        `INSERT INTO budget_ledger (id, cafe_id, budget_period_id, kind, amount_kurus, note)
+         VALUES ($1,$2,$3,'reserve',150000,'test: tükenmiş bütçe')`,
+        [newId("bl"), id, donem],
       );
     }
   });
@@ -288,7 +297,8 @@ describe("paket kararı (odulSozuVer)", () => {
   });
 
   test("bütçe en ucuz ödüle yetmiyorsa paket yok", async () => {
-    // Bütçe dönemi hiç açılmamış kafe: dağıtılabilir tutar sıfır.
+    // Bütçesi tükenmiş kafe (Ü286'dan beri dönem kendiliğinden açılıyor):
+    // dağıtılabilir tutar sıfır.
     assert.equal(await karar({ playerId: null, cafeId: butcesizKafe }), false);
   });
 

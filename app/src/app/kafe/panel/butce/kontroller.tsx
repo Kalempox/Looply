@@ -1,28 +1,19 @@
 "use client";
 
-import { useActionState } from "react";
-import { butceEylemi, saatEylemi, type ButceDurumu } from "./actions";
+import { useActionState, useState } from "react";
+import { tumGunlerEylemi, gunEylemi, saatEylemi, type ButceDurumu } from "./actions";
 import { IsletmeDugme, IsletmeAlan, isletmeGirdi, IsletmeUyari } from "@/components/isletme";
 
 const BOS: ButceDurumu = {};
 
 /**
- * Bütçe formu.
+ * Bütün günlerin bütçesi — Ü287.
  *
  * Girdi **TL** cinsinden alınıyor, kuruşa sunucuda çevriliyor. Kafe sahibinin
- * kuruş düşünmesi gerekmiyor; sistemin tamsayı tutması gerekiyor. İkisi de
- * kendi tarafında doğru.
+ * kuruş düşünmesi gerekmiyor; sistemin tamsayı tutması gerekiyor.
  */
-export function ButceFormu({
-  mevcutTl,
-  tabanTl,
-  gunSayisi,
-}: {
-  mevcutTl: number | null;
-  tabanTl: number;
-  gunSayisi: number;
-}) {
-  const [durum, action, bekliyor] = useActionState(butceEylemi, BOS);
+export function TumGunlerFormu({ herGunTl }: { herGunTl: number }) {
+  const [durum, action, bekliyor] = useActionState(tumGunlerEylemi, BOS);
 
   return (
     <form action={action} className="space-y-4">
@@ -30,27 +21,115 @@ export function ButceFormu({
       {durum.bilgi && <IsletmeUyari tur="bilgi">{durum.bilgi}</IsletmeUyari>}
 
       <IsletmeAlan
-        etiket="Bu dönemin bütçesi (TL)"
-        ipucu={
-          gunSayisi === 7
-            ? `Alt sınır ${tabanTl.toLocaleString("tr-TR")} TL. Üst sınır yok.`
-            : `Bu dönem ${gunSayisi} gün — alt sınır orantılı olarak ${tabanTl.toLocaleString("tr-TR")} TL.`
-        }
+        etiket="Bütün günler (TL)"
+        ipucu="Özel ayarladığın günler dahil bütün günler bu tutara döner. En az 1.500 TL."
       >
         <input
           name="tutar"
           type="text"
           inputMode="numeric"
-          defaultValue={mevcutTl ?? tabanTl}
+          defaultValue={herGunTl}
           className={isletmeGirdi}
-          placeholder={String(tabanTl)}
         />
       </IsletmeAlan>
 
       <IsletmeDugme type="submit" disabled={bekliyor}>
-        {bekliyor ? "Kaydediliyor…" : mevcutTl ? "Bütçeyi güncelle" : "Bütçeyi belirle"}
+        {bekliyor ? "Kaydediliyor…" : "Bütün günlere uygula"}
       </IsletmeDugme>
     </form>
+  );
+}
+
+export type PlanSatiri = {
+  gun: string;
+  gunAdi: string;
+  tarihMetni: string;
+  tutarTl: number;
+  kaynak: "ozel" | "haftanin_gunu" | "her_gun";
+  bugunMu: boolean;
+};
+
+/** Bugün ve önümüzdeki altı gün — her satır ayrı değiştirilebiliyor (Ü287). */
+export function HaftalikPlan({ satirlar }: { satirlar: PlanSatiri[] }) {
+  return (
+    <ul className="divide-y divide-cizgi border-y border-cizgi">
+      {satirlar.map((s) => (
+        <PlanGunu key={s.gun} satir={s} />
+      ))}
+    </ul>
+  );
+}
+
+function PlanGunu({ satir }: { satir: PlanSatiri }) {
+  const [acik, setAcik] = useState(false);
+  const [durum, action, bekliyor] = useActionState(gunEylemi, BOS);
+  const kaynak =
+    satir.kaynak === "ozel"
+      ? "yalnızca bu gün"
+      : satir.kaynak === "haftanin_gunu"
+        ? `her ${satir.gunAdi}`
+        : "her gün";
+
+  return (
+    <li className="py-3.5">
+      <div className="flex items-center justify-between gap-3">
+        <span>
+          <span className="block text-[15px] font-semibold">
+            {satir.bugunMu ? "Bugün · " : ""}
+            {satir.gunAdi}{" "}
+            <span className="font-data text-[12px] font-normal text-yazi-sonuk">{satir.tarihMetni}</span>
+          </span>
+          <span className="block text-[12px] text-yazi-sonuk">{kaynak}</span>
+        </span>
+        <span className="flex items-center gap-3">
+          <span className="font-data text-[16px] font-bold tabular">
+            {satir.tutarTl.toLocaleString("tr-TR")} TL
+          </span>
+          {/* Ü288: ürün sahibi "daha belirgin olsun, siyah buton olabilir" dedi. */}
+          <button
+            type="button"
+            onClick={() => setAcik(!acik)}
+            className={
+              acik
+                ? "rounded-lg border border-cizgi px-4 py-2 text-[13px] font-semibold text-yazi"
+                : "rounded-lg bg-yazi px-4 py-2 text-[13px] font-semibold text-zemin hover:opacity-90"
+            }
+          >
+            {acik ? "Kapat" : "Değiştir"}
+          </button>
+        </span>
+      </div>
+
+      {acik && (
+        <form action={action} className="mt-3 space-y-3">
+          {durum.hata && <IsletmeUyari>{durum.hata}</IsletmeUyari>}
+          {durum.bilgi && <IsletmeUyari tur="bilgi">{durum.bilgi}</IsletmeUyari>}
+          <input type="hidden" name="gun" value={satir.gun} />
+          <IsletmeAlan etiket="Tutar (TL)">
+            <input
+              name="tutar"
+              type="text"
+              inputMode="numeric"
+              defaultValue={satir.tutarTl}
+              className={isletmeGirdi}
+            />
+          </IsletmeAlan>
+          <fieldset className="flex flex-wrap gap-x-5 gap-y-2 text-[14px]">
+            <label className="flex items-center gap-2">
+              <input type="radio" name="kapsam" value="tarih" defaultChecked />
+              Yalnızca {satir.tarihMetni}
+            </label>
+            <label className="flex items-center gap-2">
+              <input type="radio" name="kapsam" value="hafta" />
+              Her {satir.gunAdi}
+            </label>
+          </fieldset>
+          <IsletmeDugme type="submit" disabled={bekliyor}>
+            {bekliyor ? "Kaydediliyor…" : "Kaydet"}
+          </IsletmeDugme>
+        </form>
+      )}
+    </li>
   );
 }
 

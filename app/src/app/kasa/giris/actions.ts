@@ -1,25 +1,31 @@
 "use server";
 
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import * as oturum from "@/domain/session";
-import { pinGiris, konumdakiKafe } from "@/domain/staff";
+import { kasaGirisi } from "@/domain/staff";
 import { identifierHash } from "@/lib/crypto";
 import { log } from "@/lib/log";
 
 export type KasaGirisDurumu = { hata?: string; kafeAdi?: string };
 
 /**
+ * Bu cihazın en son girdiği kafe — Ü286.
+ *
+ * Yalnızca bir **ipucu**: PIN'in kafesini bulup "bu PIN'in geçerli olduğu
+ * kafeden X uzaktasın" diyebilmek için. Kapı değil — giriş yine konum ve
+ * PIN'le; uydurulmuş bir ipucu yalnızca o kafenin PIN sayacını tüketir.
+ */
+const IPUCU_CEREZI = "kasa_kafe";
+
+/**
  * Kasiyer girişi — Ü285: PIN ve konum.
  *
  * Ürün sahibi: *"kasiyer her cihazdan girebilir ama cihazın kafe konumunun
- * içinde olması gerekir."* Cihaz kaydı (G11) kalktı; iki şart kaldı: konum
- * kafenin yarıçapında, PIN o kafenin kasiyerlerinden birinin.
- *
- * Kafe kimliği formdan gelmiyor, **konumdan çözülüyor**. Kasiyerin her
- * vardiya başında kafe seçmesi, üç saniyede bitmesi gereken akışa gereksiz
- * bir adım eklerdi; ayrıca formdan gelen bir kafe kimliği, başka kafenin
- * kasasına PIN denemenin kapısı olurdu.
+ * içinde olması gerekir."* Cihaz kaydı (G11) kalktı; kararı
+ * `staff.kasaGirisi` veriyor — kafe formdan değil konumdan ve PIN'den
+ * çözülüyor. Formdan gelen bir kafe kimliği, başka kafenin kasasına PIN
+ * denemenin kapısı olurdu.
  *
  * Koordinat loglanmıyor ve saklanmıyor (G10) — yalnızca mesafe.
  */
@@ -38,43 +44,52 @@ export async function girisEylemi(
     return { hata: "Konumun okunamadı. Konum iznini ver ve kafenin içinde tekrar dene." };
   }
 
-  const yer = await konumdakiKafe(lat, lng, Number.isFinite(dogruluk) ? dogruluk : undefined);
-  if (yer.durum === "belirsiz") {
-    return {
-      hata: "Konumun yeterince net değil. Birkaç saniye bekleyip, mümkünse pencereye yakın bir yerde tekrar dene.",
-    };
-  }
-  if (yer.durum === "yok") {
-    return {
-      hata:
-        yer.enYakinM != null
-          ? `Kasaya yalnızca kafenin içinden girilebilir — en yakın kafeye ${mesafeMetni(yer.enYakinM)} uzaktasın.`
-          : "Kasaya yalnızca kafenin içinden girilebilir — yakınında bir Looply kafesi yok.",
-    };
-  }
-
   const h = await headers();
   const ip = h.get("x-forwarded-for")?.split(",")[0].trim() ?? h.get("x-real-ip") ?? "ip-yok";
-  const sonuc = await pinGiris({
-    cafeId: yer.cafeId,
+  const cerezler = await cookies();
+
+  const karar = await kasaGirisi({
+    lat,
+    lng,
+    dogrulukM: Number.isFinite(dogruluk) ? dogruluk : undefined,
     pin,
     ipAnahtari: identifierHash(`kasa-ip:${ip}`).subarray(0, 8).toString("hex"),
+    ipucu: cerezler.get(IPUCU_CEREZI)?.value ?? null,
   });
 
-  if (sonuc.durum === "kilitli") {
-    return { hata: "Çok fazla deneme. Bir süre bekle." };
-  }
-  if (sonuc.durum === "yanlis") {
-    return { hata: "PIN yanlış.", kafeAdi: yer.ad };
+  switch (karar.durum) {
+    case "kilitli":
+      return { hata: "Çok fazla deneme. Bir süre bekle." };
+    case "kafe_yok":
+      return { hata: "Kasaya yalnızca kafenin içinden girilebilir — yakınında bir Looply kafesi yok." };
+    case "belirsiz":
+      return {
+        hata: "Konumun yeterince net değil. Birkaç saniye bekleyip, mümkünse pencereye yakın bir yerde tekrar dene.",
+      };
+    case "uzak":
+      return {
+        hata: `Bu PIN'in geçerli olduğu kafeden (${karar.kafeAdi}) ${mesafeMetni(karar.mesafeM)} uzaktasın. Kasaya kafenin içinden girilir.`,
+      };
+    case "yanlis":
+      return karar.kafede
+        ? { hata: "PIN yanlış.", kafeAdi: karar.kafeAdi }
+        : { hata: "PIN yanlış ya da kafenin içinde değilsin." };
   }
 
-  log.info("kasa girisi", { mesafeM: yer.mesafeM });
+  log.info("kasa girisi", { mesafeM: karar.mesafeM });
   await oturum.olustur({
     ozneTipi: "staff",
-    ozneId: sonuc.staffId,
+    ozneId: karar.staffId,
     rol: "kasiyer",
-    cafeId: yer.cafeId,
+    cafeId: karar.cafeId,
     cihazId,
+  });
+  cerezler.set(IPUCU_CEREZI, karar.cafeId, {
+    httpOnly: true,
+    secure: true,
+    sameSite: "lax",
+    path: "/kasa",
+    maxAge: 180 * 86_400,
   });
 
   redirect("/kasa");

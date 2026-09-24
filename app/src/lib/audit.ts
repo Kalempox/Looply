@@ -18,6 +18,8 @@ export type Islem =
   | "coupon.undo"
   | "budget.create"
   | "budget.update"
+  // Ü287: haftalık plan — bir gün, haftanın bir günü ya da bütün günler.
+  | "budget.plan"
   | "campaign.create"
   | "campaign.publish"
   | "campaign.stop"

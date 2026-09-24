@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { withCafe } from "@/db/context";
 import { kafeYoneticisiGerekli } from "@/domain/yetki";
 import * as oturum from "@/domain/session";
-import { durum as butceDurumu } from "@/domain/butce";
+import { durum as butceDurumu, saatYaz } from "@/domain/butce";
 import * as panel from "@/domain/panel";
 import * as rapor from "@/domain/rapor";
 import { bugunBeklenen } from "@/domain/beklenen";
@@ -12,6 +12,7 @@ import { panelDurumu } from "@/domain/panel-durum";
 import { subeler as subeleriBul } from "@/domain/cafe";
 import { isletmeTuru } from "@/domain/cark-kosul";
 import { PanelKabugu, DurumKartlari } from "./kabuk";
+import { SaatFormu } from "./butce/kontroller";
 import { isGunu, gunEkle, gunYaz } from "@/lib/tarih";
 import { SayiKarti, IKON, type Alan } from "@/components/gosterge";
 import {
@@ -153,6 +154,30 @@ export default async function KafePaneli({
         </div>
       )}
 
+      {/* ── Çalışma saatleri (Ü288) ──────────────────────
+          Ürün sahibi: *"kafenin açılış saati panel kısmında olmalı, bu temel
+          bir şey — ben zor buluyorum, müşteri hiç bulamaz."* Bütçe sayfasının
+          dibindeydi. Ödül ve bütçe yalnızca bu saatlerde dağıtılıyor (Ü90),
+          yani yanlış saat "kupon neden çıkmıyor"un en sık sebebi. */}
+      <section
+        id="calisma-saatleri"
+        className="mb-8 scroll-mt-6 rounded-2xl border border-cizgi bg-yuzey p-5"
+      >
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="text-[16px] font-semibold">Çalışma saatlerin</h2>
+          <span className="font-data text-[18px] font-bold tabular">
+            {saatYaz(butce.pencere.baslangic)}–{saatYaz(butce.pencere.bitis)}
+          </span>
+        </div>
+        <p className="mt-1 mb-4 text-[13px] text-yazi-sonuk">
+          Ödül ve bütçe yalnızca bu saatlerde dağıtılır; kapanıştan sonra son masanın oyununu
+          bitirmesi için yarım saat açık kalır.
+        </p>
+        <div className="max-w-md">
+          <SaatFormu acilis={butce.pencere.baslangic} kapanis={butce.pencere.bitis} />
+        </div>
+      </section>
+
       {/* ── Bugünün özeti (Ü99) ──────────────────────────
           Kafe sahibinin ekranı açtığında sorduğu beş soru, beş kart:
           kaç kişi oynadı · kaç kupon kullanıldı · ne kadar indirim
@@ -170,37 +195,30 @@ export default async function KafePaneli({
             ikon={IKON.kisi}
             alan="kisi"
           />
-          {/* Bu iki kart düne göre değişimi de taşıyor: `panel.ozet`
-              onları zaten günlük ölçüyor. Diğer üçünün günlük serisi yok
-              ve uydurmak yerine boş bırakılıyor. */}
+          {/* Ü289: ürün sahibi "dağıtılan ve kullanılan kupon tutarları
+              yazmalı — dağıtılan yazmıyor" dedi. Önce "Kullanılan kupon"
+              (adet) ve "Verilen indirim" (kasada ödenen TL) vardı; dağıtılan
+              hiç yoktu ve "verilen" kelimesi dağıtılan gibi okunuyordu.
+              Kullanılan kart düne göre değişimi de taşıyor (`panel.ozet`
+              onu günlük ölçüyor); dağıtılanın günlük serisi yok. */}
           <SayiKarti
-            etiket="Kullanılan kupon"
-            deger={String(bugunku.kuponKullanilan)}
-            alt={
-              bugunku.tekilOyuncu > 0
-                ? `oynayanın %${Math.round((bugunku.kuponKullanilan / bugunku.tekilOyuncu) * 100)}'i`
-                : "kasada onaylanan"
-            }
-            degisim={gosterge.kuponKullanilan.degisim}
-            seri={gosterge.kuponKullanilan.seri}
+            etiket="Dağıtılan kupon"
+            deger={`${tlYaz(bugunku.kazanilanIndirimKurus)} TL`}
+            alt={`${bugunku.kuponVerilen} kupon · bütçeden bağlanan`}
             ikon={IKON.kupon}
             alan="odul"
-            yol="/kafe/panel/rapor"
+            yol="/kafe/panel/butce"
           />
           <SayiKarti
-            etiket="Verilen indirim"
+            etiket="Kullanılan kupon"
             deger={`${tlYaz(bugunku.kullanilanIndirimKurus)} TL`}
-            alt={
-              bugunku.kuponKullanilan > 0
-                ? `kupon başına ${tlYaz(Math.round(bugunku.kullanilanIndirimKurus / bugunku.kuponKullanilan))} TL`
-                : "fiilen ödediğin"
-            }
+            alt={`${bugunku.kuponKullanilan} kupon · kasada ödenen`}
             degisim={gosterge.kullanilanKurus.degisim}
             seri={gosterge.kullanilanKurus.seri}
             ikon={IKON.para}
             alan="para"
             vurgulu
-            yol="/kafe/panel/butce"
+            yol="/kafe/panel/rapor"
           />
           {/* ⚠️ Ü30: küçük sayılarda kişi işaret edilebiliyor; rapor o
               durumda null dönüyor ve panel de saklıyor. */}

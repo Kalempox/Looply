@@ -73,6 +73,7 @@ const KAFE_TABLOLARI = [
   "referrals",
   "cafe_documents",
   "cafe_config",
+  "butce_gun_ozel",
   "budget_periods",
   "cafe_tables",
   "staff",

@@ -7,7 +7,7 @@ import { closePools } from "@/db/pool";
 import { newId } from "@/lib/ids";
 import { LIMITS } from "@/lib/ratelimit";
 import * as ayar from "@/domain/ayar";
-import { konumdakiKafe, personelEkle, pinGiris } from "@/domain/staff";
+import { kasaGirisi, konumdakiKafe, personelEkle, pinGiris } from "@/domain/staff";
 import { testKafeleriniSil } from "./_yardim";
 
 /**
@@ -110,11 +110,11 @@ describe("kasa girişi — PIN taraması (Ü285)", () => {
 
     const tavan = LIMITS.pin_per_cafe_hour.hits;
     for (let i = 0; i < tavan; i++) {
-      const r = await pinGiris({ cafeId: kafe, pin: String(1000 + i), ipAnahtari: `tarama-${i}` });
+      const r = await pinGiris({ cafeIdler: [kafe], pin: String(1000 + i), ipAnahtari: `tarama-${i}` });
       assert.equal(r.durum, "yanlis", `${i + 1}. deneme`);
     }
     // Yeni bir IP'den, üstelik DOĞRU PIN'le bile kapı kapalı.
-    const r = await pinGiris({ cafeId: kafe, pin: "5820", ipAnahtari: "tarama-yeni" });
+    const r = await pinGiris({ cafeIdler: [kafe], pin: "5820", ipAnahtari: "tarama-yeni" });
     assert.equal(r.durum, "kilitli");
   });
 
@@ -123,8 +123,68 @@ describe("kasa girişi — PIN taraması (Ü285)", () => {
     await personelEkle({ cafeId: kafe, ad: "TEST Kasiyer", pin: "5820", ekleyenId: "stf_test_u285" });
     const ip = `tek-ip-${randomInt(1_000_000)}`;
     for (let i = 0; i < LIMITS.pin_per_ip_15min.hits; i++) {
-      assert.equal((await pinGiris({ cafeId: kafe, pin: String(2000 + i), ipAnahtari: ip })).durum, "yanlis");
+      assert.equal((await pinGiris({ cafeIdler: [kafe], pin: String(2000 + i), ipAnahtari: ip })).durum, "yanlis");
     }
-    assert.equal((await pinGiris({ cafeId: kafe, pin: "5820", ipAnahtari: ip })).durum, "kilitli");
+    assert.equal((await pinGiris({ cafeIdler: [kafe], pin: "5820", ipAnahtari: ip })).durum, "kilitli");
+  });
+});
+
+/**
+ * Ü286 — ürün sahibi: *"'en yakın kafeye X m uzaktasın' değil, bu PIN'in
+ * geçerli olduğu kafeden uzaktasın demeli."* Kafeler öbür testlerden 60 km
+ * doğuda: onların kafe sayaçları burada karışmasın.
+ */
+describe("kasa girişi — PIN'in kafesi (Ü286)", () => {
+  const BAZ_LNG = MERKEZ_LNG + dogu(60_000);
+  const C_PIN = "4617";
+  let kafeC = "";
+  let kafeD = "";
+  let kafeCAdi = "";
+  const ip = () => `ipucu-${randomInt(1_000_000_000)}`;
+  const giris = (lat: number, lng: number, pin: string, ipucu?: string) =>
+    kasaGirisi({ lat, lng, dogrulukM: 10, pin, ipAnahtari: ip(), ipucu });
+
+  before(async () => {
+    kafeC = await kafeAc({ lat: MERKEZ_LAT, lng: BAZ_LNG });
+    kafeD = await kafeAc({ lat: MERKEZ_LAT, lng: BAZ_LNG + dogu(120) });
+    kafeCAdi = `KasaTest ${kafeC.slice(-5)}`;
+    await personelEkle({ cafeId: kafeC, ad: "TEST C Kasiyeri", pin: C_PIN, ekleyenId: "stf_test_u286" });
+    await personelEkle({ cafeId: kafeD, ad: "TEST D Kasiyeri", pin: "7304", ekleyenId: "stf_test_u286" });
+  });
+
+  test("🔴 kafenin içinde doğru PIN: giriş o kafeye", async () => {
+    const r = await giris(MERKEZ_LAT + kuzey(30), BAZ_LNG, C_PIN);
+    assert.equal(r.durum, "giris");
+    assert.equal(r.durum === "giris" && r.cafeId, kafeC);
+  });
+
+  test("🔴 PIN doğru, kafenin dışındasın: PIN'in kafesi ve mesafesi söyleniyor", async () => {
+    const r = await giris(MERKEZ_LAT - kuzey(1000), BAZ_LNG, C_PIN);
+    assert.equal(r.durum, "uzak");
+    assert.equal(r.durum === "uzak" && r.kafeAdi, kafeCAdi);
+    assert.ok(r.durum === "uzak" && Math.abs(r.mesafeM - 1000) <= 5, JSON.stringify(r));
+  });
+
+  test("🔴 komşu kafenin içindesin ama PIN bu kafenin: bu kafenin adı söyleniyor", async () => {
+    // D'ye 100 m (içinde), C'ye 220 m (dışında); PIN C'nin.
+    const r = await giris(MERKEZ_LAT, BAZ_LNG + dogu(220), C_PIN);
+    assert.equal(r.durum, "uzak");
+    assert.equal(r.durum === "uzak" && r.kafeAdi, kafeCAdi);
+  });
+
+  test("uzaktaki kafe, cihazın son girdiği kafeden (ipucu) bulunuyor", async () => {
+    // 100 km güneyde, çevrede hiç kafe yok.
+    const uzakLat = MERKEZ_LAT - kuzey(100_000);
+    assert.equal((await giris(uzakLat, BAZ_LNG, C_PIN)).durum, "kafe_yok");
+    const r = await giris(uzakLat, BAZ_LNG, C_PIN, kafeC);
+    assert.equal(r.durum === "uzak" && r.kafeAdi, kafeCAdi);
+    assert.ok(r.durum === "uzak" && r.mesafeM > 99_000);
+  });
+
+  test("yanlış PIN: kafenin içindeyken 'yanlış', dışarıdayken iddia yok", async () => {
+    const icerde = await giris(MERKEZ_LAT + kuzey(30), BAZ_LNG, "9182");
+    assert.deepEqual(icerde.durum === "yanlis" && icerde.kafede, true);
+    const disarda = await giris(MERKEZ_LAT - kuzey(1000), BAZ_LNG, "9182");
+    assert.deepEqual(disarda.durum === "yanlis" && disarda.kafede, false);
   });
 });

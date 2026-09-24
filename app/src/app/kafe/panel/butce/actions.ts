@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { kafeYoneticisiGerekli } from "@/domain/yetki";
-import { donemBelirle } from "@/domain/butce";
+import { tumGunleriBelirle, gunuBelirle, GUN_ADLARI, haftaninGunu } from "@/domain/butce";
 import * as ayar from "@/domain/ayar";
 
 export type ButceDurumu = { hata?: string; bilgi?: string };
@@ -50,50 +50,65 @@ export async function saatEylemi(_onceki: ButceDurumu, form: FormData): Promise<
   if (!k.ok) return { hata: k.hata };
 
   revalidatePath("/kafe/panel/butce");
+  revalidatePath("/kafe/panel");
   return { bilgi: `Çalışma saatleri ${acilis}:00–${kapanis}:00 olarak kaydedildi.` };
 }
 
 /**
- * Haftalık bütçeyi belirler.
+ * Bütün günlerin bütçesi — Ü287.
  *
- * `cafeId` **oturumdan** geliyor (değişmez kural #3). Form alanından gelseydi,
- * bir kafe yöneticisi başka kafenin bütçesini değiştirebilirdi.
+ * Ürün sahibi: *"her gün her gün bütçe belirlemek zorunda kalmasın; tüm
+ * hafta için bütçe belirleme olsun."* Girilen tutar her günün tutarı olur
+ * ve **özel ayarlanmış günler dahil** bütün günler ona döner (kararı). Bugün
+ * de hemen değişiyor; dağıtılmış kuponların altına inilemiyor.
  *
- * Kafenin onay tarihi de sunucuda okunuyor: orantılı ilk dönemin (Ü25)
- * dayanağı o tarih ve istemciden gelmemeli.
+ * Kafe kimliği ve aktör oturumdan — formdan gelseydi bir kafe yöneticisi
+ * başka kafenin bütçesini değiştirebilirdi.
  */
-export async function butceEylemi(_onceki: ButceDurumu, form: FormData): Promise<ButceDurumu> {
+export async function tumGunlerEylemi(_onceki: ButceDurumu, form: FormData): Promise<ButceDurumu> {
   const o = await kafeYoneticisiGerekli();
+  const tutarTl = tlOku(form);
+  if (tutarTl === null) return { hata: "Geçerli bir tutar gir." };
 
-  const ham = String(form.get("tutar") ?? "").replace(/[^\d]/g, "");
-  if (!ham) return { hata: "Bir tutar gir." };
-
-  const tutarTl = Number(ham);
-  if (!Number.isFinite(tutarTl) || tutarTl <= 0) return { hata: "Geçerli bir tutar gir." };
-  if (tutarTl > 1_000_000) return { hata: "Bu tutar fazla yüksek görünüyor — kontrol et." };
-
-  // Ü45: girilen tutar hem BUGÜNÜN dönemine yazılıyor hem de kafenin
-  // varsayılan günlük bütçesi olarak saklanıyor. İkincisi olmasa kafe her
-  // sabah yeniden bütçe girmek zorunda kalırdı.
-  const sonuc = await donemBelirle({
-    cafeId: o.cafeId,
-    taahhutKurus: tutarTl * 100,
-    aktorId: o.ozneId,
-  });
-
-  if (sonuc.ok) {
-    await ayar.sayiYaz({
-      cafeId: o.cafeId,
-      anahtar: ayar.ANAHTARLAR.gunlukButce,
-      deger: tutarTl * 100,
-      aktorId: o.ozneId,
-    });
-  }
+  const s = await tumGunleriBelirle({ cafeId: o.cafeId, tutarKurus: tutarTl * 100, aktorId: o.ozneId });
+  if (!s.ok) return { hata: s.hata };
 
   revalidatePath("/kafe/panel/butce");
   revalidatePath("/kafe/panel");
+  return {
+    bilgi: `Bütün günler ${tutarTl.toLocaleString("tr-TR")} TL. Her gün kendiliğinden açılır — yalnızca kasada onaylanan kupon düşer.`,
+  };
+}
 
-  return sonuc.ok
-    ? { bilgi: "Günlük bütçe kaydedildi. Kullanılmayan kuponun maliyeti yok — yalnızca kasada onaylanan düşer." }
-    : { hata: sonuc.hata };
+/**
+ * Tek bir günün bütçesi — "yalnızca bu tarih" ya da "her <gün>" (Ü287).
+ */
+export async function gunEylemi(_onceki: ButceDurumu, form: FormData): Promise<ButceDurumu> {
+  const o = await kafeYoneticisiGerekli();
+  const tutarTl = tlOku(form);
+  if (tutarTl === null) return { hata: "Geçerli bir tutar gir." };
+
+  const gun = String(form.get("gun") ?? "");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(gun)) return { hata: "Gün okunamadı. Sayfayı yenile." };
+  const kapsam = form.get("kapsam") === "hafta" ? "hafta" : "tarih";
+
+  const s = await gunuBelirle({ cafeId: o.cafeId, gun, tutarKurus: tutarTl * 100, kapsam, aktorId: o.ozneId });
+  if (!s.ok) return { hata: s.hata };
+
+  revalidatePath("/kafe/panel/butce");
+  revalidatePath("/kafe/panel");
+  const tl = tutarTl.toLocaleString("tr-TR");
+  return {
+    bilgi:
+      kapsam === "hafta"
+        ? `Her ${GUN_ADLARI[haftaninGunu(gun) - 1]} ${tl} TL.`
+        : `${gun.split("-").reverse().join(".")} için ${tl} TL — yalnızca o gün.`,
+  };
+}
+
+function tlOku(form: FormData): number | null {
+  const ham = String(form.get("tutar") ?? "").replace(/[^\d]/g, "");
+  const tutarTl = Number(ham);
+  if (!ham || !Number.isFinite(tutarTl) || tutarTl <= 0 || tutarTl > 1_000_000) return null;
+  return tutarTl;
 }

@@ -77,6 +77,7 @@ export default async function RaporSayfasi({
     kullanim,
     getiri,
     donus,
+    onaylar,
   ] = await Promise.all([
     rapor.ozet(o.cafeId, aralik),
     rapor.ziyaretler(o.cafeId, aralik),
@@ -87,6 +88,8 @@ export default async function RaporSayfasi({
     rapor.kuponKullanimi(o.cafeId, aralik),
     rapor.getiri(o.cafeId, aralik, adisyonKurus),
     tekrarZiyaret(o.cafeId),
+    // Ü289: her onay — ürün, saat-dakika, kasiyer.
+    rapor.kasaOnaylari(o.cafeId, aralik, 300),
   ]);
 
   // Faz 8 güvenlik kapısı: her rapor görüntüleme denetim izine düşer.
@@ -500,6 +503,59 @@ export default async function RaporSayfasi({
           </ul>
         </Bolum>
       )}
+
+      {/* ── Kasa onayları (Ü289) ────────────────────────
+          Ürün sahibi: "tüm onaylarda ürün, saat, dakika ve hangi kasiyer
+          olduğu yazmalı." Kuponun kendi satırında hepsi vardı; eksik olan
+          bu listeydi. Seçili tarih aralığı, en yeniden eskiye. */}
+      <Bolum
+        baslik={onaylar.length > 0 ? `Kasa onayları · ${onaylar.length}` : "Kasa onayları"}
+        alt="Kasada onaylanan her kupon: ne zaman, hangi ödül, hangi kasiyer."
+      >
+        {onaylar.length === 0 ? (
+          <p className="text-[14px] text-yazi-sonuk">Bu dönemde kasada onay yok.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-[13px]">
+              <thead>
+                <tr className="etiket-caps border-b border-cizgi text-left text-[10px] text-yazi-sonuk">
+                  <th className="py-2 pr-4">Zaman</th>
+                  <th className="py-2 pr-4">Ödül</th>
+                  <th className="py-2 pr-4">Ürün</th>
+                  <th className="py-2 pr-4">Kasiyer</th>
+                  <th className="py-2 pr-4">Müşteri</th>
+                  <th className="py-2 text-right">Tutar</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-cizgi">
+                {onaylar.map((x, i) => (
+                  <tr key={i}>
+                    <td className="py-2 pr-4 text-yazi-sonuk tabular">
+                      {x.zaman.toLocaleString("tr-TR", {
+                        day: "numeric",
+                        month: "short",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        timeZone: "Europe/Istanbul",
+                      })}
+                    </td>
+                    <td className="py-2 pr-4">{x.odul}</td>
+                    <td className="py-2 pr-4 text-yazi-sonuk">{x.urun ?? "—"}</td>
+                    <td className="py-2 pr-4">{x.kasiyer}</td>
+                    <td className="py-2 pr-4 font-data">{x.musteri}</td>
+                    <td className="py-2 text-right font-data tabular">{tl(x.tutarKurus)} TL</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        {onaylar.length === 300 && (
+          <p className="mt-3 text-[12px] text-yazi-sonuk">
+            En yeni 300 onay gösteriliyor — daha eskisi için aralığı daralt ya da dışa aktar.
+          </p>
+        )}
+      </Bolum>
 
       {/* ── Kim ne kullandı ────────────────────────────── */}
       {kullanim.length > 0 && (

@@ -46,6 +46,18 @@ export const ANAHTARLAR = {
    */
   gunlukButce: "gunluk_butce_kurus",
   /**
+   * Ü287: haftanın gününe göre bütçe — ISO gün (1 pazartesi … 7 pazar).
+   * Yazılmamışsa `gunlukButce` geçerli (`butce.planIle`); o yüzden
+   * `sayiOku` değil `varsaOku` ile okunuyor.
+   */
+  butceGun1: "gunluk_butce_gun_1",
+  butceGun2: "gunluk_butce_gun_2",
+  butceGun3: "gunluk_butce_gun_3",
+  butceGun4: "gunluk_butce_gun_4",
+  butceGun5: "gunluk_butce_gun_5",
+  butceGun6: "gunluk_butce_gun_6",
+  butceGun7: "gunluk_butce_gun_7",
+  /**
    * Bir müşterinin ortalama hesabı (kuruş).
    *
    * Yalnızca **raporun getiri tahmininde** kullanılıyor: "bu kadar ziyaret
@@ -195,6 +207,14 @@ export const SINIRLAR: Record<Anahtar, { en_az: number; en_cok: number; varsayil
   // Alt sınır Ü45'in günlük tabanı; üst sınır yok denecek kadar yüksek
   // tutuluyor — kafenin ne kadar dağıtacağı bizim kararımız değil.
   [ANAHTARLAR.gunlukButce]: { en_az: 1_500_00, en_cok: 100_000_00, varsayilan: 1_500_00 },
+  // Ü287: haftanın günleri her günün sınırlarıyla aynı.
+  [ANAHTARLAR.butceGun1]: { en_az: 1_500_00, en_cok: 100_000_00, varsayilan: 1_500_00 },
+  [ANAHTARLAR.butceGun2]: { en_az: 1_500_00, en_cok: 100_000_00, varsayilan: 1_500_00 },
+  [ANAHTARLAR.butceGun3]: { en_az: 1_500_00, en_cok: 100_000_00, varsayilan: 1_500_00 },
+  [ANAHTARLAR.butceGun4]: { en_az: 1_500_00, en_cok: 100_000_00, varsayilan: 1_500_00 },
+  [ANAHTARLAR.butceGun5]: { en_az: 1_500_00, en_cok: 100_000_00, varsayilan: 1_500_00 },
+  [ANAHTARLAR.butceGun6]: { en_az: 1_500_00, en_cok: 100_000_00, varsayilan: 1_500_00 },
+  [ANAHTARLAR.butceGun7]: { en_az: 1_500_00, en_cok: 100_000_00, varsayilan: 1_500_00 },
   // Bir kahveden ucuz olamaz, bir masanın toplam hesabından pahalı olmasın.
   [ANAHTARLAR.ortalamaAdisyon]: { en_az: 20_00, en_cok: 5_000_00, varsayilan: 150_00 },
   // Ü52: ödül aralığı 25-50 TL olduğu için çarkın tavanı da o aralıkta.
@@ -258,6 +278,23 @@ export async function sayiOku(cafeId: string, anahtar: Anahtar): Promise<number>
   // Bozuk değer varsayılana düşüyor: ayar tablosu yüzünden ödül dağıtımı
   // durmamalı. Kayıt bozuksa görülmesi gereken yer panel, kasa değil.
   if (!Number.isFinite(n) || !Number.isInteger(n)) return sinir.varsayilan;
+  return Math.min(sinir.en_cok, Math.max(sinir.en_az, n));
+}
+
+/**
+ * Kafe bu ayarı yazdıysa değeri, yazmadıysa `null` — Ü287.
+ *
+ * `sayiOku` yazılmamışı varsayılana çeviriyor; haftanın günü tutarında
+ * "yazılmamış" ile "1.500 yazılmış" ayrı şeyler (yazılmamışsa her günün
+ * tutarı geçerli).
+ */
+export async function varsaOku(cafeId: string, anahtar: Anahtar): Promise<number | null> {
+  const sinir = SINIRLAR[anahtar];
+  const r = await withCafe(cafeId, (db) =>
+    db.one<{ value: string }>(`SELECT value FROM cafe_config WHERE key = $1`, [anahtar]),
+  );
+  const n = Number(r?.value);
+  if (!r || !Number.isFinite(n) || !Number.isInteger(n)) return null;
   return Math.min(sinir.en_cok, Math.max(sinir.en_az, n));
 }
 

@@ -1,13 +1,15 @@
+import Link from "next/link";
 import { kafeYoneticisiGerekli } from "@/domain/yetki";
-import { durum, donemAraligi, tabanKurus, sonYediGun } from "@/domain/butce";
-import { odulDokumu } from "@/domain/kupon";
+import { durum, sonYediGun, haftalikPlan, GUN_ADLARI, saatYaz } from "@/domain/butce";
+import { odulDokumu, acikKuponYuku } from "@/domain/kupon";
+import { kasaOnaylari } from "@/domain/rapor";
 import * as happy from "@/domain/happy";
 import { bakim } from "@/domain/bakim";
 import { dagitimPlani, type DagitimPlani } from "@/domain/dagitim-plani";
-import { isGunu, istanbulDakikasi } from "@/lib/tarih";
+import { istanbulDakikasi, isGunu, gunEkle } from "@/lib/tarih";
 import { IsletmeSayfa, IsletmeBaslik, Bolum } from "@/components/isletme";
 import { SayiKarti, Halka, IKON } from "@/components/gosterge";
-import { ButceFormu, SaatFormu } from "./kontroller";
+import { TumGunlerFormu, HaftalikPlan, type PlanSatiri } from "./kontroller";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Günlük bütçe · Looply" };
@@ -30,17 +32,42 @@ export default async function ButceSayfasi() {
   // gösterdiği için iadeyi okumadan önce çalıştırıyoruz.
   await bakim();
 
-  const [d, yedi, dagitim, hhHavuz, plan] = await Promise.all([
+  const bugun = isGunu();
+  const [d, yedi, dagitim, hhHavuz, plan, hafta, acikYuk, onaylar] = await Promise.all([
     durum(o.cafeId),
     sonYediGun(o.cafeId),
     odulDokumu(o.cafeId),
     happy.bugunkuHavuzKurus(o.cafeId),
     // Ü281: bütçe kafenin kalabalığına göre dağıtılıyor — ekran bunu gösteriyor.
     dagitimPlani(o.cafeId),
+    // Ü287: bugün ve önümüzdeki altı gün — her gün kendiliğinden açılıyor.
+    haftalikPlan(o.cafeId),
+    // Ü289: önceki günlerden açık kuponlar ve bugünün onay defteri.
+    acikKuponYuku(o.cafeId),
+    kasaOnaylari(o.cafeId, { baslangic: bugun, bitis: gunEkle(bugun, 1) }, 100),
   ]);
-  const aralik = donemAraligi(isGunu());
-  const taban = d.donem?.tabanKurus ?? tabanKurus(aralik.gunSayisi);
-  const gunSayisi = d.donem?.gunSayisi ?? aralik.gunSayisi;
+  const gunMetni = (gun: string) =>
+    gun === bugun
+      ? "Bugün"
+      : new Date(`${gun}T12:00:00Z`).toLocaleDateString("tr-TR", {
+          day: "numeric",
+          month: "long",
+          weekday: "short",
+          timeZone: "Europe/Istanbul",
+        });
+  const planSatirlari: PlanSatiri[] = hafta.gunler.map((g) => ({
+    gun: g.gun,
+    gunAdi: GUN_ADLARI[g.haftaninGunu - 1],
+    // 12:00 UTC: gün sınırından uzak, saat dilimi günü kaydırmıyor.
+    tarihMetni: new Date(`${g.gun}T12:00:00Z`).toLocaleDateString("tr-TR", {
+      day: "numeric",
+      month: "long",
+      timeZone: "Europe/Istanbul",
+    }),
+    tutarTl: Math.round(g.tutarKurus / 100),
+    kaynak: g.kaynak,
+    bugunMu: g.bugunMu,
+  }));
 
   const taahhut = d.donem?.taahhutKurus ?? 0;
   const yuzde = (kurus: number) => (taahhut > 0 ? Math.round((kurus / taahhut) * 100) : 0);
@@ -50,6 +77,29 @@ export default async function ButceSayfasi() {
       <IsletmeBaslik ust="İşletme paneli" alt="Kullanılmayan kuponun maliyeti yok.">
         Günlük bütçe
       </IsletmeBaslik>
+
+      {/* Ü287: bütçe her gün kendiliğinden açılıyor; kafe bir kez "bütün
+          günler" der, istediği günü "yalnızca o tarih" ya da "her <gün>"
+          olarak değiştirir. Önce kaydetmeyen kafenin hiç bütçesi yoktu. */}
+      <Bolum
+        baslik="Haftalık bütçe"
+        alt="Her gün kendiliğinden açılır — her gün kaydetmen gerekmez. Bugünün bütçesi dağıtılmış kuponların altına indirilemez."
+      >
+        <TumGunlerFormu herGunTl={Math.round(hafta.herGunKurus / 100)} />
+        <div className="mt-6">
+          <HaftalikPlan satirlar={planSatirlari} />
+        </div>
+        {/* Ü288: çalışma saatleri Panel'de — ürün sahibi: "açılış saati panel
+            kısmında olmalı, bu temel bir şey". Burada yalnızca hatırlatma:
+            bütçe bu saatlerde açılıyor. */}
+        <p className="mt-4 text-[13px] text-yazi-sonuk">
+          Bütçe çalışma saatlerinde ({saatYaz(d.pencere.baslangic)}–{saatYaz(d.pencere.bitis)}) kalabalığa göre
+          açılır.{" "}
+          <Link href="/kafe/panel#calisma-saatleri" className="underline">
+            Saatleri Panel&apos;den değiştir
+          </Link>
+        </p>
+      </Bolum>
 
       {d.donem && (
         <>
@@ -62,14 +112,17 @@ export default async function ButceSayfasi() {
                 sebebini görmeden "1.200 TL kaldı ama kupon çıkmıyor" diye
                 arıyor. Tempo bir tavan; gün ilerledikçe kendiliğinden
                 açılıyor. */}
+            {/* Ü288: ürün sahibi "bütçe 2.000, bugün bir şey harcanmadı —
+                neden 572 dağıtılabilir?" diye sordu. Sayı doğruydu, ad
+                yanıltıyordu: bu, bütçenin ŞU ANA KADAR AÇILAN kısmı. */}
             <SayiKarti
-              etiket="Şu an dağıtılabilir"
+              etiket="Şu ana kadar açılan"
               deger={`${tlYaz(d.simdiKurus)} TL`}
               alt={
                 !d.acikMi
-                  ? `kafe kapalı · ${d.pencere.baslangic}:00'da açılıyor`
+                  ? `kafe kapalı · ${saatYaz(d.pencere.baslangic)}'da açılıyor`
                   : d.simdiKurus < d.dagitilabilirKurus
-                    ? `bugünün kalanı ${tlYaz(d.dagitilabilirKurus)} TL · ${d.pencere.bitis}:00'a kadar açılıyor`
+                    ? `bugün kalan ${tlYaz(d.dagitilabilirKurus)} TL · ${saatYaz(d.pencere.bitis)}'a kadar kalabalığa göre açılıyor`
                     : "yeni kupon için kalan"
               }
               ikon={IKON.para}
@@ -79,7 +132,7 @@ export default async function ButceSayfasi() {
             <SayiKarti
               etiket="Açık kuponlarda"
               deger={`${tlYaz(d.rezerveKurus)} TL`}
-              alt="verildi, kullanılmadı"
+              alt="bugün verilen, kullanılmayan"
               ikon={IKON.kupon}
               alan="odul"
             />
@@ -128,95 +181,71 @@ export default async function ButceSayfasi() {
               </div>
             </div>
 
-            {/* ⚠️ Ü93 · "Kazanılan ödüllerin ne olduğu gözükmeli."
-                Yukarıdaki kartlar bütçenin ne kadarının bağlandığını
-                söylüyor ama karşılığında NE verildiğini söylemiyordu.
-                İşletmeci parayı ancak neyin gittiğini görürse yönetebilir;
-                "çok fazla ödül dağıtılıyor" şikâyeti de buradan çıkmıştı. */}
+            {/* ⚠️ Ü93 · "Kazanılan ödüllerin ne olduğu gözükmeli." Ü289:
+                yalnızca BUGÜN — önceki günlerin açık kuponları aşağıda,
+                verildikleri güne göre ayrı tabloda. İkisi bir aradayken
+                ürün sahibi "bunlar bugün çıkan ödüller değil ki" dedi. */}
             <div className="rounded-2xl border border-cizgi bg-yuzey px-5 py-5">
               <div className="flex items-baseline justify-between gap-3">
-                <span className="etiket-caps text-yazi-sonuk">Hangi ödüller çıktı</span>
+                <span className="etiket-caps text-yazi-sonuk">Bugün çıkan ödüller</span>
                 <span className="font-data text-[11px] text-yazi-sonuk">
-                  {dagitim.reduce((t, x) => t + x.acik, 0)} kupon ·{" "}
-                  {tlYaz(dagitim.reduce((t, x) => t + x.acikKurus, 0))} TL dolaşımda
+                  {dagitim.reduce((t, x) => t + x.bugunVerilen, 0)} kupon ·{" "}
+                  {tlYaz(dagitim.reduce((t, x) => t + x.bugunVerilenKurus, 0))} TL bugünün bütçesinden
                 </span>
               </div>
 
               {dagitim.length === 0 ? (
                 <p className="mt-3 text-[13px] leading-relaxed text-yazi-sonuk">
-                  Dolaşımda kupon yok ve bugün henüz kupon çıkmadı.
+                  Bugün henüz kupon verilmedi ve kasada kupon onaylanmadı.
                 </p>
               ) : (
-                <>
-                  <table className="mt-3 w-full text-[13px]">
-                    <thead>
-                      <tr className="etiket-caps text-yazi-sonuk">
-                        <th className="pb-2 text-left font-normal">Ödül</th>
-                        <th className="pb-2 text-right font-normal">Açık</th>
-                        <th className="pb-2 text-right font-normal">Bugün</th>
-                        <th className="pb-2 text-right font-normal">Kasada</th>
+                <table className="mt-3 w-full text-[13px]">
+                  <thead>
+                    <tr className="etiket-caps text-yazi-sonuk">
+                      <th className="pb-2 text-left font-normal">Ödül</th>
+                      <th className="pb-2 text-right font-normal">Bugün verilen</th>
+                      <th className="pb-2 text-right font-normal">Bugün kasada</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {dagitim.map((x) => (
+                      <tr key={x.baslik} className="border-t border-cizgi align-top">
+                        <td className="py-2 pr-2 leading-tight">{x.baslik}</td>
+                        <td className="py-2 text-right font-data tabular text-odul-koyu">
+                          {x.bugunVerilen ? (
+                            <>
+                              {x.bugunVerilen}
+                              <span className="block text-[11px] opacity-70">
+                                {tlYaz(x.bugunVerilenKurus)} TL
+                              </span>
+                            </>
+                          ) : (
+                            "–"
+                          )}
+                        </td>
+                        <td className="py-2 text-right font-data tabular">
+                          {x.bugunOnaylanan ? (
+                            <>
+                              {x.bugunOnaylanan}
+                              <span className="block text-[11px] opacity-70">
+                                {tlYaz(x.bugunKurus)} TL
+                              </span>
+                            </>
+                          ) : (
+                            "–"
+                          )}
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {dagitim.map((x) => (
-                        <tr key={x.baslik} className="border-t border-cizgi align-top">
-                          <td className="py-2 pr-2 leading-tight">{x.baslik}</td>
-                          <td className="py-2 text-right font-data tabular text-odul-koyu">
-                            {x.acik ? (
-                              <>
-                                {x.acik}
-                                <span className="block text-[11px] opacity-70">
-                                  {tlYaz(x.acikKurus)} TL
-                                </span>
-                              </>
-                            ) : (
-                              "–"
-                            )}
-                          </td>
-                          <td className="py-2 text-right font-data tabular">
-                            {x.bugunVerilen || "–"}
-                          </td>
-                          <td className="py-2 text-right font-data tabular">
-                            {x.bugunOnaylanan ? (
-                              <>
-                                {x.bugunOnaylanan}
-                                <span className="block text-[11px] opacity-70">
-                                  {tlYaz(x.bugunKurus)} TL
-                                </span>
-                              </>
-                            ) : (
-                              "–"
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-
-                  {/* Ü7: açık kupon henüz harcanmadı. İşletmeci bu ayrımı
-                      görmezse "bugün 400 TL gitti" diye yanlış hesap yapar.
-                      Sütunların penceresi de farklı: açık kupon tarihten
-                      bağımsız (dünden kalanı da var), "bugün" bugünkü. */}
-                  {/* ⚠️ Bu paragraf olmadan ekran kendi kendisiyle çelişiyor
-                      görünüyordu: kart "açık kuponlarda 160 TL" derken tablo
-                      414 TL topluyordu. İkisi de doğru — kart BU DÖNEMİN
-                      bütçesinden bağlananı, tablo dolaşımdaki bütün kuponları
-                      sayıyor — ama açıklanmayan iki sayı, işletmecinin ikisine
-                      birden güvenmemesi demek. */}
-                  <p className="mt-3 border-t border-cizgi pt-3 text-[12px] leading-relaxed text-yazi-sonuk">
-                    <strong className="text-odul-koyu">Açık</strong> — verildi, kasada
-                    gösterilmedi: harcanmadı, süresi dolarsa geri döner.{" "}
-                    <strong className="text-yazi">Kasada</strong> — bugün fiilen ödediğin.
-                  </p>
-                  <p className="mt-2 text-[12px] leading-relaxed text-yazi-sonuk">
-                    Buradaki açık toplam, yukarıdaki{" "}
-                    <strong className="text-yazi">{tlYaz(d.rezerveKurus)} TL</strong>&apos;den
-                    büyük olabilir: kart yalnızca bu dönemin bütçesinden bağlananı
-                    sayar, tablo dolaşımdaki bütün kuponları — önceki günlerden
-                    kalanlar dahil. Onlar da kasaya gelirse ödenecek.
-                  </p>
-                </>
+                    ))}
+                  </tbody>
+                </table>
               )}
+              <p className="mt-3 border-t border-cizgi pt-3 text-[12px] leading-relaxed text-yazi-sonuk">
+                <strong className="text-odul-koyu">Bugün verilen</strong> — bugünün bütçesinden
+                düştü, kasaya sonraki günlerde de gelebilir.{" "}
+                <strong className="text-yazi">Bugün kasada</strong> — bugün fiilen ödediğin; kupon
+                önceki bir günün bütçesinden de gelmiş olabilir.
+              </p>
             </div>
 
             <div className="rounded-2xl border border-cizgi bg-yuzey px-5 py-5">
@@ -242,11 +271,103 @@ export default async function ButceSayfasi() {
                     </span>
                   )}
                 </span>
-                <span>
-                  Alt sınır {tlYaz(taban)} TL
-                  {gunSayisi !== 7 && " (orantılı)"}
+                <span>Alt sınır {tlYaz(d.donem.tabanKurus)} TL</span>
+              </div>
+            </div>
+          </section>
+
+          {/* ── Ü289: açık kupon yükü ve bugünün onay defteri ─────
+              Ürün sahibi: "kuponlar 12 saat sonra açılıp 7 gün sürdüğü için
+              2–3 gün sonra aşırı yüklenebilir — ya hepsi bir güne gelirse?"
+              ve "tüm onaylarda ürün, saat, dakika, kasiyer yazmalı". */}
+          <section className="mb-9 grid gap-3 lg:grid-cols-2">
+            <div className="rounded-2xl border border-cizgi bg-yuzey px-5 py-5">
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="etiket-caps text-yazi-sonuk">Açık kupon yükü</span>
+                <span className="font-data text-[11px] text-yazi-sonuk">
+                  {acikYuk.reduce((t, g) => t + g.adet, 0)} kupon ·{" "}
+                  {tlYaz(acikYuk.reduce((t, g) => t + g.kurus, 0))} TL
                 </span>
               </div>
+              {acikYuk.length === 0 ? (
+                <p className="mt-3 text-[13px] text-yazi-sonuk">Açık kupon yok.</p>
+              ) : (
+                <table className="mt-3 w-full text-[13px]">
+                  <thead>
+                    <tr className="etiket-caps text-yazi-sonuk">
+                      <th className="pb-2 text-left font-normal">Verildiği gün</th>
+                      <th className="pb-2 text-right font-normal">Kupon</th>
+                      <th className="pb-2 text-right font-normal">Tutar</th>
+                      <th className="pb-2 text-right font-normal">Son kullanım</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {acikYuk.map((g) => (
+                      <tr key={g.gun} className="border-t border-cizgi">
+                        <td className="py-2">{gunMetni(g.gun)}</td>
+                        <td className="py-2 text-right font-data tabular">{g.adet}</td>
+                        <td className="py-2 text-right font-data tabular">{tlYaz(g.kurus)} TL</td>
+                        <td className="py-2 text-right font-data tabular text-yazi-sonuk">
+                          {g.sonKullanim.toLocaleDateString("tr-TR", {
+                            day: "numeric",
+                            month: "short",
+                            timeZone: "Europe/Istanbul",
+                          })}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+              <p className="mt-3 border-t border-cizgi pt-3 text-[12px] leading-relaxed text-yazi-sonuk">
+                Her kupon <strong className="text-yazi">verildiği günün</strong> bütçesinden düşer;
+                günlük bütçe bir günde verilebilecek en yüksek tutardır. Kuponlar son kullanımlarına
+                kadar kasaya gelebildiği için birkaç günün kuponu aynı güne yığılabilir:{" "}
+                <strong className="text-yazi">
+                  en kötü durumda bir günde kasadan çıkabilecek tutar{" "}
+                  {tlYaz(acikYuk.reduce((t, g) => t + g.kurus, 0))} TL
+                </strong>
+                . Bu yükü küçültmek istersen Ödüller sayfasındaki geçerlilik süresini kısalt.
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-cizgi bg-yuzey px-5 py-5">
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="etiket-caps text-yazi-sonuk">Bugün kasada onaylananlar</span>
+                <span className="font-data text-[11px] text-yazi-sonuk">
+                  {onaylar.length} onay · {tlYaz(onaylar.reduce((t, x) => t + x.tutarKurus, 0))} TL
+                </span>
+              </div>
+              {onaylar.length === 0 ? (
+                <p className="mt-3 text-[13px] text-yazi-sonuk">Bugün kasada onay yok.</p>
+              ) : (
+                <ul className="mt-3 divide-y divide-cizgi border-y border-cizgi">
+                  {onaylar.map((x, i) => (
+                    <li key={i} className="flex items-baseline gap-3 py-2 text-[13px]">
+                      <span className="w-12 font-data tabular text-yazi-sonuk">
+                        {x.zaman.toLocaleTimeString("tr-TR", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                          timeZone: "Europe/Istanbul",
+                        })}
+                      </span>
+                      <span className="flex-1 leading-tight">
+                        {x.odul}
+                        {x.urun && <span className="block text-[11px] text-yazi-sonuk">{x.urun}</span>}
+                      </span>
+                      <span className="text-right text-[12px] text-yazi-sonuk">{x.kasiyer}</span>
+                      <span className="w-16 text-right font-data tabular">{tlYaz(x.tutarKurus)} TL</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <p className="mt-3 text-[12px] text-yazi-sonuk">
+                Geçmiş günlerin onayları{" "}
+                <Link href="/kafe/panel/rapor" className="underline">
+                  Rapor
+                </Link>
+                &apos;da, seçtiğin tarih aralığıyla.
+              </p>
             </div>
           </section>
 
@@ -258,31 +379,6 @@ export default async function ButceSayfasi() {
           />
         </>
       )}
-
-      <Bolum
-        baslik={d.donem ? "Bütçeyi güncelle" : "Bütçeyi belirle"}
-        alt={
-          d.donem
-            ? "Dağıtılmış kuponların altına indirilemez — verilen söz geri alınmaz."
-            : "Bütçe, sisteme yatırdığın para değil; dağıtacağını taahhüt ettiğin kendi ürününün değeri."
-        }
-      >
-        <ButceFormu
-          mevcutTl={d.donem ? Math.round(d.donem.taahhutKurus / 100) : null}
-          tabanTl={Math.round(taban / 100)}
-          gunSayisi={gunSayisi}
-        />
-      </Bolum>
-
-      {/* Ü90: saatler bütçenin hemen altında. Bütçenin gün içinde nasıl
-          açıldığını bu iki sayı belirliyor; ayrı bir sayfaya konsaydı kafe
-          "bütçem duruyor ama kupon çıkmıyor" dediğinde yanlış yere bakardı. */}
-      <Bolum
-        baslik="Çalışma saatlerin"
-        alt="Günlük bütçe açılıştan kapanışa kademeli açılıyor. Kapalıyken hiç ödül dağıtılmıyor — kapanıştan sonra son masanın oyununu bitirmesi için yarım saat bırakılıyor."
-      >
-        <SaatFormu acilis={d.pencere.baslangic} kapanis={d.pencere.bitis} />
-      </Bolum>
 
       <Bolum baslik="Nasıl işliyor">
         <ol className="space-y-2.5 text-[14px] leading-relaxed text-yazi-sonuk">

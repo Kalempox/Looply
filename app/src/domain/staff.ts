@@ -180,19 +180,43 @@ export async function personelPasiflestir(staffId: string, yapanId: string) {
   log.warn("personel pasiflestirildi");
 }
 
-/* ── Kasiyerin kafesi — konumdan (Ü285) ───────────────────── */
+/* ── Kasiyerin kafesi — konum ve PIN (Ü285, Ü286) ─────────── */
 
 /**
- * Aranan en geniş çevre (metre). Kafenin yarıçapı en çok 500 m; daha
- * uzağa bakılması yalnızca "en yakın kafe X m" cümlesi için.
+ * PIN'in sahibi aranırken bakılan çevre (metre). Kafenin yarıçapı en çok
+ * 500 m; daha uzağa bakılması "PIN'in kafesinden X uzaktasın" cümlesi için.
  */
-const ARAMA_METRE = 5_000;
+const ARAMA_METRE = 25_000;
 
-export type KonumdakiKafe =
+/** Bir girişte PIN'in denendiği en çok kafe — her biri scrypt demek. */
+const EN_COK_ADAY = 4;
+
+export type KonumKonumu = "icinde" | "belirsiz" | "disinda";
+
+type YakinKafe = { cafeId: string; ad: string; mesafeM: number };
+
+export type KonumdakiKafe = (
   | { durum: "bulundu"; cafeId: string; ad: string; mesafeM: number }
   /** Nokta yarıçapın dışında ama doğruluk payı içeri taşıyor. */
   | { durum: "belirsiz"; mesafeM: number }
-  | { durum: "yok"; enYakinM: number | null };
+  | { durum: "yok"; enYakinM: number | null }
+) & {
+  /** Çevredeki en yakın üç kafe — PIN'in sahibini bulmak için (Ü286). */
+  yakinlar: YakinKafe[];
+};
+
+/**
+ * Oyuncunun K2 kuralıyla aynı (`masa.konumDogrula`): mesafe ≤ kafenin
+ * yarıçapı içeride; dışarıda ama doğruluk payı yarıçapa taşıyorsa belirsiz.
+ */
+function konumuSinifla(mesafeM: number, yaricapM: number, payM: number): KonumKonumu {
+  if (mesafeM <= yaricapM) return "icinde";
+  return mesafeM - payM <= yaricapM ? "belirsiz" : "disinda";
+}
+
+function dogrulukPayi(dogrulukM?: number): number {
+  return dogrulukM != null && Number.isFinite(dogrulukM) ? Math.max(0, dogrulukM) : 0;
+}
 
 /**
  * Kasiyerin bulunduğu kafe — Ü285.
@@ -202,10 +226,9 @@ export type KonumdakiKafe =
  * telefonundan giriş yapamaz. Önemli olan PIN ve konum."* Cihaz kaydı
  * (G11) kalktı.
  *
- * Kafe formdan gelmiyor, konumdan çözülüyor: yarıçapının içinde olunan
- * onaylı kafelerin **en yakını**. "İçinde" oyuncunun K2 kuralıyla aynı
- * (`masa.konumDogrula`): mesafe ≤ kafenin yarıçapı; dışarıda ama
- * doğruluk payı yarıçapa taşıyorsa belirsiz.
+ * Yarıçapının içinde olunan onaylı kafelerin **en yakını**; yanında
+ * çevredeki en yakın üç kafe (`yakinlar`), PIN başka bir kafenin çıkarsa
+ * onu bulmak için.
  *
  * ⚠️ Konum istemciden geliyor ve uydurulabilir — bu bir güvenlik kalkanı
  * değil, "kasiyer kafede olsun" kuralı. PIN taramaya karşı asıl kalkan
@@ -216,11 +239,13 @@ export async function konumdakiKafe(
   lng: number,
   dogrulukM?: number,
 ): Promise<KonumdakiKafe> {
-  if (!(Math.abs(lat) <= 90 && Math.abs(lng) <= 180)) return { durum: "yok", enYakinM: null };
+  if (!(Math.abs(lat) <= 90 && Math.abs(lng) <= 180)) {
+    return { durum: "yok", enYakinM: null, yakinlar: [] };
+  }
 
   const dLat = ARAMA_METRE / 111_320;
   const dLng = ARAMA_METRE / (111_320 * Math.max(0.01, Math.cos((lat * Math.PI) / 180)));
-  const adaylar = await withBypass("konumdaki kafe", (db) =>
+  const satirlar = await withBypass("konumdaki kafe", (db) =>
     db.all<{ id: string; name: string; lat: number; lng: number }>(
       `SELECT id, name, lat, lng FROM cafes
         WHERE status = 'approved' AND lat IS NOT NULL AND lng IS NOT NULL
@@ -228,80 +253,173 @@ export async function konumdakiKafe(
       [lat - dLat, lat + dLat, lng - dLng, lng + dLng],
     ),
   );
+  const kafeler = satirlar
+    .map((k) => ({ cafeId: k.id, ad: k.name, mesafeM: mesafeMetre(lat, lng, Number(k.lat), Number(k.lng)) }))
+    .sort((a, b) => a.mesafeM - b.mesafeM);
 
-  const payM = dogrulukM != null && Number.isFinite(dogrulukM) ? Math.max(0, dogrulukM) : 0;
+  const payM = dogrulukPayi(dogrulukM);
   const enGenisYaricap = ayar.SINIRLAR[ayar.ANAHTARLAR.konumYaricapi].en_cok;
-  let icinde: { cafeId: string; ad: string; mesafeM: number } | null = null;
   let belirsizM: number | null = null;
-  let enYakinM: number | null = null;
 
-  for (const k of adaylar) {
-    const mesafe = mesafeMetre(lat, lng, Number(k.lat), Number(k.lng));
-    enYakinM = enYakinM === null ? mesafe : Math.min(enYakinM, mesafe);
-    // Kafenin ayarı yalnızca yarıçapın yetişebileceği yerde okunuyor.
-    if (mesafe - payM > enGenisYaricap) continue;
-    const yaricap = await ayar.sayiOku(k.id, ayar.ANAHTARLAR.konumYaricapi);
-    if (mesafe <= yaricap) {
-      if (!icinde || mesafe < icinde.mesafeM) icinde = { cafeId: k.id, ad: k.name, mesafeM: mesafe };
-    } else if (mesafe - payM <= yaricap) {
-      belirsizM = belirsizM === null ? mesafe : Math.min(belirsizM, mesafe);
-    }
+  for (const k of kafeler) {
+    // Sıralı: yarıçapın yetişemeyeceği ilk kafeden sonrası da yetişemez.
+    if (k.mesafeM - payM > enGenisYaricap) break;
+    const yaricap = await ayar.sayiOku(k.cafeId, ayar.ANAHTARLAR.konumYaricapi);
+    const s = konumuSinifla(k.mesafeM, yaricap, payM);
+    if (s === "icinde") return { durum: "bulundu", ...k, yakinlar: kafeler.slice(0, 3) };
+    if (s === "belirsiz" && belirsizM === null) belirsizM = k.mesafeM;
   }
 
-  if (icinde) return { durum: "bulundu", ...icinde };
-  if (belirsizM !== null) return { durum: "belirsiz", mesafeM: belirsizM };
-  return { durum: "yok", enYakinM };
+  const yakinlar = kafeler.slice(0, 3);
+  if (belirsizM !== null) return { durum: "belirsiz", mesafeM: belirsizM, yakinlar };
+  return { durum: "yok", enYakinM: kafeler[0]?.mesafeM ?? null, yakinlar };
+}
+
+/** Konumun belirli bir kafeye göre yeri — PIN'in kafesi bulunduktan sonra. */
+export async function kafeyeGore(
+  cafeId: string,
+  lat: number,
+  lng: number,
+  dogrulukM?: number,
+): Promise<{ ad: string; mesafeM: number; konum: KonumKonumu } | null> {
+  const k = await withBypass("kafeye göre konum", (db) =>
+    db.one<{ name: string; lat: number | null; lng: number | null }>(
+      `SELECT name, lat, lng FROM cafes WHERE id = $1 AND status = 'approved'`,
+      [cafeId],
+    ),
+  );
+  if (!k || k.lat == null || k.lng == null) return null;
+  const mesafeM = mesafeMetre(lat, lng, Number(k.lat), Number(k.lng));
+  const yaricap = await ayar.sayiOku(cafeId, ayar.ANAHTARLAR.konumYaricapi);
+  return { ad: k.name, mesafeM, konum: konumuSinifla(mesafeM, yaricap, dogrulukPayi(dogrulukM)) };
 }
 
 /* ── Kasiyer girişi ───────────────────────────────────────── */
 
 export type PinSonucu =
-  | { durum: "gecerli"; staffId: string; ad: string }
+  | { durum: "gecerli"; cafeId: string; staffId: string; ad: string }
   | { durum: "yanlis"; kalanDeneme: number }
   | { durum: "kilitli" };
 
 /**
- * PIN girişi — kafe konumdan çözüldükten sonra (`konumdakiKafe`).
+ * PIN'i aday kafelerin kasiyerlerinde **sırayla** dener — ilk eşleşen kazanır.
  *
  * Ü285'e kadar PIN yalnızca kayıtlı cihazda deneniyordu ve 10.000 ihtimal
  * internete kapalıydı. Artık her cihazdan deneniyor ve konum uydurulabilir;
- * bu yüzden üç sayaç var: bağlantı (IP) başına, kafe başına saatlik ve
- * günlük. IP değiştirerek tarayan biri kafe sayacına takılıyor — günde 60
- * deneme, 10.000'in tamamı ~5,5 ay. Bedeli: biri bilerek doldurursa o
- * kafede yeni kasa girişi bir süre kapanır; açık oturumlar sürer.
+ * bu yüzden sayaçlar: bağlantı (IP) başına ve **denenen her kafe için**
+ * saatlik ve günlük. IP değiştirerek tarayan biri kafe sayacına takılıyor —
+ * günde 60 deneme, 10.000'in tamamı ~5,5 ay. Bedeli: biri bilerek
+ * doldurursa o kafede yeni kasa girişi bir süre kapanır; açık oturumlar
+ * sürer.
+ *
+ * Sıra kiracı sınırını koruyor: konumun içinde olduğu kafe hep önce —
+ * iki kafenin kasiyerinin PIN'i aynıysa kasiyer bulunduğu kafeye girer.
  */
 export async function pinGiris(opts: {
-  cafeId: string;
+  cafeIdler: string[];
   pin: string;
   /** İstemcinin IP'sinden türetilmiş — kişisel veri İÇERMEZ (docs/08 §7.1). */
   ipAnahtari: string;
 }): Promise<PinSonucu> {
-  const kafeAnahtari = identifierHash(`pin:${opts.cafeId}`).subarray(0, 8).toString("hex");
   const ip = await tuket("pin_per_ip_15min", opts.ipAnahtari);
-  const saat = await tuket("pin_per_cafe_hour", kafeAnahtari);
-  const gun = await tuket("pin_per_cafe_day", kafeAnahtari);
-  if (!ip.izinli || !saat.izinli || !gun.izinli) {
-    log.warn("pin kilitlendi", { kilitDk: PIN_KILIT_DK, kafeSayaci: !saat.izinli || !gun.izinli });
+  if (!ip.izinli) {
+    log.warn("pin kilitlendi", { kilitDk: PIN_KILIT_DK, kafeSayaci: false });
     return { durum: "kilitli" };
   }
 
-  const personeller = await withBypass("pin girişi", (db) =>
-    db.all<{ id: string; name_enc: Buffer; pin_hash: string }>(
-      `SELECT id, name_enc, pin_hash FROM staff
-        WHERE cafe_id = $1 AND role = 'cashier' AND active = true`,
-      [opts.cafeId],
-    ),
-  );
+  let kalanDeneme = ip.kalan;
+  const adaylar = [...new Set(opts.cafeIdler)].slice(0, EN_COK_ADAY);
+  for (const [i, cafeId] of adaylar.entries()) {
+    const kafeAnahtari = identifierHash(`pin:${cafeId}`).subarray(0, 8).toString("hex");
+    const saat = await tuket("pin_per_cafe_hour", kafeAnahtari);
+    const gun = await tuket("pin_per_cafe_day", kafeAnahtari);
+    if (!saat.izinli || !gun.izinli) {
+      log.warn("pin kilitlendi", { kilitDk: PIN_KILIT_DK, kafeSayaci: true });
+      // İlk aday kasiyerin bulunduğu (ya da son girdiği) kafe: o kilitliyse
+      // giriş yok. Öbürleri yalnızca "PIN'in kafesi hangisi" sorusu için.
+      if (i === 0) return { durum: "kilitli" };
+      continue;
+    }
+    if (i === 0) kalanDeneme = Math.min(kalanDeneme, saat.kalan, gun.kalan);
 
-  for (const p of personeller) {
-    // Ad yalnızca EŞLEŞEN satır için çözülüyor: yanlış PIN denemesi,
-    // kafedeki bütün kasiyerlerin adını belleğe açmanın bahanesi olmasın.
-    if (await pinEslesiyorMu(opts.pin, p.pin_hash)) {
-      return { durum: "gecerli", staffId: p.id, ad: decryptPII(p.name_enc) };
+    const personeller = await withBypass("pin girişi", (db) =>
+      db.all<{ id: string; name_enc: Buffer; pin_hash: string }>(
+        `SELECT s.id, s.name_enc, s.pin_hash
+           FROM staff s JOIN cafes c ON c.id = s.cafe_id
+          WHERE s.cafe_id = $1 AND c.status = 'approved'
+            AND s.role = 'cashier' AND s.active = true`,
+        [cafeId],
+      ),
+    );
+
+    for (const p of personeller) {
+      // Ad yalnızca EŞLEŞEN satır için çözülüyor: yanlış PIN denemesi,
+      // kafedeki bütün kasiyerlerin adını belleğe açmanın bahanesi olmasın.
+      if (await pinEslesiyorMu(opts.pin, p.pin_hash)) {
+        return { durum: "gecerli", cafeId, staffId: p.id, ad: decryptPII(p.name_enc) };
+      }
     }
   }
 
-  return { durum: "yanlis", kalanDeneme: Math.min(ip.kalan, saat.kalan, gun.kalan) };
+  return { durum: "yanlis", kalanDeneme };
+}
+
+export type KasaGirisKarari =
+  | { durum: "giris"; cafeId: string; staffId: string; mesafeM: number }
+  /** PIN doğru ama PIN'in kafesinin yarıçapı dışındasın (Ü286). */
+  | { durum: "uzak"; kafeAdi: string; mesafeM: number }
+  | { durum: "belirsiz" }
+  | { durum: "yanlis"; kafede: boolean; kafeAdi?: string }
+  | { durum: "kilitli" }
+  | { durum: "kafe_yok" };
+
+/**
+ * Kasa girişinin kararı — konum ve PIN birlikte (Ü285, Ü286).
+ *
+ * Ürün sahibi Ü286'da: *"'en yakın kafeye X m uzaktasın' değil — bu
+ * PIN'in geçerli olduğu kafeden uzaktasın demeli."* PIN'ler kafeden kafeye
+ * tekrar edebildiği için PIN'in kafesi adaylar arasından bulunuyor:
+ *
+ *   1. konumun içinde olduğu kafe (varsa — kiracı sınırı için hep ilk)
+ *   2. bu cihazın en son girdiği kafe (`ipucu`, çerezden)
+ *   3. çevredeki en yakın kafeler
+ *
+ * PIN hangisinde tutarsa konum O kafeye göre değerlendiriliyor. Kafenin
+ * içindeyken yanlış PIN "PIN yanlış"; dışarıdayken PIN hiçbir adayda
+ * tutmadıysa PIN'in uzaktaki bir kafenin olması da mümkün — cümle bunu
+ * iddia etmiyor.
+ */
+export async function kasaGirisi(opts: {
+  lat: number;
+  lng: number;
+  dogrulukM?: number;
+  pin: string;
+  ipAnahtari: string;
+  ipucu?: string | null;
+}): Promise<KasaGirisKarari> {
+  const yer = await konumdakiKafe(opts.lat, opts.lng, opts.dogrulukM);
+  const adaylar = [
+    ...(yer.durum === "bulundu" ? [yer.cafeId] : []),
+    ...(opts.ipucu ? [opts.ipucu] : []),
+    ...yer.yakinlar.map((k) => k.cafeId),
+  ];
+  if (adaylar.length === 0) return { durum: "kafe_yok" };
+
+  const pin = await pinGiris({ cafeIdler: adaylar, pin: opts.pin, ipAnahtari: opts.ipAnahtari });
+  if (pin.durum === "kilitli") return { durum: "kilitli" };
+  if (pin.durum === "yanlis") {
+    return yer.durum === "bulundu"
+      ? { durum: "yanlis", kafede: true, kafeAdi: yer.ad }
+      : { durum: "yanlis", kafede: false };
+  }
+
+  const k = await kafeyeGore(pin.cafeId, opts.lat, opts.lng, opts.dogrulukM);
+  if (!k) return { durum: "kafe_yok" };
+  if (k.konum === "icinde") {
+    return { durum: "giris", cafeId: pin.cafeId, staffId: pin.staffId, mesafeM: k.mesafeM };
+  }
+  if (k.konum === "belirsiz") return { durum: "belirsiz" };
+  return { durum: "uzak", kafeAdi: k.ad, mesafeM: k.mesafeM };
 }
 
 /* ── Platform kullanıcısı ─────────────────────────────────── */

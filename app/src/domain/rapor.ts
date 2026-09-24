@@ -1,6 +1,7 @@
 import { withCafe, type Db } from "@/db/context";
 import { audit } from "@/lib/audit";
 import { demoOrtami } from "@/lib/env";
+import { decryptPII } from "@/lib/crypto";
 import { isGunu, pazartesi, gunEkle, gunFarki } from "@/lib/tarih";
 
 /**
@@ -198,6 +199,14 @@ export async function ozet(
   return withCafe(cafeId, (db) => ozetIle(db, aralik, esikAcik));
 }
 
+/*
+  🔴 Ü286: kupon zamanları (`issued_at`, `redeemed_at`) İSTANBUL gece
+  yarısıyla gün gün ayrılıyor. Veritabanı oturumu UTC: yalnız `$1::date`
+  günü 03:00'te başlatıyordu ve gece 00:00–03:00 arasında kasada onaylanan
+  kupon bir önceki günün raporuna yazılıyordu. Oyunlar zaten İstanbul
+  günüyle (`business_date`) sayılıyor; iki sayı artık aynı günü anlatıyor.
+  Kasanın günlük özeti (`kupon.bugunkuOzet`) aynı ifadeyi kullanıyor.
+*/
 async function ozetIle(db: Db, aralik: Aralik, esikAcik: boolean): Promise<RaporOzeti> {
   const r = await db.one<{
     nitelikli: string;
@@ -243,15 +252,15 @@ async function ozetIle(db: Db, aralik: Aralik, esikAcik: boolean): Promise<Rapor
                           AND o.status = 'completed'
                           AND o.business_date < $1))                          AS tekrar,
        (SELECT count(*) FROM coupons
-         WHERE issued_at >= $1::date AND issued_at < $2::date)                AS kupon_verilen,
+         WHERE issued_at >= ($1::date::timestamp AT TIME ZONE 'Europe/Istanbul') AND issued_at < ($2::date::timestamp AT TIME ZONE 'Europe/Istanbul'))                AS kupon_verilen,
        (SELECT count(*) FROM coupons
-         WHERE status = 'redeemed' AND redeemed_at >= $1::date
-           AND redeemed_at < $2::date)                                        AS kupon_kullanilan,
+         WHERE status = 'redeemed' AND redeemed_at >= ($1::date::timestamp AT TIME ZONE 'Europe/Istanbul')
+           AND redeemed_at < ($2::date::timestamp AT TIME ZONE 'Europe/Istanbul'))                                        AS kupon_kullanilan,
        (SELECT COALESCE(sum(reserved_kurus), 0) FROM coupons
-         WHERE issued_at >= $1::date AND issued_at < $2::date)                AS kazanilan,
+         WHERE issued_at >= ($1::date::timestamp AT TIME ZONE 'Europe/Istanbul') AND issued_at < ($2::date::timestamp AT TIME ZONE 'Europe/Istanbul'))                AS kazanilan,
        (SELECT COALESCE(sum(committed_kurus), 0) FROM coupons
-         WHERE status = 'redeemed' AND redeemed_at >= $1::date
-           AND redeemed_at < $2::date)                                        AS kullanilan`,
+         WHERE status = 'redeemed' AND redeemed_at >= ($1::date::timestamp AT TIME ZONE 'Europe/Istanbul')
+           AND redeemed_at < ($2::date::timestamp AT TIME ZONE 'Europe/Istanbul'))                                        AS kullanilan`,
     [aralik.baslangic, aralik.bitis],
   );
 
@@ -494,14 +503,14 @@ export async function kampanyaSonuclari(
       tutar: string;
     }>(
       `SELECT p.name AS urun_adi, pc.percent, pc.status,
-              count(k.id) FILTER (WHERE k.issued_at >= $1::date
-                                    AND k.issued_at < $2::date) AS verilen,
+              count(k.id) FILTER (WHERE k.issued_at >= ($1::date::timestamp AT TIME ZONE 'Europe/Istanbul')
+                                    AND k.issued_at < ($2::date::timestamp AT TIME ZONE 'Europe/Istanbul')) AS verilen,
               count(k.id) FILTER (WHERE k.status = 'redeemed'
-                                    AND k.redeemed_at >= $1::date
-                                    AND k.redeemed_at < $2::date) AS kullanilan,
+                                    AND k.redeemed_at >= ($1::date::timestamp AT TIME ZONE 'Europe/Istanbul')
+                                    AND k.redeemed_at < ($2::date::timestamp AT TIME ZONE 'Europe/Istanbul')) AS kullanilan,
               COALESCE(sum(k.committed_kurus) FILTER (WHERE k.status = 'redeemed'
-                                    AND k.redeemed_at >= $1::date
-                                    AND k.redeemed_at < $2::date), 0) AS tutar
+                                    AND k.redeemed_at >= ($1::date::timestamp AT TIME ZONE 'Europe/Istanbul')
+                                    AND k.redeemed_at < ($2::date::timestamp AT TIME ZONE 'Europe/Istanbul')), 0) AS tutar
          FROM percentage_campaigns pc
          JOIN products p ON p.id = pc.product_id
          LEFT JOIN coupons k ON k.campaign_id = pc.id
@@ -542,7 +551,7 @@ export async function odulDagilimi(cafeId: string, aralik: Aralik): Promise<Dagi
          FROM coupons k
          LEFT JOIN rewards r ON r.id = k.reward_id
         WHERE k.status = 'redeemed'
-          AND k.redeemed_at >= $1::date AND k.redeemed_at < $2::date
+          AND k.redeemed_at >= ($1::date::timestamp AT TIME ZONE 'Europe/Istanbul') AND k.redeemed_at < ($2::date::timestamp AT TIME ZONE 'Europe/Istanbul')
         GROUP BY 1
         ORDER BY sum(k.committed_kurus) DESC`,
       [aralik.baslangic, aralik.bitis],
@@ -599,7 +608,7 @@ export async function kuponKullanimi(
          LEFT JOIN player_aliases a
                 ON a.cafe_id = k.cafe_id AND a.player_id = k.player_id
         WHERE k.status = 'redeemed'
-          AND k.redeemed_at >= $1::date AND k.redeemed_at < $2::date
+          AND k.redeemed_at >= ($1::date::timestamp AT TIME ZONE 'Europe/Istanbul') AND k.redeemed_at < ($2::date::timestamp AT TIME ZONE 'Europe/Istanbul')
         GROUP BY a.code
         ORDER BY count(*) DESC, sum(k.committed_kurus) DESC
         LIMIT $3`,
@@ -612,6 +621,73 @@ export async function kuponKullanimi(
     adet: Number(r.adet),
     kurus: Number(r.kurus),
     sonKullanim: r.son,
+  }));
+}
+
+/* ── Kasa onayları (Ü289) ─────────────────────────────────── */
+
+export type KasaOnayi = {
+  kuponId: string;
+  zaman: Date;
+  odul: string;
+  /** Ödül bir ürüne bağlıysa ürünün adı. */
+  urun: string | null;
+  kasiyer: string;
+  tutarKurus: number;
+  /** Müşterinin bu kafeye özel anonim kodu. */
+  musteri: string;
+};
+
+/**
+ * Kasada onaylanan her kupon — ürün, saat-dakika, kasiyer.
+ *
+ * Ürün sahibi: *"tüm onaylarda ürün, saat, dakika ve hangi kasiyer olduğu
+ * yazmalı."* Bilgi zaten kuponun kendi satırında (`redeemed_at`,
+ * `redeemed_by_staff_id` — A4: onaylayan NULL olamaz); eksik olan ekrandı.
+ * Kasiyerin adı şifreli (Ü115) ve yalnızca bu listede çözülüyor.
+ */
+export async function kasaOnaylari(cafeId: string, aralik: Aralik, limit = 200): Promise<KasaOnayi[]> {
+  const satirlar = await withCafe(cafeId, (db) =>
+    db.all<{
+      kupon_id: string;
+      zaman: Date;
+      odul: string;
+      urun: string | null;
+      kasiyer_enc: Buffer | null;
+      kurus: string;
+      kod: string | null;
+    }>(
+      `SELECT k.id AS kupon_id,
+              k.redeemed_at AS zaman,
+              COALESCE(r.title, '%' || kmp.percent || ' indirim', 'Diğer') AS odul,
+              COALESCE(ru.name, ku.name) AS urun,
+              s.name_enc AS kasiyer_enc,
+              k.committed_kurus AS kurus,
+              a.code AS kod
+         FROM coupons k
+         LEFT JOIN rewards r ON r.id = k.reward_id
+         LEFT JOIN products ru ON ru.id = r.product_id
+         LEFT JOIN percentage_campaigns kmp ON kmp.id = k.campaign_id
+         LEFT JOIN products ku ON ku.id = kmp.product_id
+         LEFT JOIN staff s ON s.id = k.redeemed_by_staff_id
+         LEFT JOIN player_aliases a ON a.cafe_id = k.cafe_id AND a.player_id = k.player_id
+        WHERE k.status = 'redeemed'
+          AND k.redeemed_at >= ($1::date::timestamp AT TIME ZONE 'Europe/Istanbul')
+          AND k.redeemed_at < ($2::date::timestamp AT TIME ZONE 'Europe/Istanbul')
+        ORDER BY k.redeemed_at DESC
+        LIMIT $3`,
+      [aralik.baslangic, aralik.bitis, limit],
+    ),
+  );
+
+  return satirlar.map((r) => ({
+    kuponId: r.kupon_id,
+    zaman: r.zaman,
+    odul: r.odul,
+    urun: r.urun,
+    kasiyer: r.kasiyer_enc ? decryptPII(r.kasiyer_enc) : "—",
+    tutarKurus: Number(r.kurus),
+    musteri: r.kod ?? "P-????",
   }));
 }
 
@@ -673,10 +749,10 @@ export async function getiri(
          (SELECT count(*) FROM coupons k
             JOIN rewards r ON r.id = k.reward_id
            WHERE k.status = 'redeemed' AND r.product_id IS NOT NULL
-             AND k.redeemed_at >= $1::date AND k.redeemed_at < $2::date) AS urun,
+             AND k.redeemed_at >= ($1::date::timestamp AT TIME ZONE 'Europe/Istanbul') AND k.redeemed_at < ($2::date::timestamp AT TIME ZONE 'Europe/Istanbul')) AS urun,
          (SELECT COALESCE(sum(committed_kurus), 0) FROM coupons
            WHERE status = 'redeemed'
-             AND redeemed_at >= $1::date AND redeemed_at < $2::date)  AS indirim`,
+             AND redeemed_at >= ($1::date::timestamp AT TIME ZONE 'Europe/Istanbul') AND redeemed_at < ($2::date::timestamp AT TIME ZONE 'Europe/Istanbul'))  AS indirim`,
       [aralik.baslangic, aralik.bitis],
     ),
   );

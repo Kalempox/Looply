@@ -16,7 +16,9 @@ import * as motor from "@/domain/odul-motoru";
 import * as ayar from "@/domain/ayar";
 import { kuponDetayi, envanter, YENI_ACILDI_SAAT } from "@/domain/odul";
 import { yazIle as puanYaz } from "@/domain/puan";
-import { isGunu } from "@/lib/tarih";
+import { isGunu, gunEkle } from "@/lib/tarih";
+import * as rapor from "@/domain/rapor";
+import { personelListele } from "@/domain/staff";
 import { yoneticiSorgu, benzersizEposta } from "./_yardim";
 
 /**
@@ -873,6 +875,26 @@ describe("onay atomik (Faz 7 güvenlik kapısı)", () => {
     const sonra = await butce.durum(kafeA, bugun);
     assert.equal(sonra.harcananKurus, once.harcananKurus + 25_00);
     assert.equal(sonra.rezerveKurus, once.rezerveKurus - 25_00);
+  });
+
+  /**
+   * Ü289 — ürün sahibi: *"tüm onaylarda ürün, saat, dakika ve hangi kasiyer
+   * olduğu yazmalı."* Defter kuponun kendi satırından okunuyor; kasiyerin
+   * adı şifreli (Ü115) ve yalnızca burada çözülüyor.
+   */
+  test("🔴 onay defterinde ödül, saat ve kasiyer görünüyor (Ü289)", async () => {
+    const s = await kuponAl(katalogOdulId);
+    const sonuc = await kupon.onayla({ cafeId: kafeA, kuponId: s.kuponId, staffId: kasiyerA });
+    assert.ok(sonuc.ok, sonuc.ok === false ? sonuc.hata : "");
+
+    const liste = await rapor.kasaOnaylari(kafeA, { baslangic: bugun, bitis: gunEkle(bugun, 1) });
+    const satir = liste.find((x) => x.kuponId === s.kuponId);
+    assert.ok(satir, "onay defterde yok");
+    const kasiyer = (await personelListele(kafeA)).find((p) => p.id === kasiyerA);
+    assert.equal(satir.kasiyer, kasiyer?.ad, "kasiyerin adı yanlış");
+    assert.equal(satir.tutarKurus, 25_00);
+    assert.ok(satir.odul.length > 0, "ödülün adı yok");
+    assert.ok(Math.abs(satir.zaman.getTime() - Date.now()) < 60_000, "onayın saati yanlış");
   });
 
   test("aynı kupon iki kez onaylanamaz", async () => {
