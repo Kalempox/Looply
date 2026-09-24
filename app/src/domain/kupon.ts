@@ -38,7 +38,8 @@ import { idIleBul, odulKilidiBitis, takmaAdIle } from "./player";
  */
 
 /**
- * Ü28: bu tutarın üstündeki ödül **12 saat sonra** aktifleşir.
+ * Ü28: ödül **12 saat sonra** aktifleşir. (Ü269'dan beri her ödül;
+ * önce yalnızca tutar eşiğinin üstündeki — bkz. `kuponUret`.)
  *
  * ── Neden sabit süre, neden "ertesi gün" değil ──────────────
  *
@@ -228,13 +229,23 @@ async function kuponUret(
   }
 
   /**
-   * Ü28: eşiğin üstündeki ödül 12 saat sonra aktifleşir; ziyareti geri
-   * getiren şey bu. Eşik kafenin ayarı — 35 TL yalnızca varsayılan.
+   * Ü269: **her ödül** aktivasyon saati kadar sonra açılır; ziyareti geri
+   * getiren şey bu. Saat kafenin ayarı (1–48), 12 yalnızca varsayılan.
    *
-   * ⚠️ **Upsell bu kuralın dışında (Ü100).** Upsell kuponu bu ziyarette
-   * kullanılmak için var; 12 saat beklerse müşteri çoktan kalkmış olur ve
-   * kupon upsell olmaktan çıkar. `hemen` geldiğinde erteleme hiç
-   * sorulmuyor ve süre günlerle değil **saatlerle** ölçülüyor.
+   * ── Tutar eşiği KALKTI ──────────────────────────────────────
+   *
+   * Ü28'den beri yalnızca eşiğin (varsayılan 35 TL) üstündeki ödül
+   * erteleniyordu. Ürün sahibi: *"gecikmeli açılma eşiği olmamalı, her
+   * ödül gecikmeli açılmalı ... minimum bir tutar olmamalı çünkü o zaman
+   * yüzdeli ve ürün hediyeleri problem oluyor."* Tutar eşiği ürün ve
+   * yüzde ödülünde anlamsızdı: onların "tutarı" bütçeden rezerve edilen
+   * tavan, müşterinin gördüğü bir değer değil.
+   *
+   * ⚠️ **Upsell bu kuralın dışında (Ü100) ve öyle kaldı** — ürün sahibi
+   * Ü269'da ayrıca onayladı. Upsell kuponu bu ziyarette kullanılmak için
+   * var; beklerse müşteri çoktan kalkmış olur ve kupon upsell olmaktan
+   * çıkar. `hemen` geldiğinde erteleme hiç sorulmuyor ve süre günlerle
+   * değil **saatlerle** ölçülüyor.
    */
   const simdi = Date.now();
   let ertelendi = false;
@@ -244,20 +255,11 @@ async function kuponUret(
   if (opts.hemen) {
     sonKullanim = new Date(simdi + opts.hemen.gecerliSaat * 3_600_000);
   } else {
-    const esik = await ayar.sayiOku(opts.cafeId, ayar.ANAHTARLAR.ertelemeEsigi);
-    ertelendi = tutar > esik;
-    /* Ü250: süre de kafenin ayarı. Ertelensin ertelenmesin okunuyor —
-       `ertelemeSaati`den farkı bu: o yalnızca ertelenen kuponu
-       ilgilendiriyor, ömür ise her kuponun. */
+    ertelendi = true;
+    ertelemeSaat = await ayar.sayiOku(opts.cafeId, ayar.ANAHTARLAR.ertelemeSaati);
+    // Ü250: ömür de kafenin ayarı ve açılıştan sayılıyor.
     const gecerlilikGun = await ayar.sayiOku(opts.cafeId, ayar.ANAHTARLAR.gecerlilikGunu);
-    // Ü129: süre de kafenin ayarı. Yalnızca ertelenen kupon için okunuyor —
-    // eşiğin altındaki ödül zaten anında açılıyor ve bu sayı ona dokunmuyor.
-    if (ertelendi) {
-      ertelemeSaat = await ayar.sayiOku(opts.cafeId, ayar.ANAHTARLAR.ertelemeSaati);
-    }
-    sonKullanim = new Date(
-      simdi + (ertelendi ? ertelemeSaat * 3_600_000 : 0) + gecerlilikGun * 86_400_000,
-    );
+    sonKullanim = new Date(simdi + ertelemeSaat * 3_600_000 + gecerlilikGun * 86_400_000);
   }
 
   const aktiflesme = new Date(simdi + (ertelendi ? ertelemeSaat * 3_600_000 : 0));

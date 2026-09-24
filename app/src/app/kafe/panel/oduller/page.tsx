@@ -32,10 +32,10 @@ export const metadata = { title: "Ödül kataloğu · Looply" };
  */
 export default async function OdullerSayfasi() {
   const o = await kafeYoneticisiGerekli();
-  const [oduller, urunler, esikKurus, carkSinirKurus, ertelemeSaat, gecerlilikGun] = await Promise.all([
+  const [oduller, urunler, carkSinirKurus, ertelemeSaat, gecerlilikGun, ustSinirKurus] =
+    await Promise.all([
     katalog.listele(o.cafeId),
     urun.listele(o.cafeId, false),
-    ayar.sayiOku(o.cafeId, ayar.ANAHTARLAR.ertelemeEsigi),
     // Çarkın ayarları `/kafe/panel/cark`ta; buradaki tek ihtiyaç "kaç ödül
     // çarka giriyor" sayısı ve o da sınırı bilmeyi gerektiriyor.
     ayar.sayiOku(o.cafeId, ayar.ANAHTARLAR.carkUstSinir),
@@ -43,6 +43,8 @@ export default async function OdullerSayfasi() {
     ayar.sayiOku(o.cafeId, ayar.ANAHTARLAR.ertelemeSaati),
     // Ü250: kuponun ömrü de kafenin ayarı.
     ayar.sayiOku(o.cafeId, ayar.ANAHTARLAR.gecerlilikGunu),
+    // Ü268 · K5: ödül üst sınırı kafenin ayarı — form tutarı bununla sınırlıyor.
+    ayar.sayiOku(o.cafeId, ayar.ANAHTARLAR.odulUstSinir),
   ]);
 
   // Çarkın dönebilmesi için sınırın altında en az bir anlık ödül gerekiyor;
@@ -54,10 +56,13 @@ export default async function OdullerSayfasi() {
   /**
    * Ü62: kafe sahibinin bu ekranda sorduğu üç şey.
    *
-   * "Kaç ödülüm var" listeden sayılabiliyordu ama "ortalama kaç TL" ve
-   * "kaçı hemen açılıyor" sayılamıyordu — ikisi de ödül ekonomisinin
-   * karakterini belirliyor. Ortalama yüksekse bütçe hızlı eriyor;
-   * ertelenen oran yüksekse oyuncu ödülünü hemen kullanamıyor.
+   * "Kaç ödülüm var" listeden sayılabiliyordu ama "ortalama kaç TL"
+   * sayılamıyordu — ödül ekonomisinin karakterini belirliyor: ortalama
+   * yüksekse bütçe hızlı eriyor.
+   *
+   * ⚠️ Dördüncü kart "Hemen açılan" sayısıydı. Ü269'da tutar eşiği kalktı
+   * ve her ödül gecikmeli açılıyor; sayı hep sıfır olurdu. Yerine açılma
+   * süresi geldi — kafenin bu ekranda ayarladığı sayı.
    */
   const yayinda = oduller.filter((od) => od.aktif);
   const ortalamaKurus =
@@ -66,9 +71,6 @@ export default async function OdullerSayfasi() {
           yayinda.reduce((t, od) => t + od.maliyetKurus, 0) / yayinda.length,
         )
       : 0;
-  const hemenAcilan = yayinda.filter(
-    (od) => od.maliyetKurus <= esikKurus,
-  ).length;
 
   return (
     <IsletmeSayfa genis>
@@ -105,9 +107,9 @@ export default async function OdullerSayfasi() {
           alan="para"
         />
         <SayiKarti
-          etiket="Hemen açılan"
-          deger={String(hemenAcilan)}
-          alt={`üstü ${ertelemeSaat} saat bekliyor`}
+          etiket="Açılma süresi"
+          deger={`${ertelemeSaat} saat`}
+          alt="her ödül bu kadar sonra açılır"
           ikon={IKON.saat}
           alan="genel"
         />
@@ -168,22 +170,25 @@ export default async function OdullerSayfasi() {
             </span>
           </summary>
           <div className="border-t border-cizgi px-5 py-5">
-            <OdulEkleme urunler={urunler.map((u) => ({ id: u.id, ad: u.ad }))} />
+            <OdulEkleme
+              urunler={urunler.map((u) => ({ id: u.id, ad: u.ad }))}
+              ustSinirTl={ustSinirKurus / 100}
+            />
           </div>
         </details>
 
         <div className="rounded-2xl border border-cizgi bg-yuzey px-5 py-5">
           <div className="text-[15px] font-semibold">Açılma ve geçerlilik</div>
           <p className="mt-0.5 mb-4 text-[12px] leading-relaxed text-yazi-sonuk">
-            Bu tutarın üstündeki ödül {ertelemeSaat} saat sonra açılır —
+            Her ödül {ertelemeSaat} saat sonra açılır —
             müşteriyi ertesi gün geri getiren mekanik bu. Açılan kupon{" "}
             {gecerlilikGun} gün geçerli. Çark ödülü ve oyun ödülü aynı kuralı
             paylaşıyor.
           </p>
           <EsikAyari
-            mevcutTl={Math.round(esikKurus / 100)}
             mevcutSaat={ertelemeSaat}
             mevcutGun={gecerlilikGun}
+            mevcutUstSinir={ustSinirKurus / 100}
           />
         </div>
 
@@ -229,13 +234,13 @@ export default async function OdullerSayfasi() {
               baslik="Yayında"
               bos="Yayında hiç ödül yok — oyuncular şu an hiçbir şey kazanamıyor."
               oduller={yayinda}
-              esikKurus={esikKurus}
+              ertelemeSaat={ertelemeSaat}
             />
             <OdulGrubu
               baslik="Yayında değil"
               bos="Yayından kaldırılmış ödülün yok."
               oduller={oduller.filter((x) => !x.aktif)}
-              esikKurus={esikKurus}
+              ertelemeSaat={ertelemeSaat}
               sonuk
             />
           </div>
@@ -257,14 +262,14 @@ function OdulGrubu({
   baslik,
   bos,
   oduller,
-  esikKurus,
+  ertelemeSaat,
   sonuk = false,
 }: {
   baslik: string;
   bos: string;
   oduller: katalog.Odul[];
-  /** Gecikme eşiği — satırda "hemen mi açılıyor" bunu gerektiriyor. */
-  esikKurus: number;
+  /** Aktivasyon saati — satırda "kaç saat sonra açılıyor" yazıyor. */
+  ertelemeSaat: number;
   /** Yayında olmayanlar soluk: göz önce yayındakine gitmeli. */
   sonuk?: boolean;
 }) {
@@ -303,7 +308,7 @@ function OdulGrubu({
         <ul className="divide-y divide-cizgi">
           {oduller.map((od) => (
             <li key={od.id}>
-              <OdulSatiri odul={od} esikKurus={esikKurus} />
+              <OdulSatiri odul={od} ertelemeSaat={ertelemeSaat} />
             </li>
           ))}
         </ul>
@@ -341,14 +346,13 @@ function GrupBasligi({ baslik, sayi }: { baslik: string; sayi: number }) {
  */
 function OdulSatiri({
   odul,
-  esikKurus,
+  ertelemeSaat,
 }: {
   odul: katalog.Odul;
-  esikKurus: number;
+  ertelemeSaat: number;
 }) {
   const t = TIP_GORUNUM[odul.tip];
   const kanit = kanitCumlesi(odul.kanitSeviyesi);
-  const gecikiyor = odul.maliyetKurus > esikKurus;
 
   return (
     <div className="px-4 py-3.5 lg:grid lg:grid-cols-[1fr_120px_190px_auto] lg:items-center lg:gap-4">
@@ -386,11 +390,14 @@ function OdulSatiri({
       {/* ── Koşul ── */}
       <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[12px] text-yazi-sonuk lg:mt-0">
         {/*
-          Gecikme her ödülde geçerli bir bilgi ve eşikten türüyor —
-          kafe sahibinin "bu ödül hemen mi kullanılır" sorusu, ödül
-          eklerken değil listeye bakarken aklına geliyor.
+          Ü269: her ödül gecikmeli açılıyor, eşik yok. Satır yine de
+          söylüyor — kafe sahibinin "bu ödül ne zaman kullanılır" sorusu
+          listeye bakarken aklına geliyor.
+
+          🔴 Burada "12 saat" SABİT yazıyordu: kafe aktivasyon saatini
+          değiştirse bile liste 12 diyordu. Artık kafenin ayarı.
         */}
-        <span>{gecikiyor ? "12 saat sonra açılır" : "Hemen kullanılır"}</span>
+        <span>{ertelemeSaat} saat sonra açılır</span>
         {kanit && <span className="text-odul-koyu">{kanit}</span>}
       </div>
 
@@ -503,6 +510,10 @@ function tlYaz(kurus: number): string {
  * oyunculara verilir" ödüllerin çoğu için geçerli; her satırda
  * tekrarlandığında bilgi değil gürültü oluyordu. Bir istisna
  * olduğunda — masada beklemek ya da fiş kodu — o zaman yazıyor.
+ *
+ * Ü268'den beri her ödül K2 ve göç 0048 eski satırları da indirdi; bu
+ * iki cümle artık görünmemeli. Yine de duruyor: satırda saklı kural ne
+ * ise panel onu söylesin.
  */
 function kanitCumlesi(seviye: number): string {
   // Kısa tutuluyor: satırın ikinci kolonunda duruyor ve uzun cümle iki

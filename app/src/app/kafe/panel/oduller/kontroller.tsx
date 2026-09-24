@@ -19,9 +19,6 @@ import {
 
 const BOS: OdulDurumu = {};
 
-/** Ü52: seçilebilir ödül değerleri — 25'ten 50'ye, 5'er artışla. */
-const DEGERLER = [25, 30, 35, 40, 45, 50];
-
 /**
  * Ödül ekleme formu.
  *
@@ -30,18 +27,22 @@ const DEGERLER = [25, 30, 35, 40, 45, 50];
  * Tek bir uzun formda hepsini gösterip "boş bırak" demek, kafe sahibini
  * yanlış doldurmaya davet ederdi.
  *
- * Kanıt seviyesi formda **yok**: E6 onu tutardan hesaplıyor. Kafe seçebilseydi
- * en pahalı ödülü en zayıf kanıtla verebilirdi. Seçenek listesinde yine de
- * yazıyor ("konum yeter" / "masada 5 dk") — kafe neyi seçtiğini bilsin.
+ * Kanıt seviyesi formda **yok**. Ü268'de "masada 5 dk" kuralı kalktı ve
+ * her ödül için konum doğrulaması yetiyor — seçilecek bir şey kalmadı.
  *
  * Ü52 ile iki alan kalktı: **puan fiyatı** (puanla satın alma yok) ve
- * **anlık mı** sorusu (tek tip ödül kaldı). Tutar da serbest metin değil,
- * sabit basamak.
+ * **anlık mı** sorusu (tek tip ödül kaldı).
+ *
+ * Ü268 · K5: tutar artık **serbest** — 25 TL ile kafenin kendi üst sınırı
+ * arasında, tam TL. Önceden 25–50 arası sabit bir listeden seçiliyordu.
  */
 export function OdulEkleme({
   urunler,
+  ustSinirTl,
 }: {
   urunler: { id: string; ad: string }[];
+  /** Kafenin ödül üst sınırı (`ayar.odulUstSinir`), TL. */
+  ustSinirTl: number;
 }) {
   const [durum, action, bekliyor] = useActionState(ekleEylemi, BOS);
   const [tip, setTip] = useState<"product" | "percent" | "amount">("product");
@@ -133,9 +134,10 @@ export function OdulEkleme({
         </IsletmeAlan>
       )}
 
-      {/* Ü52: serbest tutar yok — 25 ile 50 TL arası, 5'er artışla.
-          Metin kutusu bırakılsaydı kafe "27,50" yazar ve form her
-          seferinde hata döndürürdü; seçenek listesi kuralı anlatıyor. */}
+      {/* Ü268 · K5: tutar serbest — 25 TL ile kafenin üst sınırı arasında.
+          ⚠️ `step={1}`: tam TL. Ü52'nin "27,50" kaygısı hâlâ geçerli;
+          tarayıcı kuruşlu değeri daha gönderilmeden reddediyor, sunucu
+          da ayrıca reddediyor. */}
       <IsletmeAlan
         etiket={
           tip === "percent"
@@ -152,13 +154,21 @@ export function OdulEkleme({
               : "Ürünün perakende fiyatı. Kasada onaylandığında bütçeden bu kadar düşer."
         }
       >
-        <select name="tutar" className={isletmeGirdi} defaultValue="25">
-          {DEGERLER.map((tl) => (
-            <option key={tl} value={tl}>
-              {tl} TL{tl <= 35 ? " · konum yeter" : " · masada 5 dk"}
-            </option>
-          ))}
-        </select>
+        <input
+          name="tutar"
+          type="number"
+          inputMode="numeric"
+          required
+          min={25}
+          max={ustSinirTl}
+          step={1}
+          defaultValue="25"
+          className={isletmeGirdi}
+        />
+        <span className="mt-1.5 block text-[12px] text-yazi-sonuk">
+          25 ile {ustSinirTl.toLocaleString("tr-TR")} TL arası, tam TL. Üst sınırı
+          ayarlardan değiştirebilirsin.
+        </span>
       </IsletmeAlan>
 
       {/* Ü52: "anlık mı" sorusu kalktı. Tek tip ödül var — oyunlardan ve
@@ -322,13 +332,14 @@ export function DurumDugmesi({
  * ama sınırsız bırakmak ertelemeyi fiilen kapatmanın yolu olurdu.
  */
 export function EsikAyari({
-  mevcutTl,
   mevcutSaat,
   mevcutGun,
+  mevcutUstSinir,
 }: {
-  mevcutTl: number;
   mevcutSaat: number;
   mevcutGun: number;
+  /** Ü268 · K5 — ödül üst sınırı, TL. */
+  mevcutUstSinir: number;
 }) {
   const [durum, action, bekliyor] = useActionState(
     esikEylemi,
@@ -340,19 +351,10 @@ export function EsikAyari({
       {durum.hata && <IsletmeUyari>{durum.hata}</IsletmeUyari>}
       {durum.bilgi && <IsletmeUyari tur="bilgi">{durum.bilgi}</IsletmeUyari>}
 
-      <IsletmeAlan
-        etiket="Gecikmeli açılma eşiği (TL)"
-        ipucu="Bu tutarın üstündeki ödül gecikmeli açılır; altındakiler kasada hemen kullanılabilir."
-      >
-        <input
-          name="esik"
-          type="text"
-          inputMode="numeric"
-          defaultValue={String(mevcutTl)}
-          className={isletmeGirdi}
-          placeholder="35"
-        />
-      </IsletmeAlan>
+      {/* 🔴 Ü269: "Gecikmeli açılma eşiği (TL)" alanı KALKTI. Ürün sahibi:
+          "eşik olmamalı, her ödül gecikmeli açılmalı ... minimum bir tutar
+          olmamalı çünkü o zaman yüzdeli ve ürün hediyeleri problem
+          oluyor." Kafe yalnızca süreyi ayarlıyor. */}
 
       {/* Ü129: aktivasyon saati. Önce `kupon.ts`te sabit yazılıydı ve iki
           kez kod değiştirilerek ayarlanmıştı (Ü28: 24, Ü97: 12). Artık
@@ -360,7 +362,7 @@ export function EsikAyari({
           için ikisi için de geçerli. */}
       <IsletmeAlan
         etiket="Aktivasyon saati"
-        ipucu="Eşiğin üstündeki ödül kaç saat sonra açılsın. Çark ödülü ve oyun ödülü için aynı — ikisi de aynı kupon yolundan geçiyor. 1 ile 48 arası."
+        ipucu="Her ödül kaç saat sonra açılsın. Çark ödülü ve oyun ödülü için aynı. 1 ile 48 arası — ödül hiçbir zaman hemen açılmaz."
       >
         <input
           name="saat"
@@ -375,8 +377,7 @@ export function EsikAyari({
       </IsletmeAlan>
 
       {/* Ü250: geçerlilik süresi. `kupon.GECERLILIK_GUN` sabitti ve ürün
-          sahibi panele istedi. Aktivasyon saatinden farkı: o yalnızca
-          ertelenen kuponu ilgilendiriyor, bu **her** kuponun ömrü. */}
+          sahibi panele istedi. Açılıştan sayılıyor. */}
       <IsletmeAlan
         etiket="Kupon kaç gün geçerli"
         ipucu="Kupon açıldıktan sonra kaç gün kullanılabilsin. 1 ile 30 arası — kullanılmayan kupon bütçenden pay ayırıyor ve ancak süresi dolunca geri dönüyor."
@@ -390,6 +391,24 @@ export function EsikAyari({
           defaultValue={String(mevcutGun)}
           className={isletmeGirdi}
           placeholder="7"
+        />
+      </IsletmeAlan>
+
+      {/* Ü268 · K5: ürün sahibi — "üst sınırı kafe belirlesin, bir sınır
+          olmasın, en az 50 olsun". */}
+      <IsletmeAlan
+        etiket="Ödül üst sınırı (TL)"
+        ipucu="Tanımlayabileceğin en pahalı ödül. En az 50; üst sınır yok. Ödüller 25 TL ile bu tutar arasında olabilir."
+      >
+        <input
+          name="ustSinir"
+          type="number"
+          inputMode="numeric"
+          min={50}
+          step={1}
+          defaultValue={String(mevcutUstSinir)}
+          className={isletmeGirdi}
+          placeholder="50"
         />
       </IsletmeAlan>
 

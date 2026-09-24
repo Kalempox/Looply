@@ -6,12 +6,12 @@
 > Yan dosyalar: neyin **var** olduğu → `21-looply-kapsam-haritasi.md` ·
 > demoda neyin **yapılabildiği** → `22-demo-yapilabilirlik.md`
 
-**Son güncelleme:** 2026-09-22 · **Kararlar:** Ü76 – Ü159, **Ü186 – Ü242**, **Ü259 – Ü265**
+**Son güncelleme:** 2026-09-24 · **Kararlar:** Ü76 – Ü159, **Ü186 – Ü242**, **Ü259 – Ü274**
 
 > ⚠️ **BU LİSTEDE İKİ BOŞLUK VAR.**
 >
-> **Ü243 – Ü258 yazılmadı.** O turlar da commitlenmedi ve kod
-> yorumlarında duruyorlar: Blok Kırıcı, oyun başına `gunlukHedef`,
+> **Ü243 – Ü258 yazılmadı.** O turlar commitlendi (2026-09-23) ama
+> buraya dökülmedi; commit mesajlarında ve kod yorumlarında duruyorlar: Blok Kırıcı, oyun başına `gunlukHedef`,
 > karekodun Loopy'si ve adlı kodlar, kafe değiştirince oturum hatası,
 > giden kutusu saklama süresi, sessizce çalışmayan `qr_temizlik`, hata
 > sınırları, `/firsatlar`ın kupon tasarımına taşınması, karusel
@@ -24,9 +24,460 @@
 
 ---
 
+## 🔔 UNUTULMAYACAKLAR — ürün sahibinin 2026-09-23 hatırlatması
+
+> *"iyzico linki, Resend API gerekecek, karekod linklerini de
+> değiştireceğiz — onları da unutma."*
+
+| # | Ne | Durum | Neyi bekliyor |
+|---|---|---|---|
+| **U1** | **iyzico ödeme linki** `https://iyzi.link/AKvxUA` | ⬜ Üründe **hiçbir yerde yok** — yalnızca `docs/27`de not | Yer kararı. Öneri: kafe panelinde "Abonelik ödemesi" kartı (kafe aylık aboneliği Ü41'de kararlaştırıldı) |
+| **U2** | **Resend API anahtarı** | ⬜ Canlı ortam e-posta sağlayıcısız **açılmıyor** (`env.ts`); doğrulama kodları e-postayla gidiyor | Hesap + anahtar (ürün sahibinde) · 🔴 D3: Resend ABD'de → KVKK md. 9 mekanizması + DPA + VERBİS |
+| **U3** | **Karekod linkleri** | 🟡 Ü270: `KAREKOD_TABAN_ADRESI` ayarı geldi — **canlıda doldurulmalı**. Önce basılı karekodun alan adı **isteğin `Host` başlığından** türüyordu (`kafe/panel/karekod/page.tsx:33`). Paneli `192.168.1.x`'ten açıp yazdıran, LAN adresi taşıyan karekod basar | Toptan baskıdan **önce** taban adres sabit bir ayara (`KAREKOD_TABAN_ADRESI`) taşınmalı; geliştirmede istek adresine düşebilir ki LAN testi çalışsın. O zaman "linkleri değiştirmek" tek satır ayar olur |
+
+⚠️ U3 test sırasında **bilerek** değiştirilmedi: yerel testte telefonla
+okutulan karekodun LAN sunucusuna gitmesi tam da bu davranış sayesinde
+çalışıyor.
+
+## ⬅️ Ü274 · Telefon testinden on iki madde — 2026-09-24
+
+✅ Commitlendi (2026-09-24).
+
+Ürün sahibi ilk kez telefondan uçtan uca oynadı ve on iki şey bildirdi.
+Sıra onun onayıyla: A (test engelleri) → B (ekran düzeni) → C (hız).
+
+**A · Test engelleri**
+1. 🔴 **Ödül gelmedi — ne çarktan ne oyundan.** Sebep: Kafe A 09–23
+   açık, oyun 01:52–01:56'da oynandı; kapalıyken hiçbir ödül çıkmıyor
+   (Ü90). Kural doğruydu, **ekran susuyordu**: çark "hazır" deyip
+   kazandırmış gibi gösterdi, oyun ödüllü bloğu kırdırıp sessiz kaldı.
+   Artık `butce.kafeAcikMi` tek kaynak; çark `sebep: "kapali"` dönüyor
+   ("Kafe şu an kapalı — ödüller 09:00'da açılıyor"), misafire kapalı
+   kafede çark gösterilmiyor ve çevirmesi sunucuda da reddediliyor, oyun
+   sonu `odulYok` ile sebebi yazıyor. Çarka `an` dikişi eklendi — kural
+   duvar saatine bakıyor ve çark testleri gece düşüyordu (ölçüldü). 3
+   test; **A/B:** kontrol çıkarılınca "kapalı kafede çark açık göründü".
+   Test için Kafe A'nın açılışı 00:00 yapıldı (ürün sahibinin onayıyla).
+2. **"Kafeden 6494 m uzaktasın".** Konum bilgisayardan kaydedilmişti;
+   masaüstü tarayıcı konumu Wi-Fi/IP'den tahmin ediyor. Konum ekranı
+   artık `coords.accuracy`ye bakıyor: ±100 m'den kötü okuma
+   kendiliğinden kaydedilmiyor, "telefondan kaydet" diyor ("yine de
+   kaydet" duruyor).
+3. **Ödüllü blok her atışta yeniden düşüyordu.** Anahtar hücreden
+   türüyordu ve her atıştan sonra satırlar iniyor → eleman yeniden
+   kuruluyor → düşme animasyonu baştan. Önceki not tersini iddia
+   ediyordu ("bir kez koşuyor"). Artık yalnızca doğduğu satırda (s = 0).
+4. **Oynarken sayfa kayıyor/yenileniyordu.** `touch-action: none`
+   yalnızca tahtadaydı. Tur boyunca sayfa sabitleniyor (`position:
+   fixed` + belgede `touchmove` iptali), tur bitince eski yerine dönüyor.
+5. **Çarkta Loopy'nin arkası siyah (iPhone).** Safari VP9 alfayı
+   çizmiyor — Ü197'nin notu bu riski yazmıştı. WebKit'te video yerine
+   saydam **animasyonlu WebP** (52 kare, 4.583 ms, bir kez, 868 KB; bir
+   kare mor zeminde kontrol edildi); her dönüşte yeni `blob:` adresi
+   (ilk kareden başlasın diye). Ötekilerde video aynen.
+
+**B · Ekran düzeni**
+6. Üst kafe şeridi (`py-3`→`py-1.5`, 11 px, küçük avatar/düğmeler) ve
+   alt menü (`py-3`→`py-1.5`, 10 px etiket, ev çizgisi payı) inceldi.
+7. `/oyunlar` başlığı `kompakt` (sahne 190→112, `py-6`→`py-3`).
+8. Geri bağlantısı: Çark, Davet, Loopy, Ödüllerim, Profil (ortak
+   `GeriBaglanti`; sekme köklerinde olmaması kuralı ürün sahibinin
+   isteğiyle bırakıldı).
+9. Seviye atlama **tam ekran sahneyle** geliyor (seri sahnesinin dili:
+   kıvılcım, rozet patlaması, koşan Loopy); kart kapanınca kaydı olarak
+   sonuçlarda kalıyor.
+10. **Tam ekran:** Safari'nin çubuğunu sayfa kapatamaz; tek yol "Ana
+   Ekrana Ekle". `app/manifest.ts` (`standalone`, `/oyna` ile açılır) +
+   iOS meta etiketleri + simgeler (mevcut `loopy-mutlu-512`den kırpıldı,
+   üretilmedi).
+
+**C · Hız**
+11. Yavaşlığın sebebi geliştirme sunucusu: karekodla açılan ilk sayfada
+   **4.835 KB** JavaScript (derlenmiş sürümde **741 KB**) ve her sayfa ilk
+   açılışta derleniyor. `npm run telefon` derlenmiş sürümü HTTPS ile
+   **3001**'de açıyor (`scripts/telefon-sunucu.mjs` — `next start`ın
+   HTTPS seçeneği yok); geliştirme sunucusu 3000'de kalıyor.
+
+**Doğrulama:** 777 test · 770 geçti · 0 düştü · 7 atlandı · tsc ·
+eslint · `next build`. Derlenmiş sunucu: sayfalar 200, karekod zinciri
+3001'de de `/hemen?cark=1`e gidiyor, manifest ve simge sunuluyor.
+Uygulama içi tarayıcı kendi imzalı sertifikayı kabul etmediği için
+ekranlar telefonda görülecek.
+
+---
+
+## ⬅️ Ü273 · Karekod telefonda 0.0.0.0'a yönleniyordu — göreli yönlendirme — 2026-09-24
+
+✅ Commitlendi (2026-09-24).
+
+Ürün sahibi Safari'de karekodu okuttu: adres `192.168.1.175` ile açıldı,
+sonra `0.0.0.0`a yönlendi ve sayfa açılmadı. Ü270'in adres düzeltmesi
+karekodun **içindeki** adresi düzeltmişti; bu, sunucunun **döndüğü**
+adresti.
+
+Sebep: `/m`, `/h` ve `/r` yönlendirmeyi `new URL(yol, istek.url)` ile
+kuruyordu (Next belgesinin önerdiği biçim). Geliştirme sunucusu telefondan
+ulaşılsın diye `-H 0.0.0.0` ile açılıyor ve `istek.url` o adresi
+taşıyor — kullanıcının geldiği adresi değil.
+
+Düzeltme `lib/yonlendir.ts · goreliYonlendir`: `Location: /hemen?cark=1`.
+Tarayıcı göreli adresi geldiği adrese göre çözüyor; sunucunun kendi adını
+bilmesi gerekmiyor — geliştirmede de vekil sunucu arkasında da aynı.
+Yalnızca `/` ile başlayan site içi yol kabul ediliyor (`//evil.com` ve
+`/\evil.com` açık yönlendirme olmasın diye reddediliyor).
+
+Etkilenen üç uç: karekod (`/m`), butik çark hakkı (`/h`), davet (`/r`).
+
+**Doğrulama:** test, isteği tam olarak `https://0.0.0.0:3000/m/<kod>`
+diye kuruyor ve dönen yerin `/hemen?cark=1` olduğunu, masa biletinin
+verildiğini sınıyor. **Canlı sunucu:**
+`https://192.168.1.175:3000/m/kafe-a-y85kuahv` → 1 yönlendirme →
+`https://192.168.1.175:3000/hemen?cark=1` · 200 · sayfada "Kafe A".
+774 test · 767 geçti · 0 düştü · 7 atlandı · `next build`.
+
+---
+
+## ⬅️ Ü272 · Karekod kullanımı "yeni" ve "eski" — taşınan kod korunuyor · kayıtlardaki kimlik bozulması — 2026-09-24
+
+✅ Commitlendi (2026-09-24).
+
+**1 · Yeni / eski kullanım.** Ürün sahibi, taşınan kodun sayacı
+sıfırlanınca: *"taşınınca eski ve yeni olarak ayrı ayrı tutulsun
+kullanım kısmında."* Göç 0050: `print_code_history` kodun geçmiş
+duraklarını tutuyor (masa, kafe, başlangıç, bitiş; yalnızca ekleme).
+Kullanım tek bir veritabanı fonksiyonunda — `basili_kod_kullanimi`:
+**yeni** = şu anki masada, oraya geldiği andan beri · **eski** = geçmiş
+duraklarda, o aralıklarda. Liste, hedef seçici ve taşıma koruması aynı
+fonksiyonu çağırıyor (Ü267'de üç ayrı hesap ayrışmıştı).
+
+🔴 **Koruma bunun sonucu:** "kullanımda" artık yeni + eski. Taşınmış bir
+kod "hiç okutulmadı" görünüp üstüne gelen ikinci kodla sessizce
+silinemiyor. Test 2b/3: eski okutmalar görünüyor, üstüne taşıma
+reddediliyor; 3b: gerçekten kullanılmamış kodun yerine geçme çalışıyor.
+**A/B:** koruma yalnızca "yeni"ye indirilince test *"taşınmış kod
+kullanılmamış sanılıyor"*da düştü.
+
+Geçmiş taşımalar denetim izinden dolduruldu — kafe kimliği değil **masa
+kimliği** üzerinden (kafe kimlikleri aşağıdaki hata yüzünden bozuk
+olabiliyordu). ⚠️ Kafe A kodunun Boş Test Kafe durağı (01:26–01:35)
+girmedi: o masa, ürün sahibinin istediği "boş kafe" için geçmiş
+kurulmadan önce silinmişti. Bu yüzden ekranda geliş saati 01:26
+görünüyor; aralıkta hiç oturum olmadığı için sayılar değişmiyor.
+
+**2 · Kayıtlardaki kimlik bozulması.** `lib/log.ts`in telefon deseni
+sınırsızdı: kimliklerin **ortasındaki** "5 ile başlayan on hane"yi numara
+sanıyordu. `cafe_0mt68s475925084831c7311e9` denetim izine
+`cafe_0mt68s47[telefon]c7311e9` olarak geçti. 2026-09-17'den beri 9 satır
+(7 çark hakkı, 2 karekod taşıma) — geri getirilemiyor. Desen artık harf
+ya da rakamla bitişik diziyi numara saymıyor; serbest metindeki numara
+hâlâ maskeleniyor (test: dört kimlik bozulmuyor, ayrı yazılmış numara
+maskeleniyor).
+
+**Yol boyunca:** yönlendirme testinin "elle taşınmış kod" koruması
+`db.one`ın satır yokken `undefined` döndüğünü hesaba katmıyordu —
+koruma koşulsuz düşüyordu; yalnızca kod gerçekten test kafesindeyken
+koşulduğu için görülmemişti. Düzeltildi.
+
+**Doğrulama:** 771 test · 764 geçti · **0 düştü** · 7 atlandı · tsc ·
+eslint · `next build`. Tam koşudan sonra kafe sayısı 12 — testler iz
+bırakmıyor.
+
+---
+
+## ⬅️ Ü271 · 4.556 deneme kafesi silindi — testler artık iz bırakmıyor — 2026-09-24
+
+✅ Commitlendi (2026-09-24).
+
+Ürün sahibi 1.2b'de Kafe A'yı hedef listesinde bulamadı: liste **4.561
+seçenekti** ve Kafe A **2.353.** sıradaydı. Sebep: `cark`, `challenge`,
+`liderlik` testleri her koşuda yeni **onaylı** kafeler açıp hiç
+silmiyordu. Ürün sahibinin onayıyla (*"sil"*) silindi.
+
+**Nasıl:** hiçbir yabancı anahtar `CASCADE` değil (30 tablo) — silme
+sırası kısıtlardan çıkarıldı ve tek işlemde yapıldı
+(`tests/_yardim.ts · testKafeleriniSil`). Seçim ad listesi **ve**
+testlerin slug kalıbı (`ad-<id son 6>`) birlikte tutarsa. Önce **prova**
+(sil, say, geri al), sonra gerçek. Silinen: 4.556 kafe · 4.725 ödül ·
+3.273 oyun turu · 1.556 XP · 1.496 puan · 1.358 bütçe defteri satırı ·
+1.268 kupon olayı · 779 kupon · 443 denetim satırı · 222 personel.
+Kalan 12 kafe: onaylı 6'sı (Kafe A, Kafe B, Kahve Durağı, Moda Butik,
+Boş Test Kafe, Yonlendirme Test Hedefi) ve ürün sahibinin elle açtığı 6
+başvuru — onlara dokunulmadı.
+
+**Kalıcı düzeltme:** üç test dosyası açtığı kafeyi listeye yazıyor ve
+`after`da siliyor. Ölçüldü: üç dosya koşmadan önce 12 kafe, sonra 12.
+
+⚠️ Aynı testlerin açtığı **oyuncular** duruyor (kafeye bağlı değiller,
+bu listeyi etkilemiyorlar). Platformun "Oyuncular" ekranını kalabalık
+ediyorlarsa ayrı iş.
+
+---
+
+## ⬅️ Ü270 · Telefonda kayıt ve giriş: dört düzeltme — 2026-09-24
+
+✅ Commitlendi (2026-09-24).
+
+Ürün sahibi telefondan test ederken dört şey bildirdi:
+
+**1 · Karekod "sunucuya bağlanılamadı" (Safari ve Chrome).** Karekodun
+adresi paneli açan isteğin `Host`undan türüyordu; panel bilgisayarda
+`localhost` ile açılınca karekod `https://localhost:3000/m/…` taşıdı —
+telefonda "localhost" telefonun kendisi. Artık `lib/karekod-adresi.ts`:
+`KAREKOD_TABAN_ADRESI` varsa o (canlı — **U3 bununla kapanıyor**, toptan
+baskıdan önce doldurulmalı), yoksa istek adresi; yerel ad ise
+geliştirmede bilgisayarın ağ adresi (`192.168.` önce — `172.31.x` sanal
+bağdaştırıcı). Karekod sayfası ve yazdırma sayfası aynı kuralı kullanıyor.
+6 test.
+
+**2 · 🔴 "E-posta adresi eksik" — kodu doğru girse bile.** Kayıt
+kodunun adımı (adım 2) adım 1'in alanlarını gizli girdi olarak taşıyor
+ve sunucuda yeniden doğruluyor. Ü168'de e-posta zorunlu oldu ama gizli
+girdilere **eklenmedi**: telefondan kayıt olmak imkânsızdı. Alanlar artık
+tek listede (`giris/alanlar.ts`); gizli girdiler oradan üretiliyor ve şema
+`satisfies Record<KayitAlani, …>` ile listeye bağlı. **A/B:** şemaya
+listede olmayan bir alan eklenince derleme düştü.
+
+**3 · Google / Apple düğmeleri kalktı.** Ürün sahibi: *"Google ve Apple
+hesaplarını kaldıralım, e-postayı kendileri girsinler."* Düğmeler zaten
+sağlayıcıya bağlı değildi, kayıt sekmesini açıyordu (Ü36).
+
+**4 · Parolamı unuttum — kendi akışı.** Önce "Hesap aç" formunu
+açıyordu: kayıtlı numarada parolayı yeniden yazıyordu ama ad, soyad,
+doğum yılı ve onayı baştan istiyordu. Şimdi: **telefon → hesabın kayıtlı
+e-postasına kod → kod + yeni parola → içeri**. Ayrıntı ve güvenlik
+kararları `domain/parola-sifirlama.ts`: kod formdaki adrese değil
+hesabın adresine gidiyor · kural dışı parola kodu yakmıyor · **parola
+değişince bütün eski oturumlar kapanıyor** · kayıtlı olmayan numara
+söyleniyor (kayıt akışı aynı bilgiyi zaten veriyor, Ü168). 6 test;
+**A/B:** oturum kapatma çıkarılınca "eski oturum kapatılmadı"da düştü.
+
+**Beni hatırla — değişmedi, bilerek.** Soruldu: varsayılan açık mı
+gelsin? Ürün sahibi: **kapalı kalsın.** İşaretli 90 gün, işaretsiz 12
+saat (Ü36). "Her seferinde giriş istiyor" şikâyetinin bir kısmı testte
+**gizli sekme** kullanılmasındandı — orada oturum sekmeyle ölüyor.
+
+⚠️ Kodun gerçekten e-postaya gitmesi hâlâ **Resend anahtarını** bekliyor
+(U2). Geliştirmede kod ekranda görünüyor.
+
+**Doğrulama:** 770 test · 762 geçti · 7 atlandı · 1 düştü — beklenen
+(yönlendirme testinin koruması; Kafe A'nın kodu test kafesinde). tsc ·
+eslint · `next build`. `/giris` canlı sunucuda Google/Apple'sız ve
+"Parolanı mı unuttun?" ile geliyor (sayfa kaynağından; uygulama içi
+tarayıcı kendi imzalı sertifikayı reddediyor, ekran telefonda görülecek).
+
+---
+
+## ⬅️ Ü269 · Her ödül gecikmeli açılıyor — tutar eşiği KALKTI — 2026-09-24
+
+✅ Commitlendi (2026-09-24).
+
+Ürün sahibi, paneldeki "Gecikmeli açılma eşiği (TL)" alanını görünce:
+*"gecikmeli açılma eşiği olmamalı, her ödül gecikmeli açılmalı; kafe
+sahibi isterse saatini azaltabilmeli veya arttırabilmeli ama minimum bir
+tutar olmamalı, çünkü o zaman yüzdeli ve ürün hediyeleri problem
+oluyor."* Sorulunca: **upsell hemen açılsın** (Önerilen).
+
+| Ne | Önce (Ü28 · Ü129) | Şimdi |
+|---|---|---|
+| Hangi ödül bekler | Eşiğin (varsayılan 35 TL) üstü | **Her ödül** — ürün, yüzde, tutar |
+| Kafenin ayarı | Eşik (TL) + aktivasyon saati | Yalnızca **aktivasyon saati**, 1–48 |
+| Upsell | Hemen | Hemen — bu ziyaret için (Ü100) |
+
+⚠️ Aktivasyon saati **en az 1**: sıfır "erteleme yok" demek olurdu ve
+kuralın tam tersi. Kafe saati kısaltabilir, ertelemeyi kapatamaz.
+
+⚠️ Sonucu: kayıt olurken çarktan çıkan ödül de o ziyarette
+kullanılamaz, sonraki ziyarete kalır. Ürün sahibine sorulmadan önce
+söylendi.
+
+**Nerede:** `kupon.kuponUret` — aktifleşme anı tek yerde hesaplanıyor,
+çark da oyun da oradan geçiyor. Ayar anahtarı `ertelemeEsigi` koddan
+silindi; kullanan her yer derlemede düştü ve tek tek kapandı (panel formu
+ve eylemi, ödüller sayfası, platform kafe künyesi, iki test dosyası).
+Göç 0049 kalan `erteleme_esigi_kurus` satırlarını sildi (2 satır).
+
+**Yol boyunca bulunan üç şey:**
+- Ödül satırlarında **"12 saat sonra açılır" SABİT** yazıyordu — kafe
+  saati değiştirse bile liste 12 diyordu. Artık kafenin ayarı.
+- Ödüller sayfasının "Hemen açılan" kartı hep sıfır olacaktı; yerine
+  **"Açılma süresi"** geldi.
+- Platformun kafe künyesi, etiket listesinde olmayan ayarı **ham
+  anahtarla** gösteriyordu (`odul_ust_sinir_kurus: 8000`) — K5'in üst
+  sınırı, geçerlilik günü, çark aralığı, konum yarıçapı. Liste artık
+  `Record<Anahtar, …>`: yeni ayar yazılmazsa derleme düşüyor.
+
+**Testler.** Kasa testleri açık kupon için eşiği tavana çekiyordu; o yol
+yok. `kuponAl` artık kuponu üretip açılma anını geçmişe alıyor (kasa
+zamana bakıyor, `status`a değil); ertelemeyi sınayanlar
+`bekleyenKuponAl` kullanıyor. Yeni: *hiçbir ödül hemen açılmıyor* (ürün,
+tutar, yüzde; kasa hiçbirini onaylamıyor) · *her ödül ertelenir, en
+küçüğü de* · *kazınan ama açılmamış kupon bekleyende duruyor* ·
+uçtan uca karekod zinciri artık bekleme adımını da yürüyor.
+
+⚠️ Aktivasyon saatini değiştiren test sonunda kafenin değerini **aynen**
+geri koyuyor. Önceki hâli sabit 12'ye yazıyordu — ürün sahibi gece
+testinde saati kısaltırsa onu ezerdi.
+
+**A/B:** eşik 30 TL olarak geri konunca dört yeni test tam hedef
+satırında düştü.
+
+**Doğrulama:** 758 test · 750 geçti · 7 atlandı · **1 düştü — beklenen**:
+yönlendirme testinin koruması, Kafe A'nın kodu elle test kafesine
+taşınmış durduğu için çalışmayı reddetti (bkz. Ü267). tsc · eslint ·
+`next build`.
+
+---
+
+## ⬅️ Ü268 · Ödül değeri serbest, üst sınır kafenin — "masada 5 dk" KALKTI — 2026-09-23 (K5)
+
+✅ Commitlendi (2026-09-24).
+
+Ürün sahibi, panelde 25/30/…/50 açılır listesini görünce: *"ben oraya
+25 ile 50 arasında istediğimi yazabilmeliyim, üst limiti de kafe sahibi
+belirlemeli."* Sorulunca: *"kafe istediği gibi belirlesin, bir sınır
+olmasın, üst sınır koymada minimum 50 olsun"* ve *"masada 5 dk diye bir
+kural olmayacak."*
+
+| Ne | Önce (Ü52) | Şimdi |
+|---|---|---|
+| Ödül değeri | 25–50 TL, 5'er basamak, açılır liste | **25 TL ile kafenin üst sınırı arası, tam TL**, sayı kutusu |
+| Üst sınır | Sabit 50 | Kafenin ayarı `odul_ust_sinir_kurus` — varsayılan 50, **en az 50, yukarıda sınır yok** |
+| Erteleme eşiği / çark üst sınırı | En çok 50 | Yukarıda sınır yok — ödülün tavanını izleyebilmeli |
+| Kanıt | 25–35 → konum · 40–50 → masada 5 dk · 51+ → fiş kodu | **Her ödül yalnızca konum (K2)** |
+
+🔴 **Fiş kodu satırı da gitmek zorundaydı.** Eski formül 50 TL'nin
+üstüne K4 döndürüyordu ve K4 bilerek hiçbir yerden verilmiyor (Ü108).
+Tavan kafenin olunca o satır kalsaydı 50 TL'den pahalı her ödül
+panelde durur ama **hiç kimseye düşmezdi**.
+
+⚠️ Bu bir güvenlik kuralının gevşemesi ve bilerek yapıldı. Pahalı
+ödülde kalan korumalar: kuponu yalnızca kasiyer kapatıyor, kaybı bütçe
+tavanlıyor, kafe isterse günlük adet koyuyor (Ü103).
+
+**Şema (göç 0048):** `odul_degeri_basamakli` (25–50, 5'er) düştü,
+yerine `odul_degeri_tam_tl` (≥ 25 TL, tam TL) geldi. Üst sınır
+uygulamada sınanıyor — CHECK başka tablodaki ayarı okuyamıyor. Var olan
+ödüllerin `min_proof_level`i 2'ye indirildi; ölçüldü: 2'nin üstünde
+**0** ödül kaldı.
+
+⚠️ Ekranda "sınırsız" yazılmıyor: teknik tavan (`SINIRSIZ`) hata
+mesajında aralık gibi görünmesin diye mesaj *"en az 50 TL olmalı"*
+diyor. "En fazla 1 milyar TL" yazmak "sınır olmasın" kararını sınırmış
+gibi gösterirdi.
+
+⚠️ Bilerek dokunulmayanlar: vitrin simülasyonu 25–50 aralığında kaldı
+(varsayılan tavan). Kafe raporundaki *"masada 5 dk kaldı"* bir kural
+değil, ziyaretin ulaştığı **olgu** — oturumun K3'ü hâlâ hesaplanıyor ama
+hiçbir ödül onu istemiyor.
+
+**Göç çalıştırıcısı da düzeldi.** `db:migrate` 0048'i uygulamayı
+reddetti: 0046 ve 0047, commitleri tek tek doğrulamak için yapılan
+`git stash` sonrası CRLF'ye dönmüştü (`core.autocrlf = true`) ve özet
+ham bayttan alındığı için "uygulandıktan sonra değiştirilmiş" sayıldı.
+Kayıtlı özetler karışık (bazı göçler uygulandığında zaten CRLF'ydi);
+artık kayıt ham, LF ya da CRLF biçimlerinden biriyle eşleşirse kabul.
+
+**Testler.** E6: her tutar 2, 50 TL'nin üstü dahil · K1 oturum ödül
+alamıyor, K2 50 TL'lik ödülü alıyor. K5: 25/27/50 kabul · 0/24/27,5/51
+red · tavan 80 → 80 kabul, 81 red, mesaj "80" diyor · tavan 49 red ·
+10.000 kabul. Kafenin ayarı sonunda aynen geri konuyor, kendi denetim
+satırlarını siliyor. **A/B:** eski kademeler geri konunca iki test
+tam hedef satırda düştü; kafenin tavanı yok sayılınca K5 testi
+"tavandaki 80 TL reddedildi"de düştü.
+
+**Doğrulama:** 758 test · 751 geçti · 0 hata · 7 atlandı · tsc ·
+eslint · `next build`. Tarayıcı testi ürün sahibinde (`docs/28` C.3
+güncellendi).
+
+---
+
+## ⬅️ Ü267 · Karekod yönlendirmesi: Ü266'nın dört kusuru — 2026-09-23
+
+✅ Commitlendi (2026-09-24).
+
+Ü266 tarayıcıda açılınca dört kusur çıktı:
+
+1. **Sayfa açılmıyordu.** Liste var olmayan bir `qr_scans` tablosuna
+   bakıyordu. Kullanım artık `table_sessions`tan (oturum sayısı + son
+   görülme) — `qr_tokens` bir saat sonra `qr_temizlik`le siliniyor,
+   kalıcı iz olamaz.
+2. **Hiçbir yeni kafe hedef olamıyordu.** Kural "hedefin adlı kodu
+   olmamalı" diyordu; oysa her yeni masa kodunu kendiliğinden alıyor ve
+   kafe başına tek aktif masa var (göç 0038). Yeni kural: hedefin kendi
+   kodu **hiç kullanılmamışsa** basılı kod onun yerine geçer (bırakılan
+   kod söylenir); **kullanımdaysa reddedilir** — o kâğıt bir duvarda
+   asılı, yerine başka kod geçerse ölür; masası yoksa kodla açılır.
+3. **Masa açarken ad çakışıyordu.** `(cafe_id, label)` benzersizliği
+   pasif satırları da sayıyor; artık çakışmayan ad seçiliyor
+   ("Masa (2)" …).
+4. **Geri taşıma reddediliyordu** (kodsuz masası olan Kafe B). Artık
+   kabul.
+
+Ekranda kullanımdaki hedef seçenekte **kapalı** ve sebebi yazıyor;
+sunucu yine ayrıca reddediyor.
+
+⚠️ Başarı cümlesi de yalan söylüyordu: bırakılan kod yoksa her zaman
+*"Kafenin masası bu kodla açıldı"* diyordu — Kafe A'ya geri taşımada
+masa zaten vardı. Sonuç artık `masaAcildi` taşıyor; var olan masada
+*"Kafenin masasına bu kod verildi"* yazıyor (test 1. ve 7. adımda
+sınıyor, A/B'de 7. adımda düştü).
+
+⚠️ **Yeni masa kaynağın adını taşıyordu.** Ürün sahibinin elle
+testinde çıktı: Kafe A'nın kodu test kafesine taşınınca platform
+listesinde kafe adının altında "Kafe A" yazıyordu ve oyuncu da
+*"Buradasın: Yonlendirme Test Hedefi · Kafe A"* görecekti. Masa artık
+**hedef kafenin adıyla** açılıyor (`kafeKarekodu` ile aynı, göç 0038 ·
+Ü222); ad çakışırsa "(2)". Test 1. adımda adı, yeni 8. adımda çakışmayı
+sınıyor.
+
+🔴 **Testin kendisi elle taşınmış kodu silerdi.** Yönlendirme testi
+başlarken test kafesinin masalarını siliyordu; ürün sahibi aynı kafeyi
+hedef seçtiği sırada koşsaydı Kafe A'nın kodu silinir ve kâğıt hiçbir
+yere gitmezdi. Artık test kafesinde `test-` ile başlamayan bir kod
+görürse **duruyor ve uyarıyor**; canlı denendi, kod yerinde kaldı.
+Ayrıca "kullanımdaki kafe" seçimi adlı kodu olmayan kafeyi seçebiliyordu
+— düzeltildi.
+
+⬜ **Açık karar:** taşınan kodun kullanım sayacı masayı sayıyor ve taşıma
+sonrası sıfırlanıyor ("hiç okutulmadı"). O kafeye ikinci bir kod
+taşınırsa sistem ilkini kullanılmamış sanıp serbest bırakır. Öneri:
+taşınmış kod hep "kullanımda" sayılsın (küçük bir göç ister). Ürün
+sahibine soruldu.
+
+⚠️ **Hedef listesi geliştirme veritabanında 4.518 kafe.** 4.512'si
+`cark`, `challenge` ve `liderlik` testlerinin her koşuda açıp hiç
+silmediği kafeler (CarkTest, LiderTest, GorevTest, SezonTest…). Canlıda
+böyle bir kalıntı yok, ama elle testte açılır liste kullanılmaz hâlde.
+Temizlik ve testlerin düzeltilmesi ürün sahibinin onayını bekliyor.
+
+⚠️ Test (`kimlik.test.ts`, 7 adım) ilk hâlinde iki hatayı görmedi:
+hedefin kodunu **elle siliyordu** ve listeyi **hiç çağırmıyordu**. İlk iki
+A/B de geçersizdi — ikisi de etiket hatası yüzünden 1. adımda düşüyordu,
+hedeflenen korumada değil. Yeniden yapıldı; her koruma kendi satırında
+düşüyor. Test sonunda açtığı masaları siliyor, Kafe B'nin ve kullanımdaki
+kafenin kodunu geri koyuyor.
+
+**Nerede:** Platform paneli → **Karekodlar** (`/platform/karekodlar`) →
+satırda *"yönlendirmeyi değiştir"*. Yalnızca platform yöneticisi.
+
+---
+
+## ⬅️ Ü266 · Platform panelinde karekod yönlendirme ekranı — 2026-09-23
+
+✅ Commitlendi (`6dd00a2`) — ⚠️ **izin alınmadan**; ürün sahibine
+söylendi.
+
+Ürün sahibi: *"301 redirect için admin paneline kısayol ekle."*
+Basılı kod aynen kalıyor, değişen yalnızca kodun **hangi kafeye**
+düştüğü (`masaCoz` veritabanından çözüyor). Gerçek bir HTTP 301 zinciri
+yok — "301" ürün sahibinin bu işe verdiği ad. Her taşıma gerekçe
+istiyor ve denetim izine `table.print_code_move` olarak düşüyor.
+
+---
+
 ## ⬅️ Ü265 · Kart sahneleri referans kartlardan KESİLDİ — 2026-09-22
 
-⚠️ **Commitlenmedi.**
+✅ Commitlendi (2026-09-23, commit borcu kapatılırken).
 
 Ürün sahibi: *"referans kartlardan illüstrasyonu kes, deneyelim; eğer
 olmazsa onları referans vererek fal.ai ile üretiriz."* Altı kartın
@@ -89,7 +540,7 @@ Renkli Çizgiler · Tuğla Kırıcı kartları görüldü).
 
 ## ⬅️ Ü264 · Kart ikonları geldi — dört oyun genel daireden çıktı — 2026-09-22
 
-⚠️ **Commitlenmedi.**
+✅ Commitlendi (2026-09-23, commit borcu kapatılırken).
 
 Ürün sahibi dört ikon gönderdi ve hangisinin hangi oyun olduğunu
 söyledi: *"soldaki 2048, ortadaki ayır, sağdaki birleştir · ikinci
@@ -135,7 +586,7 @@ düşen: 0).
 
 ## ⬅️ Ü263 · Kart referansları geldi: 2048'in paleti, oyun adları, kategoriler — 2026-09-22
 
-⚠️ **Commitlenmedi.**
+✅ Commitlendi (2026-09-23, commit borcu kapatılırken).
 
 Ürün sahibi yedi referans görsel gönderdi (ikon + altı oyun kartı) ve
 *"sayılar hâlâ küçük, baya büyük olsun · blok için görseldeki gibi olsun
@@ -236,7 +687,7 @@ tarayıcıda oynandı, tur sunucuda doğrulandı (920 puan).
 
 ## ⬅️ Ü262 · Dokuzuncu oyun: Bağla (Flow Free) — 2026-09-22
 
-⚠️ **Commitlenmedi.** ✅ Tarayıcıda doğrulandı (Ü263 turunda, ürün
+✅ Commitlendi (2026-09-23, commit borcu kapatılırken). ✅ Tarayıcıda doğrulandı (Ü263 turunda, ürün
 sahibi giriş yaptıktan sonra).
 
 Ürün sahibinin istediği üç oyunun sonuncusu: *"renkli çizgileri
@@ -351,7 +802,7 @@ sürükleme dördünü de yakalıyor (düzeltmeden önce yol hiç işlenmezdi).
 
 ## ⬅️ Ü261 · Sekizinci oyun: Ayır (renk sıralama) — 2026-09-22
 
-⚠️ **Commitlenmedi.**
+✅ Commitlendi (2026-09-23, commit borcu kapatılırken).
 
 Ürün sahibi üç oyun istemişti: 2048, **sıvı ayırma**
 (`toytheater.com/liquid-sort/`) ve "renkli çizgileri birleştir". Bu
@@ -484,7 +935,7 @@ işe yaramıyor; ürün sahibinden bekleniyor.
 
 ## ⬅️ Ü260 · 2048'in karo paleti ölçülerek kuruldu — 2026-09-22
 
-⚠️ **Commitlenmedi.**
+✅ Commitlendi (2026-09-23, commit borcu kapatılırken).
 
 Ürün sahibi: *"2048'deki sayıları büyüt, renkleri değiştir, her sayıda
 farklı renk olmalı ve gitgide daha koyu."*
@@ -523,7 +974,7 @@ hatayı geri koyarak sınandı.
 
 ## ⬅️ Ü242 · Kılavuz tek çizgiye indi, Loopy büyüdü — 2026-09-22
 
-⚠️ **Commitlenmedi.**
+✅ Commitlendi (2026-09-22).
 
 Ü241'de kılavuz gerçek yörüngeye geçmişti — duvar sekmeleri dahil.
 Ürün sahibi ekranda görünce **geri aldırdı**: *"sekeceği alanı
@@ -565,7 +1016,7 @@ tahta yukarı itilirdi.
 
 ## ⬅️ Ü241 · Sekme'nin kılavuzu gerçek yörüngeye geçti — 2026-09-22
 
-⚠️ **Commitlenmedi.**
+✅ Commitlendi (2026-09-22).
 
 Ürün sahibi: *"bu isabet için olan çizgi çizgi olan tüm yol boyunca
 ilerlemeli, yarıda kesilmemeli ve tam topun gideceği doğru noktayı
@@ -614,7 +1065,7 @@ geçilince tek çağıranı kalmadı. Çağrılmayan kod bırakılmıyor.
 
 ## ⬅️ Ü240 · Oyun yalan söylüyordu: kural çizimle uyuşmuyordu — 2026-09-22
 
-⚠️ **Commitlenmedi.**
+✅ Commitlendi (2026-09-22).
 
 Ürün sahibi iki şey söyledi: *"bazen bıçağı tahtaya gönderecek gibi
 olmama rağmen bıçağa çarpıyor"* ve *"bıçaklarımız oyun için çok
@@ -706,7 +1157,7 @@ hâlâ **ölçülmemiş bir varsayım**.
 
 ## ⬅️ Ü239 · Bir koşu geçip bir koşu düşen test — 2026-09-22
 
-⚠️ **Commitlenmedi.**
+✅ Commitlendi (2026-09-22).
 
 `hatirlatma.test.ts` · *"son kullanıma 24 saatten az kalınca ayrı bir
 hatırlatma gidiyor"* dönüşümlü davranıyordu: bir tam koşu yeşil, bir
@@ -759,7 +1210,7 @@ bekleyenler); fikstür ortak olduğu için onlar da düzeldi.
 
 ## ⬅️ Ü238 · İkonlar referanstan yeniden: neon karo — 2026-09-22
 
-⚠️ **Commitlenmedi.**
+✅ Commitlendi (2026-09-22).
 
 Ü237'nin altı turu ürün sahibini tatmin etmedi (*"hepsi berbat oldu"*).
 Önce eskiye dönüldü — Blok Blast ve Tetris'in ikonları `git checkout`
@@ -806,7 +1257,7 @@ kalırdı.
 
 ## ⬅️ Ü237 · Oyun ikonları tek dile geçti — 2026-09-22
 
-⚠️ **Commitlenmedi.**
+✅ Commitlendi (2026-09-22).
 
 *"Tüm oyun ikonlarını da fal ai'ye tasarlat, ortak bir dil olsun."*
 `FAL_KEY` ortamda hazırdı. Beş oyunun beşi de artık üretilmiş ikonla
@@ -888,7 +1339,7 @@ satır** gerekiyor; Ü221'de unutulan yer orası.
 
 ## ⬅️ Ü236 · Bıçak elle oynandı, Sekme'nin kılavuzu bulundu — 2026-09-22
 
-⚠️ **Commitlenmedi.**
+✅ Commitlendi (2026-09-22).
 
 Ürün sahibi Bıçak'ı ilk kez ekranda görüp altı madde saydı. Beşi
 yapıldı, biri açık kaldı.
@@ -955,7 +1406,7 @@ büyütmek, sayının hiç kullanılmadığı bir hatayı gizler.**
 
 ## ⬅️ Ü235 · Beşinci oyun: Bıçak — 2026-09-22
 
-⚠️ **Commitlenmedi.**
+✅ Commitlendi (2026-09-22).
 
 Ürün sahibinin istediği beş oyunun ilki. Referans: Ketchapp'in **Knife
 Hit**'i (`play.google.com/store/apps/details?id=com.ketchapp.knifehit`).
@@ -1080,7 +1531,7 @@ lavanta duruyor; beşincisi için çarkın kendisi büyümek zorunda.
 
 ## ⬅️ Ü234 · Ödül dağıtımı tek kurala indi — 2026-09-21
 
-⚠️ **Commitlenmedi.**
+✅ Commitlendi (2026-09-22).
 
 Ürün sahibi beş yeni oyun isterken şunu ekledi: *"bunların da ödül
 dağıtma algoritmasını tüm oyunlarla birlikte eksiksiz ve doğru
@@ -1154,7 +1605,7 @@ bağlantı gerekiyor.
 
 ## ⬅️ Ü233 · Damga ve itiraz bölümleri mobilde düzenlendi — 2026-09-21
 
-⚠️ **Commitlenmedi.**
+✅ Commitlendi (2026-09-22).
 
 Ürün sahibi: *"bu kısım mobilde çok düz duruyor, çok görselsiz, sadece
 yazı ve karmaşık."* Ü232 bu iki bölüme masaüstünde görsel eklemişti;
@@ -1201,7 +1652,7 @@ yatay taşma yok.
 
 ## ⬅️ Ü232 · Orta bölümler görselleştirildi — 2026-09-21
 
-⚠️ **Commitlenmedi.**
+✅ Commitlendi (2026-09-22).
 
 Ürün sahibi *"Nasıl çalışır"*tan *"Ölçüm"*e kadarki bloğu gösterip
 *"bu kısmı görselleştir"* dedi. Ortak kusur aynıydı: **hepsi yalnızca
@@ -1263,7 +1714,7 @@ piksellerde sayfa baştan sona gezildi, yatay taşma yok.
 
 ## ⬅️ Ü231 · "Dürüst olalım" bölümü tamamen kaldırıldı — 2026-09-21
 
-⚠️ **Commitlenmedi.**
+✅ Commitlendi (2026-09-22).
 
 Ürün sahibi: *"bu kısım hiç olmasın, kaldır bunu, bu çok saçma bir
 başlık."*
@@ -1298,7 +1749,7 @@ orada duruyor. Sayfanın dört dosyası ona atıf yapıyor.
 
 ## ⬅️ Ü230 · Test paketi kendini zehirlemeyi bıraktı — 2026-09-21
 
-⚠️ **Commitlenmedi.**
+✅ Commitlendi (2026-09-22).
 
 Ürün sahibi: *"SMS tavanı dediğin ne? Biz SMS göndermeyeceğiz, artık
 SMS sistemden kalktı."*
@@ -1350,7 +1801,7 @@ düzeltme yalnızca testin saydığı pencereyi ilgilendiriyor.
 
 > ⏸️ **Ü231'de GEÇERSİZ:** bölüm tamamen kaldırıldı. Aşağısı kayıt için duruyor.
 
-⚠️ **Commitlenmedi.**
+✅ Commitlendi (2026-09-22).
 
 Ürün sahibi bölümü tekrar göndererek *"bu kısmı da daha da
 görselleştirmeliyiz"* dedi. Bölüm bir tur önce (Ü228) yine onun
@@ -1399,7 +1850,7 @@ her şeyin doğrulanabilir olduğunu, öteki ürünün **ölçmediği** şeyi.
 
 ## ⬅️ Ü228 · İki bölüm kaldırıldı — 2026-09-21
 
-⚠️ **Commitlenmedi.**
+✅ Commitlendi (2026-09-22).
 
 Ürün sahibi iki bölümü göstererek *"bunu kaldıralım / bunu da
 kaldıralım"* dedi.
@@ -1450,7 +1901,7 @@ eslint ve derleme temiz.
 
 ## ⬅️ Ü227 · Maskot ile Sorun yer değiştirdi — 2026-09-21
 
-⚠️ **Commitlenmedi.**
+✅ Commitlendi (2026-09-22).
 
 Ürün sahibi: *"bunlar yer değiştirsin."* Yeni sıra:
 
@@ -1499,7 +1950,7 @@ yazılamıyor, testler 1 beklerken 0 buluyor.
 
 ## ⬅️ Ü226 · Sahne kutusuna altın çerçeve — 2026-09-21
 
-⚠️ **Commitlenmedi.**
+✅ Commitlendi (2026-09-22).
 
 Ürün sahibi: *"dışına çerçeve ekle ve daha dikkat çekici yap."*
 
@@ -1521,7 +1972,7 @@ ve lacivert alanda (4. adım).
 
 ## ⬅️ Ü225 · Kaydırmalı sahne büyütüldü — 2026-09-21
 
-⚠️ **Commitlenmedi.**
+✅ Commitlendi (2026-09-22).
 
 Ürün sahibi: *"bu ekranlarda çıkan görseller ve bilgiler daha dikkat
 çekici, daha büyük, daha müşteriyi okutacak şekilde olsun."*
@@ -1566,7 +2017,7 @@ piksellerde sayfa baştan sona gezildi, yatay taşma yok.
 
 ## ⬅️ Ü224 · Seri kartı her zaman koyu — 2026-09-21
 
-⚠️ **Commitlenmedi.**
+✅ Commitlendi (2026-09-22).
 
 Ürün sahibi yeni çekilen vitrin karesine bakıp *"biz streak kartımızı da
 güncellemiştik, neden eski duruyor"* dedi.
@@ -1605,7 +2056,7 @@ oyna"*). `npm run db:demo` ile hesap tazelendi.
 
 ## ⬅️ Ü221–Ü223 · Vitrinin görselleri güncellendi — 2026-09-21
 
-⚠️ **Commitlenmedi.**
+✅ Commitlendi (2026-09-22).
 
 Ürün sahibi: *"sitemizde görseller hatalı, biz oyun kısmımızın
 görsellerini arayüzünü falan güncelledik ya, şu an öyle değil… bu
@@ -1693,7 +2144,7 @@ masaüstünde yatay taşma yok (sayfa baştan sona gezilerek ölçüldü).
 
 ## ⬅️ Ü220 · Vitrinin içerik listesi referansa çekildi — 2026-09-21
 
-⚠️ **Commitlenmedi.**
+✅ Commitlendi (2026-09-22).
 
 Ürün sahibi kendi hazırladığı `CafePlay_Kafe_Landing_Page_Mobil_First_Final.html`
 dosyasını verdi: *"landing pagemizdeki içerik listesi bunun gibi olsun,
@@ -1772,7 +2223,7 @@ söylüyor. Vitrinde olmayan bir kanalı anlatmak, üç bölüm aşağıda SSS'i
 
 ## ⬅️ Ü219 · Vitrine Loopy — 2026-09-21
 
-⚠️ **Commitlenmedi.**
+✅ Commitlendi (2026-09-22).
 
 Ürün sahibinin sıralı planının son maddesi: *"landing pageye loopy
 ekleyelim."* Vitrinde maskot **hiç yoktu** — altı ürün görüntüsü, iki
@@ -1838,7 +2289,7 @@ ve bu ayrı bir iş.
 
 ## ⬅️ Ü218 · Sekme: geri çekme, üçgenler, tam cam — 2026-09-21
 
-⚠️ **Commitlenmedi.**
+✅ Commitlendi (2026-09-22).
 
 Ürün sahibi Sekme'yi görünce üç şey söyledi.
 
@@ -1891,7 +2342,7 @@ farkı. Tahtanın ~%25'i üçgen.
 
 ## ⬅️ Ü217 · Dördüncü oyun: Sekme (BBTan) — 2026-09-21
 
-⚠️ **Commitlenmedi.**
+✅ Commitlendi (2026-09-22).
 
 Ürün sahibinin istediği: *"bbtan oyununu da ekleyelim, topu fırlatan
 karakter bizim loopymiz olsun, diğer oyunlardaki gibi ödül dağıtsın,
@@ -1971,7 +2422,7 @@ atış başına **0,03 ms**.
 
 ## ⬅️ Ü216 · Hareket akıcı oldu — 2026-09-21
 
-⚠️ **Commitlenmedi.**
+✅ Commitlendi (2026-09-22).
 
 Ürün sahibi: *"Daha akıcı ilerlemeli, çok takılarak ilerliyor, fps
 düşük gibi."*
@@ -2029,7 +2480,7 @@ takılır. Eksik olan şey **ara değerleme**ydi.
 
 ## ⬅️ Ü214 – Ü215 · FPS düzeltildi, Yılan yeni referansa geçti — 2026-09-21
 
-⚠️ **Commitlenmedi.**
+✅ Commitlendi (2026-09-22).
 
 ### 🔴 Ü214 · *"FPS çok düşük"* — sebebi ölçüldü
 
@@ -2086,7 +2537,7 @@ parlama `#69FCFD` · elma `#FE4D3A` · HUD hapı `#2A4972` · taç `#FDDF3A`
 
 ## ⬅️ Ü212 – Ü213 · Yılan referanstan yeniden yazıldı — 2026-09-21
 
-⚠️ **Commitlenmedi.**
+✅ Commitlendi (2026-09-22).
 
 ### 🔴 Ü212'de referansa BAKMADAN yaptım
 
@@ -2166,7 +2617,7 @@ artık Blok ve Düşen'den bilerek ayrı bir dilde.
 
 ## ⬅️ Ü211 · HUD referanstaki düzene geçti — 2026-09-21
 
-⚠️ **Commitlenmedi.**
+✅ Commitlendi (2026-09-22).
 
 Ürün sahibi: *"Ekran ayarlaman yanlış, sıradakiler hiç belli değil,
 referans görseldeki gibi de değil skor level ve sıradaki kısımları."*
@@ -2221,7 +2672,7 @@ zorunda.**
 
 ## ⬅️ Ü210 · Cam gerçekten cam oldu, kontroller parmağa geçti — 2026-09-21
 
-⚠️ **Commitlenmedi.**
+✅ Commitlendi (2026-09-22).
 
 Ürün sahibi Ü209'u gördü ve iki şey söyledi.
 
@@ -2299,7 +2750,7 @@ sadece en aşağı bırak ve çevir butonları olsun."*
 
 ## ⬅️ Ü209 · Düşen'in yüzeyi baştan yazıldı — 2026-09-21
 
-⚠️ **Commitlenmedi.**
+✅ Commitlendi (2026-09-22).
 
 Ürün sahibi: *"Tetris daha çok burdaki görsele benzesin, daha camsı ve
 parlak, daha canlı renkteki parçalar küpler, daha fütüristik bir
@@ -2391,7 +2842,7 @@ mekanik ayrıntı verdi: **hayalet parça** ve zeminde **dama deseni**.
 
 ## ⬅️ Ü208 · Kelime sistemden kaldırıldı — 2026-09-21
 
-⚠️ **Commitlenmedi.**
+✅ Commitlendi (2026-09-22).
 
 Ürün sahibinin kararı. Sıra da onun: **önce Kelime kalkacak**, sonra
 Düşen ve Yılan'ın arayüzü, sonra BBTan, en son vitrine Loopy.
@@ -2460,7 +2911,7 @@ Yetişerek → Düşen, Yılan. Kelime yok.
 
 ## ⬅️ Ü207 · Düşen'de de ödül bir nesne — 2026-09-21
 
-⚠️ **Commitlenmedi.**
+✅ Commitlendi (2026-09-22).
 
 Ürün sahibinin isteği Ü201'den beri duruyordu: *"tetriste mesela dışı
 ödül paketli bir parça yukarıdan aşağıya düşsün."* Blok'ta yapılmıştı,

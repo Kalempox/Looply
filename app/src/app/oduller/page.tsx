@@ -85,7 +85,7 @@ export default async function OdullerSayfasi({
   const kafeler = kafeyeGore(e.kullanilabilir);
 
   return (
-    <OyuncuSayfa aktif="/oduller" yuva={false}>
+    <OyuncuSayfa aktif="/oduller" yuva={false} geri={{ href: "/oyna", etiket: "Ana ekran" }}>
       {/* Ü186: oyuncunun seçtiği renkler — bu satırdan sonraki her
           Loopy o renkte çiziliyor. */}
       <OyuncununRenkleri />

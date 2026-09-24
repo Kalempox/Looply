@@ -26,6 +26,7 @@ import { yazIle as xpYaz } from "./xp";
 import * as xp from "./xp";
 import { degerlendir, tanimlar as rozetTanimlari } from "./rozet";
 import { anlikOdulVer, kampanyaKuponuVer } from "./kupon";
+import { kafeAcikMi } from "./butce";
 
 /**
  * Oyun oturumu — Faz 5'in çekirdeği.
@@ -179,6 +180,15 @@ export type Kazanim = {
   /** Ü146: bu tur seviye atlattıysa. Atlatmadıysa null. */
   seviye: SeviyeAtlama | null;
   kupon: DusenOdul | null;
+  /**
+   * Ü274: ödül NEDEN çıkmadı — yalnızca oyuncunun bilmesi gereken sebep.
+   *
+   * Kafe kapalıyken hiçbir ödül dağıtılmıyor (Ü90) ve ekran bunu
+   * söylemiyordu: ürün sahibi gece ödüllü bloğu kırdı, tur bitti, hiçbir
+   * şey olmadı. Şans yüzünden çıkmayan ödül burada YOK — o bir sebep
+   * değil, oyunun kendisi.
+   */
+  odulYok: { sebep: "kafe_kapali"; acilis: number } | null;
   taht: taht.DevirmeSonucu | null;
   /**
    * Skor eşiği bonusu (Ü48) — ulaşıldıysa hangi eşik ve ne yazıldı.
@@ -246,6 +256,7 @@ async function kazanimIsle(
     xp: 0,
     seviye: null,
     kupon: null,
+    odulYok: null,
     teklif: null,
     taht: null,
     esik: null,
@@ -301,10 +312,16 @@ async function kazanimIsle(
         kaynakId: opts.oturumId,
       });
 
+      // 🔴 Ü274: kafe kapalıysa ödül DENENMİYOR ve sebep oyuncuya gidiyor.
+      // Denenseydi bütçe temposu (0) rezervi reddeder ve oyuncu sessizce
+      // eli boş dönerdi.
+      const saat = await kafeAcikMi(opts.cafeId);
+      if (!saat.acik) sonuc.odulYok = { sebep: "kafe_kapali", acilis: saat.acilis };
+
       // E2: anlık ödül puan istemez ve günde bir kez düşer. İlk kez
       // oynayanın puanı sıfırdır; eli boş çıkarsa bir daha gelmez.
       // Ü27: hangi ödülün düşeceği kafenin sırasından, döngüsel.
-      const anlik = await anlikOdulVer(db, {
+      const anlik = !saat.acik ? null : await anlikOdulVer(db, {
         playerId: opts.playerId,
         cafeId: opts.cafeId,
         kanitSeviyesi: opts.proofLevel,
@@ -631,6 +648,8 @@ export type BitirSonucu =
       yeniRozetler: string[];
       /** E2: anlık ödül düştüyse. Oyuncuya TL değeri GÖSTERİLMEZ (E9). */
       kupon: DusenOdul | null;
+      /** Ü274: ödül neden çıkmadı (kafe kapalı). */
+      odulYok: Kazanim["odulYok"];
       /** Ö4 · Ü82: kafenin kampanya kuponu düştüyse. Ödülden ayrı. */
       kampanya: DusenKampanya | null;
   /**
@@ -853,6 +872,7 @@ export async function bitir(opts: {
       // Rozetler işlemin dışında değerlendiriliyor; burada boş başlıyor.
       yeniRozetler: [] as string[],
       kupon: kazanim.kupon,
+      odulYok: kazanim.odulYok,
       kampanya: kazanim.kampanya,
       teklif: kazanim.teklif,
       nitelikliOldu: nitelikli,
@@ -913,6 +933,8 @@ export type MisafirYazSonucu =
       seri: { gun: number; puan: PuanSonucu } | null;
       xp: number;
       kupon: DusenOdul | null;
+      /** Ü274: ödül neden çıkmadı (kafe kapalı). */
+      odulYok: Kazanim["odulYok"];
       /** Ö4 · Ü82: kayıt anında bozdurulan misafir turunda da düşebiliyor. */
       kampanya: DusenKampanya | null;
   /**
@@ -1061,6 +1083,7 @@ export async function misafirOyunuYaz(opts: {
       challenge: kazanim.challenge,
       xp: kazanim.xp,
       kupon: kazanim.kupon,
+      odulYok: kazanim.odulYok,
       kampanya: kazanim.kampanya,
       teklif: kazanim.teklif,
       taht: kazanim.taht,

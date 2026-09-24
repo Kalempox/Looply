@@ -7,6 +7,8 @@
     "dev:https": "next dev --experimental-https -H 0.0.0.0",
     "build": "next build",
     "start": "next start",
+    "telefon": "next build && node scripts/telefon-sunucu.mjs",
+    "telefon:baslat": "node scripts/telefon-sunucu.mjs",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "keys:generate": "tsx scripts/anahtar-uret.ts",

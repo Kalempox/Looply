@@ -26,7 +26,7 @@ export function AktivasyonAyari({ cafeId, mevcut }: { cafeId: string; mevcut: nu
 
       <IsletmeAlan
         etiket="Aktivasyon saati"
-        ipucu="Eşiğin üstündeki ödül kaç saat sonra açılsın. Çark ve oyun ödülü için aynı. 1–48."
+        ipucu="Her ödül kaç saat sonra açılsın. Çark ve oyun ödülü için aynı. 1–48 — ödül hiçbir zaman hemen açılmaz."
       >
         <input
           name="saat"

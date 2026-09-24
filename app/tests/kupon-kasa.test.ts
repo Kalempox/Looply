@@ -215,24 +215,12 @@ before(async () => {
     aktorId: kasiyerA,
   });
 
-  /**
-   * Erteleme eşiği TAVANA çekiliyor: hiçbir ödül ertelenmiyor.
-   *
-   * İki sebep. Birincisi, kasa testlerinin çoğu kuponun **aktif** olmasını
-   * bekliyor; ertelenen kupon `pending` kalıyor ve kasiyer onaylayamıyor.
-   * İkincisi, demo kafesinde `cafe_config` satırı kalmış olabiliyor ve
-   * testler varsayılana güvenemez — bir tur tam olarak bu yüzden kırıldı,
-   * kod değişmeden, veritabanında duran eski bir ayardan.
-   *
-   * Ertelemeyi sınayan testler eşiği kendileri indiriyor ve geri
-   * yükseltiyor.
+  /*
+   * ⚠️ Burada erteleme eşiği tavana çekilip erteleme kapatılıyordu, çünkü
+   * kasa testlerinin çoğu açık kupon istiyor. Ü269'da eşik kalktı ve her
+   * ödül ertelenerek doğuyor; artık `kuponAl` kuponu üretip saatini ileri
+   * alıyor.
    */
-  await ayar.sayiYaz({
-    cafeId: kafeA,
-    anahtar: ayar.ANAHTARLAR.ertelemeEsigi,
-    deger: 50_00,
-    aktorId: kasiyerA,
-  });
 });
 
 after(async () => {
@@ -268,17 +256,17 @@ after(async () => {
 const KAFE_ACIK = new Date("2026-09-02T20:00:00+03:00");
 
 /**
- * Bir kupon üretir ve kimliğini döner.
+ * Bir kupon üretir ve kimliğini döner — **ertelenmiş** hâliyle.
  *
  * Ü52'ye kadar `katalogdanAl` kullanılıyordu; puanla satın alma kalkınca
  * o fonksiyon silindi. Yerine çark yolu geçti — **aynı `kuponUret`**
- * gövdesinden geçiyor: bütçe rezervi, kanıt kademesi, erteleme eşiği ve
+ * gövdesinden geçiyor: bütçe rezervi, kanıt kademesi, erteleme ve
  * denetim izi, bu testlerin sınadığı şeylerin hepsi orada.
  *
  * `ilkCevirme: true` — 24 saatlik çark kilidi bu testlerin konusu değil;
  * o kilit `tests/cark.test.ts` içinde ayrıca sınanıyor.
  */
-async function kuponAl(odulId: string) {
+async function bekleyenKuponAl(odulId: string) {
   const s = await kupon.carkOduluVer({
     playerId: oyuncuId,
     cafeId: kafeA,
@@ -289,6 +277,58 @@ async function kuponAl(odulId: string) {
   });
   assert.ok(s.ok, s.ok === false ? s.hata : "");
   return s.ok ? s : null!;
+}
+
+/**
+ * Kupon üretir ve **açılmış sayar** — kasa testleri için.
+ *
+ * ⚠️ Ü269: her ödül kafenin aktivasyon saati kadar sonra açılıyor; tutar
+ * eşiği kalktı. Kasa testleri eskiden eşiği tavana çekip ertelemeyi
+ * kapatıyordu, o yol artık yok. Onun yerine saat ileri alınıyor: kuponun
+ * hâline `status` değil **zaman** karar veriyor ("ertelenmiş kupon"
+ * bölümü), `activates_at` geçmişe çekilince kasa kuponu açık görüyor.
+ * Ertelemenin kendisini sınayan testler `bekleyenKuponAl` kullanıyor.
+ */
+async function kuponAl(odulId: string) {
+  const s = await bekleyenKuponAl(odulId);
+  await yoneticiSorgu(
+    `UPDATE coupons SET status = 'active', activates_at = now() - interval '1 minute'
+      WHERE id = $1`,
+    [s.kuponId],
+  );
+  return s;
+}
+
+/**
+ * Kafenin aktivasyon saatini okur ve testin sonunda **aynen** geri koyar.
+ *
+ * ⚠️ Ürün sahibi Kafe A'yı panelden elle deniyor ve gece testinde saati
+ * kısaltması beklenen şey. Önceki test saati sabit 12'ye "geri"
+ * yazıyordu — onun seçtiği değeri ezerdi.
+ */
+async function aktivasyonSaatiniKoru<T>(is: (mevcut: number) => Promise<T>): Promise<T> {
+  const satir = await withBypass("test: aktivasyon saati", (db) =>
+    db.one<{ value: string }>(
+      `SELECT value::text FROM cafe_config WHERE cafe_id = $1 AND key = $2`,
+      [kafeA, ayar.ANAHTARLAR.ertelemeSaati],
+    ),
+  );
+  const mevcut = await ayar.sayiOku(kafeA, ayar.ANAHTARLAR.ertelemeSaati);
+  try {
+    return await is(mevcut);
+  } finally {
+    if (satir) {
+      await yoneticiSorgu(
+        `UPDATE cafe_config SET value = $3::jsonb WHERE cafe_id = $1 AND key = $2`,
+        [kafeA, ayar.ANAHTARLAR.ertelemeSaati, satir.value],
+      );
+    } else {
+      await yoneticiSorgu(`DELETE FROM cafe_config WHERE cafe_id = $1 AND key = $2`, [
+        kafeA,
+        ayar.ANAHTARLAR.ertelemeSaati,
+      ]);
+    }
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -305,17 +345,10 @@ describe("kupon üretimi", () => {
     assert.equal(sonra.dagitilabilirKurus, once.dagitilabilirKurus - 25_00);
   });
 
-  test("eşiğin üstündeki ödül ertelenir (Ü28, süre Ü97'de 12 saate indi)", async () => {
-    // Eşiği tabana indir: 50 TL'lik ödül artık üstünde kalıyor.
-    await ayar.sayiYaz({
-      cafeId: kafeA,
-      anahtar: ayar.ANAHTARLAR.ertelemeEsigi,
-      deger: 25_00,
-      aktorId: kasiyerA,
-    });
-
-    const s = await kuponAl(buyukOdulId);
-    assert.equal(s.ertelendi, true, "büyük ödül hemen aktif oldu");
+  test("her ödül ertelenir — en küçüğü de (Ü28 → Ü269)", async () => {
+    // Ü269: tutar eşiği kalktı. 25 TL'lik en küçük ödül de bekliyor.
+    const s = await bekleyenKuponAl(katalogOdulId);
+    assert.equal(s.ertelendi, true, "en küçük ödül hemen açıldı — tutar eşiği geri mi geldi?");
 
     const detay = await kuponDetayi(oyuncuId, s.kuponId);
     assert.equal(detay?.durum, "beklemede");
@@ -323,24 +356,16 @@ describe("kupon üretimi", () => {
     // Sabit süre: takvim gününe değil oyuncunun kendi saatine bağlı. "Yarın
     // 00:00" olsaydı sabah kazanan 15 saat, akşam kazanan 1 saat beklerdi.
     //
-    // ⚠️ Süre SABİTTEN okunuyor. Önceki hâli 24'ü elle yazıyordu ve Ü97'de
-    // süre 12'ye inince test kırıldı — sınanan şey sürenin kaç olduğu değil,
-    // ertelemenin **sabit ve saate bağlı** olması.
+    // ⚠️ Süre kafenin AYARINDAN okunuyor, sabitten değil: ürün sahibi Kafe
+    // A'nın saatini panelden değiştirebiliyor ve test onun seçtiği sayıyla
+    // da geçmeli. Sınanan şey sürenin kaç olduğu değil, ertelemenin
+    // **kafenin saatine bağlı** olması.
+    const beklenen = await ayar.sayiOku(kafeA, ayar.ANAHTARLAR.ertelemeSaati);
     const saat = (detay!.aktiflesme.getTime() - Date.now()) / 3_600_000;
     assert.ok(
-      saat > kupon.ERTELEME_SAAT - 0.5 && saat <= kupon.ERTELEME_SAAT,
-      `açılma ${kupon.ERTELEME_SAAT} saat sonra olmalıydı (${saat.toFixed(1)} sa)`,
+      saat > beklenen - 0.5 && saat <= beklenen,
+      `açılma ${beklenen} saat sonra olmalıydı (${saat.toFixed(1)} sa)`,
     );
-
-    // Eşiği kurulum değerine geri çek: bırakılsaydı sonraki testlerin
-    // kuponları da ertelenir ve kasiyer onaylayamazdı. Bir tur böyle
-    // kırıldı — testin kendisi değil, ondan SONRAKİLER.
-    await ayar.sayiYaz({
-      cafeId: kafeA,
-      anahtar: ayar.ANAHTARLAR.ertelemeEsigi,
-      deger: 50_00,
-      aktorId: kasiyerA,
-    });
   });
 
   test("🔴 aktivasyon saati kafenin ayarı — kupona geçiyor (Ü129)", async () => {
@@ -351,111 +376,68 @@ describe("kupon üretimi", () => {
     // saat sonra açılıyor" der ve sayıya bir daha güvenmez.
     const AYARLANAN = 6;
 
-    await ayar.sayiYaz({
-      cafeId: kafeA,
-      anahtar: ayar.ANAHTARLAR.ertelemeEsigi,
-      deger: 25_00,
-      aktorId: kasiyerA,
-    });
+    await aktivasyonSaatiniKoru(async (mevcut) => {
+    // Kafenin saati zaten 6 ise "ayar kupona geçti mi" sorusu cevapsız
+    // kalır — başka bir sayı seç.
+    const secilen = mevcut === AYARLANAN ? AYARLANAN + 1 : AYARLANAN;
     await ayar.sayiYaz({
       cafeId: kafeA,
       anahtar: ayar.ANAHTARLAR.ertelemeSaati,
-      deger: AYARLANAN,
+      deger: secilen,
       aktorId: kasiyerA,
     });
 
-    const s = await kuponAl(buyukOdulId);
+    const s = await bekleyenKuponAl(buyukOdulId);
     assert.equal(s.ertelendi, true, "büyük ödül hemen aktif oldu");
 
     const detay = await kuponDetayi(oyuncuId, s.kuponId);
     const saat = (detay!.aktiflesme.getTime() - Date.now()) / 3_600_000;
     assert.ok(
-      saat > AYARLANAN - 0.5 && saat <= AYARLANAN,
-      `açılma ${AYARLANAN} saat sonra olmalıydı (${saat.toFixed(1)} sa)`,
+      saat > secilen - 0.5 && saat <= secilen,
+      `açılma ${secilen} saat sonra olmalıydı (${saat.toFixed(1)} sa)`,
     );
     assert.ok(
-      saat < kupon.ERTELEME_SAAT - 0.5,
-      "ayar yok sayılıp sabit süre kullanılmış",
+      Math.abs(saat - mevcut) > 0.5,
+      "ayar yok sayılıp önceki süre kullanılmış",
     );
 
     // ⚠️ Son kullanma da kaymalı: kupon 7 gün geçerli ve sayaç AÇILMA
     // anından değil veriliş anından işliyor. Kaymasaydı erteleme süresi
     // kadar kısa ömürlü bir kupon doğardı.
     const omur = (detay!.sonKullanim.getTime() - detay!.aktiflesme.getTime()) / 86_400_000;
-    assert.ok(omur > kupon.GECERLILIK_GUN - 0.5, "ertelenen kuponun ömrü kısalmış");
-
-    // Kurulum değerlerine geri dön — sonraki testler bunlara güveniyor.
-    await ayar.sayiYaz({
-      cafeId: kafeA,
-      anahtar: ayar.ANAHTARLAR.ertelemeSaati,
-      deger: kupon.ERTELEME_SAAT,
-      aktorId: kasiyerA,
+    const gun = await ayar.sayiOku(kafeA, ayar.ANAHTARLAR.gecerlilikGunu);
+    assert.ok(omur > gun - 0.5, "ertelenen kuponun ömrü kısalmış");
     });
-    await ayar.sayiYaz({
-      cafeId: kafeA,
-      anahtar: ayar.ANAHTARLAR.ertelemeEsigi,
-      deger: 50_00,
-      aktorId: kasiyerA,
-    });
-  });
-
-  test("eşiğin altındaki ödül hemen aktif olur", async () => {
-    const s = await kuponAl(katalogOdulId);
-    assert.equal(s.ertelendi, false);
-
-    const detay = await kuponDetayi(oyuncuId, s.kuponId);
-    assert.equal(detay?.durum, "kullanilabilir");
   });
 
   /**
-   * Eşik platform sabiti değil kafenin ayarı: 50 TL bir kafede büyük ödül,
-   * başkasında sıradan. E6'nın kanıt kademesi bundan etkilenmiyor — o
-   * ayrı bir kural ve `katalog.kanitSeviyesi` içinde duruyor.
+   * 🔴 Ü269 — ürün sahibi: *"minimum bir tutar olmamalı çünkü o zaman
+   * yüzdeli ve ürün hediyeleri problem oluyor."* Üç tipin üçü de sınanıyor:
+   * ürün, tutar ve yüzde. Kasa hiçbirini açılmadan önce onaylamamalı.
    */
-  /**
-   * Ü52 sonrası eşik aralığı 25-50 TL (ödül aralığıyla aynı). "Eşiği
-   * sıfıra çek, her ödül ertelensin" senaryosu artık kurulamıyor: en
-   * küçük eşik en küçük ödüle eşit ve `tutar > esik` olduğu için 25 TL
-   * hiçbir ayarla ertelenmiyor. Sınanan şey aynı kaldı — eşiği
-   * oynatınca davranış değişiyor mu.
-   */
-  test("kafe eşiği değiştirince erteleme davranışı değişiyor", async () => {
-    const varsayilan = await ayar.sayiOku(kafeA, ayar.ANAHTARLAR.ertelemeEsigi);
-    assert.equal(varsayilan, 50_00, "kurulumda yazılan eşik 50 TL olmalı");
+  test("🔴 hiçbir ödül hemen açılmıyor — ürün, tutar, yüzde (Ü269)", async () => {
+    for (const [ad, odulId] of [
+      ["25 TL ürün", katalogOdulId],
+      ["40 TL tutar", tutarOdulId],
+      ["yüzde", yuzdeOdulId],
+      ["50 TL ürün", buyukOdulId],
+    ] as const) {
+      const s = await bekleyenKuponAl(odulId);
+      assert.equal(s.ertelendi, true, `${ad} ödülü hemen açıldı`);
 
-    // Eşiği tabana çek: üstündeki her ödül ertelenmeli
-    await ayar.sayiYaz({
-      cafeId: kafeA,
-      anahtar: ayar.ANAHTARLAR.ertelemeEsigi,
-      deger: 25_00,
-      aktorId: kasiyerA,
-    });
-    assert.equal(
-      (await kuponAl(buyukOdulId)).ertelendi,
-      true,
-      "eşik tabandayken 50 TL'lik ödül ertelenmeli",
-    );
+      const g = await kupon.coz(kafeA, s.kod);
+      assert.equal(g.bulundu === true ? g.gecerli : null, false, `${ad}: kasa açılmamış kuponu geçerli gördü`);
 
-    // Eşiği tavana çek: artık büyük ödül de ertelenmemeli
-    await ayar.sayiYaz({
-      cafeId: kafeA,
-      anahtar: ayar.ANAHTARLAR.ertelemeEsigi,
-      deger: 50_00,
-      aktorId: kasiyerA,
-    });
-    assert.equal((await kuponAl(buyukOdulId)).ertelendi, false, "eşik yüksekken erteleme olmamalı");
-
-    // Kanıt kademesi ayardan ETKİLENMİYOR — platform kuralı
-    assert.equal(katalog.kanitSeviyesi(60_00), 4, "51 TL+ hâlâ K4 istemeli");
-    assert.equal(katalog.kanitSeviyesi(25_00), 2);
-
-    await ayar.sayiYaz({
-      cafeId: kafeA,
-      anahtar: ayar.ANAHTARLAR.ertelemeEsigi,
-      deger: 50_00,
-      aktorId: kasiyerA,
-    });
+      const onay = await kupon.onayla({ cafeId: kafeA, kuponId: s.kuponId, staffId: kasiyerA });
+      assert.equal(onay.ok, false, `${ad}: açılmamış kupon kasada onaylandı`);
+    }
   });
+
+  /*
+   * "Kafe eşiği değiştirince erteleme davranışı değişiyor" testi Ü269
+   * ile kalktı: eşik yok, her ödül erteleniyor. Yerini yukarıdaki "hiçbir
+   * ödül hemen açılmıyor" ve "aktivasyon saati kafenin ayarı" aldı.
+   */
 
   /*
    * "Puan yetmezse kupon çıkmaz" testi Ü52 ile kalktı: puanla ödül alma
@@ -464,17 +446,32 @@ describe("kupon üretimi", () => {
    * düşmesi — ikisi de kendi testlerinde.
    */
 
-  test("kanıt seviyesi yetmezse ödül verilmez (E6)", async () => {
-    // Büyük tatlı 50 TL → K3 istiyor (Ü52 bantları). K2 ile alınamamalı.
-    const s = await kupon.carkOduluVer({
-      playerId: oyuncuId,
-      cafeId: kafeA,
-      odulId: buyukOdulId,
-      kanitSeviyesi: 2,
-      ilkCevirme: true,
-    });
-    assert.equal(s.ok, false);
-    assert.match(s.ok === false ? s.hata : "", /doğrulama/i);
+  /**
+   * Ü268: "masada 5 dk" kuralı kalktı ve her ödül K2 (konum) istiyor.
+   * Kanıt kapısının kendisi duruyor — konumu doğrulanmamış (K1) oturum
+   * hiçbir ödül alamıyor. İkinci yarı kuralın kalktığını sınıyor: aynı
+   * 50 TL'lik ödül eskiden K3 istiyordu, artık K2 yetiyor.
+   */
+  test("kanıt seviyesi yetmezse ödül verilmez (E6) — K2 her ödüle yeter (Ü268)", async () => {
+    const ver = (kanitSeviyesi: number) =>
+      kupon.carkOduluVer({
+        playerId: oyuncuId,
+        cafeId: kafeA,
+        odulId: buyukOdulId,
+        kanitSeviyesi,
+        ilkCevirme: true,
+        // Bütçe temposu duvar saatine bakıyor; sınanan şey kanıt kapısı.
+        an: KAFE_ACIK,
+      });
+
+    const k1 = await ver(1);
+    assert.equal(k1.ok, false, "konumu doğrulanmamış oturum ödül aldı");
+    assert.match(k1.ok === false ? k1.hata : "", /doğrulama/i);
+
+    const k2 = await ver(2);
+    assert.ok(k2.ok, `50 TL'lik ödül K2 ile alınamadı — masada 5 dk geri mi geldi? ${
+      k2.ok === false ? k2.hata : ""
+    }`);
   });
 
   test("bütçe yetmezse kupon çıkmaz — E10", async () => {
@@ -836,27 +833,12 @@ describe("kasiyer kuponu çözer", () => {
   });
 
   test("ertelenmiş kupon geçersiz döner ve sebebi söylenir", async () => {
-    // Eşiği tabana indir ki 50 TL'lik ödül ertelensin; kurulumda eşik
-    // tavanda (hiçbir ödül ertelenmiyor) çünkü kasa testlerinin çoğu
-    // aktif kupon bekliyor.
-    await ayar.sayiYaz({
-      cafeId: kafeA,
-      anahtar: ayar.ANAHTARLAR.ertelemeEsigi,
-      deger: 25_00,
-      aktorId: kasiyerA,
-    });
-    const s = await kuponAl(buyukOdulId);
+    // Ü269: her kupon ertelenerek doğuyor — ayar oynatmaya gerek yok.
+    const s = await bekleyenKuponAl(buyukOdulId);
     const g = await kupon.coz(kafeA, s.kod);
     assert.ok(g.bulundu);
     assert.equal(g.gecerli, false);
     assert.match(g.sebep ?? "", /açılıyor/);
-
-    await ayar.sayiYaz({
-      cafeId: kafeA,
-      anahtar: ayar.ANAHTARLAR.ertelemeEsigi,
-      deger: 50_00,
-      aktorId: kasiyerA,
-    });
   });
 
   test("kafe kodu, müşterinin anonim kodunu gösterir — ad soyad değil (G1)", async () => {
@@ -949,25 +931,10 @@ describe("onay atomik (Faz 7 güvenlik kapısı)", () => {
   });
 
   test("ertelenmiş kupon onaylanamaz", async () => {
-    // Eşiği tabana indir ki 50 TL'lik ödül ertelensin; kurulumda eşik
-    // tavanda (hiçbir ödül ertelenmiyor) çünkü kasa testlerinin çoğu
-    // aktif kupon bekliyor.
-    await ayar.sayiYaz({
-      cafeId: kafeA,
-      anahtar: ayar.ANAHTARLAR.ertelemeEsigi,
-      deger: 25_00,
-      aktorId: kasiyerA,
-    });
-    const s = await kuponAl(buyukOdulId);
+    // Ü269: her kupon ertelenerek doğuyor — ayar oynatmaya gerek yok.
+    const s = await bekleyenKuponAl(buyukOdulId);
     const sonuc = await kupon.onayla({ cafeId: kafeA, kuponId: s.kuponId, staffId: kasiyerA });
     assert.equal(sonuc.ok, false);
-
-    await ayar.sayiYaz({
-      cafeId: kafeA,
-      anahtar: ayar.ANAHTARLAR.ertelemeEsigi,
-      deger: 50_00,
-      aktorId: kasiyerA,
-    });
   });
 
   test("onaylayan personel kayda geçer — kupon oyuncu tarafından kapatılamaz (A4)", async () => {
@@ -1121,13 +1088,6 @@ describe("geri alma ve süre dolumu (E11)", () => {
 
     const sonuc = await kupon.onayla({ cafeId: kafeA, kuponId: s.kuponId, staffId: kasiyerA });
     assert.equal(sonuc.ok, false);
-
-    await ayar.sayiYaz({
-      cafeId: kafeA,
-      anahtar: ayar.ANAHTARLAR.ertelemeEsigi,
-      deger: 50_00,
-      aktorId: kasiyerA,
-    });
   });
 });
 
@@ -1177,12 +1137,8 @@ describe("ertelenmiş kupon (Ü28)", () => {
   });
 
   test("açılma zamanı GELMEMİŞ kupon hâlâ reddediliyor", async () => {
-    const s = await kuponAl(katalogOdulId);
-    await yoneticiSorgu(
-      `UPDATE coupons SET status = 'pending', activates_at = now() + interval '1 day'
-        WHERE id = $1`,
-      [s.kuponId],
-    );
+    // Ü269: her kupon ertelenerek doğuyor — saat oynatmaya gerek yok.
+    const s = await bekleyenKuponAl(katalogOdulId);
 
     const gorunum = await kupon.coz(kafeA, s.kod);
     assert.equal(gorunum.bulundu === true ? gorunum.gecerli : null, false);
@@ -1462,16 +1418,8 @@ describe("tutar indirimi ödülü", () => {
 
 describe("açılma anı oyuncuya gösteriliyor (Ü98)", () => {
   test("bekleyen kupon açılınca 'yeni açılan' listesine giriyor", async () => {
-    // Eşiği tabana indir ki büyük ödül ertelensin.
-    await ayar.sayiYaz({
-      cafeId: kafeA,
-      anahtar: ayar.ANAHTARLAR.ertelemeEsigi,
-      deger: 25_00,
-      aktorId: kasiyerA,
-    });
-
-    try {
-      const s = await kuponAl(buyukOdulId);
+    {
+      const s = await bekleyenKuponAl(buyukOdulId);
       assert.equal(s.ertelendi, true, "test kurulumu: ödül ertelenmedi");
 
       // Henüz açılmadı: ne kullanılabilirde ne yeni açılanda.
@@ -1496,13 +1444,6 @@ describe("açılma anı oyuncuya gösteriliyor (Ü98)", () => {
         sonra.kullanilabilir.some((k) => k.id === s.kuponId),
         "kutlama kuponu asıl listesinden çaldı",
       );
-    } finally {
-      await ayar.sayiYaz({
-        cafeId: kafeA,
-        anahtar: ayar.ANAHTARLAR.ertelemeEsigi,
-        deger: 50_00,
-        aktorId: kasiyerA,
-      });
     }
   });
 
@@ -1529,11 +1470,14 @@ describe("açılma anı oyuncuya gösteriliyor (Ü98)", () => {
     assert.ok(e.kullanilabilir.some((k) => k.id === acik.id), "ödül listeden düştü");
   });
 
-  test("ertelenmeyen kupon hiç kutlanmıyor", async () => {
+  test("hiç beklememiş kupon kutlanmıyor", async () => {
     // Kazanıldığı anda kullanıma hazır kuponun "açılma" anı yok; defterde
     // `activated` satırı da yok. Kutlanacak bir şey yok.
+    //
+    // ⚠️ Ü269'dan beri doğarken açık olan tek kupon upsell. `kuponAl`
+    // aynı durumu kuruyor: kupon açık ama `bekleyenleriAc` hiç çağrılmadı,
+    // yani defterde açılma satırı yok. Kutlama o satıra bakmalı, saate değil.
     const s = await kuponAl(katalogOdulId);
-    assert.equal(s.ertelendi, false, "test kurulumu: küçük ödül ertelendi");
 
     const e = await envanter(oyuncuId);
     assert.ok(!e.yeniAcilan.some((k) => k.id === s.kuponId), "ertelenmeyen kupon kutlandı");

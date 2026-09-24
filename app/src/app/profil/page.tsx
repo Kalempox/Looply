@@ -69,7 +69,7 @@ export default async function ProfilSayfasi() {
   return (
     // `yuva` AÇIK (Ü172): kapalı olmasının tek sebebi sayfanın
     // ortasındaki avatar kopyasıydı, o kalktı.
-    <OyuncuSayfa aktif="/profil">
+    <OyuncuSayfa aktif="/profil" geri={{ href: "/oyna", etiket: "Ana ekran" }}>
       {/* Ü186: oyuncunun seçtiği renkler — bu satırdan sonraki her
           Loopy o renkte çiziliyor. */}
       <OyuncununRenkleri />

@@ -5,6 +5,7 @@ import { withBypass, type Db } from "@/db/context";
 import { log } from "@/lib/log";
 import * as acil from "./acil";
 import * as ayar from "./ayar";
+import { kafeAcikMi, saatYaz } from "./butce";
 
 /**
  * Şans çarkı — Ü49.
@@ -273,6 +274,8 @@ export function agirlikliSec(oduller: Dilim[]): number {
 export type CarkDurumu =
   | { acik: true; dilimler: Dilim[] }
   | { acik: false; sebep: "odul_yok" | "durduruldu" }
+  /** Ü274: kafe kapalı — kapalıyken hiçbir ödül dağıtılmıyor (Ü90). */
+  | { acik: false; sebep: "kapali"; acilis: number }
   | { acik: false; sebep: "sure"; sonrakiAn: Date; dilimler: Dilim[] };
 
 /**
@@ -285,10 +288,22 @@ export type CarkDurumu =
 export async function durum(opts: {
   playerId: string;
   cafeId: string;
+  /**
+   * Kafenin açık olup olmadığının okunduğu an — **yalnızca testler için**
+   * (Ü90'daki aynı dikiş). Kapalı kafe kuralı duvar saatine bakıyor ve
+   * dikiş olmasa çark testleri gece koşunca sebepsiz düşerdi.
+   */
+  an?: Date;
 }): Promise<CarkDurumu> {
   if (await acil.durduruldu(acil.ANAHTARLAR.kupon)) {
     return { acik: false, sebep: "durduruldu" };
   }
+
+  /* 🔴 Ü274: kapalı kafede çark "hazır" DEMİYOR. Önce diyordu: çevirme
+     başarılı görünüyor, kupon ise bütçe kapalı olduğu için hiç
+     üretilmiyordu — oyuncu kazandığını sanıp eli boş kalıyordu. */
+  const saat = await kafeAcikMi(opts.cafeId, opts.an);
+  if (!saat.acik) return { acik: false, sebep: "kapali", acilis: saat.acilis };
 
   const sinir = await ustSinir(opts.cafeId);
 
@@ -352,6 +367,7 @@ export function sec(dilimler: Dilim[]): { dilim: Dilim; indeks: number } | null 
 /** Çark kapalıysa oyuncuya söylenecek cümle. */
 export function durumMetni(d: CarkDurumu): string {
   if (d.acik) return "";
+  if (d.sebep === "kapali") return kapaliCumlesi(d.acilis);
   if (d.sebep !== "sure") {
     return d.sebep === "odul_yok"
       ? "Bu kafede şu an dağıtılan ödül yok."
@@ -372,8 +388,22 @@ export function durumMetni(d: CarkDurumu): string {
  * ödülün adını da uydurabilir ve "kazandım" ekranı gerçekle ilgisiz
  * olurdu. Ödülün TL değeri bu listede taşınıyor ama ekrana çıkmıyor (E9).
  */
-export async function misafirDurumu(cafeId: string): Promise<Dilim[]> {
+/** Ü274: kapalı kafenin cümlesi — çark, misafir ekranı ve oyun sonu aynısını söylüyor. */
+export function kapaliCumlesi(acilis: number): string {
+  return `Kafe şu an kapalı — ödüller ${saatYaz(acilis)}'da açılıyor. Oynayabilirsin ama ödül çıkmaz.`;
+}
+
+/** Misafir ekranı için: kafe kapalıysa cümlesi, açıksa `null`. */
+export async function kapaliMetni(cafeId: string, an?: Date): Promise<string | null> {
+  const saat = await kafeAcikMi(cafeId, an);
+  return saat.acik ? null : kapaliCumlesi(saat.acilis);
+}
+
+export async function misafirDurumu(cafeId: string, an?: Date): Promise<Dilim[]> {
   if (await acil.durduruldu(acil.ANAHTARLAR.kupon)) return [];
+  // Ü274: kapalı kafede misafire çark gösterilmiyor — kazandırmış gibi
+  // görünüp kayıtta boşa çıkıyordu. Sebebi `kapaliMetni` söylüyor.
+  if (!(await kafeAcikMi(cafeId, an)).acik) return [];
   const sinir = await ustSinir(cafeId);
   return withBypass("misafir çark dilimleri", async (db) =>
     dilimleriYay(await odulleriOku(db, cafeId, sinir)),
@@ -410,10 +440,13 @@ export type MisafirSonucu =
  * Çerez oyuncunun elinde. Kafe imzalı gövdede olmasaydı, A kafesinde
  * çevrilen çark B kafesinin bütçesinden ödül yazdırabilirdi.
  */
-export async function misafirCevir(opts: { cafeId: string }): Promise<MisafirSonucu> {
+export async function misafirCevir(opts: { cafeId: string; an?: Date }): Promise<MisafirSonucu> {
   if (await acil.durduruldu(acil.ANAHTARLAR.kupon)) {
     return { ok: false, hata: "Ödül dağıtımı geçici olarak durduruldu." };
   }
+  // Ü274: ekran çarkı zaten göstermiyor; sunucu da ayrıca reddediyor.
+  const saat = await kafeAcikMi(opts.cafeId, opts.an);
+  if (!saat.acik) return { ok: false, hata: kapaliCumlesi(saat.acilis) };
 
   const sinir = await ustSinir(opts.cafeId);
 

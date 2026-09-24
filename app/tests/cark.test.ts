@@ -19,7 +19,7 @@ import { newId } from "@/lib/ids";
  */
 const KAFE_ACIK = new Date("2026-09-02T20:00:00+03:00");
 import { isGunu, gunEkle } from "@/lib/tarih";
-import { benzersizEposta } from "./_yardim";
+import { benzersizEposta, testKafeleriniSil } from "./_yardim";
 
 /**
  * ŞANS ÇARKI — Ü49.
@@ -45,8 +45,18 @@ const TABAN = 4_000_000 + randomInt(3_000_000);
 let sayac = 0;
 const yeniTelefon = () => normalizePhone(`0535${String(TABAN + sayac++).slice(-7)}`);
 
+/**
+ * Bu dosyanın açtığı kafeler — sonunda SİLİNİYOR (Ü271).
+ *
+ * ⚠️ Önce silinmiyordu: her koşu yeni onaylı kafeler bırakıyordu ve
+ * geliştirme veritabanında 4.556'ya ulaştılar. Platform panelinin
+ * "hangi kafeye gitsin" listesi kullanılmaz olmuştu.
+ */
+const olusanKafeler: string[] = [];
+
 async function kafeKur(ad: string, butceli: boolean): Promise<string> {
   const id = newId("cafe");
+  olusanKafeler.push(id);
   await withBypass("test kafe", async (db) => {
     await db.query(
       `INSERT INTO cafes (id, name, slug, status, lat, lng)
@@ -107,12 +117,42 @@ before(async () => {
 });
 
 after(async () => {
+  await testKafeleriniSil(olusanKafeler);
   await closePools();
+});
+
+describe("çark · kapalı kafe (Ü274)", () => {
+  /**
+   * 🔴 Ürün sahibi gece 01:52'de çarkı çevirdi: çark "hazır" dedi,
+   * kazandırmış gibi gösterdi, kayıtta ödül gelmedi. Kafe kapalıydı ve
+   * kapalıyken hiçbir ödül dağıtılmıyor (Ü90) — kural doğruydu, ekran
+   * yalan söylüyordu.
+   */
+  const GECE = new Date("2026-09-02T03:00:00+03:00");
+
+  test("🔴 kapalı kafede çark 'hazır' demiyor, sebebini ve açılış saatini söylüyor", async () => {
+    const d = await cark.durum({ playerId: oyuncu, cafeId, an: GECE });
+    assert.equal(d.acik, false, "kapalı kafede çark açık göründü");
+    assert.equal(d.acik === false ? d.sebep : null, "kapali");
+    assert.match(cark.durumMetni(d), /kapalı.*09:00/, "cümle kapalıyı ve açılış saatini söylemiyor");
+  });
+
+  test("kapalı kafede misafire çark gösterilmiyor ve çevirmesi reddediliyor", async () => {
+    assert.deepEqual(await cark.misafirDurumu(cafeId, GECE), [], "kapalı kafede misafire dilim gitti");
+    assert.match((await cark.kapaliMetni(cafeId, GECE)) ?? "", /kapalı/);
+    const s = await cark.misafirCevir({ cafeId, an: GECE });
+    assert.equal(s.ok, false, "kapalı kafede misafir çevirebildi — kazandı sanıp eli boş kalırdı");
+  });
+
+  test("açık kafede hiçbiri engellenmiyor", async () => {
+    assert.equal((await cark.durum({ playerId: oyuncu, cafeId, an: KAFE_ACIK })).acik, true);
+    assert.equal(await cark.kapaliMetni(cafeId, KAFE_ACIK), null);
+  });
 });
 
 describe("çark · günlük sınır", () => {
   test("ilk çevirme ödül üretiyor", async () => {
-    const durum = await cark.durum({ playerId: oyuncu, cafeId });
+    const durum = await cark.durum({ playerId: oyuncu, cafeId, an: KAFE_ACIK });
     assert.equal(durum.acik, true, "çark kapalı başladı");
 
     const secim = cark.sec(durum.acik ? durum.dilimler : []);
@@ -145,7 +185,7 @@ describe("çark · günlük sınır", () => {
   });
 
   test("çevirdikten sonra çark kapalı görünüyor", async () => {
-    const durum = await cark.durum({ playerId: oyuncu, cafeId });
+    const durum = await cark.durum({ playerId: oyuncu, cafeId, an: KAFE_ACIK });
     assert.equal(durum.acik, false);
     assert.match(cark.durumMetni(durum), /saat/);
   });
@@ -178,7 +218,7 @@ describe("çark · günlük sınır", () => {
       Ayırt eden şey **sonraki çevirme anı**: 24 saatlik varsayılanda
       ~24, 1 saatlik ayarda ~1 olmalı.
     */
-    const varsayilan = saatSonra(await cark.durum({ playerId: oyuncu, cafeId }));
+    const varsayilan = saatSonra(await cark.durum({ playerId: oyuncu, cafeId, an: KAFE_ACIK }));
     assert.ok(varsayilan !== null, "ön koşul: çark süre yüzünden kapalı olmalıydı");
     assert.ok(
       varsayilan > 20 && varsayilan <= 24,
@@ -193,7 +233,7 @@ describe("çark · günlük sınır", () => {
     });
     assert.equal(y.ok, true, y.ok ? "" : y.hata);
 
-    const kisa = saatSonra(await cark.durum({ playerId: oyuncu, cafeId }));
+    const kisa = saatSonra(await cark.durum({ playerId: oyuncu, cafeId, an: KAFE_ACIK }));
     assert.ok(kisa !== null, "1 saat ayarında da süre kilidi sürmeliydi");
     assert.ok(
       kisa <= 1.05,
@@ -222,7 +262,7 @@ describe("çark · günlük sınır", () => {
   });
 
   test("başka oyuncunun çarkı etkilenmiyor", async () => {
-    const durum = await cark.durum({ playerId: oyuncu2, cafeId });
+    const durum = await cark.durum({ playerId: oyuncu2, cafeId, an: KAFE_ACIK });
     assert.equal(durum.acik, true, "bir oyuncunun çevirmesi diğerini kilitledi");
   });
 
@@ -352,7 +392,7 @@ describe("çark · üst sınır", () => {
    * ödül çarkta hiç görünmemeli.
    */
   test("sınırın üstündeki ödül çarka girmiyor", async () => {
-    const durum = await cark.durum({ playerId: oyuncu2, cafeId });
+    const durum = await cark.durum({ playerId: oyuncu2, cafeId, an: KAFE_ACIK });
     assert.equal(durum.acik, true);
     if (!durum.acik) return;
 
@@ -470,7 +510,7 @@ describe("çark · ağırlık", () => {
 
 describe("çark · misafir talebi", () => {
   test("imzalı talep çözülüyor", async () => {
-    const s = await cark.misafirCevir({ cafeId });
+    const s = await cark.misafirCevir({ cafeId, an: KAFE_ACIK });
     assert.equal(s.ok, true);
     if (!s.ok) return;
 
@@ -485,7 +525,7 @@ describe("çark · misafir talebi", () => {
    * ödülünün kimliğini yazıp kaydolduğunda onu bozdururdu.
    */
   test("kurcalanmış talep çözülmüyor", async () => {
-    const s = await cark.misafirCevir({ cafeId });
+    const s = await cark.misafirCevir({ cafeId, an: KAFE_ACIK });
     assert.equal(s.ok, true);
     if (!s.ok) return;
 
@@ -503,7 +543,7 @@ describe("çark · misafir talebi", () => {
 
   test("misafir çevirmesi kupon üretmiyor — G13", async () => {
     const once = await carkKuponSayisi(cafeId);
-    await cark.misafirCevir({ cafeId });
+    await cark.misafirCevir({ cafeId, an: KAFE_ACIK });
     const sonra = await carkKuponSayisi(cafeId);
     assert.equal(sonra, once, "kaydolmamış ziyaretçi için satır yazıldı");
   });

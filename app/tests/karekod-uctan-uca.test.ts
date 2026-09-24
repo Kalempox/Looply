@@ -11,7 +11,6 @@ import * as masa from "@/domain/masa";
 import * as masaYonetim from "@/domain/masa-yonetim";
 import * as kupon from "@/domain/kupon";
 import * as odul from "@/domain/odul";
-import * as ayar from "@/domain/ayar";
 import { yoneticiSorgu, benzersizEposta } from "./_yardim";
 
 /**
@@ -53,7 +52,6 @@ const KAFE_LNG = 28.9838;
 
 let kafeA = "";
 let kafeB = "";
-let yoneticiA = "";
 let kasiyerA = "";
 let oyuncuId = "";
 let odulId = "";
@@ -83,7 +81,6 @@ before(async () => {
   assert.ok(v.a && v.b && v.y && v.k && v.o, "Tohum verisi yok — önce: npm run db:seed");
   kafeA = v.a;
   kafeB = v.b;
-  yoneticiA = v.y;
   kasiyerA = v.k;
   odulId = v.o;
 
@@ -158,18 +155,31 @@ describe("karekod zinciri — uçtan uca (Ü132)", () => {
     const k2li = await masa.aktif(oyuncuId);
     assert.equal(k2li!.kanitMaskesi & masa.K2, masa.K2, "konum K2 vermeliydi");
 
-    /* ── 4. Kupon üretiliyor ─────────────────────────────── */
-    // Eşiğin altına çekip anında aktif olmasını sağlıyoruz: bu test
-    // ertelemeyi değil **karekod zincirini** sınıyor.
-    await ayar.sayiYaz({
-      cafeId: kafeA,
-      anahtar: ayar.ANAHTARLAR.ertelemeEsigi,
-      deger: 50_00,
-      aktorId: yoneticiA,
-    });
-
+    /* ── 4. Kupon üretiliyor — ve BEKLİYOR (Ü269) ───────────── */
     const sonuc = await kuponUret();
     assert.ok(sonuc?.ok, "kanıtı tam oyuncuya kupon çıkmadı");
+
+    /*
+      Ü269: her ödül kafenin aktivasyon saati kadar sonra açılıyor. Burada
+      önce eşik tavana çekilip erteleme kapatılıyordu — zincir artık
+      gerçek yolculuğu izliyor: kupon bekliyor, kasa onu henüz kabul
+      etmiyor, saat gelince açılıyor.
+    */
+    const bekleyen = await odul.kuponDetayi(oyuncuId, sonuc.kuponId);
+    assert.equal(bekleyen?.durum, "beklemede", "kupon hemen açıldı — Ü269 her ödülü erteliyor");
+    const erken = await kupon.coz(kafeA, sonuc.kod);
+    assert.equal(
+      erken.bulundu === true ? erken.gecerli : null,
+      false,
+      "açılmamış kupon kasada geçerli göründü",
+    );
+
+    // Saat geldi. Kuponun hâline `status` değil ZAMAN karar veriyor
+    // (kupon-kasa · "ertelenmiş kupon"); açılma anını geçmişe almak yetiyor.
+    await yoneticiSorgu(
+      `UPDATE coupons SET activates_at = now() - interval '1 minute' WHERE id = $1`,
+      [sonuc.kuponId],
+    );
 
     /* ── 5. Kuponun karekodu oyuncunun telefonunda ───────── */
     const detay = await odul.kuponDetayi(oyuncuId, sonuc.kuponId);

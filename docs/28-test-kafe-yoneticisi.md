@@ -39,7 +39,8 @@ görünüyorsa.
 
 ### B.1 · Yöneticiyle gir
 
-**Ne yaparsın:** `/kafe/giris` → telefon + parola.
+**Ne yaparsın:** `/kafe/giris` → telefon + 6 haneli doğrulama kodu
+(geliştirmede kod ekranda görünür).
 
 **Ne görmelisin:** `/kafe/panel` açılır. Üstte **kurulum uyarıları**
 görmelisin — konum girilmemiş, ödül yok, bütçe yok gibi.
@@ -99,6 +100,7 @@ de yok.
 | Alan | Ne yapar | Test et |
 |---|---|---|
 | Tip | ürün · yüzde indirim · tutar indirimi | Üçünü de dene |
+| **Değer (TL)** | 25 TL ile kafenin üst sınırı arası, tam TL (Ü268) | 27 yaz → kaydedilir · 24, 27,5 ve üst sınırın 1 fazlası → kaydedilmez (tarayıcı kutunun yanında uyarır) |
 | Günlük adet | Günde en fazla kaç kez verilecek | 1 yaz, ikincisinin çıkmadığını gör |
 | Kullanım penceresi | Kuponun bozdurulabileceği saatler | Dar bir pencere yaz |
 | **Kaç gün geçerli** | Kupon açıldıktan sonraki ömrü | 1 gün yaz |
@@ -106,7 +108,18 @@ de yok.
 
 **Ne görmelisin:** ödül listesi, her satırda yazdıklarının özeti.
 
+**Ödül üst sınırı (Ü268):** aynı sayfada **"Açılma ve geçerlilik"**
+kutusunda **"Ödül üst sınırı (TL)"**. Varsayılan 50. 80 yaz → Kaydet →
+"Yeni ödül"ü aç: kutunun altı "25 ile 80 TL arası" demeli; 80 TL'lik ödül
+kaydedilmeli, 81 kaydedilmemeli. 49 yazınca üst sınır kaydedilmemeli
+(tarayıcı "en az 50" diye uyarır). Yukarıda sınır yok — 10.000 de
+kaydedilir.
+
 🔴 **Hata sayılır:**
+- Herhangi bir ödül satırında ya da oyuncunun `/firsatlar` ekranında
+  **"Masada 5 dakika"** yazıyorsa. Bu kural Ü268'de kalktı; her ödül
+  yalnızca konum doğrulaması ister.
+- Kafenin yazdığı üst sınırın üstünde bir ödül kaydedilebiliyorsa.
 - Günlük adedi dolan ödül hâlâ çıkıyorsa. Süzgeç **seçimden önce**
   çalışmalı; dolmuş ödül aday listesine hiç girmemeli.
 - Kullanım penceresi dışında kupon bozdurulabiliyorsa.

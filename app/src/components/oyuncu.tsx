@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { GeriBaglanti } from "./ui";
 import { AvatarYuvasi } from "./avatar-yuvasi";
 import {
   RENK,
@@ -71,7 +71,10 @@ export function OyuncuSayfa({
   yuva = true,
   menu = true,
 }: {
-  /** Üstteki geri bağlantısı. Sekme köklerinde verilmiyor. */
+  /**
+   * Üstteki geri bağlantısı. Önce sekme köklerinde verilmiyordu; Ü274'te
+   * ürün sahibinin isteğiyle Ödüllerim ve Profil de Ana ekrana dönüyor.
+   */
   geri?: { href: string; etiket: string };
   /** Alt şeritte hangi durak yanacak. */
   aktif: Durak;
@@ -135,23 +138,7 @@ export function OyuncuSayfa({
   return (
     <main className="min-h-dvh bg-zemin text-yazi">
       <div className="mx-auto w-full max-w-md px-5 pt-6 pb-10 sm:pt-10">
-        {geri && (
-          <Link
-            href={geri.href}
-            className="mb-4 -ml-1 inline-flex items-center gap-1.5 rounded-full py-1.5 pr-3 pl-1 text-[14px] font-semibold text-yazi-sonuk transition-colors hover:text-yazi"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
-              <path
-                d="M15 5 8 12l7 7"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-            {geri.etiket}
-          </Link>
-        )}
+        {geri && <GeriBaglanti href={geri.href} etiket={geri.etiket} />}
 
         {children}
 
@@ -319,10 +306,19 @@ export function SayfaBasi({
   sahne,
   karakter,
   koyu = false,
+  kompakt = false,
   children,
 }: {
   ust: string;
   baslik: string;
+  /**
+   * İnce başlık — Ü274, yalnızca `/oyunlar`.
+   *
+   * Ürün sahibi: "oyunlar yazan kart aşırı alan kaplıyor, incelsin
+   * küçülsün, yoksa karoseldeki kartlar sığmıyor." Katalogda asıl içerik
+   * karusel; başlık onun önünde ekranın üçte birini yiyordu.
+   */
+  kompakt?: boolean;
   renk: OyuncuRengi;
   gorsel?: GorselAdi;
   /**
@@ -381,9 +377,9 @@ export function SayfaBasi({
         güçlendirmek çözüm değil — o zaman da sahne sönüyor. Metni
         sahnenin başladığı yerde durdurmak ikisini birden koruyor.
       */
-      className={`kart-golge kart-gel relative mb-8 overflow-hidden rounded-3xl py-6 ${
-        sahne ? "pr-28 pl-5" : "px-5"
-      } ${koyu ? "text-white" : ""}`}
+      className={`kart-golge kart-gel relative overflow-hidden rounded-3xl ${
+        kompakt ? "mb-4 py-3" : "mb-8 py-6"
+      } ${sahne ? (kompakt ? "pr-24 pl-5" : "pr-28 pl-5") : "px-5"} ${koyu ? "text-white" : ""}`}
       style={
         koyu
           ? { background: `linear-gradient(115deg, ${r.koyu} 0%, ${r.ana} 100%)` }
@@ -411,8 +407,11 @@ export function SayfaBasi({
       */}
       {sahne && sahneVarMi(sahne) ? (
         <>
-          <span aria-hidden className="pointer-events-none absolute -top-6 -right-11">
-            <OyunSahnesi oyun={sahne} boy={190} />
+          <span
+            aria-hidden
+            className={`pointer-events-none absolute ${kompakt ? "-top-4 -right-6" : "-top-6 -right-11"}`}
+          >
+            <OyunSahnesi oyun={sahne} boy={kompakt ? 112 : 190} />
           </span>
           <span
             aria-hidden
@@ -450,7 +449,11 @@ export function SayfaBasi({
           <p className="etiket-caps" style={{ color: koyu ? r.canli : r.koyu }}>
             {ust}
           </p>
-          <h1 className="mt-1 font-display text-3xl leading-none font-extrabold tracking-tight">
+          <h1
+            className={`mt-1 font-display leading-none font-extrabold tracking-tight ${
+              kompakt ? "text-2xl" : "text-3xl"
+            }`}
+          >
             {baslik}
           </h1>
         </div>
@@ -464,7 +467,7 @@ export function SayfaBasi({
         {karakter && <div className="-mr-4 w-[8.5rem] shrink-0">{karakter}</div>}
       </div>
 
-      {children && <div className="relative mt-5">{children}</div>}
+      {children && <div className={`relative ${kompakt ? "mt-1.5" : "mt-5"}`}>{children}</div>}
     </header>
   );
 }

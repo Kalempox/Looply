@@ -43,7 +43,7 @@ export default async function DavetSayfasi() {
   const baglanti = `${sema}://${host}/r/${ozet.kod}`;
 
   return (
-    <Sayfa>
+    <Sayfa geri={{ href: "/oyna", etiket: "Ana ekran" }}>
       <Baslik ust="Davet">Arkadaşını çağır</Baslik>
 
       <p className="mb-8 text-[15px] leading-relaxed text-yazi-sonuk">

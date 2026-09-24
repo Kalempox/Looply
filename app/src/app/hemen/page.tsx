@@ -91,6 +91,8 @@ export default async function HemenSayfasi({
   // sunucudan geliyor ki istemci listeyi düzenleyip ödül uyduramasın.
   const carkTalebi = cark.talepCoz(c.get(cark.TALEP_COOKIE)?.value);
   const carkDurumu = await cark.misafirDurumu(masaBilet.cafeId);
+  // Ü274: kafe kapalıysa çark gösterilmiyor — sebebi söyleniyor.
+  const kapaliMetin = await cark.kapaliMetni(masaBilet.cafeId);
 
   // ⚠️ Ü109: misafir akışı da kafenin açık listesinden geçiyor. Yalnızca
   // girişli ekranları süzseydik karekodu okutan misafir kapalı bir oyunu
@@ -169,6 +171,12 @@ export default async function HemenSayfasi({
       {/* Ü59: çark artık tam ekran sahnede açılıyor; buradaki kart
           davetin kendisi ve kendi çerçevesini taşıyor. Dış sarmalayıcı
           çift çerçeve yapıyordu. */}
+      {kapaliMetin && (
+        <p className="mb-10 rounded-2xl border border-cizgi bg-yuzey px-4 py-3.5 text-[14px] leading-relaxed text-yazi-sonuk">
+          {kapaliMetin}
+        </p>
+      )}
+
       {carkDurumu.length > 0 && (
         <section className="mb-10">
           <MisafirCarki

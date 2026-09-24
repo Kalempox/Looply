@@ -5,7 +5,6 @@ import { withBypass } from "@/db/context";
 import * as oturum from "@/domain/session";
 import * as masaOturumu from "@/domain/masa";
 import { takmaAd } from "@/domain/player";
-import { kodEkrandaGosterilir } from "@/sms";
 import { Sayfa, Baslik, MasaKunyesi, Uyari } from "@/components/ui";
 import { GirisFormu } from "./form";
 
@@ -86,10 +85,7 @@ export default async function GirisSayfasi({
         </div>
       )}
 
-      {/* Google/Apple düğmelerinin görünürlüğüne SUNUCU karar veriyor:
-          `kodEkrandaGosterilir()` ortam değişkeni okuyor ve istemcide
-          çalışamaz. Kapı burada kapanıyor, düğmeler canlıya hiç ulaşmıyor. */}
-      <GirisFormu masadaMi={!!masa} demoKapisi={kodEkrandaGosterilir()} />
+      <GirisFormu masadaMi={!!masa} />
 
       <p className="mt-8 font-data text-[10px] leading-relaxed tracking-wide text-yazi-sonuk">
         Telefon numaran şifreli saklanır ve üye işletmelerle paylaşılmaz. Kafeler seni yalnızca

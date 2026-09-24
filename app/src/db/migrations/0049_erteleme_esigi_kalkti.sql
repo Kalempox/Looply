@@ -1,0 +1,17 @@
+-- 0049 · Gecikmeli açılma eşiği KALKTI — her ödül gecikmeli açılıyor (Ü269)
+--
+-- Ürün sahibi:
+--   "Gecikmeli açılma eşiği olmamalı, her ödül gecikmeli açılmalı. Kafe
+--    sahibi isterse saatini azaltabilmeli veya arttırabilmeli ama minimum
+--    bir tutar olmamalı, çünkü o zaman yüzdeli ve ürün hediyeleri problem
+--    oluyor."
+--
+-- Kural `kupon.kuponUret`te: upsell dışındaki her kupon, kafenin
+-- aktivasyon saati (`erteleme_saat`, 1–48) kadar sonra açılıyor. Eşik
+-- ayarı koddan silindi (`ayar.ANAHTARLAR.ertelemeEsigi` yok).
+--
+-- ⚠️ Kalan satırlar SİLİNİYOR: platform panelinin kafe künyesi
+-- `cafe_config`teki her satırı listeliyor ve adı bilinmeyen anahtarı ham
+-- hâliyle gösteriyor — "erteleme_esigi_kurus: 5000" artık hiçbir şeyi
+-- değiştirmeyen bir ayarı varmış gibi gösterirdi.
+DELETE FROM cafe_config WHERE key = 'erteleme_esigi_kurus';

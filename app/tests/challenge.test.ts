@@ -10,7 +10,7 @@ import * as challenge from "@/domain/challenge";
 import { OYUNLAR, gununOyunu } from "@/oyunlar";
 import { newId } from "@/lib/ids";
 import { isGunu, gunEkle } from "@/lib/tarih";
-import { yoneticiSorgu, benzersizEposta } from "./_yardim";
+import { yoneticiSorgu, benzersizEposta, testKafeleriniSil } from "./_yardim";
 
 /**
  * GÜNÜN GÖREVİ — Ü106.
@@ -33,8 +33,18 @@ const TABAN = 7_400_000 + randomInt(400_000);
 let sayac = 0;
 const yeniTelefon = () => normalizePhone(`0536${String(TABAN + sayac++).slice(-7)}`);
 
+/**
+ * Bu dosyanın açtığı kafeler — sonunda SİLİNİYOR (Ü271).
+ *
+ * ⚠️ Önce silinmiyordu: her koşu yeni onaylı kafeler bırakıyordu ve
+ * geliştirme veritabanında 4.556'ya ulaştılar. Platform panelinin
+ * "hangi kafeye gitsin" listesi kullanılmaz olmuştu.
+ */
+const olusanKafeler: string[] = [];
+
 async function kafeKur(ad: string): Promise<string> {
   const id = newId("cafe");
+  olusanKafeler.push(id);
   await withBypass("test kafe", (db) =>
     db.query(
       `INSERT INTO cafes (id, name, slug, status, lat, lng)
@@ -104,6 +114,7 @@ before(async () => {
 });
 
 after(async () => {
+  await testKafeleriniSil(olusanKafeler);
   await closePools();
 });
 

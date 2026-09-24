@@ -461,28 +461,12 @@ describe("upsell teklifi (Ü100)", () => {
     );
     assert.ok(t);
 
-    /**
-     * Eşiği tabana indir: normal yolda bu tutar KESİN ertelenirdi.
-     *
-     * ⚠️ Sonunda **geri alınıyor**. İlk hâli almıyordu ve ayar dosyadan
-     * dosyaya sızıyordu: bu test tek başına geçiyor, bütün takımla
-     * koşarken bütçe temposu testini düşürüyordu. Testin bıraktığı ayar,
-     * başka bir testin sessizce yanlış sebeple kırılması demek.
-     */
-    const oncekiEsik = await withBypass("test: mevcut eşik", (db) =>
-      db.one<{ value: string }>(
-        `SELECT value::text FROM cafe_config WHERE cafe_id = $1 AND key = 'erteleme_esigi_kurus'`,
-        [kafeA],
-      ),
-    );
-
-    await yoneticiSorgu(
-      `INSERT INTO cafe_config (cafe_id, key, value) VALUES ($1,'erteleme_esigi_kurus','2000')
-       ON CONFLICT (cafe_id, key) DO UPDATE SET value = EXCLUDED.value`,
-      [kafeA],
-    );
-
-    try {
+    /*
+      Ü269'dan beri upsell dışındaki HER kupon ertelenerek doğuyor. Burada
+      önce erteleme eşiği tabana çekiliyordu ki "normal yolda bu tutar
+      ertelenirdi" kurulsun; eşik kalktı ve o kurulum artık kendiliğinden
+      doğru. Ürün sahibi Ü269'da upsell'in hemen açılmasını ayrıca onayladı.
+    */
     const s = await upsell.teklifiAl({
       playerId: oyuncu2,
       teklifId: t.teklifId,
@@ -515,19 +499,6 @@ describe("upsell teklifi (Ü100)", () => {
 
     const saat = (k!.expires_at.getTime() - Date.now()) / 3_600_000;
     assert.ok(saat > 2.5 && saat <= 3.1, `süre 3 saat olmalıydı (${saat.toFixed(1)} sa)`);
-    } finally {
-      if (oncekiEsik) {
-        await yoneticiSorgu(
-          `UPDATE cafe_config SET value = $2::jsonb WHERE cafe_id = $1 AND key = 'erteleme_esigi_kurus'`,
-          [kafeA, oncekiEsik.value],
-        );
-      } else {
-        await yoneticiSorgu(
-          `DELETE FROM cafe_config WHERE cafe_id = $1 AND key = 'erteleme_esigi_kurus'`,
-          [kafeA],
-        );
-      }
-    }
   });
 
   test("aynı teklif iki kez alınamıyor", async () => {

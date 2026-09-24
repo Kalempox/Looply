@@ -1,4 +1,5 @@
 import * as pencere from "./kullanim-penceresi";
+import * as ayar from "./ayar";
 import { withCafe } from "@/db/context";
 import { audit } from "@/lib/audit";
 import { newId } from "@/lib/ids";
@@ -24,10 +25,10 @@ import { newId } from "@/lib/ids";
  *
  * ── Kanıt seviyesi kafenin seçimi değil ─────────────────────
  *
- * E6 ödül değerine göre kanıt seviyesi istiyor: 1–15 TL → K2, 16–50 TL → K3,
- * 51 TL+ → K4. Bu bir **platform kuralı**; kafenin panelinden seçilemiyor,
- * tutardan hesaplanıyor. Kafe seçebilseydi, en pahalı ödülü en zayıf kanıtla
- * verip fraud'a kapı açabilirdi.
+ * E6 ödülün kanıt seviyesini **platform kuralı** yapıyor; kafenin
+ * panelinden seçilemiyor. Kafe seçebilseydi, en pahalı ödülü en zayıf
+ * kanıtla verip fraud'a kapı açabilirdi. Ü268'den beri kural tek kademe:
+ * her ödül konum doğrulaması (K2) istiyor — bkz. `kanitSeviyesi`.
  */
 
 export type OdulTipi = "product" | "percent" | "amount";
@@ -61,54 +62,86 @@ export type Odul = {
 
 export type OdulSonucu = { ok: true; id: string } | { ok: false; hata: string };
 
-/* ── Ödül değerleri (Ü52) ──────────────────────────────────────
+/* ── Ödül değerleri (Ü52 → Ü268 · K5) ─────────────────────────
  *
- * Ürün sahibinin kuralı: **en az 25 TL, 5'er artışla, en çok 50 TL.**
- * Serbest tutar yerine sabit basamak olmasının iki faydası var: kafe
- * "27,50 TL indirim" gibi anlamsız bir ödül tanımlayamıyor ve çarkın
- * ağırlık hesabı öngörülebilir kalıyor.
+ * Ü52'de kural **en az 25 TL, 5'er artışla, en çok 50 TL** idi ve panel
+ * sabit bir listeden seçtiriyordu. Ü268'de ürün sahibi iki şey istedi:
+ *
+ *   · *"25 ile üst sınır arasında istediğimi yazabilmeliyim"* → basamak
+ *     kalktı, tutar serbest. ⚠️ Yine de **tam TL**: "27,50 TL indirim"
+ *     gibi kuruşlu bir ödül kasada anlamsız ve Ü52'nin bu gerekçesi
+ *     hâlâ geçerli.
+ *   · *"Üst sınırı kafe belirlesin, bir sınır olmasın, en az 50 olsun"*
+ *     → üst sınır `ayar.odulUstSinir`, kafenin ayarı.
+ *
+ * Alt sınır sabit ve veritabanında da duruyor (göç 0048).
  */
 
 export const ODUL_EN_AZ = 25_00;
+/**
+ * Kafe hiç ayarlamadıysa üst sınır — Ü52'nin eski tavanı. Vitrin
+ * simülasyonu da bu aralığı gösteriyor.
+ */
 export const ODUL_EN_COK = 50_00;
-export const ODUL_ADIM = 5_00;
+/** Tam TL — kuruşlu ödül yok. */
+export const ODUL_ADIM = 1_00;
 
-/** Seçilebilir bütün ödül değerleri — panelin listesi de bu. */
-export const ODUL_DEGERLERI: number[] = Array.from(
-  { length: (ODUL_EN_COK - ODUL_EN_AZ) / ODUL_ADIM + 1 },
-  (_, i) => ODUL_EN_AZ + i * ODUL_ADIM,
-);
-
-export function odulDegeriGecerliMi(kurus: number): boolean {
-  return ODUL_DEGERLERI.includes(kurus);
+/**
+ * Ödül değeri geçerli mi — kafenin üst sınırına göre.
+ *
+ * ⚠️ Üst sınır parametre: sabit bir tavan artık yok, her kafenin kendi
+ * tavanı var. Sabit bir değer burada kalsaydı kafenin panelde yazdığı
+ * üst sınır ekranda görünür ama hiçbir şeyi değiştirmezdi.
+ */
+export function odulDegeriGecerliMi(kurus: number, ustSinirKurus: number): boolean {
+  return (
+    Number.isInteger(kurus) &&
+    kurus % ODUL_ADIM === 0 &&
+    kurus >= ODUL_EN_AZ &&
+    kurus <= ustSinirKurus
+  );
 }
 
 /**
- * E6: ödül değerine göre gereken kanıt seviyesi.
+ * E6: ödül için gereken kanıt seviyesi. Ü268'den beri **her ödül K2**.
  *
- * ── Kademeler neden kaydı (Ü52) ─────────────────────────────
+ * ── Geçmiş: kademeler önce kaydı (Ü52), sonra kalktı (Ü268) ──
  *
- * E6 önce şöyleydi: 1–15 TL → K2, 16–50 TL → K3, 51+ → K4. Ödül tabanı
+ * E6 ilk hâlinde 1–15 TL → K2, 16–50 TL → K3, 51+ → K4'tü. Ödül tabanı
  * 25 TL'ye çıkınca **her ödül K3 oldu** ve bu, çarkın ilk karekod akışını
  * sessizce öldürdü: karekodu yeni okutmuş bir ziyaretçi K2'de oluyor,
- * masada beş dakika geçirmiş olamaz. Yani "çevir, kaydol, al" akışında
- * ödül hiçbir zaman verilemezdi.
+ * masada beş dakika geçirmiş olamaz. Ü52 kademeleri yeni aralığa taşıdı
+ * (25–35 → K2, 40–50 → K3, 51+ → K4).
  *
- * E6'nın **ilkesi korundu** — büyük ödül daha güçlü kanıt ister — ama
- * kademeler yeni aralığa taşındı:
+ * Ü268'de ürün sahibi K3'ü (masada beş dakika) tamamen kaldırdı. Aynı
+ * anda üst sınır kafenin oldu ve 51+ → K4 satırı da gitmek zorundaydı;
+ * gerekçe aşağıda, fonksiyonun içinde.
  *
- *   · 25–35 TL → K2 (konum doğrulandı)
- *   · 40–50 TL → K3 (masada beş dakika)
- *   · 51 TL+   → K4 (fiş kodu) — aralık dışı, güvenlik payı olarak duruyor
- *
- * ⚠️ Bu, bir güvenlik kuralının gevşemesidir: 25 TL'lik ödül eskiden beş
- * dakika isterken artık istemiyor. Bilerek yapıldı ve karar defterinde
- * öyle yazıyor; ürün sahibi tersini isterse tek satır.
+ * ⚠️ İkisi de bir güvenlik kuralının gevşemesi. Bilerek yapıldı ve karar
+ * defterinde öyle yazıyor; kural geri istenirse tek satır.
  */
 export function kanitSeviyesi(maliyetKurus: number): number {
-  if (maliyetKurus <= 35_00) return 2;
-  if (maliyetKurus <= 50_00) return 3;
-  return 4;
+  /*
+    🔴 Ü268: "masada 5 dk" kuralı KALKTI — ürün sahibinin kararı:
+    *"masada 5 dk diye bir kural olmayacak."* Her ödül için konum
+    doğrulaması (K2) yetiyor.
+
+    ⚠️ Bu kararın ikinci bir sonucu var ve ikisi birlikte alındı: eski
+    formül 50 TL'nin üstüne **K4 (fiş kodu)** döndürüyordu ve K4 bilerek
+    hiçbir yerden verilmiyor (Ü108). Üst sınır kafenin olunca (K5) o
+    formül korunsaydı 50 TL'den pahalı her ödül **hiç kimseye
+    düşmezdi** — K5'in kendi notu bunu önceden yazmıştı.
+
+    Pahalı ödülün hâlâ iki koruması var: kuponu **yalnızca kasiyer**
+    kapatabiliyor (uzaktan kazanılan kupon kafeye gelmeden
+    kullanılamıyor) ve kaybı **bütçe** tavanlıyor — kupon ancak kafenin
+    bütçesinden rezerve edilebiliyorsa çıkıyor. Kafe isterse ödüle
+    günlük adet sınırı da koyuyor (Ü103), ama o isteğe bağlı.
+
+    Parametre bilerek duruyor: kural geri gelirse imza değişmesin.
+  */
+  void maliyetKurus;
+  return 2;
 }
 
 export async function listele(cafeId: string): Promise<Odul[]> {
@@ -195,13 +228,12 @@ export async function ekle(opts: {
   if (baslik.length < 2) return { ok: false, hata: "Ödül adı en az iki harf olmalı." };
   if (baslik.length > 60) return { ok: false, hata: "Ödül adı en fazla 60 karakter." };
 
-  // Ü52: sabit basamak. Serbest tutar kabul edilmiyor.
-  if (!odulDegeriGecerliMi(opts.maliyetKurus)) {
+  // Ü268 · K5: tutar serbest, tam TL, 25 ile kafenin üst sınırı arasında.
+  const ustSinir = await ayar.sayiOku(opts.cafeId, ayar.ANAHTARLAR.odulUstSinir);
+  if (!odulDegeriGecerliMi(opts.maliyetKurus, ustSinir)) {
     return {
       ok: false,
-      hata: `Ödül değeri ${ODUL_EN_AZ / 100} ile ${ODUL_EN_COK / 100} TL arasında ve ${
-        ODUL_ADIM / 100
-      }'er artışlarla olmalı.`,
+      hata: `Ödül değeri ${ODUL_EN_AZ / 100} ile ${ustSinir / 100} TL arasında, tam TL olmalı.`,
     };
   }
 

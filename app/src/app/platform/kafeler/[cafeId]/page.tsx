@@ -10,21 +10,33 @@ import { AktivasyonAyari, IsletmeTuruAyari } from "./kontroller";
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Kafe künyesi · Looply" };
 
-/** Ayar anahtarlarının okunabilir adı ve birimi. */
-const AYAR_ADI: Record<string, { ad: string; birim: "tl" | "saat" | "sayi" }> = {
-  [ayar.ANAHTARLAR.ertelemeEsigi]: { ad: "Gecikmeli açılma eşiği", birim: "tl" },
+/**
+ * Ayar anahtarlarının okunabilir adı ve birimi.
+ *
+ * ⚠️ Tip `Record<ayar.Anahtar, …>`: yeni bir ayar eklenip buraya
+ * yazılmazsa derleme düşüyor. Önceden `Record<string, …>`tı ve eksik
+ * kalan ayar ekranda ham anahtarla ("odul_ust_sinir_kurus: 8000")
+ * görünüyordu — K5'in üst sınırı, geçerlilik günü, çark aralığı ve konum
+ * yarıçapı öyle görünüyordu.
+ */
+const AYAR_ADI: Record<ayar.Anahtar, { ad: string; birim: "tl" | "saat" | "gun" | "metre" }> = {
   [ayar.ANAHTARLAR.ertelemeSaati]: { ad: "Aktivasyon saati", birim: "saat" },
+  [ayar.ANAHTARLAR.gecerlilikGunu]: { ad: "Kupon geçerliliği", birim: "gun" },
+  [ayar.ANAHTARLAR.odulUstSinir]: { ad: "Ödül üst sınırı", birim: "tl" },
   [ayar.ANAHTARLAR.gunlukButce]: { ad: "Günlük bütçe", birim: "tl" },
   [ayar.ANAHTARLAR.ortalamaAdisyon]: { ad: "Ortalama adisyon", birim: "tl" },
   [ayar.ANAHTARLAR.carkUstSinir]: { ad: "Çark üst sınırı", birim: "tl" },
+  [ayar.ANAHTARLAR.carkAralikSaat]: { ad: "Çark aralığı", birim: "saat" },
   [ayar.ANAHTARLAR.acilisSaati]: { ad: "Açılış saati", birim: "saat" },
   [ayar.ANAHTARLAR.kapanisSaati]: { ad: "Kapanış saati", birim: "saat" },
+  [ayar.ANAHTARLAR.konumYaricapi]: { ad: "Konum yarıçapı", birim: "metre" },
 };
 
 function deger(anahtar: string, n: number): string {
-  const t = AYAR_ADI[anahtar]?.birim ?? "sayi";
+  const t = AYAR_ADI[anahtar as ayar.Anahtar]?.birim;
   if (t === "tl") return `${Math.round(n / 100).toLocaleString("tr-TR")} TL`;
-  if (t === "saat") return `${n}`;
+  if (t === "gun") return `${n} gün`;
+  if (t === "metre") return `${n} m`;
   return String(n);
 }
 
@@ -133,7 +145,7 @@ export default async function KafeKunyesi({
               {k.ayarlar.map((a) => (
                 <Satir
                   key={a.anahtar}
-                  k={AYAR_ADI[a.anahtar]?.ad ?? a.anahtar}
+                  k={AYAR_ADI[a.anahtar as ayar.Anahtar]?.ad ?? a.anahtar}
                   v={deger(a.anahtar, a.deger)}
                 />
               ))}
@@ -159,8 +171,8 @@ export default async function KafeKunyesi({
           <div className="mt-6 rounded-2xl border border-cizgi bg-yuzey px-5 py-5">
             <div className="text-[15px] font-semibold">Aktivasyon saati</div>
             <p className="mt-0.5 mb-4 text-[12px] leading-relaxed text-yazi-sonuk">
-              Şu an <strong className="text-yazi">{ertelemeSaat} saat</strong>. Eşiğin
-              üstündeki ödül bu kadar sonra açılıyor; çark ve oyun ödülü aynı kuralı
+              Şu an <strong className="text-yazi">{ertelemeSaat} saat</strong>. Her
+              ödül bu kadar sonra açılıyor; çark ve oyun ödülü aynı kuralı
               paylaşıyor.
             </p>
             {admin ? (

@@ -14,7 +14,9 @@
 
 ### A.1 · Kasiyerle gir
 
-**Ne yaparsın:** `/kasa/giris` → kasiyer telefonu + parola.
+**Ne yaparsın:** **kayıtlı cihazdan** `/kasa/giris` → 4 haneli PIN (tohumda
+`1234`). Telefon ya da parola sorulmuyor: kafe cihazdan çözülüyor, kayıtsız
+cihazda PIN hiç denenmiyor (bkz. `28` · C.7 cihaz kaydı).
 
 **Ne görmelisin:** `/kasa` açılır. Başlık **"Kupon onayı"**, altında
 kamera tarayıcısı ve bugünün özeti.
@@ -118,7 +120,7 @@ kez bedava ürün vermesi demektir.
 |---|---|---|
 | Süresi dolmuş kupon | Reddedilir, "süresi doldu" der | Kabul ediliyorsa |
 | Kullanım penceresi dışında | Reddedilir ve **ne zaman geçerli olduğunu söyler** | Yalnızca "geçersiz" diyorsa |
-| Henüz aktifleşmemiş (24 saat) | Reddedilir, ne zaman açılacağını söyler | Kabul ediliyorsa |
+| Henüz açılmamış (Ü269: her kupon önce bekler — kafenin aktivasyon saati, varsayılan 12) | Reddedilir, ne zaman açılacağını söyler | Kabul ediliyorsa |
 | **Başka kafenin kuponu** | Reddedilir | Kabul ediliyorsa — bu kiracı izolasyonunun kırılması demektir |
 | Uydurma kod | Reddedilir | "Kupon bulundu" diyorsa |
 

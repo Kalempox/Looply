@@ -54,17 +54,17 @@ export async function carkiCevir(): Promise<
   const cafeId = masa ? masa.cafeId : hak!.cafeId;
 
   /*
-    ⚠️ **Butikte kanıt seviyesi 3.** E6 ödül değerine göre kanıt istiyor
-    (40–50 TL → K3) ve butikte K1/K2/K3 zinciri hiç kurulmuyor: karekod
-    yok, konum yok, masada bekleme yok.
+    ⚠️ **Butikte kanıt seviyesi 3.** E6 ödül için kanıt istiyor ve
+    butikte K1/K2/K3 zinciri hiç kurulmuyor: karekod yok, konum yok,
+    masada bekleme yok. (Ü268'den beri her ödül K2 istiyor; 3 yine
+    yetiyor ve düşürmenin bir kazancı yok.)
 
     Yerine geçen şey daha güçlü: **kasiyer müşteriyi gördü ve alışverişi
     kendi eliyle onayladı.** GPS "bu telefon şu yakınlıkta" diyor;
     kasiyer "bu insan karşımda durdu ve 3.000 TL harcadı" diyor. İkincisi
     taklit edilmesi çok daha zor bir kanıt.
 
-    4 verilmiyor: K4 fiş/adisyon kodu ve o gerçekten yok. Aralık dışı bir
-    ödül (51 TL+) butikte de çıkmamalı.
+    4 verilmiyor: K4 fiş/adisyon kodu ve o gerçekten yok.
   */
   const kanitSeviyesi = masa ? masa.kanitSeviyesi : 3;
 

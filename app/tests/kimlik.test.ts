@@ -14,6 +14,8 @@ import {
   kodUret,
   EN_UZUN_KOD,
   basiliKoduTasi,
+  basiliKodlar,
+  hedefKafeler,
 } from "@/domain/qr";
 import {
   kaydet,
@@ -394,109 +396,288 @@ describe("masa karekodu (K1)", () => {
     );
   }
 
-  test("🔴 basılı kodun yönlendirmesi başka KAFEYE taşınıyor (Ü266)", async () => {
+  test("🔴 basılı kodun yönlendirmesi başka KAFEYE taşınıyor (Ü266/Ü267)", async () => {
     /*
-      🔴 Ürün sahibinin "301 redirect" dediği şey bu: toptan basılan
-      karekod aynen kalıyor, değişen tek şey o kodun hangi masaya —
-      dolayısıyla hangi **kafeye** düştüğü.
+      🔴 Ürün sahibinin "301 redirect" dediği şey: toptan basılan
+      karekod aynen kalıyor, değişen tek şey o kodun hangi **kafeye**
+      düştüğü. İşlem kiracı sınırını aşıyor; yanlış çalışırsa bir
+      kafenin müşterisi sessizce başka kafeye gider.
 
-      Bu işlem kiracı sınırını aşıyor ve testsiz bırakılamaz: yanlış
-      çalışırsa bir kafenin müşterisi sessizce başka kafeye gider.
+      ⚠️ Bu testin ilk hâli iki hatayı görmedi ve ikisi de tarayıcıda
+      çıktı:
+        · hedef masanın kodunu testin içinde **elle siliyordu** — oysa
+          gerçekte yeni masa kodunu kendiliğinden alıyor, yani hiçbir
+          yeni kafe hedef olamıyordu;
+        · listeyi (`basiliKodlar`) **hiç çağırmıyordu** — liste var
+          olmayan bir tabloya bakıyordu ve sayfa açılınca çöküyordu.
+      Şimdi ikisi de sınanıyor.
 
-      ⚠️ İki masanın da önceki kodu saklanıp `finally` içinde GERİ
-      KONUYOR. Daha önce bir test `print_code`u `NULL`a çekip bırakmış
-      ve geliştirme veritabanındaki bağlı kodu silmişti — düştüğünde
-      değil *geçtiğinde* zarar veren hata.
+      ⚠️ Değişen her satır `finally` içinde GERİ KONUYOR. Bu depoda
+      testler geliştirme veritabanını paylaşıyor ve bir test daha önce
+      bağlı bir kodu silip bırakmıştı.
     */
-    const a = await masaAl(kafeA);
-    const b = await masaAl(kafeB);
-    assert.ok(a);
-    assert.ok(b);
+    const aktifMasa = (cafeId: string) =>
+      withBypass("test: aktif masa", (db) =>
+        db.one<{ id: string; print_code: string | null; label: string }>(
+          `SELECT id, print_code, label FROM cafe_tables WHERE cafe_id = $1 AND active`,
+          [cafeId],
+        ),
+      );
 
-    const kod = kodUret("Tasima Testi");
-    const oncekiA = a.print_code;
-    const oncekiB = b.print_code;
+    // Hedef: kendi test kafemiz — bul ya da kur (her koşuda aynı kafe,
+    // birikmesin diye).
+    let hedefKafe = await withBypass("test: hedef kafe", (db) =>
+      db.one<{ id: string }>(`SELECT id FROM cafes WHERE slug LIKE 'yonlendirme-test-hedefi%' LIMIT 1`),
+    ).then((r) => r?.id);
+    if (!hedefKafe) {
+      const admin = await withBypass("test: platform yöneticisi", (db) =>
+        db.one<{ id: string }>(`SELECT id FROM platform_users WHERE role = 'platform_admin' LIMIT 1`),
+      );
+      assert.ok(admin, "önkoşul: platform yöneticisi yok (npm run db:seed)");
+      const b = await basvuruOlustur({
+        ad: "Yonlendirme Test Hedefi",
+        sehir: "İstanbul",
+        yetkiliAdi: "Test",
+        isletmeTelefonu: normalizePhone("05320000065"),
+        yetkiliTelefon: normalizePhone("05320000066"),
+      });
+      assert.ok(!("hata" in b), `önkoşul: test kafesi açılamadı ${JSON.stringify(b)}`);
+      const onay = await onayla(b.cafeId, admin.id);
+      assert.ok(onay.ok, "önkoşul: test kafesi onaylanamadı");
+      hedefKafe = b.cafeId;
+    }
 
-    await yoneticiSorgu(`UPDATE cafe_tables SET print_code = NULL WHERE id = ANY($1)`, [
-      [a.id, b.id],
-    ]);
-    await yoneticiSorgu(`UPDATE cafe_tables SET print_code = $2 WHERE id = $1`, [a.id, kod]);
+    // Kaynak: Kafe B'nin aktif masası.
+    const kaynak = await aktifMasa(kafeB);
+    assert.ok(kaynak, "önkoşul: Kafe B'nin aktif masası yok");
+    const oncekiKaynakKodu = kaynak.print_code;
+
+    /* 🔴 Test kafesinde testin BİLMEDİĞİ bir basılı kod varsa DUR.
+       Ürün sahibi aynı kafeyi platform panelinden elle hedef seçiyor
+       (docs/27 · 1.2b). Aşağıdaki temizlik o kafenin masalarını
+       siliyor; elle taşınmış bir kod o sırada oradaysa silinir ve
+       kâğıdı hiçbir yere gitmez. Testin kendi kodları `test-` ile
+       başlıyor. */
+    const yabanci = await withBypass("test: elle taşınmış kod", (db) =>
+      db.one<{ print_code: string }>(
+        `SELECT print_code FROM cafe_tables
+          WHERE cafe_id = $1 AND print_code IS NOT NULL AND print_code NOT LIKE 'test-%'
+          LIMIT 1`,
+        [hedefKafe],
+      ),
+    );
+    // `db.one` satır yoksa `undefined` dönüyor, `null` değil.
+    assert.ok(
+      !yabanci,
+      `önkoşul: test kafesinde elle taşınmış "${yabanci?.print_code}" kodu duruyor — ` +
+        "önce panelden geri taşı. Test onu silmez.",
+    );
+
+    const hedefAdi = await withBypass("test: hedef kafe adı", (db) =>
+      db.one<{ name: string }>(`SELECT name FROM cafes WHERE id = $1`, [hedefKafe]),
+    ).then((r) => r!.name);
+
+    /* Kullanımda olan bir hedef: ADLI kodu olan ve oturum açılmış aktif
+       masası olan kafe. ⚠️ "Adlı kodu olan" şartı koruma kuralının
+       kendisi — adlı kodu olmayan masaya taşıma serbest. Şart yokken
+       kodu elle taşınmış bir kafe (masası adsız ama oturumlu) seçilir
+       ve 4. adım ona gerçekten kod taşırdı. */
+    const kullanimdaki = await withBypass("test: kullanımda kafe", (db) =>
+      db.one<{ cafe_id: string }>(
+        `SELECT t.cafe_id FROM cafe_tables t
+          WHERE t.active AND t.print_code IS NOT NULL
+            AND t.cafe_id <> $1 AND t.cafe_id <> $2
+            AND EXISTS (SELECT 1 FROM table_sessions ts WHERE ts.table_id = t.id)
+          LIMIT 1`,
+        [kafeB, hedefKafe],
+      ),
+    );
+    assert.ok(kullanimdaki, "önkoşul: oturumu olan hiçbir kafe yok (npm run db:demo)");
+    /* ⚠️ Kullanımdaki kafenin kodu da saklanıyor: koruma bir gün
+       gerilerse 4. adım o kodu gerçekten ezer. Düşen bir test ortak
+       veritabanına zarar vermemeli. */
+    const kullanimdakiMasa = await aktifMasa(kullanimdaki.cafe_id);
+    assert.ok(kullanimdakiMasa);
+
+    const x = kodUret("Test X");
+    const y = kodUret("Test Y");
+    const z = kodUret("Test Z");
+
+    /* Hedefin masası başlangıçta YOK. Ad çakışması (pasif masa) 8.
+       adımda ayrıca kuruluyor. */
+    await yoneticiSorgu(`DELETE FROM cafe_tables WHERE cafe_id = $1`, [hedefKafe]);
 
     try {
-      // Taşımadan önce kod A kafesine gidiyor.
-      const once = await masaCoz(kod);
-      assert.equal(once?.cafeId, kafeA, "kod başlangıçta A kafesinde olmalıydı");
-
-      const sonuc = await basiliKoduTasi({
-        kod,
-        hedefTableId: b.id,
+      /* ── 1 · Masası olmayan kafeye taşı → masa kodla açılıyor ── */
+      await yoneticiSorgu(`UPDATE cafe_tables SET print_code = $2 WHERE id = $1`, [kaynak.id, x]);
+      const s1 = await basiliKoduTasi({
+        kod: x,
+        hedefCafeId: hedefKafe,
         bakanId: "plt_test",
         gerekce: "test taşıması",
       });
-      assert.equal(sonuc.ok, true, `taşıma reddedildi: ${JSON.stringify(sonuc)}`);
-
-      // 🔴 Asıl iddia: aynı kâğıt artık öteki kafeye gidiyor.
-      const sonra = await masaCoz(kod);
-      assert.equal(sonra?.cafeId, kafeB, "kod taşındıktan sonra B kafesine gitmeliydi");
-
-      // Kaynak masada kod kalmamalı — iki masada aynı kod olamaz.
-      const kaynak = await withBypass("test: kaynak masa", (db) =>
-        db.one<{ print_code: string | null }>(
-          `SELECT print_code FROM cafe_tables WHERE id = $1`,
-          [a.id],
-        ),
+      assert.ok(s1.ok, `masası olmayan kafeye taşıma reddedildi: ${JSON.stringify(s1)}`);
+      assert.equal(s1.birakilanKod, null);
+      assert.equal(s1.masaAcildi, true, "masa açıldığı bildirilmedi");
+      assert.equal((await masaCoz(x))?.cafeId, hedefKafe, "kod yeni kafeye gitmiyor");
+      assert.equal((await aktifMasa(kafeB))?.print_code, null, "kaynak masa kodu bırakmadı");
+      const acilan = await withBypass("test: açılan masa", (db) =>
+        db.one<{ label: string }>(`SELECT label FROM cafe_tables WHERE cafe_id = $1 AND active`, [
+          hedefKafe,
+        ]),
       );
-      assert.equal(kaynak?.print_code, null, "kaynak masa kodu bırakmadı");
+      assert.ok(acilan, "hedef kafede aktif masa açılmadı");
+      /* 🔴 Masa HEDEF kafenin adını almalı. İlk yazımda kaynağın adı
+         kopyalanıyordu ve oyuncu "Buradasın: <yeni kafe> · Kafe A"
+         görüyordu — ürün sahibinin elle testinde çıktı. */
+      assert.equal(acilan.label, hedefAdi, "yeni masa başka kafenin adını taşıyor — oyuncu yanlış yeri görür");
 
-      // Denetim izi — "kim, hangi kodu, nereden nereye, neden".
-      const iz = await withBypass("test: denetim", (db) =>
-        db.one<{ detail: Record<string, unknown> }>(
-          `SELECT detail FROM audit_log
-            WHERE action = 'table.print_code_move' AND target_id = $1
-            ORDER BY id DESC LIMIT 1`,
-          [b.id],
-        ),
-      );
-      assert.ok(iz, "taşıma denetim izine yazılmadı");
-      assert.equal(iz.detail.kod, kod);
-      assert.equal(iz.detail.gerekce, "test taşıması");
+      /* ── 2 · Liste ve hedef listesi GERÇEKTEN çalışıyor ── */
+      const liste = await basiliKodlar();
+      const satir = liste.find((k) => k.kod === x);
+      assert.ok(satir, "taşınan kod listede yok");
+      assert.equal(satir.cafeId, hedefKafe);
+      const hedefler = await hedefKafeler();
+      const h = hedefler.find((k) => k.cafeId === hedefKafe);
+      assert.ok(h, "test kafesi hedef listesinde yok");
+      assert.equal(h.mevcutKod, x);
 
-      // Gerekçesiz taşıma reddediliyor.
-      const gerekcesiz = await basiliKoduTasi({
-        kod,
-        hedefTableId: a.id,
+      /* ── 2b · 🔴 Taşınan kodun ESKİ okutmaları sayılıyor — Ü272 ──
+         x, oturumu olan Kafe B masasından geldi. Önce kullanım yalnızca
+         yeni masadan sayılıyordu: x "hiç okutulmadı" görünüyordu ve üstüne
+         gelen ikinci kod onu sessizce silebilirdi. Ürün sahibi: "eski ve
+         yeni olarak ayrı ayrı tutulsun." */
+      assert.equal(satir.yeni, 0, "yeni kafede hiç okutulmadı");
+      const eskiB = satir.eski.find((d) => d.oturum > 0);
+      assert.ok(eskiB, `eski kafedeki okutmalar görünmüyor: ${JSON.stringify(satir.eski)}`);
+      assert.ok(satir.kullanim > 0, "toplam kullanım eski okutmaları saymıyor");
+      assert.equal(h.kullanimda, true, "taşınmış kod kullanılmamış sanılıyor — üstüne kod yazılabilir");
+
+      /* ── 3 · 🔴 Taşınmış kodun ÜSTÜNE ikinci kod REDDEDİLİYOR ──
+         Ürün sahibinin sorduğu senaryonun ta kendisi. */
+      await yoneticiSorgu(`UPDATE cafe_tables SET print_code = $2 WHERE id = $1`, [kaynak.id, y]);
+      const s3 = await basiliKoduTasi({
+        kod: y,
+        hedefCafeId: hedefKafe,
+        bakanId: "plt_test",
+        gerekce: "olmaması gereken taşıma",
+      });
+      assert.equal(s3.ok, false, "taşınmış kodun üstüne kod yazıldı — kâğıdı ölürdü");
+      assert.equal((await masaCoz(x))?.cafeId, hedefKafe, "ret sonrası taşınmış kod yerinden oynadı");
+
+      /* ── 3b · GERÇEKTEN kullanılmamış kodu olan kafeye taşı → yerine geçiyor ──
+         Toptan baskı akışının kendisi: yeni kafenin kendi kodu hiç
+         basılmamış, hiç okutulmamış, hiç taşınmamış. */
+      const hedefMasa = await aktifMasa(hedefKafe);
+      assert.ok(hedefMasa);
+      await yoneticiSorgu(`UPDATE cafe_tables SET print_code = $2 WHERE id = $1`, [hedefMasa.id, z]);
+      const s3b = await basiliKoduTasi({
+        kod: y,
+        hedefCafeId: hedefKafe,
+        bakanId: "plt_test",
+        gerekce: "toptan baskı devri",
+      });
+      assert.ok(s3b.ok, `kullanılmamış koda taşıma reddedildi: ${JSON.stringify(s3b)}`);
+      assert.equal(s3b.birakilanKod, z, "serbest bırakılan kod bildirilmedi");
+      assert.equal((await masaCoz(y))?.cafeId, hedefKafe);
+      assert.equal(await masaCoz(z), null, "serbest bırakılan kod hâlâ çözülüyor");
+
+      /* ── 4 · 🔴 KULLANIMDAKİ kodu olan kafeye taşıma REDDEDİLİYOR ──
+         O kod bir duvarda asılı; yerine başka kod geçerse kâğıt ölür. */
+      const s4 = await basiliKoduTasi({
+        kod: y,
+        hedefCafeId: kullanimdaki.cafe_id,
+        bakanId: "plt_test",
+        gerekce: "olmaması gereken taşıma",
+      });
+      assert.equal(s4.ok, false, "kullanımdaki kodun üstüne taşıma yapıldı — kâğıt ölürdü");
+      assert.equal((await masaCoz(y))?.cafeId, hedefKafe, "ret sonrası kod yerinden oynadı");
+
+      /* ── 5 · Gerekçesiz ve aynı kafeye taşıma reddediliyor ── */
+      const bosGerekce = await basiliKoduTasi({
+        kod: y,
+        hedefCafeId: kafeB,
         bakanId: "plt_test",
         gerekce: "  ",
       });
-      assert.equal(gerekcesiz.ok, false, "gerekçesiz taşıma kabul edildi");
-
-      // 🔴 Kodu olan masanın üstüne ikinci kod bağlanamıyor: bağlansaydı
-      // eskisi sessizce kaybolur ve elindeki kâğıt bir gün ölürdü.
-      const ikinciKod = kodUret("Ikinci");
-      await yoneticiSorgu(`UPDATE cafe_tables SET print_code = $2 WHERE id = $1`, [
-        a.id,
-        ikinciKod,
-      ]);
-      const dolu = await basiliKoduTasi({
-        kod,
-        hedefTableId: a.id,
+      assert.equal(bosGerekce.ok, false, "gerekçesiz taşıma kabul edildi");
+      const ayniKafe = await basiliKoduTasi({
+        kod: y,
+        hedefCafeId: hedefKafe,
         bakanId: "plt_test",
-        gerekce: "dolu masaya taşıma",
+        gerekce: "aynı kafe",
       });
-      assert.equal(dolu.ok, false, "kodu olan masaya ikinci kod bağlandı");
+      assert.equal(ayniKafe.ok, false, "aynı kafeye taşıma kabul edildi");
+
+      /* ── 6 · Denetim izi ── */
+      const iz = await withBypass("test: denetim", (db) =>
+        db.one<{ detail: Record<string, unknown> }>(
+          `SELECT detail FROM audit_log
+            WHERE action = 'table.print_code_move' AND actor_id = 'plt_test'
+            ORDER BY id DESC LIMIT 1`,
+        ),
+      );
+      assert.ok(iz, "taşıma denetim izine yazılmadı");
+      assert.equal(iz.detail.kod, y);
+      assert.equal(iz.detail.birakilanKod, z);
+      assert.equal(iz.detail.gerekce, "toptan baskı devri");
+
+      /* ── 7 · GERİ ALMA: adlı kodu olmayan ama oturumu olan kafeye ──
+         Kafe B'nin masası 3. adımdan beri adlı kodsuz, ama oturumları
+         duruyor. İlk yazımda koruma yalnızca oturum sayısına bakıyordu
+         ve bu taşıma reddediliyordu — yani bir kodu taşıyıp geri almak
+         mümkün değildi. Ezilecek adlı kod yoksa kaybedilecek şey de yok:
+         eski 16 haneli kod `qr_secret`ten türüyor ve çözülmeye devam
+         ediyor. */
+      const s7 = await basiliKoduTasi({
+        kod: y,
+        hedefCafeId: kafeB,
+        bakanId: "plt_test",
+        gerekce: "geri alma",
+      });
+      assert.ok(s7.ok, `adlı kodsuz kafeye geri taşıma reddedildi: ${JSON.stringify(s7)}`);
+      assert.equal((await masaCoz(y))?.cafeId, kafeB, "geri alınan kod eski kafesine dönmedi");
+      // Kafe B'nin masası zaten vardı — ekran "masa açıldı" dememeli.
+      assert.equal(s7.masaAcildi, false, "var olan masaya verilen kod 'masa açıldı' diye bildirildi");
+
+      /* ── 8 · Ad çakışması: kafenin adını taşıyan PASİF masa varken ──
+         `(cafe_id, label)` benzersiz ve pasif masaları da sayıyor.
+         Eski masasını kapatmış bir kafede yeni masa kafenin adıyla
+         açılamaz; taşıma çökmemeli, "(2)" eklemeli. Bu çöküş bir kez
+         yaşandı ve o sırada iki A/B denemesi de amaçladıkları yerde değil
+         burada düştüğü için **hiçbir şey kanıtlamamıştı.** */
+      await yoneticiSorgu(`UPDATE cafe_tables SET active = false WHERE cafe_id = $1`, [hedefKafe]);
+      const s8 = await basiliKoduTasi({
+        kod: y,
+        hedefCafeId: hedefKafe,
+        bakanId: "plt_test",
+        gerekce: "ad çakışması",
+      });
+      assert.ok(s8.ok, `pasif masası olan kafeye taşıma çöktü: ${JSON.stringify(s8)}`);
+      assert.equal(s8.masaAcildi, true);
+      const ikinci = await withBypass("test: ikinci masa", (db) =>
+        db.one<{ label: string }>(`SELECT label FROM cafe_tables WHERE cafe_id = $1 AND active`, [
+          hedefKafe,
+        ]),
+      );
+      assert.equal(ikinci?.label, `${hedefAdi} (2)`, "çakışan ada ek konmadı");
+      assert.equal((await masaCoz(y))?.cafeId, hedefKafe);
     } finally {
-      await yoneticiSorgu(`UPDATE cafe_tables SET print_code = NULL WHERE id = ANY($1)`, [
-        [a.id, b.id],
+      /* ⚠️ Pasifleştirmek değil SİLMEK: pasif bırakılan masa bir sonraki
+         koşuyu zehirliyordu (yukarıdaki nota bakın). */
+      await yoneticiSorgu(`DELETE FROM cafe_tables WHERE cafe_id = $1`, [hedefKafe]);
+      await yoneticiSorgu(`UPDATE cafe_tables SET print_code = $2 WHERE id = $1`, [
+        kaynak.id,
+        oncekiKaynakKodu,
       ]);
       await yoneticiSorgu(`UPDATE cafe_tables SET print_code = $2 WHERE id = $1`, [
-        a.id,
-        oncekiA,
-      ]);
-      await yoneticiSorgu(`UPDATE cafe_tables SET print_code = $2 WHERE id = $1`, [
-        b.id,
-        oncekiB,
+        kullanimdakiMasa.id,
+        kullanimdakiMasa.print_code,
       ]);
       await yoneticiSorgu(`DELETE FROM audit_log WHERE actor_id = 'plt_test'`);
+      // Ü272: testin kodlarının durakları — Kafe B'nin masasına bağlı olanlar
+      // masa silinmediği için kendiliğinden gitmiyor.
+      await yoneticiSorgu(`DELETE FROM print_code_history WHERE print_code = ANY($1)`, [[x, y, z]]);
     }
   });
 

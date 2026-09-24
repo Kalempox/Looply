@@ -63,8 +63,9 @@ export default async function OyunlarSayfasi() {
       */}
       {/* Ü187: `gorsel="kumanda"` yerine üretilmiş `tum-oyunlar` sahnesi —
           altındaki karusel neon, başlık silik bir harita desenindeydi. */}
-      <SayfaBasi ust="Katalog" baslik="Oyunlar" renk="gok" sahne="tum-oyunlar" koyu>
-        <p className="text-[13px] leading-relaxed text-white/75">
+      {/* Ü274: `kompakt` — başlık karuselin önünde yer yiyordu. */}
+      <SayfaBasi ust="Katalog" baslik="Oyunlar" renk="gok" sahne="tum-oyunlar" koyu kompakt>
+        <p className="text-[12px] leading-snug text-white/75">
           {kazandirir
             ? "Hepsi puan ve XP kazandırıyor. Bugünün oyunu iki katı veriyor."
             : "Konumun doğrulanmadan oynayabilirsin ama puan ve XP yazılmaz."}

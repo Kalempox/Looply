@@ -1,9 +1,19 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { parolaIleGir, kodGonder, kodDogrulaVeGir, type Durum, type Sekme } from "./actions";
+import {
+  parolaIleGir,
+  kodGonder,
+  kodDogrulaVeGir,
+  sifirlamaKoduGonder,
+  parolaSifirlaVeGir,
+  type Durum,
+  type Sekme,
+  type SifirlamaDurumu,
+} from "./actions";
 import { kurallar } from "@/domain/parola-kurallari";
 import { Alan, girdiSinifi, Dugme, Uyari } from "@/components/ui";
+import { KAYIT_ALANLARI } from "./alanlar";
 
 /**
  * Giriş ekranı — iki sekme, tek kimlik (Ü36).
@@ -20,14 +30,7 @@ import { Alan, girdiSinifi, Dugme, Uyari } from "@/components/ui";
 const GIRIS_BASLANGIC: Durum = { adim: "form", sekme: "giris" };
 const KAYIT_BASLANGIC: Durum = { adim: "form", sekme: "kayit" };
 
-export function GirisFormu({
-  masadaMi,
-  demoKapisi,
-}: {
-  masadaMi?: boolean;
-  /** Google/Apple düğmeleri görünsün mü — sunucu karar veriyor (Ü36). */
-  demoKapisi?: boolean;
-}) {
+export function GirisFormu({ masadaMi }: { masadaMi?: boolean }) {
   const [sekme, setSekme] = useState<Sekme>("giris");
   const [kayitDurumu, setKayitDurumu] = useState<Durum>(KAYIT_BASLANGIC);
 
@@ -36,6 +39,8 @@ export function GirisFormu({
   const [parola, setParola] = useState("");
   const [hatirla, setHatirla] = useState(false);
   const [pazarlama, setPazarlama] = useState(false);
+  // Ü270: "Parolamı unuttum" kendi ekranı — kayıt formuna gönderilmiyor.
+  const [sifirlama, setSifirlama] = useState(false);
 
   if (kayitDurumu.adim === "kod") {
     return (
@@ -51,6 +56,18 @@ export function GirisFormu({
     );
   }
 
+  if (sifirlama) {
+    return (
+      <ParolaSifirlama
+        telefon={telefon}
+        setTelefon={setTelefon}
+        hatirla={hatirla}
+        setHatirla={setHatirla}
+        vazgec={() => setSifirlama(false)}
+      />
+    );
+  }
+
   return (
     <div className="space-y-6">
       <Sekmeler aktif={sekme} sec={setSekme} />
@@ -62,7 +79,7 @@ export function GirisFormu({
             setTelefon={setTelefon}
             hatirla={hatirla}
             setHatirla={setHatirla}
-            smsAkisi={() => setSekme("kayit")}
+            parolaUnuttum={() => setSifirlama(true)}
           />
         </div>
       ) : (
@@ -82,7 +99,10 @@ export function GirisFormu({
         </div>
       )}
 
-      {demoKapisi && <SaglayiciDugmeleri smsAkisi={() => setSekme("kayit")} />}
+      {/* 🔴 Ü270: "Google ile devam et" / "Apple ile devam et" KALKTI.
+          Ürün sahibi: "Google ve Apple hesaplarını kaldıralım, e-postayı
+          kendileri girsinler." Düğmeler zaten sağlayıcıya bağlı değildi —
+          yalnızca kayıt sekmesini açıyordu (Ü36). */}
     </div>
   );
 }
@@ -128,13 +148,13 @@ function GirisSekmesi({
   setTelefon,
   hatirla,
   setHatirla,
-  smsAkisi,
+  parolaUnuttum,
 }: {
   telefon: string;
   setTelefon: (v: string) => void;
   hatirla: boolean;
   setHatirla: (v: boolean) => void;
-  smsAkisi: () => void;
+  parolaUnuttum: () => void;
 }) {
   const [durum, action, bekliyor] = useActionState(parolaIleGir, GIRIS_BASLANGIC);
 
@@ -174,21 +194,17 @@ function GirisSekmesi({
       </Dugme>
 
       {/*
-        Ayrı bir "şifremi unuttum" akışı bilerek yok: kimlik zaten
-        doğrulanmış ve kodla giriş açık. Parolasını unutan buradan girer,
-        isterse yenisini belirler — ayrı bir sıfırlama jetonu, ayrı bir
-        kanal ve ayrı bir saldırı yüzeyi doğmuyor.
-
-        ⚠️ Metin Ü170'te "SMS ile gir"den "e-posta ile gir"e döndü.
-        Kod artık oradan gitmiyor; eski metin kullanıcıyı telefonuna
-        bakmaya gönderiyordu ve orada hiçbir şey olmuyordu.
+        🔴 Ü270: kendi ekranı var. Önce "Hesap aç" sekmesini açıyordu —
+        kayıtlı numarada o form parolayı yeniden yazıyordu ama ad, soyad
+        ve doğum yılını baştan istiyordu. Ayrı bir jeton yine yok: kod
+        hesabın kayıtlı e-postasına gidiyor (`domain/parola-sifirlama.ts`).
       */}
       <button
         type="button"
-        onClick={smsAkisi}
+        onClick={parolaUnuttum}
         className="w-full py-2 text-center text-[13px] text-yazi-sonuk underline"
       >
-        Parolanı mı unuttun? E-posta ile gir
+        Parolanı mı unuttun?
       </button>
     </form>
   );
@@ -400,10 +416,17 @@ function KodAdimi({
 
   return (
     <form action={action} className="space-y-5">
-      <input type="hidden" name="telefon" value={telefon} />
-      <input type="hidden" name="ad" value={d.ad ?? ""} />
-      <input type="hidden" name="soyad" value={d.soyad ?? ""} />
-      <input type="hidden" name="dogumYili" value={d.dogumYili ?? ""} />
+      {/* 🔴 Ü270: gizli girdiler TEK LİSTEDEN (`alanlar.ts`). Elle
+          yazılıyorlardı ve e-posta unutulmuştu — kodu doğru giren herkes
+          "E-posta adresi eksik" hatasıyla forma geri atılıyordu. */}
+      {KAYIT_ALANLARI.map((alan) => (
+        <input
+          key={alan}
+          type="hidden"
+          name={alan}
+          value={alan === "telefon" ? telefon : (d[alan] ?? "")}
+        />
+      ))}
       <input type="hidden" name="aydinlatma" value="on" />
       {/* Parola sunucudan geri gelmiyor; istemci durumundan bir kez daha
           gönderiliyor. Kurallara uygunluğu adım 1'de zaten sınandı. */}
@@ -460,6 +483,186 @@ function KodAdimi({
           Masa bağlantın hazır — giriş yapınca oyunlar açılıyor
         </p>
       )}
+    </form>
+  );
+}
+
+/* ── Parolamı unuttum (Ü270) ─────────────────────────────── */
+
+const SIFIRLAMA_BASLANGIC: SifirlamaDurumu = { adim: "telefon" };
+
+/**
+ * İki adım: telefon → kod hesabın e-postasına; kod + yeni parola → içeri.
+ * Kural ve güvenlik kararları `domain/parola-sifirlama.ts`te.
+ */
+function ParolaSifirlama(props: {
+  telefon: string;
+  setTelefon: (v: string) => void;
+  hatirla: boolean;
+  setHatirla: (v: boolean) => void;
+  vazgec: () => void;
+}) {
+  /* "Kodu yeniden iste" akışı BAŞTAN kuruyor: `key` değişince içteki
+     `useActionState` ilk durumuna dönüyor. Durumu elle geri sarmak iki
+     kaynaklı bir durum doğuruyordu ve yeni kod istendiğinde ekran 1.
+     adımda takılı kalıyordu. Telefon üst bileşende, kaybolmuyor. */
+  const [tur, setTur] = useState(0);
+  return <SifirlamaAkisi key={tur} {...props} yenidenIste={() => setTur((t) => t + 1)} />;
+}
+
+function SifirlamaAkisi({
+  telefon,
+  setTelefon,
+  hatirla,
+  setHatirla,
+  vazgec,
+  yenidenIste,
+}: {
+  telefon: string;
+  setTelefon: (v: string) => void;
+  hatirla: boolean;
+  setHatirla: (v: boolean) => void;
+  vazgec: () => void;
+  yenidenIste: () => void;
+}) {
+  const [durum, istekEylemi, istekBekliyor] = useActionState(
+    sifirlamaKoduGonder,
+    SIFIRLAMA_BASLANGIC,
+  );
+
+  if (durum.adim === "kod") {
+    return (
+      <SifirlamaKodAdimi
+        disDurum={durum}
+        hatirla={hatirla}
+        setHatirla={setHatirla}
+        yenidenIste={yenidenIste}
+        vazgec={vazgec}
+      />
+    );
+  }
+
+  return (
+    <form action={istekEylemi} className="space-y-5">
+      <div>
+        <h2 className="font-display text-xl font-bold">Parolanı sıfırla</h2>
+        <p className="mt-1 text-[13px] leading-relaxed text-yazi-sonuk">
+          Telefon numaranı yaz; hesabında kayıtlı e-postaya bir kod gönderelim.
+        </p>
+      </div>
+
+      {durum.genelHata && <Uyari>{durum.genelHata}</Uyari>}
+
+      <Alan etiket="Cep telefonu" hata={durum.hatalar?.telefon}>
+        <input
+          name="telefon"
+          type="tel"
+          inputMode="tel"
+          autoComplete="tel"
+          value={telefon}
+          onChange={(e) => setTelefon(e.target.value)}
+          placeholder="0532 123 45 67"
+          className={girdiSinifi}
+          required
+        />
+      </Alan>
+
+      <Dugme type="submit" disabled={istekBekliyor}>
+        {istekBekliyor ? "Gönderiliyor…" : "Kod gönder"}
+      </Dugme>
+
+      <button
+        type="button"
+        onClick={vazgec}
+        className="w-full py-2 text-center text-[13px] text-yazi-sonuk underline"
+      >
+        Girişe dön
+      </button>
+    </form>
+  );
+}
+
+function SifirlamaKodAdimi({
+  disDurum,
+  hatirla,
+  setHatirla,
+  yenidenIste,
+  vazgec,
+}: {
+  disDurum: SifirlamaDurumu;
+  hatirla: boolean;
+  setHatirla: (v: boolean) => void;
+  yenidenIste: () => void;
+  vazgec: () => void;
+}) {
+  const [durum, eylem, bekliyor] = useActionState(parolaSifirlaVeGir, disDurum);
+  // Parola sunucudan geri gelmiyor; yanlış kodda silinmesin diye burada.
+  const [yeniParola, setYeniParola] = useState("");
+  const adres = durum.adres ?? disDurum.adres;
+
+  return (
+    <form action={eylem} className="space-y-5">
+      <input type="hidden" name="telefon" value={disDurum.telefon ?? ""} />
+      {adres && <input type="hidden" name="adres" value={adres} />}
+
+      <div>
+        <h2 className="font-display text-xl font-bold">Yeni parolanı belirle</h2>
+      </div>
+
+      {disDurum.gelistirmeKodu && <GelistirmeKodu kod={disDurum.gelistirmeKodu} />}
+      {durum.genelHata && <Uyari>{durum.genelHata}</Uyari>}
+
+      <Alan
+        etiket="Doğrulama kodu"
+        hata={durum.hatalar?.kod}
+        ipucu={adres ? `${adres} adresine gönderildi` : "Hesabındaki e-posta adresine gönderildi"}
+      >
+        <input
+          name="kod"
+          inputMode="numeric"
+          autoComplete="one-time-code"
+          maxLength={6}
+          placeholder="——————"
+          className={`${girdiSinifi} text-center font-data text-2xl tracking-[0.4em] tabular`}
+          required
+          autoFocus
+        />
+      </Alan>
+
+      <Alan etiket="Yeni parola" hata={durum.hatalar?.parola}>
+        <input
+          name="parola"
+          type="password"
+          autoComplete="new-password"
+          value={yeniParola}
+          onChange={(e) => setYeniParola(e.target.value)}
+          placeholder="••••••••"
+          className={girdiSinifi}
+          required
+        />
+      </Alan>
+      <ParolaKurallari parola={yeniParola} />
+
+      <BeniHatirla isaretli={hatirla} degistir={setHatirla} />
+
+      <Dugme type="submit" disabled={bekliyor}>
+        {bekliyor ? "Kaydediliyor…" : "Parolayı değiştir ve gir"}
+      </Dugme>
+
+      <button
+        type="button"
+        onClick={yenidenIste}
+        className="w-full py-2 text-center text-[13px] text-yazi-sonuk underline"
+      >
+        Kodu yeniden iste
+      </button>
+      <button
+        type="button"
+        onClick={vazgec}
+        className="w-full py-1 text-center text-[13px] text-yazi-sonuk underline"
+      >
+        Girişe dön
+      </button>
     </form>
   );
 }
@@ -524,98 +727,6 @@ function BeniHatirla({
         </span>
       </span>
     </label>
-  );
-}
-
-/* ── Google / Apple ──────────────────────────────────────── */
-
-/**
- * Bugün **yalnızca düğme** (Ü36) — arkası SMS akışına düşüyor.
- *
- * Çalışmaları için Google tarafında bir Cloud projesi ve OAuth istemci
- * kimliği, Apple tarafında ücretli Developer Program üyeliği ve yayında bir
- * alan adı gerekiyor; ikisi de ürün sahibinin hesaplarıyla açılır.
- *
- * Bu yüzden düğmeler demo kapısının arkasında duruyor: çalışmayan bir giriş
- * düğmesinin canlıya sızması, demo kolaylığından pahalıya mal olur. Altındaki
- * satır da bilerek orada — düğme, yapmadığı şeyi vaat etmemeli.
- *
- * ── Neden altta ve neden ikon ───────────────────────────────
- *
- * Önce en üstteydiler ve tam genişlikte iki metin düğmesiydi: sayfayı açan
- * kişinin gördüğü ilk şey, **bu demoda çalışmayan** iki düğmeydi. Asıl akış
- * (telefon + kod) onların altında kalıyordu. Şimdi altta ve ikon: yer
- * kaplamıyor, tanıdık oldukları için etiket okumak gerekmiyor.
- *
- * İkon düğmesinin bedeli erişilebilirlik: içinde okunacak metin yok. O
- * yüzden `aria-label` zorunlu ve ikonların kendisi `aria-hidden` —
- * ekran okuyucu "Google ile devam et" duyuyor, "resim" değil.
- */
-function SaglayiciDugmeleri({ smsAkisi }: { smsAkisi: () => void }) {
-  const dugme =
-    "flex size-14 items-center justify-center rounded-full border border-cizgi bg-yuzey " +
-    "transition-colors hover:border-yazi-sonuk focus-visible:border-vurgu";
-
-  return (
-    <div className="space-y-3 pt-2">
-      <div className="flex items-center gap-3">
-        <span className="h-px flex-1 bg-cizgi" />
-        <span className="etiket-caps text-yazi-sonuk">veya şununla devam et</span>
-        <span className="h-px flex-1 bg-cizgi" />
-      </div>
-
-      <div className="flex justify-center gap-4">
-        <button type="button" onClick={smsAkisi} className={dugme} aria-label="Google ile devam et">
-          <GoogleIkonu />
-        </button>
-        <button type="button" onClick={smsAkisi} className={dugme} aria-label="Apple ile devam et">
-          <AppleIkonu />
-        </button>
-      </div>
-
-      <p className="text-center text-[12px] text-yazi-sonuk">
-        Demoda bu düğmeler SMS akışına düşer — sağlayıcı bağlantısı henüz kurulmadı.
-      </p>
-    </div>
-  );
-}
-
-/* ── Sağlayıcı ikonları ───────────────────────────────────────
- *
- * Satır içi SVG: giriş ekranında dış kaynaktan ikon çekmek, sayfanın en
- * kritik anında ağa bağımlılık demek. Marka renkleri palet dışında ama
- * bilerek — Google'ın G'si gri çizilirse tanınmıyor ve tanınmayan bir
- * giriş ikonu işe yaramıyor.
- */
-
-function GoogleIkonu() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 48 48" aria-hidden>
-      <path
-        fill="#4285F4"
-        d="M45.1 24.5c0-1.6-.1-2.7-.4-3.9H24v7.1h12.1c-.2 1.8-1.6 4.5-4.5 6.3l6.9 5.4c4.1-3.8 6.6-9.4 6.6-15z"
-      />
-      <path
-        fill="#34A853"
-        d="M24 46c5.9 0 10.9-2 14.5-5.3l-6.9-5.4c-1.9 1.3-4.4 2.2-7.6 2.2-5.8 0-10.7-3.8-12.5-9.1l-7.1 5.5C8.1 41.1 15.4 46 24 46z"
-      />
-      <path
-        fill="#FBBC05"
-        d="M11.5 28.4c-.5-1.4-.7-2.9-.7-4.4s.3-3 .7-4.4l-7.1-5.5C2.9 17 2 20.4 2 24s.9 7 2.4 9.9l7.1-5.5z"
-      />
-      <path
-        fill="#EA4335"
-        d="M24 10.2c4.1 0 6.9 1.8 8.5 3.3l6.2-6C34.9 4 29.9 2 24 2 15.4 2 8.1 6.9 4.4 14.1l7.1 5.5c1.8-5.3 6.7-9.4 12.5-9.4z"
-      />
-    </svg>
-  );
-}
-
-function AppleIkonu() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-      <path d="M17.05 12.54c-.02-2.2 1.79-3.25 1.87-3.3-1.02-1.49-2.6-1.7-3.17-1.72-1.35-.14-2.63.79-3.31.79-.68 0-1.73-.77-2.85-.75-1.47.02-2.82.85-3.58 2.16-1.53 2.65-.39 6.57 1.1 8.72.73 1.05 1.6 2.23 2.74 2.19 1.1-.05 1.51-.71 2.84-.71 1.32 0 1.7.71 2.86.69 1.18-.02 1.93-1.07 2.65-2.13.84-1.22 1.18-2.4 1.2-2.46-.03-.01-2.3-.88-2.32-3.49zM14.88 5.7c.6-.73 1.01-1.75.9-2.76-.87.04-1.92.58-2.55 1.31-.56.64-1.05 1.68-.92 2.67.97.08 1.96-.49 2.57-1.22z" />
-    </svg>
   );
 }
 

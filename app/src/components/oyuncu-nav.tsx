@@ -35,8 +35,16 @@ const DURAKLAR = [
 export type Durak = (typeof DURAKLAR)[number]["href"];
 
 export function OyuncuNav({ aktif }: { aktif: Durak }) {
+  /*
+    Ü274: şerit İNCELDİ. Ürün sahibi: "üstteki kafe şeridi ve alttaki
+    Oyna/Ödüllerim/Profilim çok fazla alan kaplıyor, neredeyse ekranın
+    yarısı onlara gidiyor." Telefonda Safari'nin kendi çubukları da
+    ekrandan yiyor; bizim payımız küçük olmalı. `py-3` → `py-1.5`, etiket
+    10 px. Alt dolgu iPhone'un ev çizgisine göre (`safe-area`) büyüyor —
+    ana ekrana eklenmiş tam ekran modda çizgi şeridin üstüne binmesin.
+  */
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-cizgi bg-cukur/95 backdrop-blur">
+    <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-cizgi bg-cukur/95 pb-[env(safe-area-inset-bottom)] backdrop-blur">
       <ul className="mx-auto flex w-full max-w-md">
         {DURAKLAR.map((d) => {
           const secili = d.href === aktif;
@@ -46,12 +54,12 @@ export function OyuncuNav({ aktif }: { aktif: Durak }) {
               <Link
                 href={d.href}
                 aria-current={secili ? "page" : undefined}
-                className={`flex flex-col items-center gap-1 py-3 transition-colors ${
+                className={`flex flex-col items-center gap-0.5 py-1.5 transition-colors ${
                   secili ? "text-vurgu" : "text-yazi-sonuk hover:text-yazi"
                 }`}
               >
                 <Ikon />
-                <span className="etiket-caps">{d.etiket}</span>
+                <span className="etiket-caps text-[10px]">{d.etiket}</span>
               </Link>
             </li>
           );
@@ -63,7 +71,8 @@ export function OyuncuNav({ aktif }: { aktif: Durak }) {
 
 /** Alt şeridin altında kalmayı önleyen boşluk. */
 export function NavBosluk() {
-  return <div className="h-20" aria-hidden />;
+  // Şeridin yüksekliği (~52 px) + ev çizgisi payı.
+  return <div className="h-[calc(3.5rem+env(safe-area-inset-bottom))]" aria-hidden />;
 }
 
 /* ── İkonlar ───────────────────────────────────────────────── */

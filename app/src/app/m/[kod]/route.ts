@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { goreliYonlendir } from "@/lib/yonlendir";
 import { masaCoz, taramaKaydet, biletUret, MASA_COOKIE, BILET_OMRU_SN } from "@/domain/qr";
 import { log } from "@/lib/log";
 
@@ -19,7 +19,9 @@ import { log } from "@/lib/log";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(istek: Request, ctx: { params: Promise<{ kod: string }> }) {
+// Ü273: göreli yönlendirme — `istek.url` sunucunun dinlediği adresi (0.0.0.0)
+// taşıyabiliyor, kullanıcının geldiği adresi değil. Bkz. `lib/yonlendir.ts`.
+export async function GET(_istek: Request, ctx: { params: Promise<{ kod: string }> }) {
   const { kod } = await ctx.params;
   const masa = await masaCoz(kod);
 
@@ -27,7 +29,7 @@ export async function GET(istek: Request, ctx: { params: Promise<{ kod: string }
     // Kodun neden geçersiz olduğunu söylemiyoruz — tarama yapan birine
     // "bu kafe var ama onaysız" bilgisini vermenin faydası yok.
     log.warn("gecersiz masa karekodu");
-    return NextResponse.redirect(new URL("/giris?hata=masa", istek.url));
+    return goreliYonlendir("/giris?hata=masa");
   }
 
   // Kafenin doğrulama defterine "bu masa okutuldu" satırı
@@ -40,7 +42,7 @@ export async function GET(istek: Request, ctx: { params: Promise<{ kod: string }
   // Bayrak adreste taşınıyor çünkü kararı **sunucu** vermeli: sahnenin
   // ilk render'ında açık olması gerekiyor ve tarayıcıya özel bir API
   // (sessionStorage) sunucuda okunamıyor.
-  const cevap = NextResponse.redirect(new URL("/hemen?cark=1", istek.url));
+  const cevap = goreliYonlendir("/hemen?cark=1");
   cevap.cookies.set(MASA_COOKIE, biletUret(masa.cafeId, masa.tableId), {
     httpOnly: true,
     secure: process.env.APP_ENV === "production",

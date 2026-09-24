@@ -35,3 +35,91 @@ export async function yoneticiSorgu(sql: string, params: unknown[] = []): Promis
 export function benzersizEposta(): string {
   return `oyuncu-${randomUUID()}@ornek.test`;
 }
+
+/**
+ * Kafeye bağlı tablolar — SİLME SIRASIYLA (önce çocuk, sonra ebeveyn).
+ *
+ * Hiçbir yabancı anahtar `ON DELETE CASCADE` değil (ölçüldü, 30 tablo):
+ * kafeyi tek satırla silmek mümkün değil ve bu bilerek böyle — canlıda
+ * bir kafe silinirse geçmişi sessizce gitmemeli. Sıra kısıtların
+ * kendisinden çıkarıldı: `coupons` → `rewards` → `products` →
+ * `product_categories`; `play_sessions` → `table_sessions` →
+ * `cafe_tables`; `cafe_devices` → `staff` …
+ */
+const KAFE_TABLOLARI = [
+  "campaign_offers",
+  "coupon_events",
+  "cark_haklari",
+  "coupons",
+  "budget_ledger",
+  "play_sessions",
+  "qr_tokens",
+  "table_sessions",
+  "happy_hours",
+  "happy_hour_plans",
+  "percentage_campaigns",
+  "rewards",
+  "cark_kosullari",
+  "products",
+  "product_categories",
+  "cafe_devices",
+  "cafe_game_settings",
+  "points_ledger",
+  "xp_ledger",
+  "player_badges",
+  "player_aliases",
+  "fraud_flags",
+  "sessions",
+  "referrals",
+  "cafe_documents",
+  "cafe_config",
+  "budget_periods",
+  "cafe_tables",
+  "staff",
+  "audit_log",
+] as const;
+
+/**
+ * Testin açtığı kafeleri ve onlara bağlı HER satırı siler — Ü271.
+ *
+ * 🔴 Neden var: `cark`, `challenge` ve `liderlik` testleri her koşuda
+ * yeni, **onaylı** kafeler açıp hiç silmiyordu. Geliştirme veritabanında
+ * 4.550'yi aştılar ve platform panelinin "hangi kafeye gitsin" listesini
+ * kullanılmaz yaptılar: ürün sahibi Kafe A'yı 4.561 seçenek arasında
+ * 2.353. sırada bulamadı.
+ *
+ * Tek işlemde: bir tablo takılırsa hiçbir şey silinmiyor. `prova` açıkken
+ * her şey yapılıyor, sayılar dönüyor ve işlem GERİ ALINIYOR.
+ */
+export async function testKafeleriniSil(
+  idler: string[],
+  opts: { prova?: boolean } = {},
+): Promise<Record<string, number>> {
+  const sayac: Record<string, number> = {};
+  if (idler.length === 0) return sayac;
+
+  const client = await adminPool().connect();
+  try {
+    await client.query("BEGIN");
+    const sil = async (ad: string, sql: string) => {
+      const r = await client.query(sql, [idler]);
+      if (r.rowCount) sayac[ad] = (sayac[ad] ?? 0) + r.rowCount;
+    };
+    await sil(
+      "referral_events",
+      `DELETE FROM referral_events
+        WHERE referral_id IN (SELECT id FROM referrals WHERE cafe_id = ANY($1))`,
+    );
+    for (const tablo of KAFE_TABLOLARI) {
+      await sil(tablo, `DELETE FROM ${tablo} WHERE cafe_id = ANY($1)`);
+    }
+    await sil("cafes", `DELETE FROM cafes WHERE id = ANY($1)`);
+    await client.query(opts.prova ? "ROLLBACK" : "COMMIT");
+    return sayac;
+  } catch (e) {
+    await client.query("ROLLBACK").catch(() => {});
+    throw e;
+  } finally {
+    client.release();
+  }
+}

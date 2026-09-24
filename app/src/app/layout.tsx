@@ -30,6 +30,16 @@ const mono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "Looply",
   description: "Masadaki karekodu okut, oyna, kazan.",
+  /*
+    Ü274: iPhone'da "Ana Ekrana Ekle" ile açılınca Safari çubukları
+    olmadan, tam ekran. Bildirim dosyası `app/manifest.ts`; bu satırlar
+    iOS'un kendi meta etiketleri (eski iOS bildirimi okumuyor).
+  */
+  appleWebApp: {
+    capable: true,
+    title: "Looply",
+    statusBarStyle: "default",
+  },
 };
 
 export const viewport: Viewport = {

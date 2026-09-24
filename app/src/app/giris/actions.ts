@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 import { headers, cookies } from "next/headers";
 import { z } from "zod";
 import { kodIste, kodDogrula } from "@/domain/otp";
+import type { KayitAlani } from "./alanlar";
+import { sifirlamaKoduIste, sifirla } from "@/domain/parola-sifirlama";
 import { kaydet, telefonlaBul } from "@/domain/player";
 import * as oturum from "@/domain/session";
 import * as masaOturumu from "@/domain/masa";
@@ -82,6 +84,8 @@ export type Durum = {
   pazarlama?: boolean;
 };
 
+// 🔴 Alanlar `alanlar.ts`teki listeye bağlı (Ü270): adım 2 gizli girdilerini
+// oradan üretiyor. Buraya alan eklenip listeye eklenmezse derleme düşüyor.
 const kayitSemasi = z.object({
   telefon: telefonSemasi,
   // Ü168: doğrulama kodu buraya gidecek, yani kayıt için zorunlu.
@@ -89,7 +93,7 @@ const kayitSemasi = z.object({
   ad: isimSemasi,
   soyad: isimSemasi,
   dogumYili: dogumYiliSemasi,
-});
+} satisfies Record<KayitAlani, z.ZodTypeAny>);
 
 const parolaGirisSemasi = z.object({
   telefon: telefonSemasi,
@@ -489,5 +493,109 @@ export async function kodDogrulaVeGir(_onceki: Durum, form: FormData): Promise<D
   }
 
   log.info("giris tamamlandi", { yeni, yol: "sms" });
+  redirect("/oyna");
+}
+/* ── Parolamı unuttum (Ü270) ──────────────────────────────── */
+
+/**
+ * Parola sıfırlama ekranının durumu.
+ *
+ * 🔴 PAROLA BURAYA KONMAZ — `Durum`daki aynı gerekçe: bu nesne sunucudan
+ * istemciye dönüyor ve React durumunda yaşıyor.
+ */
+export type SifirlamaDurumu = {
+  adim: "telefon" | "kod";
+  /** Kullanıcının yazdığı biçimiyle — adım 2'de yeniden doğrulanıyor. */
+  telefon?: string;
+  /** Kodun gittiği adres, maskeli ("a•••@ornek.com"). */
+  adres?: string | null;
+  hatalar?: Record<string, string>;
+  genelHata?: string;
+  /** Yalnızca geliştirmede dolu gelir — sahte e-posta sağlayıcısının kodu. */
+  gelistirmeKodu?: string;
+};
+
+const telefonTekSemasi = z.object({ telefon: telefonSemasi });
+
+/** Adım 1: telefon → hesabın kayıtlı e-postasına kod. Ayrıntı `domain/parola-sifirlama.ts`. */
+export async function sifirlamaKoduGonder(
+  _onceki: SifirlamaDurumu,
+  form: FormData,
+): Promise<SifirlamaDurumu> {
+  const ham = String(form.get("telefon") ?? "");
+  const geri = (ek: Partial<SifirlamaDurumu>): SifirlamaDurumu => ({
+    adim: "telefon",
+    telefon: ham,
+    ...ek,
+  });
+
+  const t = dogrula(telefonTekSemasi, { telefon: ham });
+  if (!t.ok) return geri({ hatalar: t.hatalar });
+
+  const { ip } = await istekBilgisi();
+  const s = await sifirlamaKoduIste({ telefon: t.veri.telefon, ip });
+
+  switch (s.durum) {
+    case "gonderildi":
+      return { adim: "kod", telefon: ham, adres: s.adres, gelistirmeKodu: s.gelistirmeKodu };
+    case "hesap_yok":
+      return geri({
+        hatalar: {
+          telefon: "Bu numarayla kayıtlı bir hesap yok. Hesap aç sekmesinden kaydolabilirsin.",
+        },
+      });
+    case "eposta_yok":
+      // Ü169 öncesi açılmış hesap: gönderilecek adres yok. SMS park
+      // edildiği için ikinci bir kanal da yok — söylenmesi gereken bu.
+      return geri({ genelHata: "Bu hesapta kayıtlı e-posta yok, kod gönderilemiyor." });
+    case "cok_sik":
+      return geri({ genelHata: istekHatasi("cok_sik", s.tekrarDene) });
+    case "kilitli":
+      return geri({ genelHata: istekHatasi("kilitli") });
+    default:
+      return geri({ genelHata: istekHatasi("gonderilemedi") });
+  }
+}
+
+/** Adım 2: kod + yeni parola → parola değişir, eski oturumlar kapanır, içeri. */
+export async function parolaSifirlaVeGir(
+  _onceki: SifirlamaDurumu,
+  form: FormData,
+): Promise<SifirlamaDurumu> {
+  const ham = String(form.get("telefon") ?? "");
+  const adres = String(form.get("adres") ?? "") || null;
+  const hatirla = form.get("hatirla") === "on";
+  const kodaDon = (ek: Partial<SifirlamaDurumu>): SifirlamaDurumu => ({
+    adim: "kod",
+    telefon: ham,
+    adres,
+    ...ek,
+  });
+
+  const t = dogrula(telefonTekSemasi, { telefon: ham });
+  if (!t.ok) return { adim: "telefon", telefon: ham, hatalar: t.hatalar };
+
+  const kodAlani = dogrula(otpSemasi, String(form.get("kod") ?? ""));
+  if (!kodAlani.ok) return kodaDon({ hatalar: { kod: "Doğrulama kodu 6 rakamdır" } });
+
+  const s = await sifirla({
+    telefon: t.veri.telefon,
+    kod: kodAlani.veri,
+    yeniParola: String(form.get("parola") ?? ""),
+  });
+  if (!s.ok) {
+    return s.alan === "genel"
+      ? kodaDon({ genelHata: s.hata })
+      : kodaDon({ hatalar: { [s.alan]: s.hata } });
+  }
+
+  const { ua } = await istekBilgisi();
+  const cihazId = ua ?? undefined;
+  await oturum.olustur({ ozneTipi: "player", ozneId: s.playerId, rol: "oyuncu", cihazId, hatirla });
+
+  await masayaOturt(s.playerId, cihazId);
+  await talebiBozdur(s.playerId);
+
+  log.info("giris tamamlandi", { yol: "parola_sifirlama", kapatilanOturum: s.kapatilanOturum });
   redirect("/oyna");
 }

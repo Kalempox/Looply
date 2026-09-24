@@ -1,3 +1,4 @@
+import Link from "next/link";
 /**
  * Oyuncu tarafı arayüz parçaları — "Açık ve Asil" (Ü31).
  *
@@ -142,10 +143,47 @@ export function Baslik({ ust, children }: { ust?: string; children: React.ReactN
   );
 }
 
-export function Sayfa({ children }: { children: React.ReactNode }) {
+/**
+ * Sayfanın üstündeki geri bağlantısı — Ü274.
+ *
+ * `OyuncuSayfa`nın içinde yazılıydı; `Sayfa` kabuğundaki ekranlarda
+ * (çark, davet, Loopy) hiç yoktu. Ürün sahibi: "sayfalarda geri dönmek
+ * için geri butonları eklenmeli, onlar da yok." Tek bileşen, iki kabuk.
+ */
+export function GeriBaglanti({ href, etiket }: { href: string; etiket: string }) {
+  return (
+    <Link
+      href={href}
+      className="mb-4 -ml-1 inline-flex items-center gap-1.5 rounded-full py-1.5 pr-3 pl-1 text-[14px] font-semibold text-yazi-sonuk transition-colors hover:text-yazi"
+    >
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
+        <path
+          d="M15 5 8 12l7 7"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+      {etiket}
+    </Link>
+  );
+}
+
+export function Sayfa({
+  children,
+  geri,
+}: {
+  children: React.ReactNode;
+  /** Ü274: üstteki geri bağlantısı. */
+  geri?: { href: string; etiket: string };
+}) {
   return (
     <main className="min-h-dvh bg-zemin text-yazi">
-      <div className="mx-auto w-full max-w-md px-5 py-10 sm:py-14">{children}</div>
+      <div className="mx-auto w-full max-w-md px-5 py-10 sm:py-14">
+        {geri && <GeriBaglanti href={geri.href} etiket={geri.etiket} />}
+        {children}
+      </div>
     </main>
   );
 }

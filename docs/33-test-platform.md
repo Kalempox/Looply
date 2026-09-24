@@ -14,7 +14,8 @@
 
 ### A.1 · Gir
 
-**Ne yaparsın:** `/platform/giris` → telefon + parola + SMS kodu.
+**Ne yaparsın:** `/platform/giris` → telefon + 6 haneli doğrulama kodu
+(geliştirmede kod ekranda görünür).
 
 **Ne görmelisin:** platform ekranları açılır.
 

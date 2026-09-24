@@ -39,15 +39,31 @@ düşersin.
 
 ### A.3 · Hesap aç
 
-**Ne yaparsın:** telefon numaranı gir, gelen doğrulama kodunu yaz.
+**Ne yaparsın:** telefon, e-posta, ad, soyad, doğum yılı ve parolanı gir;
+e-postana gelen doğrulama kodunu yaz.
 
 **Ne görmelisin:** hesap açılır ve **misafirken kazandıkların hesaba
 taşınır**.
 
-🔴 **Hata sayılır:** misafirken toplanan puan kayboluyorsa.
+🔴 **Hata sayılır:**
+- Misafirken toplanan puan kayboluyorsa.
+- Kodu doğru girdiğin hâlde **"E-posta adresi eksik"** diyorsa (Ü270'te
+  kapandı — kod adımı e-postayı taşımıyordu).
 
-⚠️ Geliştirmede SMS gerçekten gitmiyor; doğrulama kodu `/gelistirme`
-sayfasındaki defterde görünür.
+⚠️ Geliştirmede kod e-postaya gerçekten gitmiyor; ekranda sarı kutuda ve
+`/gelistirme` sayfasındaki defterde görünür. Canlıda Resend anahtarıyla
+gider (U2).
+
+### A.4 · Parolamı unuttum (Ü270)
+
+**Ne yaparsın:** Giriş → **Parolanı mı unuttun?** → telefon → kod + yeni
+parola.
+
+**Ne görmelisin:** yalnızca telefon soruluyor; kod hesabın e-postasına
+gidiyor (ekranda maskeli adres); yeni parolayla içeri giriliyor.
+
+🔴 **Hata sayılır:** eski parola hâlâ çalışıyorsa; başka bir cihazdaki
+açık oturum parola değişince kapanmıyorsa.
 
 ---
 
@@ -155,12 +171,17 @@ kafenin bütçesi doluysa.
 kural, tutulmamış söz demektir — oyuncu kasaya gider, reddedilir ve
 suçu kafeye yükler.
 
-### D.4 · Erteleme
+### D.4 · Erteleme — her ödül bekler (Ü269)
 
-**Ne görmelisin:** yüksek değerli ödüller hemen değil, **ertesi gün**
-aktifleşir (24 saat).
+**Ne görmelisin:** kazandığın **her** ödül — küçük, büyük, ürün, yüzde —
+önce **bekler**; kafenin aktivasyon saati kadar sonra açılır (varsayılan
+12, kafe 1–48 arası ayarlar). Ödülün **adı** görünür, **saati görünmez**:
+yerine bir bekleme cümlesi yazar (Ü97, bilerek — sürpriz olan zaman).
 
-🔴 **Hata sayılır:** bekleme süresi ekranda hiç görünmüyorsa.
+🔴 **Hata sayılır:**
+- Bir ödül kazanıldığı anda kasada kullanılabiliyorsa (upsell hariç —
+  kasadaki "şunu da al" teklifi bu ziyaret için, hemen açılır).
+- Bekleyen kupon listede hiç görünmüyorsa ya da kazınınca kayboluyorsa.
 
 ---
 

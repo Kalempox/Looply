@@ -4,6 +4,7 @@ import { kafeYoneticisiGerekli } from "@/domain/yetki";
 import * as masaYonetim from "@/domain/masa-yonetim";
 import { IsletmeSayfa, IsletmeBaslik, Bolum } from "@/components/isletme";
 import { Karekod } from "@/components/karekod";
+import { istektenTabanAdres } from "@/lib/karekod-adresi";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Karekod · Looply" };
@@ -30,9 +31,9 @@ export default async function KarekodSayfasi() {
   const o = await kafeYoneticisiGerekli();
   const [karekod, h] = await Promise.all([masaYonetim.kafeKarekodu(o.cafeId), headers()]);
 
-  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "looply";
-  const sema = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
-  const adres = `${sema}://${host}/m/${karekod.kod}`;
+  // 🔴 Ü270: adres `localhost` taşımasın — telefonda "localhost"
+  // telefonun kendisi. Kural `lib/karekod-adresi.ts`te.
+  const adres = `${istektenTabanAdres(h)}/m/${karekod.kod}`;
 
   return (
     <IsletmeSayfa>

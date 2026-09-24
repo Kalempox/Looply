@@ -6,6 +6,7 @@ import { closePools } from "@/db/pool";
 import * as butce from "@/domain/butce";
 import * as urun from "@/domain/urun";
 import * as katalog from "@/domain/katalog";
+import * as ayar from "@/domain/ayar";
 import * as kampanya from "@/domain/kampanya";
 import * as cafe from "@/domain/cafe";
 import * as panelDurum from "@/domain/panel-durum";
@@ -787,45 +788,112 @@ describe("ürün ve ödül kataloğu", () => {
   });
 
   /**
-   * ⚠️ Bantlar Ü52 ile kaydı. Eskiden 1-15 → K2, 16-50 → K3'tü. Ödül
-   * tabanı 25 TL'ye çıkınca HER ödül K3 oldu ve çarkın ilk karekod akışı
-   * (oyuncu henüz K2'de) hiçbir zaman ödül veremez hâle geldi. İlke aynı
-   * kaldı — büyük ödül daha güçlü kanıt — kademeler yeni aralığa taşındı.
+   * ⚠️ Ü268: "masada 5 dk" kuralı KALKTI — her ödül konum doğrulaması
+   * (K2) istiyor. Kademeler önce Ü52'de kaymıştı (25–35 → K2, 40–50 →
+   * K3, 51+ → K4).
+   *
+   * 🔴 En keskin sınanan satır 50 TL'nin ÜSTÜ: üst sınır artık kafenin
+   * (K5) ve eski formül orada K4 (fiş kodu) döndürüyordu. K4 hiçbir
+   * yerden verilmiyor (Ü108); formül geri gelirse 50 TL'den pahalı her
+   * ödül panelde durur ama hiç kimseye düşmez.
    */
-  test("kanıt seviyesi tutardan hesaplanır — E6", () => {
-    assert.equal(katalog.kanitSeviyesi(25_00), 2, "taban ödül konumla alınabilmeli");
-    assert.equal(katalog.kanitSeviyesi(35_00), 2);
-    assert.equal(katalog.kanitSeviyesi(40_00), 3, "üst yarı masada beş dakika istemeli");
-    assert.equal(katalog.kanitSeviyesi(50_00), 3);
-    assert.equal(katalog.kanitSeviyesi(51_00), 4, "aralık dışı hâlâ K4");
+  test("her ödül yalnızca konum doğrulaması ister — E6 · Ü268", () => {
+    for (const tutar of [25_00, 35_00, 40_00, 50_00]) {
+      assert.equal(katalog.kanitSeviyesi(tutar), 2, `${tutar / 100} TL masada beklemek istiyor`);
+    }
+    for (const tutar of [51_00, 80_00, 500_00]) {
+      assert.equal(
+        katalog.kanitSeviyesi(tutar),
+        2,
+        `${tutar / 100} TL fiş kodu istiyor — bu ödül hiç kimseye düşmez`,
+      );
+    }
   });
 
-  test("ödül değeri 25-50 TL arası ve 5'er artışlı olmalı — Ü52", async () => {
-    for (const gecersiz of [20_00, 27_50, 55_00, 0]) {
-      const s = await katalog.ekle({
+  /**
+   * Ü268 · K5 — ürün sahibi: *"25 ile üst sınır arasında istediğimi
+   * yazabilmeliyim; üst sınırı kafe belirlesin, bir sınır olmasın, en az
+   * 50 olsun."*
+   *
+   * ⚠️ Kafenin ayarı sonunda **aynen geri konuyor** — satır yoksa
+   * siliniyor. Ürün sahibi aynı kafeyi panelden elle deniyor; test onun
+   * yazdığı üst sınırı ezip bırakmamalı.
+   */
+  test("ödül değeri 25 TL ile kafenin üst sınırı arasında, tam TL — Ü268 · K5", async () => {
+    const odul = (maliyetKurus: number, ek: string) =>
+      katalog.ekle({
         cafeId: kafeA,
         tip: "amount",
-        baslik: `TEST gecersiz ${gecersiz}`,
-        maliyetKurus: gecersiz,
+        baslik: `TEST ${ek} ${maliyetKurus}`,
+        maliyetKurus,
         puanFiyati: 0,
         anlik: true,
         aktorId: yoneticiA,
       });
-      assert.equal(s.ok, false, `${gecersiz / 100} TL kabul edildi`);
-    }
 
-    // Sınırdaki iki değer kabul edilmeli.
-    for (const gecerli of [25_00, 50_00]) {
-      const s = await katalog.ekle({
-        cafeId: kafeA,
-        tip: "amount",
-        baslik: `TEST gecerli ${gecerli}`,
-        maliyetKurus: gecerli,
-        puanFiyati: 0,
-        anlik: true,
-        aktorId: yoneticiA,
-      });
-      assert.ok(s.ok, s.ok === false ? s.hata : "");
+    const onceki = await withBypass("test: mevcut üst sınır", (db) =>
+      db.one<{ value: string }>(
+        `SELECT value::text FROM cafe_config WHERE cafe_id = $1 AND key = $2`,
+        [kafeA, ayar.ANAHTARLAR.odulUstSinir],
+      ),
+    );
+    // Yalnızca bu testin yazdığı denetim satırları silinsin diye.
+    const sonIz = await withBypass("test: son denetim", (db) =>
+      db.one<{ id: string }>(`SELECT coalesce(max(id), 0)::text AS id FROM audit_log`),
+    );
+    await yoneticiSorgu(`DELETE FROM cafe_config WHERE cafe_id = $1 AND key = $2`, [
+      kafeA,
+      ayar.ANAHTARLAR.odulUstSinir,
+    ]);
+
+    try {
+      /* ── 1 · Ayar yokken tavan 50 TL; aradaki her tam TL geçerli ── */
+      for (const gecerli of [25_00, 27_00, 50_00]) {
+        const s = await odul(gecerli, "gecerli");
+        assert.ok(s.ok, `${gecerli / 100} TL reddedildi: ${s.ok === false ? s.hata : ""}`);
+      }
+      // 24 TL tabanın altı, 27,50 kuruşlu, 51 TL varsayılan tavanın üstü.
+      for (const gecersiz of [0, 24_00, 27_50, 51_00]) {
+        const s = await odul(gecersiz, "gecersiz");
+        assert.equal(s.ok, false, `${gecersiz / 100} TL kabul edildi`);
+      }
+
+      /* ── 2 · Kafe tavanı yükseltince yeni aralık geçerli ── */
+      const yaz = (deger: number) =>
+        ayar.sayiYaz({ cafeId: kafeA, anahtar: ayar.ANAHTARLAR.odulUstSinir, deger, aktorId: yoneticiA });
+      assert.ok((await yaz(80_00)).ok, "80 TL üst sınır yazılamadı");
+      const s80 = await odul(80_00, "gecerli");
+      assert.ok(s80.ok, `tavandaki 80 TL reddedildi: ${s80.ok === false ? s80.hata : ""}`);
+      const s81 = await odul(81_00, "gecersiz");
+      assert.equal(s81.ok, false, "kafenin tavanını aşan 81 TL kabul edildi");
+      assert.match(s81.ok === false ? s81.hata : "", /80/, "hata mesajı kafenin tavanını söylemiyor");
+
+      /* ── 3 · Tavan 50'nin altına inmez, yukarıda sınırı yok ── */
+      const s49 = await yaz(49_00);
+      assert.equal(s49.ok, false, "50 TL'nin altında üst sınır kabul edildi");
+      // ⚠️ Teknik tavan ekranda "sınır" gibi yazılmamalı — ürün sahibi
+      // "sınır olmasın" dedi.
+      assert.doesNotMatch(s49.ok === false ? s49.hata : "", /arasında/, "sınırsız ayar aralık gibi yazıldı");
+      assert.ok((await yaz(10_000_00)).ok, "yüksek üst sınır reddedildi — üst sınır kafenin");
+    } finally {
+      if (onceki) {
+        await yoneticiSorgu(
+          `INSERT INTO cafe_config (cafe_id, key, value) VALUES ($1, $2, $3::jsonb)
+           ON CONFLICT (cafe_id, key) DO UPDATE SET value = EXCLUDED.value`,
+          [kafeA, ayar.ANAHTARLAR.odulUstSinir, onceki.value],
+        );
+      } else {
+        await yoneticiSorgu(`DELETE FROM cafe_config WHERE cafe_id = $1 AND key = $2`, [
+          kafeA,
+          ayar.ANAHTARLAR.odulUstSinir,
+        ]);
+      }
+      await yoneticiSorgu(
+        `DELETE FROM audit_log
+          WHERE id > $1 AND cafe_id = $2 AND action = 'cafe.config_update'
+            AND detail->>'anahtar' = $3`,
+        [sonIz?.id ?? "0", kafeA, ayar.ANAHTARLAR.odulUstSinir],
+      );
     }
   });
 
@@ -845,7 +913,8 @@ describe("ürün ve ödül kataloğu", () => {
     const liste = await katalog.listele(kafeA);
     const eklenen = liste.find((x) => x.id === (sonuc.ok ? sonuc.id : ""));
     assert.ok(eklenen);
-    assert.equal(eklenen.kanitSeviyesi, 3, "45 TL ödül K3 olmalı");
+    // Ü268: 45 TL de yalnızca konum istiyor — "masada 5 dk" kalktı.
+    assert.equal(eklenen.kanitSeviyesi, 2, "45 TL ödül masada beklemek istiyor");
     assert.equal(eklenen.yuzde, null);
   });
 

@@ -7,7 +7,7 @@ import { basiliKoduTasi } from "@/domain/qr";
 export type TasimaDurumu = { hata?: string; bilgi?: string };
 
 /**
- * Basılı kodun yönlendirmesini değiştirir — Ü266.
+ * Basılı kodun yönlendirmesini değiştirir — Ü266/Ü267.
  *
  * ⚠️ `platformGerekli(true)` — yalnızca **yönetici**, destek rolü değil.
  * Bu işlem bir kafenin müşterisini ötekine yönlendiriyor; destek
@@ -20,16 +20,25 @@ export async function tasiEylemi(
   const o = await platformGerekli(true);
 
   const kod = String(form.get("kod") ?? "").trim();
-  const hedefTableId = String(form.get("hedefTableId") ?? "").trim();
+  const hedefCafeId = String(form.get("hedefCafeId") ?? "").trim();
   const gerekce = String(form.get("gerekce") ?? "").trim();
 
   if (!kod) return { hata: "Kod seçilmedi." };
-  if (!hedefTableId) return { hata: "Hedef masa seçilmedi." };
+  if (!hedefCafeId) return { hata: "Hedef kafe seçilmedi." };
 
-  const sonuc = await basiliKoduTasi({ kod, hedefTableId, bakanId: o.ozneId, gerekce });
+  const sonuc = await basiliKoduTasi({ kod, hedefCafeId, bakanId: o.ozneId, gerekce });
 
   revalidatePath("/platform/karekodlar");
-  return sonuc.ok
-    ? { bilgi: `“${kod}” artık yeni masaya gidiyor. Basılı kâğıt değişmedi.` }
-    : { hata: sonuc.hata };
+  if (!sonuc.ok) return { hata: sonuc.hata };
+
+  /* ⚠️ Serbest bırakılan kod söyleniyor: sessiz kalsa, hedef kafenin
+     eski kodunun artık hiçbir yere gitmediği kayıttan başka hiçbir yerde
+     görünmezdi. */
+  return {
+    bilgi: sonuc.birakilanKod
+      ? `“${kod}” artık yeni kafeye gidiyor. O kafenin hiç kullanılmamış eski kodu (${sonuc.birakilanKod}) serbest bırakıldı.`
+      : sonuc.masaAcildi
+        ? `“${kod}” artık yeni kafeye gidiyor. Kafenin masası bu kodla açıldı.`
+        : `“${kod}” artık yeni kafeye gidiyor. Kafenin masasına bu kod verildi.`,
+  };
 }

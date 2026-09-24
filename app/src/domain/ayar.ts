@@ -20,8 +20,23 @@ import { audit } from "@/lib/audit";
  */
 
 export const ANAHTARLAR = {
-  /** Bu tutarın üstündeki ödül 24 saat sonra açılır (Ü28, kuruş). */
-  ertelemeEsigi: "erteleme_esigi_kurus",
+  /*
+    `ertelemeEsigi` ("erteleme_esigi_kurus") Ü269'da KALDIRILDI: artık her
+    ödül gecikmeli açılıyor, tutar eşiği yok. Veritabanında kalan satırlar
+    göç 0049 ile silindi. Anahtar bilerek geri eklenmesin diye burada not.
+  */
+  /**
+   * Kafenin tanımlayabileceği en pahalı ödül (Ü268 · K5, kuruş).
+   *
+   * Ürün sahibi: *"kafe istediği gibi belirlesin, bir sınır olmasın;
+   * üst sınır koymada minimum 50 olsun."* Ü52'den beri ödül 25–50 TL'ye
+   * sabitti ve bu aralık hem `katalog.ts`te hem göç 0021'in
+   * kısıtındaydı. Artık alt sınır sabit (25 TL), üst sınır kafenin.
+   *
+   * ⚠️ Alt sınır 50: bundan aşağı çekmek aralığı 25'in altına
+   * daraltamayacağı için anlamsız, ve ürün sahibinin istediği taban bu.
+   */
+  odulUstSinir: "odul_ust_sinir_kurus",
   /**
    * Kafenin bir günde dağıtmayı taahhüt ettiği ödül değeri (Ü45, kuruş).
    *
@@ -72,7 +87,8 @@ export const ANAHTARLAR = {
   /** Kafenin kapanış saati (Ü90, 1–23, İstanbul). */
   kapanisSaati: "kapanis_saat",
   /**
-   * Ertelenen ödülün kaç saat sonra açılacağı (Ü129, saat).
+   * Ödülün kaç saat sonra açılacağı (Ü129, saat). Ü269'dan beri **her**
+   * ödül için — önce yalnızca tutar eşiğinin üstündekiler için.
    *
    * ── Neden ayar oldu ─────────────────────────────────────────
    *
@@ -87,9 +103,8 @@ export const ANAHTARLAR = {
    * mı çıktığına göre farklı saatte açılırdı — oyuncuya açıklaması olmayan
    * bir fark.
    *
-   * ⚠️ Yalnızca **eşiğin üstündeki** ödülü ilgilendiriyor (`ertelemeEsigi`).
-   * Eşiğin altındaki ödül zaten anında açılıyor ve bu ayar ona hiç
-   * dokunmuyor.
+   * ⚠️ Upsell kuponu bu ayarın dışında (Ü100): bu ziyarette kullanılmak
+   * için var ve hemen açılıyor.
    */
   ertelemeSaati: "erteleme_saat",
   /**
@@ -163,17 +178,20 @@ export type Anahtar = (typeof ANAHTARLAR)[keyof typeof ANAHTARLAR];
 
 /**
  * Sayısal ayarların sınırları.
- *
- * Sınırsız bırakılamaz: eşiği çok yükseğe çeken bir kafe ertelemeyi fiilen
- * kapatır ve Ü28'in getirdiği ertesi ziyaret döngüsü yok olur. Sıfıra
- * çekense her ödülü erteler — o da kafenin hakkı, ama kasada "kupon neden
- * açılmıyor" sorusunu çoğaltır. Aralık ikisini de görünür kılıyor.
  */
+/**
+ * "Üst sınır yok" anlamına gelen tavan — iş kuralı değil, yalnızca
+ * teknik bir koruma (sayının güvenli tam sayı aralığında kalması).
+ *
+ * ⚠️ Bu değere ulaşan bir sınır ekranda **hiç yazılmıyor**: hata mesajı
+ * "en az X TL olmalı" diyor. "En fazla 1 milyar TL" yazmak, ürün
+ * sahibinin "sınır olmasın" kararını sınırmış gibi göstermek olurdu.
+ */
+export const SINIRSIZ = 1_000_000_000_00;
+
 export const SINIRLAR: Record<Anahtar, { en_az: number; en_cok: number; varsayilan: number }> = {
-  // Ü52: ödüller 25-50 TL arasında. Eşik 50 TL kalsaydı hiçbir ödül
-  // ertelenmez ve Ü39'un getirdiği "ertesi ziyaret" döngüsü ölü kalırdı.
-  // 35 TL: üst yarı (40/45/50) erteleniyor, alt yarı anında açılıyor.
-  [ANAHTARLAR.ertelemeEsigi]: { en_az: 25_00, en_cok: 50_00, varsayilan: 35_00 },
+  // Ü268 · K5 — kafenin koyabileceği en pahalı ödül. Alt 50, üst yok.
+  [ANAHTARLAR.odulUstSinir]: { en_az: 50_00, en_cok: SINIRSIZ, varsayilan: 50_00 },
   // Alt sınır Ü45'in günlük tabanı; üst sınır yok denecek kadar yüksek
   // tutuluyor — kafenin ne kadar dağıtacağı bizim kararımız değil.
   [ANAHTARLAR.gunlukButce]: { en_az: 1_500_00, en_cok: 100_000_00, varsayilan: 1_500_00 },
@@ -183,7 +201,10 @@ export const SINIRLAR: Record<Anahtar, { en_az: number; en_cok: number; varsayil
   // Varsayılan 35 TL — çark alt yarıyı dağıtıyor, büyük ödüller oyunun
   // kendisine kalıyor. 25 yazan kafede çark yalnızca en küçük ödülü
   // dağıtır; 50 yazan kafede her ödül çarka girer.
-  [ANAHTARLAR.carkUstSinir]: { en_az: 25_00, en_cok: 50_00, varsayilan: 35_00 },
+  //
+  // ⚠️ Ü268: tavan ödülün tavanını izliyor — ödülün üst sınırı kafenin
+  // olunca (K5) 50 TL'lik tavan pahalı ödülleri çarktan hep dışarıda bırakırdı.
+  [ANAHTARLAR.carkUstSinir]: { en_az: 25_00, en_cok: SINIRSIZ, varsayilan: 35_00 },
   // Varsayılan 09:00–23:00 — kafelerin çoğunun açık olduğu aralık, ama
   // artık yalnızca bir **varsayılan**: kafe kendi saatini panelden yazıyor
   // (Ü90). Ü87'de bu iki sayı "bir tahmin" diye işaretlenmişti; tahmin
@@ -193,10 +214,9 @@ export const SINIRLAR: Record<Anahtar, { en_az: number; en_cok: number; varsayil
   // Ü129: varsayılan 12 — Ü97'de sabit olarak seçilen değer, ayar olunca
   // varsayılan oldu. Paneli hiç açmayan kafede hiçbir şey değişmiyor.
   //
-  // ⚠️ Alt sınır 1, sıfır DEĞİL: sıfır "erteleme yok" demek olurdu ve o
-  // kararın zaten bir yeri var — eşiği 50 TL'ye çekmek (Ü52 ile en pahalı
-  // ödül 50 TL). İki ayrı yerden aynı şeyi kapatmak, kafenin "neden hâlâ
-  // erteleniyor" sorusunu iki yere birden baktırırdı.
+  // ⚠️ Alt sınır 1, sıfır DEĞİL: sıfır "erteleme yok" demek olurdu ve
+  // Ü269'un kuralı tam tersi — *"her ödül gecikmeli açılmalı"*. Kafe
+  // saati kısaltabilir ama ertelemeyi kapatamaz.
   //
   // ⚠️ Üst sınır 48: kupon `GECERLILIK_GUN` kadar geçerli ve erteleme
   // ondan uzun olursa kupon **açılmadan** ölürdü. 48 saat, geçerlilik
@@ -254,7 +274,10 @@ export async function sayiYaz(opts: {
   if (!Number.isInteger(opts.deger) || opts.deger < sinir.en_az || opts.deger > sinir.en_cok) {
     return {
       ok: false,
-      hata: `Değer ${sinir.en_az / 100} ile ${sinir.en_cok / 100} TL arasında olmalı.`,
+      hata:
+        sinir.en_cok >= SINIRSIZ
+          ? `Değer en az ${sinir.en_az / 100} TL olmalı.`
+          : `Değer ${sinir.en_az / 100} ile ${sinir.en_cok / 100} TL arasında olmalı.`,
     };
   }
 

@@ -62,7 +62,7 @@ export default async function CarkSayfasi({
 
   if (!masa && !hak) {
     return (
-      <Sayfa>
+      <Sayfa geri={{ href: "/oyna", etiket: "Ana ekran" }}>
         <Baslik ust="Şans çarkı">Çark hakkın yok</Baslik>
         <p className="text-[15px] leading-relaxed text-yazi-sonuk">
           <strong className="text-yazi">Kafede:</strong> masadaki karekodu okut, oyna —
@@ -97,7 +97,7 @@ export default async function CarkSayfasi({
   const dilimler = durum.acik || durum.sebep === "sure" ? durum.dilimler : [];
 
   return (
-    <Sayfa>
+    <Sayfa geri={{ href: "/oyna", etiket: "Ana ekran" }}>
       {/*
         Künye yalnızca kafede: butikte masa diye bir şey yok ve "—" yazan
         bir masa satırı, olmayan bir kavramı varmış gibi gösterirdi.

@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { goreliYonlendir } from "@/lib/yonlendir";
 import { headers } from "next/headers";
 import { ziyaret, DAVET_COOKIE, DAVET_COOKIE_OMRU_SN } from "@/domain/davet";
 import * as oturum from "@/domain/session";
@@ -25,7 +25,9 @@ import { log } from "@/lib/log";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(istek: Request, ctx: { params: Promise<{ kod: string }> }) {
+// Ü273: göreli yönlendirme — `istek.url` sunucunun dinlediği adresi (0.0.0.0)
+// taşıyabiliyor, kullanıcının geldiği adresi değil. Bkz. `lib/yonlendir.ts`.
+export async function GET(_istek: Request, ctx: { params: Promise<{ kod: string }> }) {
   const { kod } = await ctx.params;
 
   // Oturumu açık oyuncu davet edilemez — hesabı zaten var (Ü20: yalnızca
@@ -33,7 +35,7 @@ export async function GET(istek: Request, ctx: { params: Promise<{ kod: string }
   // boyunca boşuna beklerdi; en olası tıklayan da davetin kendi sahibi.
   const mevcut = await oturum.oku();
   if (mevcut?.rol === "oyuncu") {
-    return NextResponse.redirect(new URL("/oyna", istek.url));
+    return goreliYonlendir("/oyna");
   }
 
   const h = await headers();
@@ -47,7 +49,7 @@ export async function GET(istek: Request, ctx: { params: Promise<{ kod: string }
     uaHash: ua ? identifierHash(ua) : undefined,
   });
 
-  const cevap = NextResponse.redirect(new URL("/giris", istek.url));
+  const cevap = goreliYonlendir("/giris");
 
   if (!referralId) {
     log.warn("gecersiz davet kodu");

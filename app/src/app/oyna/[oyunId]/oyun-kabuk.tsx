@@ -11,6 +11,7 @@ import { RENK, oyunRengi } from "@/components/oyuncu-renk";
 import { OyunIkonu, HediyeIkonu, TacIkonu } from "@/components/oyuncu-ikon";
 import { Gorsel, oyunGorseli } from "@/components/oyuncu-gorsel";
 import { SeviyeKutlamasi } from "@/components/seviye-kutlamasi";
+import { SeviyeSahnesi } from "@/components/seviye-sahnesi";
 import { RozetKutlamasi } from "@/components/rozet-kutlamasi";
 import { baslaEylemi, bitirEylemi, type BitirCevabi, teklifAlEylemi } from "./actions";
 
@@ -108,6 +109,54 @@ export function OyunKabugu(ayar: Ayar) {
     otomatikBasladi.current = true;
     turBaslat();
   }, [ayar.hemenBasla, turBaslat]);
+
+  /*
+    🔴 Ü274: oynarken sayfa KAYMIYOR ve aşağı çekince YENİLENMİYOR.
+
+    Ürün sahibi: "parmağımla kaydırırken oynarken sayfa da yukarı kayıyor
+    ve sayfa yenileniyor gibi oluyor." `touch-action: none` yalnızca oyun
+    tahtasındaydı; nişan alırken parmak tahtanın dışına taşınca sayfa
+    sürükleniyor, en üstteyse iOS "aşağı çek, yenile" hareketini
+    başlatıyordu.
+
+    Tur boyunca sayfa sabitleniyor (`position: fixed` — iOS'ta
+    `overflow: hidden` tek başına yetmiyor) ve belgedeki dokunma
+    kaydırması iptal ediliyor. Oyunlar işaretçi (pointer) olaylarını
+    dinliyor; `touchmove`u iptal etmek onları etkilemiyor, yalnızca
+    tarayıcının kaydırmasını durduruyor. Tur bitince her şey eski
+    hâline ve sayfa aynı yere dönüyor.
+  */
+  useEffect(() => {
+    if (durum.tur !== "oynuyor") return;
+    const html = document.documentElement;
+    const body = document.body;
+    const y = window.scrollY;
+    const onceki = {
+      overflow: html.style.overflow,
+      overscroll: html.style.overscrollBehavior,
+      position: body.style.position,
+      top: body.style.top,
+      width: body.style.width,
+    };
+    html.style.overflow = "hidden";
+    html.style.overscrollBehavior = "none";
+    body.style.position = "fixed";
+    body.style.top = `-${y}px`;
+    body.style.width = "100%";
+    const kaydirmaYok = (e: TouchEvent) => {
+      if (e.cancelable) e.preventDefault();
+    };
+    document.addEventListener("touchmove", kaydirmaYok, { passive: false });
+    return () => {
+      document.removeEventListener("touchmove", kaydirmaYok);
+      html.style.overflow = onceki.overflow;
+      html.style.overscrollBehavior = onceki.overscroll;
+      body.style.position = onceki.position;
+      body.style.top = onceki.top;
+      body.style.width = onceki.width;
+      window.scrollTo(0, y);
+    };
+  }, [durum.tur]);
 
   if (durum.tur === "oynuyor") {
     return (
@@ -287,7 +336,7 @@ function SonucEkrani({
     );
   }
 
-  const { skor, basarili, puan, esik, seri, challenge, xp, kazandirir, yeniRozetler, kupon, taht, kampanya, teklif, seviye } =
+  const { skor, basarili, puan, esik, seri, challenge, xp, kazandirir, yeniRozetler, kupon, taht, kampanya, teklif, seviye, odulYok } =
     cevap;
 
   /*
@@ -375,6 +424,9 @@ function SonucEkrani({
         konsaydı "300 puan, 50 XP, bir de seviye" gibi okunurdu — oysa
         diğerleri her turda oluyor, bu on turda bir.
       */}
+      {/* Ü274: seviye atlama önce TAM EKRAN sahneyle geliyor (seri gibi);
+          kart kapanınca sonuçların arasında kaydı olarak duruyor. */}
+      {seviye && <SeviyeSahnesi seviye={seviye.yeni} />}
       {seviye && <SeviyeKutlamasi seviye={seviye.yeni} />}
 
       {/*
@@ -460,6 +512,19 @@ function SonucEkrani({
 
               ⚠️ TL değeri hâlâ yok ve olmayacak (E9). Değişen şey
               sürprizin süresi, gizlenen bilgi değil. */}
+          {/* 🔴 Ü274: kafe kapalıyken ödül çıkmıyor ve ekran bunu SÖYLÜYOR.
+              Önce susuyordu: ürün sahibi gece ödüllü bloğu kırdı, tur
+              bitti, hiçbir şey olmadı ve sebebini bilemedi. */}
+          {!kupon && odulYok?.sebep === "kafe_kapali" && (
+            <p
+              className="gir rounded-2xl border border-cizgi bg-yuzey px-4 py-3.5 text-[13px] leading-relaxed text-yazi-sonuk"
+              style={{ animationDelay: `${190 + satirlar.length * 90}ms` }}
+            >
+              <strong className="text-yazi">Kafe şu an kapalı</strong>, bu turda ödül
+              çıkmadı. Ödüller {String(odulYok.acilis).padStart(2, "0")}:00&apos;da açılıyor;
+              puanın ve XP&apos;n yazıldı.
+            </p>
+          )}
           {kupon && (
             <Link
               href="/oduller"

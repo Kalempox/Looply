@@ -42,7 +42,7 @@ export default async function LoopySayfasi() {
   const secim = await avatar.oku(o.ozneId);
 
   return (
-    <Sayfa>
+    <Sayfa geri={{ href: "/oyna", etiket: "Ana ekran" }}>
       <Baslik ust="Arkadaşın">Loopy&apos;i özelleştir</Baslik>
 
       <p className="mb-6 text-[15px] leading-relaxed text-yazi-sonuk">

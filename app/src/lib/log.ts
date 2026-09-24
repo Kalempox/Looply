@@ -22,8 +22,19 @@ const YASAKLI_ALANLAR = new Set([
   "authorization", "cookie", "set-cookie",
 ]);
 
-/** +90…, 05…, 5… ile başlayan Türk cep numarası biçimleri */
-const TELEFON_DESENI = /(?:\+?90[\s.-]?)?0?[\s.-]?5\d{2}[\s.-]?\d{3}[\s.-]?\d{2}[\s.-]?\d{2}/g;
+/**
+ * +90…, 05…, 5… ile başlayan Türk cep numarası biçimleri.
+ *
+ * 🔴 Ü272: harf ya da rakamla BİTİŞİK diziler numara sayılmıyor. Sınır
+ * yokken kimliklerin ortasındaki rakamlar maskeleniyordu —
+ * `cafe_0mt68s475925084831c7311e9` denetim izine
+ * `cafe_0mt68s47[telefon]c7311e9` olarak geçti ve kayıt hiçbir kafeyle
+ * eşleşmez oldu (9 satır, 2026-09-17'den beri: çark hakkı ve karekod
+ * taşıma). Serbest metindeki numara hep bir boşluk, noktalama ya da
+ * satır başıyla ayrılıyor; kimliğin içindeki rakam ise ayrılmıyor.
+ */
+const TELEFON_DESENI =
+  /(?<![\p{L}\p{N}_])(?:\+?90[\s.-]?)?0?[\s.-]?5\d{2}[\s.-]?\d{3}[\s.-]?\d{2}[\s.-]?\d{2}(?![\p{L}\p{N}_])/gu;
 
 export type LogLevel = "debug" | "info" | "warn" | "error";
 export type LogFields = Record<string, unknown>;

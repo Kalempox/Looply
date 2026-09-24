@@ -405,10 +405,18 @@ export function SekmeEkrani({ tohum, bitti, kazandirir, cik }: OyunEkraniProps) 
                   return (
                     <span key={`o-${n.k}-${n.s}-${i}`} className="absolute" style={ortak}>
                       {/* `inset`, `padding` değil — yukarıdaki nota bak.
-                          Ü251: ödül havadan düşüyor — `key` hücreden
-                          türediği için animasyon bir kez koşuyor. */}
+
+                          Ü251: ödül havadan düşüyor. 🔴 Ü274: YALNIZCA
+                          doğduğu satırda (s = 0). Önceki not "`key`
+                          hücreden türediği için animasyon bir kez
+                          koşuyor" diyordu — yanlıştı: her atıştan sonra
+                          bütün satırlar bir iniyor, hücre değişiyor,
+                          `key` değişiyor ve eleman yeniden kuruluyordu.
+                          Ürün sahibi: "ödüllü blok her atışımda üstten
+                          yeniden düşüp oyuna yeniden geldi gibi oldu."
+                          Motor yeni satırı her zaman s = 0'a koyuyor. */}
                       <span
-                        className="sekme-odul-dus absolute inset-[9%]"
+                        className={`${n.s === 0 ? "sekme-odul-dus " : ""}absolute inset-[9%]`}
                         style={sekmeOdulu()}
                       />
                     </span>

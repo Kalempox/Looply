@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { goreliYonlendir } from "@/lib/yonlendir";
 import { coz, sahiplen, HAK_COOKIE, HAK_OMRU_DK } from "@/domain/cark-hakki";
 import * as oturum from "@/domain/session";
 import { log } from "@/lib/log";
@@ -39,7 +39,9 @@ import { log } from "@/lib/log";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(istek: Request, ctx: { params: Promise<{ jeton: string }> }) {
+// Ü273: göreli yönlendirme — `istek.url` sunucunun dinlediği adresi (0.0.0.0)
+// taşıyabiliyor, kullanıcının geldiği adresi değil. Bkz. `lib/yonlendir.ts`.
+export async function GET(_istek: Request, ctx: { params: Promise<{ jeton: string }> }) {
   const { jeton } = await ctx.params;
   const hak = await coz(jeton);
 
@@ -47,7 +49,7 @@ export async function GET(istek: Request, ctx: { params: Promise<{ jeton: string
     // Sebep adres satırında taşınıyor: müşteri "neden olmadı" sorusunun
     // cevabını görmeli — kasaya geri dönüp kasiyere soracak olan o.
     log.warn("gecersiz cark hakki", { durum: hak.durum });
-    return NextResponse.redirect(new URL(`/cark?hak=${hak.durum}`, istek.url));
+    return goreliYonlendir(`/cark?hak=${hak.durum}`);
   }
 
   const o = await oturum.oku();
@@ -56,9 +58,9 @@ export async function GET(istek: Request, ctx: { params: Promise<{ jeton: string
     const sonuc = await sahiplen(hak.hakId, o.ozneId);
     if (!sonuc.ok) {
       // Araya biri girdi: aynı QR başka bir telefonda okutuldu.
-      return NextResponse.redirect(new URL("/cark?hak=kullanildi", istek.url));
+      return goreliYonlendir("/cark?hak=kullanildi");
     }
-    return NextResponse.redirect(new URL("/cark?hak=hazir", istek.url));
+    return goreliYonlendir("/cark?hak=hazir");
   }
 
   /*
@@ -68,7 +70,7 @@ export async function GET(istek: Request, ctx: { params: Promise<{ jeton: string
     Giriş yarıda bırakılırsa hak boşta kalıyor ve süresi dolunca
     kendiliğinden sönüyor.
   */
-  const cevap = NextResponse.redirect(new URL("/giris", istek.url));
+  const cevap = goreliYonlendir("/giris");
   cevap.cookies.set(HAK_COOKIE, jeton, {
     httpOnly: true,
     secure: process.env.APP_ENV === "production",

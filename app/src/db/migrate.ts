@@ -98,7 +98,34 @@ export async function migrate(): Promise<{ applied: string[]; skipped: number }>
 
     const onceki = uygulanmis.get(file);
     if (onceki) {
-      if (onceki !== checksum) {
+      /*
+        🔴 Satır sonu değişikliği "düzenleme" sayılmıyor — Ü268.
+
+        Bu depo Windows'ta `core.autocrlf = true` ile çalışıyor ve git,
+        dosyaya her dokunduğunda (checkout, stash, reset) satır sonlarını
+        LF ↔ CRLF çevirebiliyor. Özet ham baytlardan alındığı için içerik
+        aynı kaldığı hâlde göç "uygulandıktan sonra değiştirilmiş"
+        sayılıyor ve `db:migrate` duruyordu. Ölçüldü: 0046 ve 0047,
+        commitleri tek tek doğrulamak için yapılan `git stash` sonrası
+        CRLF'ye dönmüştü.
+
+        ⚠️ Kayıtlı özetler KARIŞIK — bazı göçler uygulandıklarında zaten
+        CRLF'ydi (0019, 0025, 0035–0040), bazıları LF. Bu yüzden özeti
+        tek bir biçime normalleştirmek eski kayıtları bozardı; onun
+        yerine kayıt, dosyanın ham, LF ve CRLF biçimlerinden **herhangi
+        biriyle** eşleşirse kabul ediliyor. Satır sonu dışındaki her
+        değişiklik yine yakalanıyor.
+      */
+      const lf = (m: string) => m.replace(/\r\n/g, "\n");
+      const crlf = (m: string) => lf(m).replace(/\n/g, "\r\n");
+      const ozet = (a: string, b: string) =>
+        createHash("sha256").update(a).update(b).digest("hex").slice(0, 16);
+      const kabul = new Set([
+        checksum,
+        ozet(lf(sql), lf(veriKaynagi)),
+        ozet(crlf(sql), crlf(veriKaynagi)),
+      ]);
+      if (!kabul.has(onceki)) {
         // Özet `.sql` ve varsa `.ts` üzerinden hesaplanıyor; ikisinden
         // hangisinin değiştiğini bilmiyoruz, bu yüzden ikisini de adıyla
         // söylüyoruz — "sql'e dokunmadım ki" diye aranmasın.

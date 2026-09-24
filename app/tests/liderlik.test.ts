@@ -10,7 +10,7 @@ import * as liderlik from "@/domain/liderlik";
 import { adGorunurluguAyarla } from "@/domain/taht";
 import { newId } from "@/lib/ids";
 import { isGunu, pazartesi, gunEkle } from "@/lib/tarih";
-import { benzersizEposta } from "./_yardim";
+import { benzersizEposta, testKafeleriniSil } from "./_yardim";
 
 /**
  * LİDERLİK TABLOSU.
@@ -34,8 +34,18 @@ const yeniTelefon = () => normalizePhone(`0534${String(TABAN + sayac++).slice(-7
 
 const OYUN = "blok";
 
+/**
+ * Bu dosyanın açtığı kafeler — sonunda SİLİNİYOR (Ü271).
+ *
+ * ⚠️ Önce silinmiyordu: her koşu yeni onaylı kafeler bırakıyordu ve
+ * geliştirme veritabanında 4.556'ya ulaştılar. Platform panelinin
+ * "hangi kafeye gitsin" listesi kullanılmaz olmuştu.
+ */
+const olusanKafeler: string[] = [];
+
 async function kafeKur(ad: string): Promise<string> {
   const id = newId("cafe");
+  olusanKafeler.push(id);
   await withBypass("test kafe", (db) =>
     db.query(
       `INSERT INTO cafes (id, name, slug, status, lat, lng)
@@ -94,6 +104,7 @@ before(async () => {
 });
 
 after(async () => {
+  await testKafeleriniSil(olusanKafeler);
   await closePools();
 });
 

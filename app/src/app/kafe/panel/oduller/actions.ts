@@ -90,7 +90,11 @@ export async function durumEylemi(odulId: string, aktif: boolean): Promise<void>
 export type EsikDurumu = { hata?: string; bilgi?: string };
 
 /**
- * Erteleme eşiği — bu tutarın üstündeki ödül 12 saat sonra açılır (Ü28, Ü97).
+ * Açılma ve geçerlilik ayarları — aktivasyon saati, kupon ömrü, ödül üst
+ * sınırı.
+ *
+ * ⚠️ Ü269: tutar eşiği ("gecikmeli açılma eşiği") KALKTI; her ödül
+ * aktivasyon saati kadar sonra açılıyor. Formda artık eşik alanı yok.
  *
  * Kafenin ayarı, platformun değil: ödül ekonomisi kafeden kafeye değişiyor.
  * E6'nın kanıt kademesi buradan **etkilenmiyor** — kafe kendi ödülünün kanıt
@@ -100,22 +104,13 @@ export type EsikDurumu = { hata?: string; bilgi?: string };
 export async function esikEylemi(_onceki: EsikDurumu, form: FormData): Promise<EsikDurumu> {
   const o = await kafeYoneticisiGerekli();
 
-  const tl = sayi(form, "esik");
   const saat = sayi(form, "saat");
   const gun = sayi(form, "gun");
+  const ustSinir = sayi(form, "ustSinir");
 
-  const esikSonucu = await ayar.sayiYaz({
-    cafeId: o.cafeId,
-    anahtar: ayar.ANAHTARLAR.ertelemeEsigi,
-    deger: tl * 100,
-    aktorId: o.ozneId,
-  });
-  if (!esikSonucu.ok) return { hata: esikSonucu.hata };
-
-  // Ü129: aktivasyon saati de kafenin ayarı. İki alan **tek formda ve tek
-  // eylemde**: ayrı kaydedilselerdi kafe eşiği değiştirip saati eski
-  // bırakabilir ve panelde gördüğü cümle ("35 TL üstü 12 saat sonra")
-  // yarısı yeni yarısı eski bir kural anlatırdı.
+  // Ü129: aktivasyon saati kafenin ayarı. Alanlar **tek formda ve tek
+  // eylemde**: ayrı kaydedilselerdi panelde gördüğü cümle ("12 saat sonra
+  // açılır, 7 gün geçerli") yarısı yeni yarısı eski bir kural anlatırdı.
   const saatSonucu = await ayar.sayiYaz({
     cafeId: o.cafeId,
     anahtar: ayar.ANAHTARLAR.ertelemeSaati,
@@ -124,10 +119,7 @@ export async function esikEylemi(_onceki: EsikDurumu, form: FormData): Promise<E
   });
   if (!saatSonucu.ok) return { hata: saatSonucu.hata };
 
-  /* Ü250: geçerlilik süresi de aynı formda. Üçü tek eylemde çünkü
-     panelde tek bir cümle anlatıyorlar ("35 TL üstü 12 saat sonra
-     açılır, 7 gün geçerli"); ayrı kaydedilselerdi cümlenin yarısı
-     yeni yarısı eski olabilirdi. */
+  /* Ü250: geçerlilik süresi de aynı formda — aynı gerekçe. */
   const gunSonucu = await ayar.sayiYaz({
     cafeId: o.cafeId,
     anahtar: ayar.ANAHTARLAR.gecerlilikGunu,
@@ -136,15 +128,20 @@ export async function esikEylemi(_onceki: EsikDurumu, form: FormData): Promise<E
   });
   if (!gunSonucu.ok) return { hata: gunSonucu.hata };
 
+  // Ü268 · K5 — ödül üst sınırı. Aynı eylemde, aynı gerekçe.
+  const ustSinirSonucu = await ayar.sayiYaz({
+    cafeId: o.cafeId,
+    anahtar: ayar.ANAHTARLAR.odulUstSinir,
+    deger: ustSinir * 100,
+    aktorId: o.ozneId,
+  });
+  if (!ustSinirSonucu.ok) return { hata: `Ödül üst sınırı: ${ustSinirSonucu.hata}` };
+
   revalidatePath("/kafe/panel/oduller");
-  /* ⚠️ Cümle üç ayarı da söylüyor. İkisini söyleyip üçüncüsünü
-     atlasaydı kafe "gün sayısı kaydedildi mi" diye tekrar bakardı. */
+  /* ⚠️ Cümle ayarları söylüyor. Birini atlasaydı kafe "kaydedildi mi"
+     diye tekrar bakardı. */
   return {
-    bilgi:
-      (tl === 0
-        ? `Artık her ödül ${saat} saat sonra açılıyor`
-        : `${tl.toLocaleString("tr-TR")} TL üstündeki ödüller ${saat} saat sonra açılacak`) +
-      ` ve açıldıktan sonra ${gun} gün geçerli olacak.`,
+    bilgi: `Her ödül ${saat} saat sonra açılacak ve açıldıktan sonra ${gun} gün geçerli olacak.`,
   };
 }
 

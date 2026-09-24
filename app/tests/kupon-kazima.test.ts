@@ -184,7 +184,15 @@ async function kapaliKupon(playerId: string): Promise<string> {
   });
   assert.ok(s.ok, s.ok === false ? s.hata : "");
   const kuponId = s.ok ? s.kuponId : "";
-  await yoneticiSorgu(`UPDATE coupons SET revealed_at = NULL WHERE id = $1`, [kuponId]);
+  /* ⚠️ Ü269: her kupon ertelenerek doğuyor. Bu testler kazımayı sınıyor,
+     ertelemeyi değil — açılma anı geçmişe alınıyor ki kazınan kupon
+     "kullanılabilir"e geçebilsin. Kazınan ama AÇILMAMIŞ kuponun nereye
+     gittiği aşağıda ayrıca sınanıyor. */
+  await yoneticiSorgu(
+    `UPDATE coupons SET revealed_at = NULL, activates_at = now() - interval '1 minute'
+      WHERE id = $1`,
+    [kuponId],
+  );
   return kuponId;
 }
 
@@ -283,6 +291,42 @@ describe("kapalı kupon", () => {
    ═══════════════════════════════════════════════════════════ */
 
 describe("kazıma", () => {
+  /**
+   * Ü269: kupon kazınabiliyor ama henüz açılmamış olabiliyor — her ödül
+   * aktivasyon saati kadar bekliyor. Kazınan kupon kaybolmamalı: adı
+   * görünür ve **bekleyenler** arasında durur; kasada gösterilecek yere
+   * açılınca geçer.
+   */
+  test("kazınan ama açılmamış kupon bekleyende duruyor (Ü269)", async () => {
+    const p = await yeniOyuncu();
+    const s = await kupon.carkOduluVer({
+      playerId: p,
+      cafeId: kafeId,
+      odulId,
+      kanitSeviyesi: 4,
+      ilkCevirme: true,
+      an: KAFE_ACIK,
+    });
+    assert.ok(s.ok, s.ok === false ? s.hata : "");
+    const kuponId = s.ok ? s.kuponId : "";
+    await yoneticiSorgu(`UPDATE coupons SET revealed_at = NULL WHERE id = $1`, [kuponId]);
+
+    const once = await envanter(p);
+    assert.ok(once.kazinacak.some((x) => x.id === kuponId), "açılmamış kapalı kupon kazınamıyor");
+
+    const sonuc = await kaz(p, kuponId);
+    assert.ok(sonuc.ok, "açılmamış kupon kazınamadı");
+
+    const e = await envanter(p);
+    assert.equal(e.kazinacak.some((x) => x.id === kuponId), false, "kupon hâlâ kazınacaklarda");
+    assert.ok(e.bekleyen.some((x) => x.id === kuponId), "kazınan kupon bekleyenlere geçmedi — kayboldu");
+    assert.equal(
+      e.kullanilabilir.some((x) => x.id === kuponId),
+      false,
+      "açılmamış kupon kullanılabilir göründü",
+    );
+  });
+
   test("kazıyınca ad geliyor ve kupon olağan yerine dönüyor", async () => {
     const p = await yeniOyuncu();
     const kuponId = await kapaliKupon(p);

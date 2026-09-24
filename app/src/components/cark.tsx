@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, useTransition } from "react";
 import { OdulAcilisi } from "./odul-acilisi";
 
 /**
@@ -35,6 +35,27 @@ export type CevirmeCevabi =
 
 /** Dönüş süresi (ms) — animasyon ve sonucun açılması bu süreye bağlı. */
 const DONUS_MS = 4600;
+
+/**
+ * WebM'in saydamlığını (VP9 alfa) ÇİZMEYEN motor — Ü274.
+ *
+ * 🔴 Ürün sahibi iPhone'da çarkı çevirdi: Loopy'nin arkasında SİYAH bir
+ * kutu çıktı. Safari (ve iOS'taki bütün tarayıcılar — hepsi WebKit)
+ * VP9 alfayı yok sayıyor; Ü197'nin notu bu ihtimali yazmıştı, telefon
+ * doğruladı. Bu motorlarda video yerine saydam **animasyonlu WebP**
+ * oynatılıyor; ötekilerde video olduğu gibi kalıyor.
+ */
+function alfasizWebkit(): boolean {
+  const ua = navigator.userAgent;
+  const ios = /iP(hone|ad|od)/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+  const safari = /AppleWebKit/.test(ua) && !/Chrome|Chromium|CriOS|Edg|OPR|Firefox|FxiOS/.test(ua);
+  return ios || safari;
+}
+
+/* `useSyncExternalStore` için: motor sayfa boyunca değişmiyor. Sunucu
+   `false` çiziyor (video), istemci ilk çizimden sonra kendi değerine
+   geçiyor — hidrasyon uyuşmazlığı yok. */
+const abonelikYok = () => () => {};
 
 /** Kaç tam tur atsın — az turda çark "kaydı" gibi duruyor. */
 const TUR = 6;
@@ -101,6 +122,11 @@ export function Cark({
       setDonuyor(true);
       donusBildir?.(true);
       setAci(aci + 360 * TUR + fark);
+      // Ü274 · WebKit: animasyonlu WebP'yi baştan başlatan yeni adres.
+      const blob = animasyon.current;
+      const azHareket = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      const animAdresi = alfasiz && blob && !azHareket ? URL.createObjectURL(blob) : null;
+      setAnimSrc(animAdresi);
 
       // Sonucu animasyon bitmeden yazmıyoruz: yazsaydık çark hâlâ
       // dönerken "kazandın" görünür ve dönüşün bir anlamı kalmazdı.
@@ -108,6 +134,8 @@ export function Cark({
         setSonuc({ baslik: c.baslik, dilim: c.dilim });
         setDonuyor(false);
         donusBildir?.(false);
+        setAnimSrc(null);
+        if (animAdresi) URL.revokeObjectURL(animAdresi);
       }, DONUS_MS);
     });
 
@@ -128,6 +156,29 @@ export function Cark({
    * video bir süs ve yokluğunda çark yine dönüyor.
    */
   const loopyRef = useRef<HTMLVideoElement>(null);
+
+  /*
+    Ü274 · WebKit yolu: video yerine animasyonlu WebP.
+
+    ⚠️ Dosya sayfa açılınca BİR KEZ indiriliyor (videodaki
+    `preload="auto"` ile aynı gerekçe) ve her dönüşte ondan YENİ bir
+    `blob:` adresi üretiliyor. Aynı adres ikinci kez verilse tarayıcı
+    animasyonu baştan başlatmayabilir — son karede donmuş bir Loopy
+    kalırdı. Yeni adres, yeni çözümleme, ilk kare.
+  */
+  const alfasiz = useSyncExternalStore(abonelikYok, alfasizWebkit, () => false);
+  const animasyon = useRef<Blob | null>(null);
+  const [animSrc, setAnimSrc] = useState<string | null>(null);
+  useEffect(() => {
+    if (!alfasiz) return;
+    fetch("/cark/loopy-cevirir.webp")
+      .then((r) => (r.ok ? r.blob() : null))
+      .then((b) => {
+        animasyon.current = b;
+      })
+      .catch(() => {});
+  }, [alfasiz]);
+
   useEffect(() => {
     const v = loopyRef.current;
     if (!v) return;
@@ -304,6 +355,16 @@ export function Cark({
               düğmesi var. Sol alt, dilim yazılarının (yarıçapın %54'ü)
               dışında kalan tek serbest çeyrek.
             */}
+            {alfasiz ? (
+              // eslint-disable-next-line @next/next/no-img-element -- blob: adresi next/image'den geçmiyor
+              <img
+                src={animSrc ?? "/cark/loopy-duruyor.webp"}
+                alt=""
+                aria-hidden
+                className="cark-loopy"
+                style={{ left: "-6%", bottom: "-2%", width: "44%" }}
+              />
+            ) : (
             <video
               ref={loopyRef}
               src="/cark/loopy-cevirir.webm"
@@ -327,6 +388,7 @@ export function Cark({
               className="cark-loopy"
               style={{ left: "-6%", bottom: "-2%", width: "44%" }}
             />
+            )}
           </div>
 
           {/* ⚠️ Bu blok Ü193'e kadar İKİ KEZ yazılıydı; çevirme

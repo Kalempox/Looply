@@ -52,6 +52,31 @@ describe("log koruması", () => {
     }
   });
 
+  /**
+   * 🔴 Ü272 — kimliğin ORTASINDAKİ rakamlar telefon değil.
+   *
+   * Kafe A'nın kimliği `cafe_0mt68s475925084831c7311e9` içinde
+   * `5925084831` geçiyor: 5 ile başlayan on hane. Desen sınırsızken
+   * denetim izi kimliği `[telefon]` ile bozdu ve kayıt hiçbir kafeyle
+   * eşleşmez oldu.
+   */
+  test("🔴 kimliklerin içindeki rakamlar maskelenmiyor — denetim izi bozulmasın", () => {
+    const kimlikler = [
+      "cafe_0mt68s475925084831c7311e9",
+      "tbl_5321234567ab",
+      "kpn_05321234567x",
+      "rwd_0m9f5321234567",
+    ];
+    for (const id of kimlikler) {
+      const sonuc = redact({ kaynakKafe: id }) as { kaynakKafe: string };
+      assert.equal(sonuc.kaynakKafe, id, `kimlik bozuldu: ${id} → ${sonuc.kaynakKafe}`);
+    }
+    // Numara kimliğin yanında ama AYRIYSA yine maskeleniyor.
+    const karisik = redact({ m: "cafe_0mt68s47 0532 123 45 67 aradı" }) as { m: string };
+    assert.ok(karisik.m.includes("cafe_0mt68s47"), "kimlik bozuldu");
+    assert.ok(karisik.m.includes("[telefon]"), "ayrı yazılmış numara maskelenmedi");
+  });
+
   test("zararsız alanlar olduğu gibi geçer", () => {
     const sonuc = redact({
       cafe_id: "cafe_abc",

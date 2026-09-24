@@ -97,7 +97,9 @@ export function DurumSeridi({
   }[durum.tur];
 
   return (
-    <div className={`sticky top-0 z-10 -mx-5 mb-8 border-b bg-yuzey/90 px-5 py-3 backdrop-blur ${stil}`}>
+    /* Ü274: şerit inceldi — `py-3` → `py-1.5`, alt boşluk 8 → 5, ikinci
+       satır 11 px, avatar ve düğmeler küçüldü. Bkz. `OyuncuNav` notu. */
+    <div className={`sticky top-0 z-10 -mx-5 mb-5 border-b bg-yuzey/90 px-5 py-1.5 backdrop-blur ${stil}`}>
       <div className="flex items-center gap-3">
         <Nokta tur={durum.tur} />
 
@@ -109,14 +111,14 @@ export function DurumSeridi({
                   ne yapılacağı söylenmiyordu. Kazanmanın tek yolu masadaki
                   karekodu okutmak; oyuncu bunu bilmezse uygulamayı bozuk
                   sanıyor. */}
-              <div className="text-[12px] text-yazi-sonuk">
+              <div className="text-[11px] leading-tight text-yazi-sonuk">
                 Kazanmak için masadaki karekodu okut
               </div>
             </>
           ) : durum.tur === "oturum_doldu" ? (
             <>
               <div className="etiket-caps truncate">Masa oturumun doldu</div>
-              <div className="text-[12px] text-yazi-sonuk">
+              <div className="text-[11px] leading-tight text-yazi-sonuk">
                 {masaKunyesi(durum.kafe, durum.masa)} — karekodu tekrar okut, kaldığın
                 yerden devam et
               </div>
@@ -126,7 +128,7 @@ export function DurumSeridi({
               <div className="etiket-caps truncate">
                 {masaKunyesi(durum.kafe, durum.masa)}
               </div>
-              <div className="text-[12px] text-yazi-sonuk">
+              <div className="text-[11px] leading-tight text-yazi-sonuk">
                 {gecici ??
                   {
                     konum_bekliyor: "Kazanabilmek için konumunu doğrula",
@@ -167,10 +169,10 @@ export function DurumSeridi({
         <Link
           href="/profil"
           aria-label="Profilin ve avatarın"
-          className="ml-1 grid size-9 shrink-0 place-items-center overflow-hidden rounded-full border border-cizgi bg-yuzey"
+          className="ml-1 grid size-7 shrink-0 place-items-center overflow-hidden rounded-full border border-cizgi bg-yuzey"
         >
           <span aria-hidden className="block">
-            <Avatar boy={24} ifade="sakin" />
+            <Avatar boy={20} ifade="sakin" />
           </span>
         </Link>
 
@@ -193,7 +195,7 @@ export function DurumSeridi({
               type="button"
               onClick={konumIste}
               disabled={bekliyor}
-              className="etiket-caps rounded border border-current px-3 py-1.5 disabled:opacity-50"
+              className="etiket-caps rounded border border-current px-2.5 py-1 disabled:opacity-50"
             >
               {bekliyor ? "…" : durum.tur === "konum_bekliyor" ? "Doğrula" : "Tekrar"}
             </button>
@@ -212,7 +214,7 @@ export function DurumSeridi({
                   })
                 }
                 disabled={bekliyor}
-                className="etiket-caps rounded border border-odul px-2.5 py-1.5 text-odul-koyu disabled:opacity-50"
+                className="etiket-caps rounded border border-odul px-2 py-1 text-odul-koyu disabled:opacity-50"
                 title="Yalnızca geliştirmede görünür"
               >
                 Kafedeyim

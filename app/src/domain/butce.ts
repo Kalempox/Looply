@@ -107,6 +107,32 @@ export function tempoOrani(an: Date, acilisSaati: number, kapanisSaati: number):
   return ILK_PAY + (1 - ILK_PAY) * gecen;
 }
 
+/**
+ * Kafe şu an açık mı — Ü274.
+ *
+ * Kapalıyken hiçbir ödül dağıtılmıyor (Ü90, `tempoOrani` 0). Bu fonksiyon
+ * o kuralı **önceden sormak** için var: ürün sahibi gece 01:52'de çarkı
+ * çevirdi, çark "hazır" dedi ve kazandırmış gibi gösterdi; oyunda ödüllü
+ * bloğu kırdı ve hiçbir şey olmadı. Kural doğruydu, ekran sessizdi.
+ *
+ * `acilis` ekrandaki cümle için: "çark 09:00'da açılıyor".
+ */
+export async function kafeAcikMi(
+  cafeId: string,
+  an: Date = new Date(),
+): Promise<{ acik: boolean; acilis: number }> {
+  const [bas, bit] = await Promise.all([
+    ayar.sayiOku(cafeId, ayar.ANAHTARLAR.acilisSaati),
+    ayar.sayiOku(cafeId, ayar.ANAHTARLAR.kapanisSaati),
+  ]);
+  return { acik: tempoOrani(an, bas, bit) > 0, acilis: bas };
+}
+
+/** "9" → "09:00" — kapalı kafe cümlelerinde. */
+export function saatYaz(saat: number): string {
+  return `${String(saat).padStart(2, "0")}:00`;
+}
+
 export type Donem = {
   id: string;
   baslangic: string;

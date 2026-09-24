@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { kafeYoneticisiGerekli } from "@/domain/yetki";
 import * as masaYonetim from "@/domain/masa-yonetim";
 import { Karekod } from "@/components/karekod";
+import { istektenTabanAdres } from "@/lib/karekod-adresi";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Karekod — yazdır" };
@@ -32,8 +33,8 @@ export default async function KarekodYazdirSayfasi() {
   const o = await kafeYoneticisiGerekli();
   const [karekod, h] = await Promise.all([masaYonetim.kafeKarekodu(o.cafeId), headers()]);
 
-  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "looply";
-  const sema = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
+  // 🔴 Ü270: basılan kâğıt `localhost` taşımasın (bkz. `lib/karekod-adresi.ts`).
+  const taban = istektenTabanAdres(h);
 
   return (
     <main className="min-h-dvh bg-yuzey px-6 py-8 text-yazi">
@@ -63,7 +64,7 @@ export default async function KarekodYazdirSayfasi() {
               M'den H'ye çıkıyor ve rozet o bütçenin dörtte birini
               bile harcamıyor. */}
           <Karekod
-            deger={`${sema}://${host}/m/${karekod.kod}`}
+            deger={`${taban}/m/${karekod.kod}`}
             boyut={280}
             etiket={`${karekod.ad} karekodu`}
             isaret
