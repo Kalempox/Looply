@@ -84,6 +84,8 @@ export default async function OyunSayfasi({
         bonusMu={bonusMu}
         cafeAdi={masa?.cafeAdi ?? null}
         demoKapisi={kodEkrandaGosterilir()}
+        // Ü279: kafedeysen konum tur öncesi ve sayfa açıkken tazelenir.
+        konumTakibi={!!masa && masa.kafeKonumuVar}
         /*
           🔴 Varsayılan DOĞRUDAN BAŞLAMAK — Ü167.
 

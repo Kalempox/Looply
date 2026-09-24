@@ -3,7 +3,8 @@ import { durum, donemAraligi, tabanKurus, sonYediGun } from "@/domain/butce";
 import { odulDokumu } from "@/domain/kupon";
 import * as happy from "@/domain/happy";
 import { bakim } from "@/domain/bakim";
-import { isGunu } from "@/lib/tarih";
+import { dagitimPlani, type DagitimPlani } from "@/domain/dagitim-plani";
+import { isGunu, istanbulDakikasi } from "@/lib/tarih";
 import { IsletmeSayfa, IsletmeBaslik, Bolum } from "@/components/isletme";
 import { SayiKarti, Halka, IKON } from "@/components/gosterge";
 import { ButceFormu, SaatFormu } from "./kontroller";
@@ -29,11 +30,13 @@ export default async function ButceSayfasi() {
   // gösterdiği için iadeyi okumadan önce çalıştırıyoruz.
   await bakim();
 
-  const [d, yedi, dagitim, hhHavuz] = await Promise.all([
+  const [d, yedi, dagitim, hhHavuz, plan] = await Promise.all([
     durum(o.cafeId),
     sonYediGun(o.cafeId),
     odulDokumu(o.cafeId),
     happy.bugunkuHavuzKurus(o.cafeId),
+    // Ü281: bütçe kafenin kalabalığına göre dağıtılıyor — ekran bunu gösteriyor.
+    dagitimPlani(o.cafeId),
   ]);
   const aralik = donemAraligi(isGunu());
   const taban = d.donem?.tabanKurus ?? tabanKurus(aralik.gunSayisi);
@@ -246,6 +249,13 @@ export default async function ButceSayfasi() {
               </div>
             </div>
           </section>
+
+          <YogunlukBolumu
+            plan={plan}
+            taahhutKurus={taahhut}
+            baglananKurus={d.harcananKurus + d.rezerveKurus}
+            simdikiSaat={Math.floor(istanbulDakikasi(new Date()) / 60)}
+          />
         </>
       )}
 
@@ -339,6 +349,130 @@ function YediGunButce({
           </div>
         );
       })}
+    </div>
+  );
+}
+
+/**
+ * Yoğun saatler ve bugünkü dağıtım — Ü281.
+ *
+ * Ürün sahibi: *"en yoğun saatlere doğru miktarda bütçe kalmalı; bu her
+ * kafede farklı, sistem bunu akıllıca yapmalı"* ve *"panelde de göster."*
+ * Kafe sahibi sistemin kafesi hakkında ne öğrendiğini (grafik), bugün
+ * bütçenin ne kadarının açıldığını ve bir oyuncunun şu anki şansını
+ * görüyor. Şans, kararı veren fonksiyonun kendisinden (`dagitim-plani`).
+ */
+function YogunlukBolumu({
+  plan,
+  taahhutKurus,
+  baglananKurus,
+  simdikiSaat,
+}: {
+  plan: DagitimPlani;
+  taahhutKurus: number;
+  baglananKurus: number;
+  simdikiSaat: number;
+}) {
+  const saatYaz = (h: number) => `${String(h).padStart(2, "0")}:00`;
+  const yuzde = (x: number) => `%${Math.round(x * 100)}`;
+  const acik = [...Array(Math.max(0, plan.kapanis - plan.acilis)).keys()].map(
+    (i) => plan.acilis + i,
+  );
+  const enYuksek = Math.max(1e-9, ...acik.map((h) => plan.paylar[h]));
+  const yogunMu = (h: number) => plan.ogrenildi && h >= plan.enYogun.bas && h < plan.enYogun.bit;
+
+  return (
+    <section className="mb-9 rounded-2xl border border-cizgi bg-yuzey px-5 py-5">
+      <div className="flex flex-wrap items-baseline justify-between gap-3">
+        <span className="etiket-caps text-yazi-sonuk">Yoğun saatlerin ve bugünkü dağıtım</span>
+        <span className="font-data text-[11px] text-yazi-sonuk">
+          {plan.ogrenildi
+            ? `son 4 haftanın ${plan.gunTuru === "hafta_sonu" ? "hafta sonları" : "hafta içi günleri"} · ${plan.gunSayisi} gün`
+            : `öğreniliyor · ${plan.gunSayisi} günlük veri`}
+        </span>
+      </div>
+
+      {acik.length > 0 && (
+        <div className="mt-4 flex h-24 items-end gap-1" aria-hidden>
+          {acik.map((h) => (
+            <div key={h} className="flex flex-1 flex-col items-center gap-1">
+              <span className="relative flex w-full flex-1 items-end">
+                <span
+                  className={`w-full rounded-t-sm ${
+                    yogunMu(h) ? "bg-vurgu" : h === simdikiSaat ? "bg-odul" : "bg-yazi/35"
+                  }`}
+                  style={{ height: `${Math.max(4, (plan.paylar[h] / enYuksek) * 100)}%` }}
+                />
+              </span>
+              <span
+                className={`font-data text-[9px] tabular ${
+                  h === simdikiSaat ? "font-bold text-yazi" : "text-yazi-sonuk"
+                }`}
+              >
+                {String(h).padStart(2, "0")}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <p className="mt-3 text-[13px] leading-relaxed text-yazi-sonuk">
+        {plan.ogrenildi ? (
+          <>
+            En yoğun saatlerin{" "}
+            <strong className="text-yazi">
+              {saatYaz(plan.enYogun.bas)}–{saatYaz(plan.enYogun.bit)}
+            </strong>{" "}
+            — günün kalabalığının <strong className="text-yazi">{yuzde(plan.enYogun.pay)}</strong>&apos;i.
+            Bütçe bu saatlere göre açılıyor: kalabalık gelmeden dağıtılıp bitmiyor.
+          </>
+        ) : (
+          <>
+            Henüz yeterli veri yok, bütçe gün boyuna eşit açılıyor. Sistem kafenin yoğun
+            saatlerini oynanan oyunlardan öğreniyor ve birkaç hafta içinde bütçeyi o saatlere
+            göre dağıtıyor.
+          </>
+        )}
+      </p>
+
+      <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <MiniSayi
+          etiket="Bu saate kadar açılan"
+          deger={yuzde(plan.acilanOran)}
+          alt={`${tlYaz(Math.floor(taahhutKurus * plan.acilanOran))} TL`}
+        />
+        <MiniSayi
+          etiket="Dağıtılan"
+          deger={taahhutKurus > 0 ? yuzde(baglananKurus / taahhutKurus) : "–"}
+          alt={`${tlYaz(baglananKurus)} TL`}
+        />
+        <MiniSayi
+          etiket="Bugün 500'ü geçen tur"
+          deger={String(plan.bugunSimdiye)}
+          alt={`bugün beklenen ~${plan.bugunBeklenen}`}
+        />
+        <MiniSayi
+          etiket="Şu an paket şansı"
+          deger={yuzde(plan.sans)}
+          alt="500'ü geçen bir tur için"
+        />
+      </div>
+
+      <p className="mt-3 border-t border-cizgi pt-3 text-[12px] leading-relaxed text-yazi-sonuk">
+        Şans = kalan bütçe ÷ (günün kalanında beklenen tur × ortalama ödül). Bütçen büyüdükçe
+        ya da kafe tenhalaştıkça artar, kalabalıkta düşer; sabah gelen de akşam kalabalığı da
+        eşit şans görür. Oyuncu başına günde bir oyun ödülü kuralı değişmez.
+      </p>
+    </section>
+  );
+}
+
+function MiniSayi({ etiket, deger, alt }: { etiket: string; deger: string; alt: string }) {
+  return (
+    <div className="rounded-xl border border-cizgi px-3.5 py-3">
+      <div className="etiket-caps text-[10px] text-yazi-sonuk">{etiket}</div>
+      <div className="mt-1 font-data text-[20px] font-bold tabular">{deger}</div>
+      <div className="text-[11px] text-yazi-sonuk">{alt}</div>
     </div>
   );
 }

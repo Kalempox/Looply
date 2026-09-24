@@ -2,6 +2,7 @@ import { withBypass } from "@/db/context";
 import { identifierHash } from "@/lib/crypto";
 import { newId } from "@/lib/ids";
 import { log } from "@/lib/log";
+import { gunEkle, isGunu } from "@/lib/tarih";
 import * as ayar from "./ayar";
 
 /**
@@ -17,7 +18,42 @@ import * as ayar from "./ayar";
  *   K5  kasiyer onayı                 → Faz 7
  */
 
+/**
+ * Masa oturumunun EN KISA ömrü (saat).
+ *
+ * 🔴 Ü279: ürün sahibi — *"masa oturumun doldu ne anlama geliyor, oturum
+ * dolmamalı, orada konum hep takip edilmeli, insanları tekrar karekod
+ * okutmaya zorlamamalıyız."* Oturum eskiden okutmadan tam 3 saat sonra
+ * doluyordu; masadan kalkmamış oyuncu karekodu yeniden aramak zorunda
+ * kalıyordu. Artık karekod ziyaretin başında BİR KEZ: oturum iş günü
+ * bitince kapanıyor (`oturumBitisi`), kafede okunan her konum onu
+ * uzatıyor. "Hâlâ kafede mi" sorusunu süre değil **taze konum**
+ * cevaplıyor — bkz. `KONUM_TAZE_DAKIKA`.
+ */
 export const OTURUM_SAAT = 3;
+
+/**
+ * Ü279: konum okuması kaç dakika "kafedesin" sayılıyor.
+ *
+ * Oturum gün boyu açık kaldığı için "kafede olmak" artık oturumun
+ * varlığından okunamıyor: sabah doğrulanıp eve giden biri öğleden sonra
+ * da kazanırdı. K2 yalnızca son okuma bu kadar yeniyse geçerli
+ * (`aktif`). Uygulama açıkken istemci konumu birkaç dakikada bir ve her
+ * oyun/çark öncesi tazeliyor (`app/oyna/konum-tazele.ts`), yani kafedeki
+ * oyuncu bu sınırı hiç görmüyor.
+ */
+export const KONUM_TAZE_DAKIKA = 15;
+
+/**
+ * Ü279: masa oturumunun bitişi — İstanbul'da iş günü sonu, ama en az
+ * `OTURUM_SAAT` sonrası (23:30'da okutan yarım saatte atılmasın).
+ * Kafede okunan konum oturumu bu formülle yeniden uzatıyor.
+ */
+export function oturumBitisi(an: Date = new Date()): Date {
+  const gunSonu = new Date(`${gunEkle(isGunu(an), 1)}T00:00:00+03:00`);
+  const enAz = new Date(an.getTime() + OTURUM_SAAT * 3_600_000);
+  return gunSonu > enAz ? gunSonu : enAz;
+}
 /**
  * Ü131: kafe panelden değiştirmediyse geçerli olan yarıçap.
  *
@@ -45,6 +81,12 @@ export type MasaOturumu = {
   kanitMaskesi: number;
   kanitSeviyesi: number;
   mesafeM: number | null;
+  /**
+   * Ü279: kafede doğrulanmıştı ama son okuma `KONUM_TAZE_DAKIKA`dan eski.
+   * K2 bu yüzden `kanitMaskesi`te yok; ekran "uzaktasın" değil "konumunu
+   * doğrula" demeli — oyuncu büyük ihtimalle hâlâ masada.
+   */
+  konumEskidi: boolean;
   konumReddedildi: boolean;
   /**
    * Kafe konumunu işaretlemiş mi? (Ü95)
@@ -99,7 +141,8 @@ export async function ac(opts: {
   cihazId?: string;
 }): Promise<string> {
   const id = newId("mas");
-  const bitis = new Date(Date.now() + OTURUM_SAAT * 3_600_000);
+  // Ü279: 3 saat değil, iş günü sonu — karekod ziyaret başına bir kez.
+  const bitis = oturumBitisi();
 
   await withBypass("masa oturumu açma", async (db) => {
     /*
@@ -189,12 +232,13 @@ export async function aktif(playerId: string): Promise<MasaOturumu | null> {
       proof_mask: number;
       proof_level: number;
       geo_distance_m: number | null;
+      geo_checked_at: Date | null;
       geo_reddedildi: boolean;
       kafe_konumu_var: boolean;
     }>(
       `SELECT ts.id, ts.cafe_id, ts.table_id, c.name AS cafe_adi, t.label AS masa_adi,
               ts.started_at, ts.expires_at, ts.proof_mask, ts.proof_level,
-              ts.geo_distance_m, ts.geo_reddedildi,
+              ts.geo_distance_m, ts.geo_checked_at, ts.geo_reddedildi,
               (c.lat IS NOT NULL AND c.lng IS NOT NULL) AS kafe_konumu_var
          FROM table_sessions ts
          JOIN cafes c ON c.id = ts.cafe_id
@@ -207,8 +251,24 @@ export async function aktif(playerId: string): Promise<MasaOturumu | null> {
 
   if (!r) return null;
 
-  // K3: masada yeterince kalındı mı? Her okumada yeniden değerlendirilir.
+  /*
+    🔴 Ü279: K2 yalnızca TAZE okumayla geçerli.
+
+    AL-2'nin "kazanılan kanıt geri alınmaz" kuralı oturum 3 saatle
+    sınırlıyken dayanıklıydı. Oturum gün boyu açık kalınca aynı kural
+    "sabah doğrulandı, akşam evden kazanıyor" demek olurdu. Ürün sahibinin
+    kararı: kafeden çıkan kazanamaz. Okuma eskiyse K2 (ve ona bağlı K3)
+    bu okumada yok sayılıyor; satırdaki bit duruyor, ekran "uzaktasın"
+    değil "konumunu doğrula" diyebilsin diye (`konumEskidi`).
+  */
   let maske = r.proof_mask;
+  const konumTaze =
+    r.geo_checked_at !== null &&
+    Date.now() - r.geo_checked_at.getTime() <= KONUM_TAZE_DAKIKA * 60_000;
+  const konumEskidi = (maske & K2) !== 0 && !konumTaze;
+  if (!konumTaze) maske &= ~(K2 | K3);
+
+  // K3: masada yeterince kalındı mı? Her okumada yeniden değerlendirilir.
   const dakika = (Date.now() - r.started_at.getTime()) / 60_000;
   if (dakika >= K3_DAKIKA && maske & K2) maske |= K3;
 
@@ -223,6 +283,7 @@ export async function aktif(playerId: string): Promise<MasaOturumu | null> {
     kanitMaskesi: maske,
     kanitSeviyesi: seviyeHesapla(maske),
     mesafeM: r.geo_distance_m,
+    konumEskidi,
     konumReddedildi: r.geo_reddedildi,
     kafeKonumuVar: r.kafe_konumu_var,
   };
@@ -292,6 +353,12 @@ export async function sonDolanOturum(
 export type KonumSonucu =
   | { durum: "dogrulandi"; mesafeM: number }
   | { durum: "uzak"; mesafeM: number }
+  /**
+   * Ü279: okuma çemberin dışında ama hata payı çembere taşıyor — kafede de
+   * olabilir. Hiçbir şey değişmiyor: iç mekânda sıçrayan bir okuma
+   * masadaki oyuncunun kanıtını düşürmesin.
+   */
+  | { durum: "belirsiz"; mesafeM: number }
   | { durum: "kafe_konumu_yok" }
   | { durum: "oturum_yok" };
 
@@ -301,11 +368,21 @@ export type KonumSonucu =
  * Enlem/boylam sunucuya gelir, kafeye uzaklık hesaplanır ve **yalnızca metre
  * saklanır** (G10). "Oyuncu şu saatte şuradaydı" verisi hiç oluşmaz —
  * elimizde kalan tek şey "kafeye 40 metre mesafedeydi".
+ *
+ * ── Ü279: konum oturumu canlı tutuyor ───────────────────────
+ *
+ * - Yakın okuma K2'yi verir ve oturumu uzatır (`oturumBitisi`).
+ * - **Kesin** uzak okuma K2'yi düşürür: kafeden çıkan kazanamaz. Eskiden
+ *   bit hiç düşmüyordu (AL-2); oturum 3 saatle sınırlıyken sonucu
+ *   dardı, gün boyu oturumda değil.
+ * - Hata payı (`dogrulukM`, tarayıcının `coords.accuracy`si) çembere
+ *   taşıyan uzak okuma `belirsiz`: hiçbir şey değişmiyor.
  */
 export async function konumDogrula(
   playerId: string,
   lat: number,
   lng: number,
+  dogrulukM?: number,
 ): Promise<KonumSonucu> {
   return withBypass("konum doğrulama", async (db) => {
     const r = await db.one<{
@@ -330,14 +407,21 @@ export async function konumDogrula(
     const yaricap = await ayar.sayiOku(r.cafe_id, ayar.ANAHTARLAR.konumYaricapi);
     const mesafe = mesafeMetre(lat, lng, r.c_lat, r.c_lng);
     const yakin = mesafe <= yaricap;
-    const maske = yakin ? r.proof_mask | K2 : r.proof_mask;
+
+    if (!yakin && dogrulukM != null && Number.isFinite(dogrulukM) && mesafe - dogrulukM <= yaricap) {
+      log.info("konum belirsiz", { mesafeM: mesafe, dogrulukM: Math.round(dogrulukM) });
+      return { durum: "belirsiz" as const, mesafeM: mesafe };
+    }
+
+    const maske = yakin ? r.proof_mask | K2 : r.proof_mask & ~K2;
 
     await db.query(
       `UPDATE table_sessions
           SET geo_distance_m = $2, geo_checked_at = now(), geo_reddedildi = false,
-              proof_mask = $3, proof_level = $4
+              proof_mask = $3, proof_level = $4,
+              expires_at = CASE WHEN $5 THEN GREATEST(expires_at, $6) ELSE expires_at END
         WHERE id = $1`,
-      [r.id, mesafe, maske, seviyeHesapla(maske)],
+      [r.id, mesafe, maske, seviyeHesapla(maske), yakin, oturumBitisi()],
     );
 
     // Koordinat loglanmıyor (docs/08 §7.1) — yalnızca sonuç

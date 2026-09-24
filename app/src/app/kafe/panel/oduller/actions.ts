@@ -29,14 +29,25 @@ export async function ekleEylemi(_onceki: OdulDurumu, form: FormData): Promise<O
 
   const urunId = String(form.get("urunId") ?? "") || undefined;
 
+  /*
+    🔴 Ü277: ürün ödülünde ürün seçmek zorunlu, çünkü değer ürünün
+    fiyatından geliyor. Ürün sahibi: *"ürün seçsem de fiyat soruyor, o
+    saçma oluyor."* Yüzdede zorunluluk alanın kendisinde (`katalog.ekle`).
+  */
+  if (tip === "product" && !urunId) {
+    return {
+      hata: "Ürün ödülünde ürünü seç — değeri ürünün fiyatından geliyor. Menünde yoksa önce Ürünler'den ekle.",
+    };
+  }
+
   const sonuc = await katalog.ekle({
     cafeId: o.cafeId,
     tip,
     baslik: String(form.get("baslik") ?? ""),
     aciklama: String(form.get("aciklama") ?? ""),
-    // Ürün ödülünde TL değeri, yüzdelide TL TAVANI (Ü17), tutar indiriminde
-    // indirimin kendisi — üçü de aynı alan.
-    maliyetKurus: sayi(form, "tutar") * 100,
+    // Ü277: yalnızca tutar ödülünde elle yazılıyor. Ürün ve yüzdede değer
+    // sunucuda ürünün fiyatından hesaplanıyor — formdan gelen sayı yok sayılır.
+    maliyetKurus: tip === "amount" ? sayi(form, "tutar") * 100 : undefined,
     yuzde: tip === "percent" ? sayi(form, "yuzde") : undefined,
     // Ü52: puanla satın alma kalktı, her ödül oyunlardan/çarktan düşüyor.
     // İkisi de artık sabit; `katalog.ekle` zaten yok sayıyor ama imza
@@ -48,7 +59,11 @@ export async function ekleEylemi(_onceki: OdulDurumu, form: FormData): Promise<O
   });
 
   revalidatePath("/kafe/panel/oduller");
-  return sonuc.ok ? { bilgi: "Ödül eklendi. Oyun sonunda ve çarkta çıkabilir." } : { hata: sonuc.hata };
+  return sonuc.ok
+    ? {
+        bilgi: `Ödül eklendi — ${(sonuc.degerKurus / 100).toLocaleString("tr-TR", { maximumFractionDigits: 2 })} TL değerinde. Oyun sonunda ve çarkta çıkabilir.`,
+      }
+    : { hata: sonuc.hata };
 }
 
 /**

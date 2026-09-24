@@ -19,11 +19,15 @@ import { dogrula } from "@/lib/validate";
 const konumSemasi = z.object({
   lat: z.number().min(-90).max(90),
   lng: z.number().min(-180).max(180),
+  // Ü279: tarayıcının hata payı (metre). Belirsiz okumayı ayırt ediyor.
+  dogrulukM: z.number().min(0).max(1_000_000).optional(),
 });
 
 export type KonumCevabi =
   | { durum: "dogrulandi"; mesafeM: number }
   | { durum: "uzak"; mesafeM: number }
+  /** Ü279: okuma çembere taşıyor — hiçbir şey değişmedi. */
+  | { durum: "belirsiz" }
   | { durum: "olmadi" }
   /**
    * Kafenin konumu hiç belirlenmemiş.
@@ -34,18 +38,62 @@ export type KonumCevabi =
    */
   | { durum: "kafe_konumu_yok" };
 
-export async function konumBildir(lat: number, lng: number): Promise<KonumCevabi> {
+export async function konumBildir(
+  lat: number,
+  lng: number,
+  dogrulukM?: number,
+): Promise<KonumCevabi> {
   const o = await oturum.oku();
   if (!o || o.rol !== "oyuncu") redirect("/giris");
 
-  const girdi = dogrula(konumSemasi, { lat, lng });
+  const girdi = dogrula(konumSemasi, { lat, lng, dogrulukM });
   if (!girdi.ok) return { durum: "olmadi" };
 
-  const sonuc = await masa.konumDogrula(o.ozneId, girdi.veri.lat, girdi.veri.lng);
+  const sonuc = await masa.konumDogrula(
+    o.ozneId,
+    girdi.veri.lat,
+    girdi.veri.lng,
+    girdi.veri.dogrulukM,
+  );
   revalidatePath("/oyna");
 
   if (sonuc.durum === "dogrulandi") return { durum: "dogrulandi", mesafeM: sonuc.mesafeM };
   if (sonuc.durum === "uzak") return { durum: "uzak", mesafeM: sonuc.mesafeM };
+  if (sonuc.durum === "belirsiz") return { durum: "belirsiz" };
+  if (sonuc.durum === "kafe_konumu_yok") return { durum: "kafe_konumu_yok" };
+  return { durum: "olmadi" };
+}
+
+/**
+ * Konumu sessizce tazeler — Ü279.
+ *
+ * `konumBildir` ile aynı kural, tek fark: **`revalidatePath` yok.** Bu
+ * eylem oyun ve çark ekranlarında, tur başlamadan hemen önce ve açık
+ * sayfada birkaç dakikada bir çağrılıyor. Önbellek boşalınca açık sayfa
+ * yeniden çiziliyor; çarkta bu bir kez dönüş animasyonunu söktü
+ * (`cark/actions.ts` notu). Ekranın tazelenmesi gerekiyorsa çağıran
+ * karar veriyor (`router.refresh`).
+ */
+export async function konumTazeleEylemi(
+  lat: number,
+  lng: number,
+  dogrulukM?: number,
+): Promise<KonumCevabi> {
+  const o = await oturum.oku();
+  if (!o || o.rol !== "oyuncu") return { durum: "olmadi" };
+
+  const girdi = dogrula(konumSemasi, { lat, lng, dogrulukM });
+  if (!girdi.ok) return { durum: "olmadi" };
+
+  const sonuc = await masa.konumDogrula(
+    o.ozneId,
+    girdi.veri.lat,
+    girdi.veri.lng,
+    girdi.veri.dogrulukM,
+  );
+  if (sonuc.durum === "dogrulandi") return { durum: "dogrulandi", mesafeM: sonuc.mesafeM };
+  if (sonuc.durum === "uzak") return { durum: "uzak", mesafeM: sonuc.mesafeM };
+  if (sonuc.durum === "belirsiz") return { durum: "belirsiz" };
   if (sonuc.durum === "kafe_konumu_yok") return { durum: "kafe_konumu_yok" };
   return { durum: "olmadi" };
 }

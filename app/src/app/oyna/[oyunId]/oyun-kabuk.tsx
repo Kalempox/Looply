@@ -21,6 +21,7 @@ import {
   type BitirCevabi,
   teklifAlEylemi,
 } from "./actions";
+import { KonumTakibi, konumuTazele } from "../konum-takibi";
 
 /**
  * Oyun kabuğu — oyna, sonucu gör.
@@ -72,11 +73,23 @@ type Ayar = {
    * adım vardı.
    */
   hemenBasla?: boolean;
+  /**
+   * Ü279: masa oturumu var ve kafenin konumu işaretli — konum tur
+   * başlamadan hemen önce ve sayfa açıkken tazelensin. Kafe dışındaki
+   * oyuncuya boşuna izin sorulmasın diye sunucu karar veriyor.
+   */
+  konumTakibi?: boolean;
 };
 
 type Durum =
   | { tur: "secim" }
-  | { tur: "oynuyor"; oturumId: string; tohum: string }
+  /**
+   * Ü279: `kazandirir` turun KENDİ değeri, sayfanınki değil. Konum tur
+   * başlamadan hemen önce tazelenebiliyor; sayfa yüklenirken "kazandırmaz"
+   * olan tur, tazelemeden sonra kazandırır açılabilir. Sayfanın değeri
+   * kullanılsaydı ekran "Kazandırmaz" der, ödül paketi hiç çıkmazdı.
+   */
+  | { tur: "oynuyor"; oturumId: string; tohum: string; kazandirir: boolean }
   | { tur: "sonuc"; cevap: BitirCevabi };
 
 export function OyunKabugu(ayar: Ayar) {
@@ -92,14 +105,23 @@ export function OyunKabugu(ayar: Ayar) {
   const turBaslat = useCallback(() => {
     setHata(null);
     basla(async () => {
+      // Ü279: "kafedesin" okuması taze değilse tur başlamadan önce bir
+      // kez okunuyor. Okunamazsa tur yine başlar; sunucu elindeki
+      // okumaya göre karar verir.
+      if (ayar.konumTakibi) await konumuTazele({ sor: true, zamanAsimiMs: 5_000 });
       const cevap = await baslaEylemi(ayar.oyunId);
       if (!cevap.ok) {
         setHata(cevap.hata);
         return;
       }
-      setDurum({ tur: "oynuyor", oturumId: cevap.oturumId, tohum: cevap.tohum });
+      setDurum({
+        tur: "oynuyor",
+        oturumId: cevap.oturumId,
+        tohum: cevap.tohum,
+        kazandirir: cevap.kazandirir,
+      });
     });
-  }, [ayar.oyunId]);
+  }, [ayar.oyunId, ayar.konumTakibi]);
 
   const oyunBitti = useCallback(
     (oturumId: string) => (girdiler: unknown[], istemciSkoru: number) => {
@@ -170,6 +192,9 @@ export function OyunKabugu(ayar: Ayar) {
   if (durum.tur === "oynuyor") {
     return (
       <div>
+        {/* Ü279: tur sırasında da konum taze kalsın — sonraki tur için.
+            Sayfa tazelenmiyor (`degisti` yok): oyun ekranı yeniden çizilmesin. */}
+        {ayar.konumTakibi && <KonumTakibi />}
         <div className="mb-4 flex items-center justify-between gap-3">
           <h1
             className="inline-flex items-center gap-2 rounded-full px-3 py-1.5"
@@ -180,7 +205,7 @@ export function OyunKabugu(ayar: Ayar) {
               {ayar.ad}
             </span>
           </h1>
-          {!ayar.kazandirir && (
+          {!durum.kazandirir && (
             <span className="etiket-caps text-odul-koyu">Kazandırmaz</span>
           )}
         </div>
@@ -190,7 +215,7 @@ export function OyunKabugu(ayar: Ayar) {
           oyunId={ayar.oyunId}
           tohum={durum.tohum}
           demoKapisi={ayar.demoKapisi}
-          kazandirir={ayar.kazandirir}
+          kazandirir={durum.kazandirir}
           odul={odulIzni}
           /* Ü203: tam ekran oyunda sayfanın geri bağlantısı görünmüyor;
              çıkış oyuncuyu katalog karuseline götürüyor. */
@@ -209,16 +234,20 @@ export function OyunKabugu(ayar: Ayar) {
 
   if (durum.tur === "sonuc") {
     return (
-      <SonucEkrani
-        ayar={ayar}
-        cevap={durum.cevap}
-        tekrar={turBaslat}
-      />
+      <>
+        {ayar.konumTakibi && <KonumTakibi />}
+        <SonucEkrani
+          ayar={ayar}
+          cevap={durum.cevap}
+          tekrar={turBaslat}
+        />
+      </>
     );
   }
 
   return (
     <div>
+      {ayar.konumTakibi && <KonumTakibi />}
       {hata && (
         <div className="mb-6 rounded-lg border border-tehlike/60 bg-yuzey px-4 py-3 text-[14px] text-tehlike">
           {hata}

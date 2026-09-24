@@ -117,6 +117,7 @@ export default async function CarkSayfasi({
           acik={durum.acik}
           kapaliMetin={cark.durumMetni(durum)}
           aralikSaat={carkAralik}
+          konumTakibi={!!masa && masa.kafeKonumuVar}
         />
       )}
 

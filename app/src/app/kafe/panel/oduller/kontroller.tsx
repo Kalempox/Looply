@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState, useState, useTransition } from "react";
 import {
   ekleEylemi,
@@ -22,30 +23,57 @@ const BOS: OdulDurumu = {};
 /**
  * Ödül ekleme formu.
  *
- * Form, tipe göre **şekil değiştiriyor**: ürün ödülünde TL değeri, yüzdeli
- * ödülde oran + TL tavanı, tutar indiriminde indirimin kendisi isteniyor.
- * Tek bir uzun formda hepsini gösterip "boş bırak" demek, kafe sahibini
- * yanlış doldurmaya davet ederdi.
+ * Form, tipe göre **şekil değiştiriyor**. Tek bir uzun formda hepsini
+ * gösterip "boş bırak" demek, kafe sahibini yanlış doldurmaya davet ederdi.
  *
- * Kanıt seviyesi formda **yok**. Ü268'de "masada 5 dk" kuralı kalktı ve
- * her ödül için konum doğrulaması yetiyor — seçilecek bir şey kalmadı.
+ * ── 🔴 Ü277: değer ürünün fiyatından ────────────────────────
  *
- * Ü52 ile iki alan kalktı: **puan fiyatı** (puanla satın alma yok) ve
- * **anlık mı** sorusu (tek tip ödül kaldı).
+ * Ürün sahibi: *"ödül tipi ürün de seçsem fiyat soruyor, o saçma oluyor;
+ * yüzde indirimde hem indirim oranı hem en fazla indirim yazıyor, bu
+ * yanlış — sadece indirim oranı yazsın, seçtiği ürünün fiyatı hangi ürün
+ * kısmında yazsın, oranın kaç TL indirime denk geldiğini panel söylesin."*
  *
- * Ü268 · K5: tutar artık **serbest** — 25 TL ile kafenin kendi üst sınırı
- * arasında, tam TL. Önceden 25–50 arası sabit bir listeden seçiliyordu.
+ *   ürün  → ürünü seç, değer ürünün fiyatı (fiyat sorulmuyor)
+ *   yüzde → ürünü ve oranı seç, değer fiyat × oran (ürün zorunlu)
+ *   tutar → TL tutarını yaz (tam TL)
+ *
+ * Üçünde de "bu ödül kaç TL" satırı canlı. ⚠️ Ekrandaki hesap yalnızca
+ * gösterim: sunucu değeri ürünün fiyatından **kendisi** hesaplıyor
+ * (`katalog.urundenDeger`) ve formdan gelen sayıya bakmıyor. Formül
+ * burada kopya, çünkü `domain/katalog` veritabanı katmanını içe aktarıyor
+ * ve istemci paketine giremez.
+ *
+ * Ü268'den beri alt sınır da yok (Ü277): yalnızca kafenin üst sınırı.
+ * Kanıt seviyesi formda **yok** — her ödül konum doğrulaması (K2) istiyor.
  */
 export function OdulEkleme({
   urunler,
   ustSinirTl,
 }: {
-  urunler: { id: string; ad: string }[];
+  urunler: { id: string; ad: string; fiyatKurus: number }[];
   /** Kafenin ödül üst sınırı (`ayar.odulUstSinir`), TL. */
   ustSinirTl: number;
 }) {
   const [durum, action, bekliyor] = useActionState(ekleEylemi, BOS);
   const [tip, setTip] = useState<"product" | "percent" | "amount">("product");
+  const [urunId, setUrunId] = useState("");
+  const [yuzde, setYuzde] = useState("");
+  const [tutar, setTutar] = useState("");
+
+  const urun = urunler.find((u) => u.id === urunId) ?? null;
+  const oran = Math.min(100, Number(yuzde) || 0);
+  const degerKurus =
+    tip === "amount"
+      ? (Number(tutar) || 0) * 100
+      : urun
+        ? tip === "product"
+          ? urun.fiyatKurus
+          : Math.round((urun.fiyatKurus * oran) / 100)
+        : 0;
+  const ustSinirKurus = ustSinirTl * 100;
+  const tavaniAsiyor = degerKurus > ustSinirKurus;
+  const urunGerekli = tip !== "amount";
+  const eklenebilir = degerKurus > 0 && !tavaniAsiyor && (!urunGerekli || urun !== null);
 
   return (
     <form action={action} className="space-y-4">
@@ -77,7 +105,7 @@ export function OdulEkleme({
             ikon={<YuzdeIkonu />}
             renk="kampanya"
             etiket="Yüzde"
-            aciklama="tavanlı indirim"
+            aciklama="üründe indirim"
           />
           <TipDugmesi
             secili={tip === "amount"}
@@ -99,77 +127,133 @@ export function OdulEkleme({
             tip === "product"
               ? "Ücretsiz filtre kahve"
               : tip === "percent"
-                ? "Tatlıda %20 indirim"
+                ? "Filtre kahvede %20 indirim"
                 : "50 TL indirim"
           }
           maxLength={60}
         />
       </IsletmeAlan>
 
-      {urunler.length > 0 && (
-        <IsletmeAlan
-          etiket="Hangi ürün"
-          ipucu="İsteğe bağlı — raporlarda ödülü ürüne bağlar."
-        >
-          <select name="urunId" className={isletmeGirdi} defaultValue="">
-            <option value="">Seçme</option>
-            {urunler.map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.ad}
-              </option>
-            ))}
-          </select>
-        </IsletmeAlan>
-      )}
+      {urunGerekli &&
+        (urunler.length === 0 ? (
+          <IsletmeUyari>
+            Önce <Link href="/kafe/panel/urunler" className="font-semibold underline">Ürünler</Link>
+            &apos;den ürün ekle — ürün ve yüzde ödülünün değeri ürünün fiyatından geliyor.
+          </IsletmeUyari>
+        ) : (
+          <IsletmeAlan
+            etiket="Hangi ürün"
+            ipucu={
+              tip === "product"
+                ? "Ödülün değeri bu ürünün fiyatı."
+                : "İndirim bu ürüne uygulanır; TL karşılığı fiyatından hesaplanır."
+            }
+          >
+            <select
+              name="urunId"
+              className={isletmeGirdi}
+              value={urunId}
+              onChange={(e) => setUrunId(e.target.value)}
+              required
+            >
+              <option value="">Ürün seç</option>
+              {urunler.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.ad} — {tl(u.fiyatKurus)} TL
+                </option>
+              ))}
+            </select>
+          </IsletmeAlan>
+        ))}
 
       {tip === "percent" && (
         <IsletmeAlan etiket="İndirim oranı (%)">
           <input
             name="yuzde"
-            type="text"
+            type="number"
             inputMode="numeric"
+            min={1}
+            max={100}
+            step={1}
+            required
+            value={yuzde}
+            onChange={(e) => setYuzde(e.target.value.replace(/[^\d]/g, ""))}
             className={isletmeGirdi}
             placeholder="20"
           />
         </IsletmeAlan>
       )}
 
-      {/* Ü268 · K5: tutar serbest — 25 TL ile kafenin üst sınırı arasında.
-          ⚠️ `step={1}`: tam TL. Ü52'nin "27,50" kaygısı hâlâ geçerli;
-          tarayıcı kuruşlu değeri daha gönderilmeden reddediyor, sunucu
-          da ayrıca reddediyor. */}
-      <IsletmeAlan
-        etiket={
-          tip === "percent"
-            ? "En fazla indirim (TL)"
-            : tip === "amount"
-              ? "İndirim tutarı (TL)"
-              : "Ödülün TL değeri"
-        }
-        ipucu={
-          tip === "percent"
-            ? "Bütçeden bu tutar rezerve edilir; kasada gerçekleşen düşülür, fark geri döner."
-            : tip === "amount"
-              ? "Adisyondan bir kez düşülür. Kalan tutar saklanmaz, sonraki ziyarete devretmez — bu bir bakiye değil (Ü18)."
-              : "Ürünün perakende fiyatı. Kasada onaylandığında bütçeden bu kadar düşer."
-        }
+      {/* Tutar yalnızca TUTAR ödülünde soruluyor — ürün ve yüzdede değer
+          ürünün fiyatından geliyor (Ü277). ⚠️ `step={1}`: tam TL. */}
+      {tip === "amount" && (
+        <IsletmeAlan
+          etiket="İndirim tutarı (TL)"
+          ipucu="Adisyondan bir kez düşülür. Kalan tutar saklanmaz, sonraki ziyarete devretmez — bu bir bakiye değil (Ü18)."
+        >
+          <input
+            name="tutar"
+            type="number"
+            inputMode="numeric"
+            required
+            min={1}
+            max={ustSinirTl}
+            step={1}
+            value={tutar}
+            onChange={(e) => setTutar(e.target.value.replace(/[^\d]/g, ""))}
+            className={isletmeGirdi}
+            placeholder="50"
+          />
+        </IsletmeAlan>
+      )}
+
+      {/* ── Bu ödül kaç TL — üç tipte de ── */}
+      <div
+        className={`rounded-lg border px-4 py-3 text-[13px] leading-relaxed ${
+          tavaniAsiyor ? "border-tehlike/50 bg-tehlike/5" : "border-cizgi bg-cukur"
+        }`}
       >
-        <input
-          name="tutar"
-          type="number"
-          inputMode="numeric"
-          required
-          min={25}
-          max={ustSinirTl}
-          step={1}
-          defaultValue="25"
-          className={isletmeGirdi}
-        />
-        <span className="mt-1.5 block text-[12px] text-yazi-sonuk">
-          25 ile {ustSinirTl.toLocaleString("tr-TR")} TL arası, tam TL. Üst sınırı
-          ayarlardan değiştirebilirsin.
-        </span>
-      </IsletmeAlan>
+        {degerKurus <= 0 ? (
+          <span className="text-yazi-sonuk">
+            {tip === "amount"
+              ? "Tutarı yazınca ödülün değeri burada görünür."
+              : tip === "percent"
+                ? "Ürünü ve oranı seçince indirimin kaç TL ettiği burada görünür."
+                : "Ürünü seçince ödülün değeri burada görünür."}
+          </span>
+        ) : (
+          <>
+            <span className="block text-yazi">
+              {tip === "percent" && urun ? (
+                <>
+                  {urun.ad} {tl(urun.fiyatKurus)} TL × %{oran} ={" "}
+                  <strong className="font-data tabular">{tl(degerKurus)} TL</strong> indirim
+                </>
+              ) : (
+                <>
+                  Bu ödül <strong className="font-data tabular">{tl(degerKurus)} TL</strong>{" "}
+                  {tip === "amount" ? "indirim" : "değerinde — ürünün fiyatı"}
+                </>
+              )}
+            </span>
+            <span className="mt-1 block text-[12px] text-yazi-sonuk">
+              {tip === "percent"
+                ? "Bütçeden bu tutar düşer; kasada ayrıca tutar girilmez."
+                : "Kasada onaylandığında bütçeden bu kadar düşer."}
+            </span>
+          </>
+        )}
+        {tavaniAsiyor ? (
+          <span className="mt-1.5 block font-semibold text-tehlike">
+            Kafenin ödül üst sınırı {ustSinirTl.toLocaleString("tr-TR")} TL — bu ödül eklenemez.
+            Üst sınırı &quot;Açılma ve geçerlilik&quot; kutusundan yükseltebilirsin.
+          </span>
+        ) : (
+          <span className="mt-1.5 block text-[12px] text-yazi-sonuk">
+            En fazla {ustSinirTl.toLocaleString("tr-TR")} TL (kafenin ödül üst sınırı).
+          </span>
+        )}
+      </div>
 
       {/* Ü52: "anlık mı" sorusu kalktı. Tek tip ödül var — oyunlardan ve
           çarktan düşen ödül. Puanla satın alma yok, dolayısıyla puan
@@ -179,11 +263,16 @@ export function OdulEkleme({
         alamaz — puan yalnızca sıralama ve seviye için birikiyor.
       </p>
 
-      <IsletmeDugme type="submit" disabled={bekliyor}>
+      <IsletmeDugme type="submit" disabled={bekliyor || !eklenebilir}>
         {bekliyor ? "Ekleniyor…" : "Ödülü ekle"}
       </IsletmeDugme>
     </form>
   );
+}
+
+/** 1250 → "12,50" · 1200 → "12" — `katalog.tlYaz`'ın istemci kopyası. */
+function tl(kurus: number): string {
+  return (kurus / 100).toLocaleString("tr-TR", { maximumFractionDigits: 2 });
 }
 
 /**
@@ -398,7 +487,7 @@ export function EsikAyari({
           olmasın, en az 50 olsun". */}
       <IsletmeAlan
         etiket="Ödül üst sınırı (TL)"
-        ipucu="Tanımlayabileceğin en pahalı ödül. En az 50; üst sınır yok. Ödüller 25 TL ile bu tutar arasında olabilir."
+        ipucu="Tanımlayabileceğin en pahalı ödül. En az 50; üst sınır yok. Hiçbir ödül bu tutarı aşamaz — alt sınır yok (Ü277)."
       >
         <input
           name="ustSinir"

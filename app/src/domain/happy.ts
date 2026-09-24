@@ -105,11 +105,17 @@ function cevir(r: HamPencere, simdi = Date.now()): Pencere {
   };
 }
 
-/** Kafenin bugünkü pencereleri — iptal edilenler dahil. */
+/**
+ * Kafenin bugünkü pencereleri — iptal edilenler dahil.
+ *
+ * Ü277: önce bugünün programı uygulanıyor — panel, programdan doğacak
+ * pencereyi bakım işini beklemeden göstersin.
+ */
 export async function bugunkuler(cafeId: string, gun = isGunu()): Promise<Pencere[]> {
-  const satirlar = await withCafe(cafeId, (db) =>
-    db.all<HamPencere>(`${SORGU} WHERE h.business_date = $1 ORDER BY h.starts_at`, [gun]),
-  );
+  const satirlar = await withCafe(cafeId, async (db) => {
+    if (gun === isGunu()) await programlariUygulaIle(db, { cafeId });
+    return db.all<HamPencere>(`${SORGU} WHERE h.business_date = $1 ORDER BY h.starts_at`, [gun]);
+  });
   return satirlar.map((r) => cevir(r));
 }
 
@@ -125,8 +131,19 @@ export async function acikPencere(cafeId: string): Promise<Pencere | null> {
   return withBypass("açık happy hour", (db) => acikPencereIle(db, cafeId));
 }
 
-/** Var olan bir işlemin içinde sorar — kupon üretimi bunu kullanıyor. */
+/**
+ * Var olan bir işlemin içinde sorar — kupon üretimi bunu kullanıyor.
+ *
+ * 🔴 Ü277: önce bugünün programı uygulanıyor. Program pencereyi yalnızca
+ * bakım köprüsü açıyordu ve köprü yalnızca Ödüllerim/Davet/Bütçe/Rapor
+ * ekranları açılınca koşuyordu: kimse o ekranları açmazsa haftalık happy
+ * hour **hiç başlamıyordu**. Ürün sahibi: *"panel göstermelik mi, gerçekten
+ * oyunculara yansıyor mu?"* Artık ödül kararının kendisi programa bakıyor —
+ * para yolundaki doğruluk arka plan işine bağlanmıyor (`bakim.ts`'in
+ * kuralı).
+ */
 export async function acikPencereIle(db: Db, cafeId: string): Promise<Pencere | null> {
+  await programlariUygulaIle(db, { cafeId });
   const r = await db.one<HamPencere>(
     `${SORGU}
       WHERE h.cafe_id = $1 AND h.cancelled_at IS NULL
@@ -256,7 +273,7 @@ export async function pencereKapat(opts: {
 }
 
 
-/* ── Haftalık program (Ü104) ────────────────────────────────
+/* ── Haftalık program (Ü104 · Ü277) ─────────────────────────
  *
  * Ürün sahibi: *"kafe istediği gibi günü ve saati seçer; ister haftanın
  * her günü belirli saat, ister farklı günlerde farklı saatler."*
@@ -265,8 +282,10 @@ export async function pencereKapat(opts: {
  * sorulanın yarısını karşılardı; kafenin salı ve cumartesi boş saatleri
  * aynı değil.
  *
- * ⚠️ Program pencereyi kendisi açmıyor — `programlariUygula` açıyor ve o da
- * bakım köprüsünden (dakikada bir) çağrılıyor. Program satırı bir **niyet**;
+ * ⚠️ Program pencereyi kendisi açmıyor — `programlariUygula` açıyor. Ü277'ye
+ * kadar yalnızca bakım köprüsünden çağrılıyordu ve köprü ancak belli
+ * ekranlar açılınca koşuyordu; artık ödül kararı, panel ve program kaydı da
+ * kendi kafesi için çağırıyor (`programlariUygulaIle`). Program satırı bir **niyet**;
  * pencere ise gerçekleşmiş olan şey ve havuzu erimeye başlıyor. İkisini
  * ayırmasaydık "bugün ne kadar dağıtıldı" sorusunun cevabı programın içinde
  * kaybolurdu.
@@ -318,6 +337,29 @@ export async function programlar(cafeId: string): Promise<Program[]> {
  * silinmiyor, `active = false` oluyor: geçmişte o programdan açılmış
  * pencereler `plan_id` ile ona bağlı ve geçmiş bozulmamalı (E3).
  */
+/**
+ * Ü279: bugünün programı kaydedilince BUGÜN ne oldu — panel bunu söylüyor.
+ *
+ * - `acildi`: bugünün penceresi açıldı (saati gelince başlar ya da şu an açık).
+ * - `ikinci`: bugün zaten bir happy hour yapılmıştı ya da sürüyordu; yeni
+ *   saat onun yanına ikinci pencere olarak açıldı.
+ * - `gecti`: yeni saatin bitişi bugün için geçmiş — gelecek haftadan.
+ * - `sinir`: bugün `GUNLUK_EN_FAZLA` pencere dolu — gelecek haftadan.
+ * - `cakisiyor`: süren pencereyle çakışıyor — gelecek haftadan.
+ */
+export type BugunSonucu = "acildi" | "ikinci" | "gecti" | "sinir" | "cakisiyor";
+
+export type ProgramSonucu =
+  | {
+      ok: true;
+      id: string;
+      /** Program bugünün değilse (ya da kaldırıldıysa) `null`. */
+      bugun: BugunSonucu | null;
+      /** Bugün programdan açılmış bir pencere şu an sürüyor mu — kaldırma mesajı için. */
+      bugunSuruyor: boolean;
+    }
+  | { ok: false; hata: string };
+
 export async function programKur(opts: {
   cafeId: string;
   haftaGunu: number;
@@ -325,7 +367,7 @@ export async function programKur(opts: {
   sureDakika: number | null;
   havuzKurus: number | null;
   aktorId: string;
-}): Promise<PencereSonucu> {
+}): Promise<ProgramSonucu> {
   if (!Number.isInteger(opts.haftaGunu) || opts.haftaGunu < 0 || opts.haftaGunu > 6) {
     return { ok: false, hata: "Geçersiz gün." };
   }
@@ -357,6 +399,44 @@ export async function programKur(opts: {
       [opts.haftaGunu],
     );
 
+    /*
+      Ü277: program BUGÜNÜN ise bugünkü pencere hemen etkileniyor.
+
+      · Henüz başlamamış program penceresi iptal — yeni program onun yerine
+        geçiyor (eski saatte ikinci bir pencere açılmasın).
+      · Sürmekte olan pencereye dokunulmuyor: oyuncular o an ödül
+        kazanıyor olabilir.
+
+      🔴 Ü279: Ü278'deki "günde bir program penceresi" kuralı KALKTI.
+      Ürün sahibi Perşembe 14:43'te Perşembe satırına 14:00–17:00 yazdı;
+      sabahki pencere yapılmış olduğu için yeni saat bugün açılmadı ve
+      "neden açılmadı" dedi. Karar: **kafenin son kaydı geçerli** — bugünün
+      satırına yazılan saat bugün de açılıyor. Kalan korumalar: günde en
+      fazla `GUNLUK_EN_FAZLA` pencere ve süren pencereyle çakışmama.
+    */
+    const bugunMu = opts.haftaGunu === istanbulHaftaGunu(new Date());
+    let bugunSuruyor = false;
+    let oncekiVar = false;
+    if (bugunMu) {
+      await db.query(
+        `UPDATE happy_hours SET cancelled_at = now()
+          WHERE cafe_id = $1 AND business_date = $2 AND plan_id IS NOT NULL
+            AND cancelled_at IS NULL AND starts_at > now()`,
+        [opts.cafeId, isGunu()],
+      );
+      // Bugün başlamış (süren ya da bitmiş) bir happy hour var mı —
+      // programdan ya da elle. Varsa yeni pencere "ikinci" oluyor.
+      const bugunku = await db.one<{ suruyor: boolean; baslamis: boolean }>(
+        `SELECT bool_or(plan_id IS NOT NULL AND ends_at > now()) AS suruyor,
+                bool_or(starts_at <= now()) AS baslamis
+           FROM happy_hours
+          WHERE cafe_id = $1 AND business_date = $2 AND cancelled_at IS NULL`,
+        [opts.cafeId, isGunu()],
+      );
+      bugunSuruyor = bugunku?.suruyor === true;
+      oncekiVar = bugunku?.baslamis === true;
+    }
+
     if (kaldir) {
       await audit(db, {
         actorType: "staff",
@@ -366,7 +446,7 @@ export async function programKur(opts: {
         targetType: "happy_hour",
         detail: { program: "kaldirildi", haftaGunu: opts.haftaGunu },
       });
-      return { ok: true as const, id: "" };
+      return { ok: true as const, id: "", bugun: null, bugunSuruyor };
     }
 
     const id = newId("hhp");
@@ -401,7 +481,31 @@ export async function programKur(opts: {
       },
     });
 
-    return { ok: true as const, id };
+    // Ü277: bugünün programıysa pencere bakım işini beklemeden açılıyor.
+    if (!bugunMu) return { ok: true as const, id, bugun: null, bugunSuruyor };
+
+    const acilan = await programlariUygulaIle(db, { cafeId: opts.cafeId });
+    if (acilan > 0) {
+      return { ok: true as const, id, bugun: oncekiVar ? "ikinci" : "acildi", bugunSuruyor };
+    }
+
+    // Açılmadı — panel nedenini söylesin (Ü279).
+    const baslangic = istanbulAn(isGunu(), opts.baslangicDakika!);
+    const bitis = new Date(baslangic.getTime() + opts.sureDakika! * 60_000);
+    if (bitis <= new Date()) {
+      return { ok: true as const, id, bugun: "gecti", bugunSuruyor };
+    }
+    const canli = await db.one<{ n: string }>(
+      `SELECT count(*)::text AS n FROM happy_hours
+        WHERE cafe_id = $1 AND business_date = $2 AND cancelled_at IS NULL`,
+      [opts.cafeId, isGunu()],
+    );
+    return {
+      ok: true as const,
+      id,
+      bugun: Number(canli?.n ?? 0) >= GUNLUK_EN_FAZLA ? "sinir" : "cakisiyor",
+      bugunSuruyor,
+    };
   });
 }
 
@@ -423,54 +527,87 @@ export async function programKur(opts: {
  * açılması günlük bütçenin durumuna bağlı değil.
  */
 export async function programlariUygula(): Promise<number> {
+  return withBypass("happy hour programlarını uygula", (db) => programlariUygulaIle(db));
+}
+
+/**
+ * `programlariUygula`nın işlem içi hâli — Ü277.
+ *
+ * Ödül kararı (`acikPencereIle`), panel (`bugunkuler`) ve program kaydı
+ * (`programKur`) bunu kendi işleminin içinden, yalnızca kendi kafesi için
+ * çağırıyor. Bakım köprüsü hepsini birden.
+ *
+ * ⚠️ Kafenin **elle kapattığı** pencere yeniden açılmıyor: tekillik
+ * `(plan_id, business_date)` — iptal edilmiş satır da sayılıyor.
+ * ⚠️ Aynı saatlerde süren canlı bir pencere varsa açılmıyor: program
+ * yeniden kaydedildiğinde eskisinin sürmekte olan penceresi ile yenisi üst
+ * üste binmesin.
+ * ⚠️ **Günde en fazla `GUNLUK_EN_FAZLA` pencere** — elle açılanlar dahil,
+ * elle pencere açmanın kuralıyla aynı sayım (iptal edilen sayılmıyor).
+ * Ü278'deki "günde bir program penceresi" kuralı Ü279'da kalktı: ürün
+ * sahibinin kararıyla bugünün satırına yazılan yeni saat bugün de açılıyor.
+ */
+async function programlariUygulaIle(db: Db, opts: { cafeId?: string } = {}): Promise<number> {
   const gun = isGunu();
   const simdi = new Date();
   const haftaGunu = istanbulHaftaGunu(simdi);
 
-  return withBypass("happy hour programlarını uygula", async (db) => {
-    const adaylar = await db.all<HamProgram & { cafe_id: string; created_by: string }>(
-      `SELECT p.id, p.cafe_id, p.weekday, p.start_minute, p.duration_min,
-              p.pool_kurus, p.created_by
-         FROM happy_hour_plans p
-        WHERE p.active AND p.weekday = $2
-          AND NOT EXISTS (
-            SELECT 1 FROM happy_hours h
-             WHERE h.plan_id = p.id AND h.business_date = $1
-          )`,
-      [gun, haftaGunu],
+  const adaylar = await db.all<HamProgram & { cafe_id: string; created_by: string }>(
+    `SELECT p.id, p.cafe_id, p.weekday, p.start_minute, p.duration_min,
+            p.pool_kurus, p.created_by
+       FROM happy_hour_plans p
+      WHERE p.active AND p.weekday = $2
+        AND ($3::text IS NULL OR p.cafe_id = $3)
+        AND NOT EXISTS (
+          SELECT 1 FROM happy_hours h
+           WHERE h.plan_id = p.id AND h.business_date = $1
+        )
+        AND (
+          SELECT count(*) FROM happy_hours h
+           WHERE h.cafe_id = p.cafe_id AND h.business_date = $1 AND h.cancelled_at IS NULL
+        ) < $4`,
+    [gun, haftaGunu, opts.cafeId ?? null, GUNLUK_EN_FAZLA],
+  );
+
+  let acilan = 0;
+
+  for (const a of adaylar) {
+    const baslangic = istanbulAn(gun, a.start_minute);
+    const bitis = new Date(baslangic.getTime() + a.duration_min * 60_000);
+
+    // Saati geçmişse bugün için atlanıyor — yarın tekrar denenir.
+    if (bitis <= simdi) continue;
+
+    const cakisan = await db.one(
+      `SELECT 1 FROM happy_hours
+        WHERE cafe_id = $1 AND business_date = $2 AND cancelled_at IS NULL
+          AND starts_at < $4 AND ends_at > $3
+        LIMIT 1`,
+      [a.cafe_id, gun, baslangic, bitis],
     );
+    if (cakisan) continue;
 
-    let acilan = 0;
+    await db.query(
+      `INSERT INTO happy_hours
+         (id, cafe_id, business_date, starts_at, ends_at, pool_kurus, created_by, plan_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+       ON CONFLICT DO NOTHING`,
+      [
+        newId("hh"),
+        a.cafe_id,
+        gun,
+        baslangic,
+        bitis,
+        Number(a.pool_kurus),
+        a.created_by,
+        a.id,
+      ],
+    );
+    acilan++;
+  }
 
-    for (const a of adaylar) {
-      const baslangic = istanbulAn(gun, a.start_minute);
-      const bitis = new Date(baslangic.getTime() + a.duration_min * 60_000);
-
-      // Saati geçmişse bugün için atlanıyor — yarın tekrar denenir.
-      if (bitis <= simdi) continue;
-
-      await db.query(
-        `INSERT INTO happy_hours
-           (id, cafe_id, business_date, starts_at, ends_at, pool_kurus, created_by, plan_id)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
-         ON CONFLICT DO NOTHING`,
-        [
-          newId("hh"),
-          a.cafe_id,
-          gun,
-          baslangic,
-          bitis,
-          Number(a.pool_kurus),
-          a.created_by,
-          a.id,
-        ],
-      );
-      acilan++;
-    }
-
-    if (acilan) log.info("happy hour programdan acildi", { adet: acilan });
-    return acilan;
-  });
+  if (acilan) log.info("happy hour programdan acildi", { adet: acilan });
+  return acilan;
 }
 
 /**

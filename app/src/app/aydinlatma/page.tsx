@@ -68,6 +68,13 @@ export default function AydinlatmaSayfasi() {
               edildiğini doğrulamak için. Konum bilgisi yalnızca ödülün gerçekten kafede
               kazanıldığını göstermek için kullanılır; saklanan şey mesafedir, adres değil.
             </p>
+            {/* Ü279: masa oturumu gün boyu açık, "hâlâ kafede mi" sorusunu
+                taze konum cevaplıyor — okumanın sıklığı söylenmeli. */}
+            <p className="mt-3">
+              Kafedeyken, uygulama açık olduğu sürece konumun birkaç dakikada bir ve her oyun
+              ya da çark öncesinde yeniden kontrol edilir; ödül ancak hâlâ kafedeysen verilir.
+              Uygulama kapalıyken konumun okunmaz.
+            </p>
           </Bolum>
 
           <Bolum baslik="Diğer oyuncular ne görür">

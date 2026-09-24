@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Cark, type CarkDilimi, type CevirmeCevabi } from "./cark";
+import { Cark, type CarkDilimi, type CevirmeCevabi, type KazanilanKupon } from "./cark";
 import { KartDalgalari, KartResmi } from "./kart-gorseli";
 import { RENK } from "./oyuncu-renk";
 
@@ -56,7 +56,7 @@ export function CarkSahnesi({
   /** Çark kapalıysa sayfada görünen sebep. */
   kapaliMetin?: string;
   altMetin: string;
-  kazandiMetni: React.ReactNode;
+  kazandiMetni: React.ReactNode | ((kupon: KazanilanKupon | null) => React.ReactNode);
   davetBaslik: string;
   davetMetin: string;
   /**

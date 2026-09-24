@@ -6,7 +6,7 @@
 > Yan dosyalar: neyin **var** olduğu → `21-looply-kapsam-haritasi.md` ·
 > demoda neyin **yapılabildiği** → `22-demo-yapilabilirlik.md`
 
-**Son güncelleme:** 2026-09-24 · **Kararlar:** Ü76 – Ü159, **Ü186 – Ü242**, **Ü259 – Ü276**
+**Son güncelleme:** 2026-09-24 · **Kararlar:** Ü76 – Ü159, **Ü186 – Ü242**, **Ü259 – Ü283**
 
 > ⚠️ **BU LİSTEDE İKİ BOŞLUK VAR.**
 >
@@ -39,9 +39,536 @@
 okutulan karekodun LAN sunucusuna gitmesi tam da bu davranış sayesinde
 çalışıyor.
 
-## ⬅️ Ü276 · Görseller 2 kat keskin — aynı görsel, her cihazda doğru boy — 2026-09-24
+## ⬅️ Ü283 · iPhone kasada kamerayla kupon okuyor — 2026-09-24
 
 ⚠️ **Commitlenmedi.**
+
+Ürün sahibi: *"iPhone'da kamera kuponu okumuyor — bu düzelmeli, diğerlerini
+ona göre test edeceğim."*
+
+- **Sebep:** kasa yalnızca tarayıcının `BarcodeDetector`ına dayanıyordu;
+  Safari/iOS'te yok → "QR okut" düğmesi iPhone'da hiç çıkmıyordu.
+- [x] Dedektör yoksa kamera karesinin ortası tuvale çizilip **jsQR** ile
+  çözülüyor (`lib/karekod-oku.ts`; jsqr 1.4.0, Apache-2.0, bağımlılıksız,
+  tam sürümle sabit). Ayrı parça (130 KB), yalnızca iPhone'da kamera
+  açılınca yükleniyor — Android'in paketi değişmedi. Saniyede ~7 kare,
+  orta kare 640 piksele iniyor (kupon karekodu sürüm 3, 20 cm'den modül
+  başına ~5 piksel).
+- [x] Aynı dosyada iki eski hata: kamera efekti her çizimde yeniden
+  kuruluyordu (kasiyer kod yazarken kamera kapanıp açılıyordu →
+  `useEffectEvent`); izin beklenirken ekran kapanırsa kamera açık
+  kalıyordu (akış durduruluyor).
+- `package-lock.json`: `npm install` başka platformların isteğe bağlı
+  paketlerini silip dosyayı tutarsız bırakıyordu — geri alındı, yalnızca
+  jsqr girdisi eklendi (7 satır).
+- Testler: `tests/kasa-okuyucu.test.ts` (6, veritabanısız) — bizim kupon
+  karekodumuz 5 ve 3 piksel/modülde, soluk-parazitli ekranda çözülüyor;
+  boş kare `null`. **Doğrulanmadı:** iPhone kamerasıyla gerçek okuma —
+  ürün sahibinin 6.4'ünde.
+
+**Cihaz kaydı sorusu** (*"test cihazı kaydettim, telefonda 'bu cihaz
+kayıtlı değil' diyor"*): cihaz kimliği tarayıcının `localStorage`ında
+(`cp_cihaz`, `lib/cihaz.ts`) — **adres+port, tarayıcı ve gizli sekme
+başına ayrı**. Kayıt, kasada kullanılacak cihazın kendi tarayıcısından
+yapılmalı. Sunucu günlüğü: 22:53'te telefondan beş deneme, 22:54:18'de
+"benim telefonum" kaydı, 22:54:40'taki deneme yine tanınmadı → kayıt başka
+bir tarayıcıdan (büyük ihtimalle bilgisayardan) yapılmış. Kod hatası yok;
+"kayıtlı değil" uyarısına tarifi yazmak ürün sahibine önerildi.
+
+🔴 **Aynı turda görüldü — `npm audit`:** next 16.3.2'de iki kritik açık
+(Windows'ta çalışan sunucuda kimliksiz uzaktan kod çalıştırma
+GHSA-p293-qw3h-jr36; AVIF ile görsel optimizasyonunda RCE
+GHSA-2xp9-vwfh-vxw4) — düzeltme **16.3.6**. sharp <0.35.4 yüksek
+(libheif). Test sunucusu Windows'ta ve ağa açık. Ürün sahibine soruldu.
+
+---
+
+## ⬅️ Ü282 · Eski çark kuponu günün oyun hakkını yakıyordu (yalnızca 24 Eylül) — 2026-09-24
+
+⚠️ **Veri düzeltmesi — kod değişmedi.** Ürün sahibinin onayıyla.
+
+Ürün sahibi: *"2048'de 717 yaptım, ödül gelmedi; 0 puan, günlük 900 puan
+sınırına ulaştın dedi — ilk oyundan itibaren hiç ödül kazanamadım."*
+
+- **Sebep:** Ü275 (24 Eylül 03:48) çark kuponunu `issued/cark` olayından
+  tanıyor. 03:48'den önce çarkın verdiği kuponlarda bu olay yok. Ürün
+  sahibinin 02:37 çark kuponu (gece yarısından sonra → 24 Eylül) ve kazıma
+  testi için 02:55'te verilen kupon **oyun ödülü** sayıldı: hesabın bütün
+  gün paket şansı 0. 22:14–22:18'deki üç turda zar "hayır" yazdı (zarlar
+  0,20 · 0,77 · 0,37; şans %90 olsaydı üçü de çıkardı). 15:35'te paket
+  çıkabilmişti, çünkü 14:00–17:00 happy hour ikinci ödüle izin veriyor.
+- **Düzeltme:** iki kupona eksik `issued/cark` olayı eklendi
+  (`created_at` = kuponun verildiği an). Önce geri alınan bir işlemde
+  denendi: şans 0 → %90. Çarkın bekleme süresi değişmedi (son çeviriş
+  15:34 — en geç olay o).
+- **Kod gerekmedi:** kontrol yalnızca bugünün kuponlarına bakıyor ve
+  03:48'den sonraki çark kuponlarında olay var; 25 Eylül'den itibaren
+  tekrarlanamaz. Aynı olaysız kuponlar deneme oyuncularında da var
+  (otomatik testlerin ortak veritabanında kalıntısı) — onlara dokunulmadı.
+- **Aynı gecenin öbür izi:** puan tavanı (900) da gece yarısından sonraki
+  turlarla doldu (01:56 ve 02:39) — kural doğru, gece yarısı sıfırlanıyor.
+  ⚠️ Gece test edilirse iş günü gece yarısında başlar: o turlar ertesi
+  günün hakkından ve tavanından yer.
+- **Açık, sorulacak:** sonuç ekranında puan satırı "Bu kafede
+  harcanabilir" diyor — Ü52'den beri puan harcanmıyor (sıralama ve seviye).
+  Kapalı kafe mesajı tavan doluyken "puanın yazıldı" diyor.
+
+---
+
+## ⬅️ Ü281 · Bütçe kafenin kalabalığını izliyor — yoğun saate para kalıyor — 2026-09-24
+
+⚠️ **Commitlenmedi.**
+
+Ürün sahibi: *"ödül sıklığı tamamen günlük kafe bütçesine, oyuncu
+miktarına ve yaptığı skorlara bağlı değişmeli — günlük limit 10.000 ise
+farklı, 20.000 ise farklı"* · *"kafe 9'da açılıp 23'te kapanıyor, en
+yoğun saat 7 ile 10; bu saatlere doğru miktarda bütçe kalmalı. Önceki
+saatlerde her gelene dağıtıp bitirirsek kalabalıkta dağıtamayız. Bu her
+kafede farklı; sistem akıllıca yapmalı."* Karar: **"Evet, panelde de
+göster"**.
+
+### Sorun (ölçüldü)
+
+Şans sabitti (%33,5), bütçe gün boyu düz çizgiyle açılıyordu. Simülasyon
+(09–23, akşam 19–22 yoğun, 10.000 TL): akşama bütçenin yalnızca %20'si
+kalıyordu. Bol bütçe + tenha kafede bütçenin %18'i kullanılıyordu; dar
+bütçe + kalabalıkta ise tavan açıldıkça ilk gelenler kazanıp sonrakiler
+sıfır şans görüyordu.
+
+### Çözüm
+
+- [x] **Kafenin yoğunluk profili** (`domain/yogunluk.ts`): son 28 günden
+  saat saat **fırsat** — eşiği geçen, konumu doğrulanmış, o gün oyun
+  ödülü almamış oyuncunun turu. Hafta içi ve hafta sonu ayrı. Her açık
+  saate bir ön sayım: az veride profil düz, veri biriktikçe kafenin
+  şekline dönüyor.
+- [x] **Bütçe profile göre açılıyor** (`butce.tempoOrani`): akşam yoğun
+  kafede para akşama saklanıyor. Profil düzse sonuç eski düz çizginin
+  aynısı (test). Kapalıyken sıfır, kapanışta yarım saat pay (Ü90) aynı.
+- [x] **Şans** (`motor.paketSansi`, `kupon.paketSansiIle`): kalan bütçe ÷
+  (günün kalanında beklenen fırsat × ortalama ödül), %2–%90,
+  bıkkınlıkla. Beklenen fırsat profilden; bugün beklenenden kalabalık ya
+  da tenhaysa yarı güvenle düzeltiliyor. Geçmişi olmayan kafede bugünün
+  temposu, o da yoksa açık saat başına 20.
+- [x] Happy hour havuzu: kalan havuz ÷ (pencerenin kalan süresinde
+  beklenen tur — son bir saatte günün ödülünü almış oyuncuların turu).
+- [x] Değişmeyenler: günde bir oyun ödülü, çark ayrı, bıkkınlık, skora
+  göre ödül değeri (`kesinSecim`), "görünürse kesin".
+- [x] **Panel · Bütçe:** "Yoğun saatlerin ve bugünkü dağıtım" — açık
+  saatlerin grafiği (en yoğun üç saat vurgulu, şimdiki saat işaretli),
+  "en yoğun 19:00–22:00 · günün kalabalığının %X'i", bu saate kadar
+  açılan / dağıtılan, bugün 500'ü geçen tur (beklenen), **şu an paket
+  şansı** — kararı veren fonksiyonun kendisinden (`dagitim-plani.ts`).
+- [x] Göç `0055_yogunluk_indeksi.sql`: `play_sessions (cafe_id,
+  business_date) WHERE status = 'completed'`.
+
+### Sonuç (aynı simülasyon, 10.000 TL, günde 1.200 fırsat)
+
+| Kafe | 19–22 / 09–11 / 12–15'e kalan | Şans (dilimler) |
+|---|---|---|
+| Akşam yoğun · bugün | %20 | %24–34 |
+| Akşam yoğun · **yeni** | **%49** | **%20–22** |
+| Sabah yoğun · **yeni** | **%51** (09–11) | %21–29 |
+| Öğle yoğun · **yeni** | **%38** (12–14) | %20–28 |
+
+Üçünde de bütçenin %100'ü kullanılıyor, tavan hiç aşılmıyor.
+
+### Testler (`tests/yogunluk.test.ts`, 15)
+
+- Gün simülasyonu, üç profil: tavan aşılmıyor · ≥%90 kullanılıyor ·
+  yoğun saate payı kadar kalıyor · dilimler arası şans ≤ 1,6 kat ·
+  eskisinden kötü değil. Ürün sahibinin örneği: akşama eskisinden en az
+  15 puan fazla. Bol bütçe + tenha: kullanım eskisinin 2 katından çok.
+  Dar bütçe + kalabalık: şansı sıfır olan tur <%15 (eskisi ≥ 20 puan
+  fazla).
+- Profil: paylar, düz profil = eski düz çizgi, Ü90 kuralları, en yoğun
+  aralık, bugünün temposu, hafta içi/sonu.
+- Veritabanı: kendi test kafesinde en yoğun saat geçmişten bulunuyor;
+  eşik altı ve konumsuz tur sayılmıyor.
+- `odul-sozu`: karar zarı `paketSansiIle` ile karşılaştırılıyor; şansın
+  bütçe/kalabalık/sınır/bıkkınlık davranışı.
+- A/B: tempo geri alınınca 3, şans geri alınınca 2 test düşüyor.
+
+**Sonradan bulunan (aynı gün):** Kafe A'nın sayıları okunurken panel
+"bugün 13 fırsat · günün tamamında beklenen 9" diyordu. Tempo düzeltmesi
+yalnızca *beklenen* 5'i bulunca devreye giriyordu; günde 9 fırsat
+öğrenmiş kafede öğleden sonra beklenen 4,5 → bugünün kalabalığı hiç
+görülmüyordu. Artık beklenen **ya da gelen** 5'i bulunca düzeltiliyor ve
+günlük tahmin bugün gelenin altına inmiyor (`yogunluk.gunlukTahmin`).
+Etkisi yalnızca "bugün beklenenden kalabalık" yönünde: kalan fırsat
+artıyor, şans temkinli tarafa gidiyor. Kafe A şimdi: 13 / beklenen 17.
+Yeni test: az geçmişte bugünkü kalabalık görülüyor.
+
+**Doğrulama:** tsc · eslint · tam takım geçici kopyada **842/842** ·
+göç 0055 asıl veritabanında · Kafe A için panelin sayıları okundu (09–23,
+16 günlük veri, en yoğun 16–19, şans %90 — bütçe 50.000 TL, oyuncu az) ·
+`next build` · 3001 açık. Panel bölümü ekrandan görülmedi — ürün
+sahibinin 1.6'sında.
+
+---
+
+## ⬅️ Ü280 · Blok Kırıcı'da top bloğun içinden geçmiyor — 2026-09-24
+
+⚠️ **Commitlenmedi.**
+
+Ürün sahibi: *"oyunları bayağı oynadım, bir türlü ödül kazanamadım · sekme
+oyununda top arada blokların içinden geçiyor."* Kaçan paket kararı:
+*"oyun esnasında görünen ödül kazanılırsa ödül kesin verilir."*
+
+### Top bloğun içinden geçiyordu (`oyunlar/sekme.ts`)
+
+- Ölçüldü: 300 rastgele oyunun 345.199 karesinin 111'inde topun merkezi
+  bloğun dolu kısmına olağandan derin giriyordu (en çok 222 birim);
+  yarısından çoğu üçgen, örnekler duvar dibinde. Adım 220 birim,
+  çarpışma iç içe geçtikten sonra görülüyor, top "hızı kadar geri"
+  itiliyordu; duvar yansıması ya da yanlış eksen onu bir bloğun içine
+  geri bırakabiliyordu.
+- [x] Adım 4 parçada yürünüyor (`ALT_ADIM`, ikinin kuvveti — `v·j/4`
+  ikili kayan noktada tam, determinizm bozulmuyor) ve çarpışan top
+  **parçanın başına dönüp** yansıyor: hiç içeri girmiyor. Kare sayısı
+  aynı. Aynı ölçümde topun merkezi hiçbir karede bloğa girmiyor; tekrar
+  oynatma süresi değişmedi (oyun başına ~1 ms).
+- ⚠️ Fizik değişti: güncellemeden önce başlayıp sonra biten tur
+  doğrulanamaz (geliştirmede önemsiz).
+
+### Ödül neden gelmedi — kaçan paket
+
+- Ürün sahibinin 6 turunun 5'i 500'ü geçti, zar birinde tuttu (15:35
+  Blok Kırıcı). Paket 8. atışta belirdi, 8 atış vurulmadı, en alt
+  satıra indi, tur bitti — kupon yok ve **ekran hiçbir şey demedi**.
+- ~~`odulYok: { sebep: "kacti" }`: sonuç ekranı *"Ödül paketini
+  kaçırdın …"* diyordu (misafirde de).~~ 🔴 **Kaldırıldı — aynı gün,
+  ürün sahibi: *"bu yazmasın."*** Kaçan paket sonuçta söylenmiyor;
+  sunucu da gerekçe göndermiyor (Ü275'teki hâli). `odul-sozu` testi
+  bunu tutuyor: söz var, paket alınmadı → kupon yok, `odulYok` boş.
+- Kural değişmedi: paket alınırsa kupon kesin; alınmazsa kupon yok, günün
+  hakkı yanmıyor.
+
+**Doğrulama:** tsc · eslint · Blok Kırıcı'ya bağlı üç dosya 144/144 ·
+derlenmiş pakette yeni fizik (`Math.trunc(a*b/4)`). Mesaj kaldırıldıktan
+sonra tam takım geçici kopyada 840 geçti, 0 düştü, 1 atlandı (happy hour
+testi 20:00'den sonra kendini atlıyor) · derlenmiş pakette "kaçırdın" yok.
+
+---
+
+## ⬅️ Ü279 · Masa oturumu konumla yaşıyor · happy hour'da kafenin son kaydı geçerli — 2026-09-24
+
+⚠️ **Commitlenmedi.**
+
+Ürün sahibi: *"masa oturumun doldu ne anlama geliyor, oturum dolmamalı,
+orada konum hep takip edilmeli, insanları tekrar karekod okutmaya
+zorlamamalıyız"* · *"happy hour için bugüne şu anki saate 3 saatlik
+koydum ama hiçbir ekran çıkmadı."*
+
+Kararlar: masa oturumu **"Konum canlı tutsun"** · happy hour **"Evet,
+bugün de açılsın"**.
+
+### Masa oturumu
+
+- [x] Karekod ziyaretin başında **bir kez**: oturum 3 saatte değil, iş
+  günü sonunda kapanıyor (`masa.oturumBitisi` — İstanbul'da gece yarısı,
+  en az 3 saat). Kafede okunan her konum oturumu yeniden uzatıyor.
+- [x] 🔴 **"Hâlâ kafede mi" sorusunu taze konum cevaplıyor.** K2 yalnızca
+  son okuma 15 dakikadan yeniyse geçerli (`KONUM_TAZE_DAKIKA`,
+  `masa.aktif`). Oyun başlangıcı, çark ve misafir talebi `aktif()`ten
+  okuduğu için hepsi kendiliğinden kapsandı. AL-2'nin "kanıt geri
+  alınmaz" kuralı değişti: kesin "uzak" okuma K2'yi düşürüyor — kafeden
+  çıkan kazanamıyor. Eskiden sabah doğrulanan kişi eve gidince de
+  kazanabiliyordu.
+- [x] Hata payı çembere taşan okuma `belirsiz`: hiçbir şey değişmiyor, iç
+  mekânda sıçrayan okuma masadaki oyuncunun kanıtını düşürmüyor
+  (tarayıcının `coords.accuracy`si sunucuya gidiyor).
+- [x] İstemci konumu taze tutuyor (`app/oyna/konum-takibi.tsx`): açık
+  sayfada 5 dakikada bir ve uygulamaya dönünce — **yalnızca izin daha
+  önce verildiyse**, kendiliğinden izin sorulmuyor. Oyun ve çark
+  başlamadan hemen önce son "kafedesin" okuması 4 dakikadan eskiyse bir
+  kez okunuyor (izin sorulabilir; oyuncu o an bir şey başlatıyor). Sessiz
+  okuma ayrı bir eylemle (`konumTazeleEylemi`) — `revalidatePath` yok, tur
+  sırasında sayfa yeniden çizilmiyor.
+- [x] Oyun kabuğu "kazandırır"ı turun kendi cevabından alıyor, sayfanınkinden
+  değil: konum tur öncesi tazelenince sayfa "Kazandırmaz" deyip ödül
+  paketini gizlemesin.
+- [x] Şerit: okuması eskimiş oyuncuya "uzaktasın" değil "konumunu doğrula";
+  önceki günden kalan oturum "doldu" değil, yeni ziyaret ("karekodu okut").
+- [x] Göç `0054_masa_oturumu_gun_boyu.sql`: **bugün** açılıp eski 3 saat
+  kuralıyla dolmuş oturumlar gece yarısına uzatıldı — ürün sahibinin
+  hesabı (02:37'de okuttu, 05:37'de doldu) karekodsuz geri geldi.
+- [x] Aydınlatma metnine: *"Kafedeyken, uygulama açık olduğu sürece konumun
+  birkaç dakikada bir ve her oyun ya da çark öncesinde yeniden kontrol
+  edilir; ödül ancak hâlâ kafedeysen verilir. Uygulama kapalıyken konumun
+  okunmaz."* Rıza sürümü `v0-taslak-2026-09-24` (metin değişince sürüm
+  artar — `riza-surumu.ts`). Hukuk incelemesi yine bekliyor.
+- ⚠️ Tarayıcı arka planda konum vermiyor; takip yalnızca uygulama açıkken.
+  iPhone'da izin "Sor" ise sessiz okuma çalışmaz, oyun/çark öncesi okuma
+  ve şeritteki düğme çalışır.
+
+### Happy hour — kafenin son kaydı geçerli
+
+- [x] Ü278'deki **"günde bir program penceresi" kuralı kalktı.** Ürün
+  sahibi Perşembe 14:43'te Perşembe satırına 14:00–17:00 yazdı; sabahki
+  pencere yapıldığı için yeni saat bugün açılmadı ("neden açılmadı").
+  Artık bugünün satırına yazılan saat bugün de açılıyor. Kalan korumalar:
+  günde en fazla 2 pencere (elle açılanlar dahil, elle açmayla aynı sayım)
+  ve süren pencereyle çakışmama.
+- [x] Kayıt mesajı bugün ne olduğunu söylüyor: başlayacak / şu an açık ·
+  **ikinci happy hour** başlayacak / açık · saati geçti · sürenle
+  çakışıyor · günlük sınır — son üçünde "yeni saat gelecek haftadan".
+
+### Testler
+
+- `masa`: 🔴 oturum 3 saatte dolmuyor · bitiş formülü (sabah → gece
+  yarısı, 23:30 → 02:30) · kafede okunan konum uzatıyor · 🔴 kesin uzak
+  kanıtı düşürüyor · belirsiz okuma düşürmüyor · 🔴 eski konum
+  kazandırmıyor ama "uzaktasın" da demiyor, yeni okuma geri getiriyor.
+- `happy-hour`: 🔴 bittiyse bugünün yeni saati bugün de açılıyor (ürün
+  sahibinin durumu) · çakışan açılmıyor, çakışmayan "ikinci" · günde en
+  fazla 2 · saati geçmiş "geçti".
+- A/B: dört kural (tazelik, uzakta düşme, gün boyu oturum, günde bir
+  kuralının kalkması) geri alınınca beş test düşüyor.
+
+**Doğrulama:** tsc · eslint · tam takım ürün sahibinin veritabanının
+geçici kopyasında **825/825** (0 düştü, 0 atlandı) · göç 0054 önce
+kopyada, sonra asıl veritabanında; ürün sahibinin hesabının oturumu
+25.09 00:00'a uzadı · `next build` · 3001 yeniden açıldı, LAN adresinde
+aydınlatma sayfası yeni cümle ve sürümle. Ekrandan görülmedi — ürün
+sahibinin 3.x ve 1.10'unda.
+
+---
+
+## ⬅️ Ü278 · Konum bilgisayardan da kesin · eski ürünlü ödüller kurala uydu — 2026-09-24
+
+⚠️ **Commitlenmedi.**
+
+### Konum: Google Haritalar'dan koordinat
+
+Ürün sahibi: *"bunu yerinde bilgisayardan doğru bilgiyi alamaz mıyız?"*
+Bilgisayarda GPS yok; tarayıcının tahmini ±5 km yanıldı (Ü274 reddediyor).
+Karar: **"Evet, ekle"**.
+
+- [x] Konum sayfasında yeni bölüm: Google Haritalar'da kafenin üstüne sağ
+  tıkla → en üstteki sayılar kopyalanır → yapıştır. Yazarken önizleme ve
+  **"Haritada gör ↗"** ile kaydetmeden gözle kontrol. Kayıtlı konumun
+  yanında da aynı bağlantı.
+- [x] `lib/koordinat.ts` (saf, ekran ve sunucu aynı kural): düz koordinat
+  (ondalığı virgüllü de) ve Google Haritalar linki. 🔴 Yer linkinde
+  işaretli yer (`!3d…!4d…`) alınıyor — `@` haritanın ortası; yalnızca `@`
+  varsa ekran "haritanın ortası" diye uyarıyor.
+- [x] Reddedilenler, sebebi söylenerek: kısa link (çözmek Google'a istek
+  demek), virgülden sonra 4 basamaktan az (kafeyi yüz metrelerce kaydırır),
+  enlem-boylam ters, Türkiye/KKTC dışı.
+- [x] ±5 km'lik okumadaki **"Yine de kaydet" kalktı**; yerine bu alan
+  gösteriliyor.
+- [x] Denetim izi ayırıyor: `konum_elle_girildi` / `konum_isaretlendi`.
+- Güvenlik: bugünkünden farkı yok — tarayıcının okuduğu koordinat da
+  zaten kafenin cihazından geliyor; yalnızca yönetici, oturumdaki kafe
+  için, ham metin sunucuda yeniden çözülüyor.
+
+### Eski ürünlü ödüller — göç 0053
+
+Ürün sahibi: **"Ben güncelleyeyim"**.
+
+- [x] `0053_urunlu_odul_degeri.sql`: yüzde = fiyat × oran, ürün = fiyat;
+  kafenin üst sınırını aşan yayından kalkıyor (silinmiyor); her satır
+  denetim izinde (`goc: 0053`, eski/yeni değer, yayından kalktı mı).
+  RLS için işleme özel `app.bypass` — canlıdaki yönetici rolü süper
+  kullanıcı olmayabilir.
+- Sonuç (geliştirme veritabanı, 13 ödül):
+
+| İşletme | Ödül | Eski | Yeni | |
+|---|---|---|---|---|
+| Kafe A + 3 şube | ize amreicano yüzde 10 (279 TL) | 25 TL | 27,90 TL | |
+| Kafe A + 3 şube | testte yüzde 10 (50 TL) | 50 TL | 5 TL | |
+| Kafe A | Ice Americano (120 TL) | 30 TL | 120 TL | zaten yayında değildi |
+| kadikoy · sube-3cfm · sube-4p2p | Ice Americano (120 TL) | 30 TL | 120 TL | 🔻 yayından kalktı (tavan 50) |
+| Moda Butik | %10 · İpek eşarp (890 TL) | 35 TL | 89 TL | 🔻 yayından kalktı (tavan 50) |
+
+- Dolaşımdaki kuponlar değişmedi — ayırdıkları tutar verildikleri anın
+  sözü; kasa zaten `kasaDegeri` ile doğru düşüyor.
+
+### Ürün sahibinin 1.10 turunda çıkanlar
+
+Ürün sahibi: *"çarktan ize amerikano yüzde 10 indirim çıktı ama hesabıma
+gelmedi · hemen streak ekranı geldi · şu an zaten bu saatin içindeyiz,
+niye başka pencere açılmadı?"*
+
+- [x] 🔴 **Çark yanlış yere yönlendiriyordu.** Kupon oluşmuştu (14:18:34,
+  27,90 TL, 12 saat sonra açılacak) ama sonuç kartı sabit bir cümleyle
+  *"Ödüllerim ekranından kasada gösterebilirsin"* diyordu — Ü269'dan beri
+  her ödül bekliyor. Ürün sahibi kuponu kasada gösterilebilirler arasında
+  aradı. Artık çevirme sonucu kuponun açılma zamanını taşıyor
+  (`CevirmeCevabi.kupon`) ve kart oyun ekranının dilini kullanıyor:
+  bekleme cümlesi (Ü97, saat yazmadan) + "Kuponun hesabında — Ödüllerim
+  ekranında 'Yakında açılıyor' altında".
+- [x] 🔴 **Seri sahnesi aynı gün iki kez açılıyordu.** Damgada seri sayısı
+  vardı ("aynı gün seri büyüyemez" varsayımı) ama günün ilk oyunu bitince
+  seri bir artıyor; oyundan dönünce sahne yeniden açıldı. Damga artık
+  yalnızca gün.
+- [x] Haftalık programda bugünün satırında **"bugün"** etiketi. Perşembe
+  günü Cuma satırına saat yazılmıştı; yedi satırın hangisinin bugün
+  olduğu hiçbir yerde yazmıyordu. Gün sunucuda İstanbul saatiyle.
+- Happy hour bugün açılmadı çünkü kaydedilen **Cuma** programıydı; bugünün
+  (Perşembe) programı sabah 04:00–07:00'de yapılmıştı. Bugün için
+  "Bugüne tek seferlik pencere" formu var.
+- Bilinen, yalnızca geliştirmede: 3001 kayıtlarında *"failed to get
+  redirect response … unable to verify the first certificate"*. Next,
+  sunucu eyleminin `redirect()`ini kendi adresinden (kendinden imzalı
+  sertifika) önceden getirmeye çalışıyor, olmayınca yönlendirmeyi
+  istemciye bırakıyor. Kullanıcı etkisi yok; canlıdaki gerçek
+  sertifikada çıkmaz.
+
+### Testler
+
+- `koordinat.test.ts` (15, saf): biçimler, yer linki önceliği, kodlanmış
+  virgül, `@` uyarısı, KKTC, kısa link, kaba/ters/yurt dışı, harita linki.
+- `kafe-paneli`: elle girilen konum denetim izinde ayrı.
+
+**Doğrulama:** tsc · eslint · saf testler 15/15 · göç önce ürün
+sahibinin veritabanının **geçici kopyasında** uygulandı ve okundu, tam
+takım orada **817/817** (0 düştü, 0 atlandı); sonra asıl veritabanına
+uygulandı, sonuç aynı · `next build` · 3001 yeniden açıldı, LAN adresi
+200, girişsiz konum sayfası girişe yönlendiriyor. Konum ekranı gözle
+görülmedi (tarayıcıda panele girmek yok) — ürün sahibinin 1.3'ünde.
+Ürün sahibi 1.3'ü yaptı: konum 14:15'te `konum_elle_girildi` ile kaydedildi,
+yarıçap 200. Çark · seri · program düzeltmeleri: tsc · eslint · derlenmiş
+çıktıda yeni metin ve tek günlük damga görüldü · 3001 yeniden açıldı (LAN
+200). Ekrandan görülmedi — ürün sahibinin 5.6 / 5.6b / 1.10'unda.
+
+---
+
+## ⬅️ Ü277 · Panel gerçekten işliyor mu — ödül değeri üründen · çark kartı · happy hour kendiliğinden — 2026-09-24
+
+⚠️ **Commitlenmedi.**
+
+Ürün sahibi 1. bölümü test ederken: *"ödül tipi ürün de seçsem fiyat
+soruyor ama o saçma oluyor · yüzde indirimde hem indirim oranı hem en
+fazla indirim TL yazıyor, bu yanlış · şans çarkı yazan yer boş · happy
+hour'da pencere kendiliğinden açılacaktan kastı ne · panel göstermelik mi
+çalışıyor, gerçekten oyunculara yansıyor mu, veritabanına işliyor mu?"*
+
+Kararlar: 25 TL alt sınırı **"Kalksın"** · yüzde ödülü **"Evet, ürün
+zorunlu"**.
+
+### Ödül değeri ürünün fiyatından
+
+- [x] **Ürün** ödülü: değer = ürünün fiyatı; form fiyat sormuyor.
+- [x] **Yüzde**: ürün zorunlu; değer = fiyat × oran, kuruşa yuvarlı. Form
+  yalnızca oranı soruyor ve canlı yazıyor: "Filtre Kahve 60 TL × %20 =
+  12 TL indirim". Ürün kutusu her ürünü fiyatıyla listeliyor.
+- [x] **Tutar**: tam TL, sıfırdan büyük.
+- [x] 25 TL alt sınırı kalktı — `0052_odul_alt_siniri_kalkti.sql`
+  (`odul_degeri_tam_tl` kısıtı düştü; kuruşlu yüzde değeri artık
+  yazılabiliyor). Yalnızca kafenin üst sınırı kaldı; üst sınır ipucu hâlâ
+  "25 TL ile bu tutar arası" diyordu, düzeltildi.
+- [x] **Kasada** ürüne bağlı yüzde kuponu: tutar sorulmuyor, ekranda
+  "%20 · Filtre Kahve". 🔴 `onayla` kasiyerden gelen tutarı **yok
+  sayıyor** — arayüzü atlayıp tutar gönderen biri değeri değiştiremiyor.
+  Ürünsüz eski yüzde ödüllerinde eski davranış (kasiyer girer, tavanla
+  sınırlı).
+- [x] Ödül listesi: yüzde "%20 = 12 TL", altında ürün ve fiyatı.
+- [x] 🔴 **Eski ödüller kasada doğru düşüyor** — `kupon.kasaDegeri`:
+  ürünlü yüzdede fiyat × oran, kuponun ayırdığı tutarla sınırlı; ekran
+  (`coz`) ve kayıt (`onayla`) aynı hesap. Sebep: Ü277'den önce kurulan
+  ürünlü ödüllerin değeri elle yazılmıştı ve **hiçbiri** yeni kurala
+  uymuyor (geliştirme veritabanında 5 işletmede 13 ödül; ör. "50 TL'lik
+  üründe %10" 50 TL kayıtlı). Kasa ayrılan tutarı düşseydi bütçe gerçek
+  indirimin on katı eksilirdi.
+- [x] O eski ödüllerin **kayıtlı değeri** de kurala uydu — ürün sahibi
+  "Ben güncelleyeyim" dedi; göç 0053, ayrıntı Ü278'de.
+
+### Şans çarkı kartı
+
+- [x] Yalnızca açıklama vardı, boş görünüyordu. Artık çarktaki ödüller ve
+  çıkma yüzdeleri — çekilişin kullandığı **aynı** tablodan
+  (`cark-agirlik.durum`), en olası üstte, en çok 8 + "N ödül daha".
+
+### Happy hour programı gerçekten kendiliğinden
+
+- [x] 🔴 **Bulgu:** programdan pencere açan iş (`programlariUygula`)
+  yalnızca bakım köprüsünden koşuyordu; köprü de yalnızca davet ·
+  ödüller · bütçe · rapor sayfaları açılınca tetikleniyordu. O sayfaları
+  kimse açmazsa program saatinde **pencere açılmıyordu** — panelde
+  kayıtlı, oyuncuya yansımıyor.
+- [x] Düzeltme: ödül kararı (`acikPencereIle`), panel (`bugunkuler`) ve
+  program kaydı (`programKur`) kendi kafesinin programını işlem içinde
+  uyguluyor. Oyuncu ödül kazandığı anda pencere var.
+- [x] Program yeniden kaydedilince bugünün başlamamış penceresi iptal;
+  süren pencere bozulmuyor; elle kapatılan pencere o gün yeniden
+  açılmıyor.
+- [x] ~~🔴 **Günde bir program penceresi.**~~ ⚠️ Ü279'da kalktı (ürün sahibinin kararı: kafenin son kaydı geçerli). Bugünkü pencere sürerken ya da
+  bittikten sonra saat değiştirilince yeni saat **aynı gün** ikinci bir
+  happy hour ve ikinci bir havuz açıyordu — kodun kendi yorumu "yeni saat
+  gelecek haftadan" derken. Artık açılmıyor; mesaj "Bugünkü happy hour
+  zaten sürüyor / yapıldı; yeni saat gelecek haftadan geçerli" diyor.
+- [x] Kayıt mesajı ne olacağını söylüyor: *"Her Perşembe 14:00'te happy
+  hour kendiliğinden başlar ve 3 saat sürer — senin bir şey yapman
+  gerekmez … Bugün 14:00'te başlayacak."* (saati geçtiyse "şu an açık").
+
+### Konum sorusu — değişiklik yok
+
+Bilgisayardan "±5 km" okuma reddediliyor (Ü274) ve bu doğru: bilgisayarda
+GPS yok, konum Wi-Fi'den tahmin ediliyor. Kaydedilseydi kafedeki oyuncu
+"uzaktasın" diye reddedilirdi. Konum kafede **telefondan** kaydedilir.
+
+### Test yöntemi — "göstermelik mi?"
+
+- [x] `docs/27` 1. bölüm: her panel adımına **🔗 Etki** — oyuncunun
+  ekranında ne değişmeli, veritabanında ne bakılacak. Ürün sahibi adımı
+  yapıyor, kayıt ve etkisi veritabanından doğrulanıyor.
+- ⚠️ **Bulgu:** otomatik test takımı ürün sahibiyle **aynı veritabanında**
+  ve Kafe A'nın konumunu, yarıçapını, oyun anahtarlarını (ve oyun denetim
+  kayıtlarını), bütçesini, happy hour pencerelerini değiştiriyor. 04:37
+  koşusunda Kafe A'da kapalı oyunlar vardı → `oyun-motoru`nda 8 test
+  "oyun kapalı" diye düştü (tek başına 117/117); hemen ardından
+  `oyun-secimi` temizliği kapalı oyunları ve kayıtlarını sildi.
+  `kupon-kasa` temizliği de Kafe A'nın **bütün kupon olaylarını**
+  siliyor — çark kilidi ve günlük oyun hakkı o olaylara bakıyor. Elle
+  test sürerken takım koşulmuyor. Kalıcı çözüm **ayrı test veritabanı** —
+  karar bekliyor.
+
+### Testler
+
+- `kafe-paneli`: üst sınır geçerli [1, 24, 25, 27, 50], geçersiz [0, 27,5,
+  51] · ürünsüz yüzde reddi · 🔴 ürün ve yüzde ödülünün değeri ürünün
+  fiyatından.
+- `kupon-kasa`: 🔴 ürüne bağlı yüzdede kasiyerin tutarı yok sayılır ·
+  🔴 değeri elle yazılmış eski ürünlü yüzdede kasa fiyat × oranı düşer ·
+  `kasaDegeri` sınırları · eski ürünsüz yüzde ödülü SQL ile kuruluyor.
+- `happy-hour`: kendiliğinden açılma · kayıtta hemen · yeniden kayıt
+  başlamamışı iptal eder · elle kapatılan yeniden açılmaz · 🔴 süren
+  pencere varken yeni saat bugün açılmaz · 🔴 bittiyse de açılmaz.
+- A/B: katalog, kupon ve happy hour kuralı geri alınınca ilgili testler
+  düşüyor (3/3); sonradan gelen iki düzeltmede de (kasa değeri, günde bir
+  pencere) dört yeni testin dördü düzeltme geri alınınca düşüyor.
+
+### Yapılmayanlar
+
+- `scripts/cark-odulleri.ts` ürünsüz yüzde ödülü kuruyor → artık
+  reddedilir; betik güncellenmeli.
+- `ayar.ts` yorumu hâlâ "alt sınır sabit (25 TL)" diyor.
+- 🔴 **`npm run db:seed` boş veritabanında çalışmıyor:**
+  `cafe_tables_tek_aktif` kısıtına takılıyor (tohum kafe başına birden
+  çok aktif masa açıyor, sonraki bir göç tek aktif masa şartı koymuş).
+  Yeni kurulum ya da ayrı test veritabanı bununla açılamaz.
+
+**Doğrulama:** tsc · eslint · etkilenen dosyalar 204/204 · tam takım
+782/790 (8'i yukarıdaki ortak veri çakışması) · `next build` · 3001
+yeniden başlatıldı. Eski ödül düzeltmesi (`kasaDegeri`) sonradan geldi:
+tsc · eslint · saf fonksiyon 8/8 · birleştirme gerçek şemada salt okunur
+denendi. İki düzeltme için etkilenen dört dosya (`happy-hour`,
+`kupon-kasa`, `kafe-paneli`, `odul-sozu`) ürün sahibinin veritabanının
+**geçici kopyasında** koşuldu (`pg_dump` → `cafeplay_testgecici`, iş
+bitince silindi): 173/173. Sonra **tam takım** aynı yolla: 801 test ·
+794 geçti · **0 düştü** · 7 atlandı (sessiz saat SMS testleri). Ortak
+veritabanında koşulmadı — temizlikleri Kafe A'nın verisini siliyor.
+3001 yeniden derlendi ve açıldı. Panelin ekrandan doğrulaması yapılamadı (tarayıcıda
+LAN adresine gitme izni verilmedi) — 1.5 · 1.10 · 1.11 ürün sahibinin
+testinde.
+
+---
+
+## ⬅️ Ü276 · Görseller 2 kat keskin — aynı görsel, her cihazda doğru boy — 2026-09-24
+
+✅ Commitlendi — `b6a338e` (2026-09-24 04:04).
 
 Ürün sahibi: *"görselleri yeniden üret ama aynı görseller olsun ve kalite
 cihazdan cihaza bozulmasın."*

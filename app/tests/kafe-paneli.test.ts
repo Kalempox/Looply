@@ -819,7 +819,7 @@ describe("ürün ve ödül kataloğu", () => {
    * siliniyor. Ürün sahibi aynı kafeyi panelden elle deniyor; test onun
    * yazdığı üst sınırı ezip bırakmamalı.
    */
-  test("ödül değeri 25 TL ile kafenin üst sınırı arasında, tam TL — Ü268 · K5", async () => {
+  test("tutar ödülü kafenin üst sınırına kadar serbest, tam TL — Ü268 · K5 · Ü277", async () => {
     const odul = (maliyetKurus: number, ek: string) =>
       katalog.ekle({
         cafeId: kafeA,
@@ -847,13 +847,15 @@ describe("ürün ve ödül kataloğu", () => {
     ]);
 
     try {
-      /* ── 1 · Ayar yokken tavan 50 TL; aradaki her tam TL geçerli ── */
-      for (const gecerli of [25_00, 27_00, 50_00]) {
+      /* ── 1 · Ayar yokken tavan 50 TL; aradaki her tam TL geçerli ──
+         Ü277: alt sınır kalktı (ürün sahibi: "kalksın") — 1 ve 24 TL de
+         geçerli. */
+      for (const gecerli of [1_00, 24_00, 25_00, 27_00, 50_00]) {
         const s = await odul(gecerli, "gecerli");
         assert.ok(s.ok, `${gecerli / 100} TL reddedildi: ${s.ok === false ? s.hata : ""}`);
       }
-      // 24 TL tabanın altı, 27,50 kuruşlu, 51 TL varsayılan tavanın üstü.
-      for (const gecersiz of [0, 24_00, 27_50, 51_00]) {
+      // 0, 27,50 kuruşlu (elle yazılan tutarda tam TL), 51 TL varsayılan tavanın üstü.
+      for (const gecersiz of [0, 27_50, 51_00]) {
         const s = await odul(gecersiz, "gecersiz");
         assert.equal(s.ok, false, `${gecersiz / 100} TL kabul edildi`);
       }
@@ -918,21 +920,113 @@ describe("ürün ve ödül kataloğu", () => {
     assert.equal(eklenen.yuzde, null);
   });
 
-  test("tavansız yüzdeli ödül reddedilir (Ü17)", async () => {
+  test("ürünsüz yüzde ödülü reddedilir — TL karşılığı üründen (Ü277)", async () => {
     const sonuc = await katalog.ekle({
       cafeId: kafeA,
       tip: "percent",
-      baslik: "TEST Tavansız",
-      maliyetKurus: 0,
+      baslik: "TEST Ürünsüz yüzde",
+      maliyetKurus: 40_00,
       yuzde: 20,
-      puanFiyati: 3_000,
-      anlik: false,
+      puanFiyati: 0,
+      anlik: true,
       aktorId: yoneticiA,
     });
-    // Ü52 sonrası mesaj değer kuralından geliyor: sıfır zaten geçerli bir
-    // basamak değil. Reddin sebebi değişti, reddin kendisi değişmedi.
-    assert.equal(sonuc.ok, false);
-    assert.match(sonuc.ok === false ? sonuc.hata : "", /25|50|artış/i);
+    assert.equal(sonuc.ok, false, "ürünsüz yüzde ödülü kabul edildi");
+    assert.match(sonuc.ok === false ? sonuc.hata : "", /ürünü seç/i);
+  });
+
+  /**
+   * Ü277 — ürün sahibi: *"ürün seçsem de fiyat soruyor, o saçma; yüzdede
+   * sadece oran yazsın, kaç TL indirime denk geldiğini panel söylesin."*
+   * Değer sunucuda ürünün fiyatından hesaplanıyor; formdan gelen sayı yok
+   * sayılıyor. Kafenin üst sınırı sabit bir değere çekilip sonunda AYNEN
+   * geri konuyor (ürün sahibi aynı kafeyi elle deniyor).
+   */
+  test("🔴 ürün ve yüzde ödülünün değeri ürünün fiyatından (Ü277)", async () => {
+    const onceki = await withBypass("test: mevcut üst sınır", (db) =>
+      db.one<{ value: string }>(
+        `SELECT value::text FROM cafe_config WHERE cafe_id = $1 AND key = $2`,
+        [kafeA, ayar.ANAHTARLAR.odulUstSinir],
+      ),
+    );
+    const sonIz = await withBypass("test: son denetim", (db) =>
+      db.one<{ id: string }>(`SELECT coalesce(max(id), 0)::text AS id FROM audit_log`),
+    );
+    const yaz = await ayar.sayiYaz({
+      cafeId: kafeA,
+      anahtar: ayar.ANAHTARLAR.odulUstSinir,
+      deger: 60_00,
+      aktorId: yoneticiA,
+    });
+    assert.ok(yaz.ok, "üst sınır yazılamadı");
+
+    const ek = Math.random().toString(36).slice(2, 7);
+    const pahali = await urun.ekle({
+      cafeId: kafeA,
+      ad: `TEST Pahalı ${ek}`,
+      fiyatKurus: 90_00,
+      aktorId: yoneticiA,
+    });
+    assert.ok(pahali.ok, pahali.ok === false ? pahali.hata : "");
+    const pahaliId = pahali.ok ? pahali.urun.id : "";
+
+    const ekle = (o: { tip: "product" | "percent"; urunId: string; yuzde?: number; maliyetKurus?: number }) =>
+      katalog.ekle({
+        cafeId: kafeA,
+        tip: o.tip,
+        baslik: `TEST Ü277 ${o.tip} ${o.yuzde ?? ""} ${ek}`,
+        maliyetKurus: o.maliyetKurus,
+        yuzde: o.yuzde,
+        puanFiyati: 0,
+        anlik: true,
+        urunId: o.urunId,
+        aktorId: yoneticiA,
+      });
+
+    try {
+      // Ürün ödülü: değer ürünün fiyatı (45 TL); formdan gelen 99 TL yok sayılıyor.
+      const u = await ekle({ tip: "product", urunId: urunA, maliyetKurus: 99_00 });
+      assert.ok(u.ok, u.ok === false ? u.hata : "");
+      assert.equal(u.ok && u.degerKurus, 45_00, "ürün ödülü fiyatı değil formdaki sayıyı aldı");
+      const liste = await katalog.listele(kafeA);
+      const satir = liste.find((x) => x.id === (u.ok ? u.id : ""));
+      assert.equal(satir?.maliyetKurus, 45_00);
+      assert.equal(satir?.urunFiyatKurus, 45_00);
+
+      // Yüzde: fiyat × oran, kuruşa yuvarlı. 45 × %20 = 9 · 45 × %15 = 6,75.
+      const y20 = await ekle({ tip: "percent", urunId: urunA, yuzde: 20 });
+      assert.equal(y20.ok && y20.degerKurus, 9_00);
+      const y15 = await ekle({ tip: "percent", urunId: urunA, yuzde: 15 });
+      assert.equal(y15.ok && y15.degerKurus, 6_75, "kuruşlu indirim yuvarlanmadı ya da reddedildi");
+
+      // Üst sınır (60 TL) ürün fiyatında da, yüzde hesabında da geçerli.
+      const p = await ekle({ tip: "product", urunId: pahaliId });
+      assert.equal(p.ok, false, "üst sınırı aşan ürün ödül oldu");
+      assert.match(p.ok === false ? p.hata : "", /60/, "hata kafenin üst sınırını söylemiyor");
+      const y100 = await ekle({ tip: "percent", urunId: pahaliId, yuzde: 100 });
+      assert.equal(y100.ok, false, "90 TL'lik %100 indirim 60 TL sınırını geçti");
+      const y50 = await ekle({ tip: "percent", urunId: pahaliId, yuzde: 50 });
+      assert.equal(y50.ok && y50.degerKurus, 45_00, "sınırın altındaki yüzde reddedildi");
+    } finally {
+      if (onceki) {
+        await yoneticiSorgu(
+          `INSERT INTO cafe_config (cafe_id, key, value) VALUES ($1, $2, $3::jsonb)
+           ON CONFLICT (cafe_id, key) DO UPDATE SET value = EXCLUDED.value`,
+          [kafeA, ayar.ANAHTARLAR.odulUstSinir, onceki.value],
+        );
+      } else {
+        await yoneticiSorgu(`DELETE FROM cafe_config WHERE cafe_id = $1 AND key = $2`, [
+          kafeA,
+          ayar.ANAHTARLAR.odulUstSinir,
+        ]);
+      }
+      await yoneticiSorgu(
+        `DELETE FROM audit_log
+          WHERE id > $1 AND cafe_id = $2 AND action = 'cafe.config_update'
+            AND detail->>'anahtar' = $3`,
+        [sonIz?.id ?? "0", kafeA, ayar.ANAHTARLAR.odulUstSinir],
+      );
+    }
   });
 
   test("yüzdesiz yüzdeli ödül reddedilir", async () => {
@@ -1208,6 +1302,26 @@ describe("kafe konumu", () => {
       db.all(`SELECT 1 FROM audit_log WHERE action = 'cafe.location'`),
     );
     assert.ok(iz.length >= 1, "konum değişikliği kayda geçmedi");
+  });
+
+  test("elle girilen konum denetim izinde ayrı görünüyor (Ü278)", async () => {
+    // Kafe yanlış yerde görünürse ilk soru "koordinat nereden geldi".
+    const s = await cafe.konumBelirle({
+      cafeId: kafeA,
+      lat: 41.0369,
+      lng: 28.9838,
+      aktorId: yoneticiA,
+      kaynak: "elle",
+    });
+    assert.equal(s.ok, true);
+
+    const iz = await withCafe(kafeA, (db) =>
+      db.one<{ islem: string }>(
+        `SELECT detail->>'islem' AS islem FROM audit_log
+          WHERE action = 'cafe.location' ORDER BY created_at DESC LIMIT 1`,
+      ),
+    );
+    assert.equal(iz?.islem, "konum_elle_girildi");
   });
 
   test("geçersiz aralık reddediliyor", async () => {

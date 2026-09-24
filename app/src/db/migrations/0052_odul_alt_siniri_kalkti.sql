@@ -1,0 +1,18 @@
+-- 0052 · Ödül değerinde 25 TL alt sınır KALKTI — Ü277
+--
+-- Ürün sahibi panelde ürün ödülü eklerken fiyatın ayrıca sorulmasını
+-- "saçma" buldu: ürünün fiyatı zaten Ürünler'de yazılı. Artık ürün ve
+-- yüzde ödülünün değeri ÜRÜNÜN FİYATINDAN hesaplanıyor (`katalog.ekle`):
+--
+--   ürün  → ürünün fiyatı
+--   yüzde → fiyat × oran (ürün seçmek zorunlu)
+--   tutar → elle yazılan tam TL
+--
+-- Hesaplanan değer 25 TL'nin altına düşebiliyor (15 TL'lik çay, 60 TL'lik
+-- kahvede %20 = 12 TL) ve kuruşlu olabiliyor. Sorulunca ürün sahibinin
+-- kararı: *"alt sınır kalksın"* — yalnızca kafenin koyduğu üst sınır
+-- geçerli. `cost_kurus > 0` kısıtı tablonun kendisinde duruyor (0002).
+--
+-- ⚠️ "Tam TL" kuralı yalnızca elle yazılan tutar ödülünde kalıyor ve
+-- uygulamada sınanıyor; ürün fiyatından türeyen değer kuruşlu olabilir.
+ALTER TABLE rewards DROP CONSTRAINT IF EXISTS odul_degeri_tam_tl;

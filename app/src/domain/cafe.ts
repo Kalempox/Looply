@@ -815,6 +815,12 @@ export async function konumBelirle(opts: {
   lat: number;
   lng: number;
   aktorId: string;
+  /**
+   * Ü278: koordinat nereden geldi. `cihaz` tarayıcının okuması, `elle`
+   * Google Haritalar'dan yapıştırılan (`lib/koordinat.ts`). Denetim izi
+   * ayırıyor: kafe yanlış yerde görünürse ilk soru bu.
+   */
+  kaynak?: "cihaz" | "elle";
 }): Promise<KonumSonucu> {
   const { lat, lng } = opts;
 
@@ -848,7 +854,7 @@ export async function konumBelirle(opts: {
       //
       // Kaybedilen şey "önceki değer neydi"; kalan şey kim, ne zaman ve
       // hangi kafede işaretledi. Güncel koordinat zaten `cafes` satırında.
-      detail: { islem: "konum_isaretlendi" },
+      detail: { islem: opts.kaynak === "elle" ? "konum_elle_girildi" : "konum_isaretlendi" },
     });
   });
 

@@ -126,7 +126,7 @@ export default async function HappyHourSayfasi() {
                 boş saatler bir kez kurulup unutuluyor. */}
             <Bolum
               baslik="Haftalık program"
-              alt="Her gün için ayrı saat ve havuz kurabilirsin. O gün geldiğinde pencere kendiliğinden açılır. Havuzu boş bırakırsan o gün happy hour olmaz."
+              alt="Her gün için ayrı saat ve havuz kurabilirsin. O gün başlangıç saati gelince happy hour kendiliğinden başlar — senin bir şey yapman gerekmez. Havuzu boş bırakırsan o gün happy hour olmaz."
             >
               <HaftalikProgram
                 programlar={program.map((p) => ({
@@ -137,6 +137,7 @@ export default async function HappyHourSayfasi() {
                 }))}
                 enKisaSaat={happy.EN_KISA_SAAT}
                 enUzunSaat={happy.EN_UZUN_SAAT}
+                bugun={happy.istanbulHaftaGunu(new Date())}
               />
             </Bolum>
 

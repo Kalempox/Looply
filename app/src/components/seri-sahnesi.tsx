@@ -71,9 +71,12 @@ export function SeriSahnesi({
   /*
     Günde bir kez kendiliğinden açılış.
 
-    Anahtarda seri günü de var: aynı gün içinde seri büyüyemez ama
-    kafe değiştiğinde büyüyebilir ve o zaman kutlama yeniden hak
-    edilmiş olur.
+    🔴 Ü278: damgada eskiden seri günü de vardı ("aynı gün içinde seri
+    büyüyemez" varsayımıyla). Yanlıştı: günün ilk oyunu bitince seri bir
+    artıyor (`seri.seriyiSay` bugünden saymaya başlıyor) ve sahne aynı
+    gün İKİNCİ kez açılıyordu — ürün sahibi oyundan dönünce "hemen streak
+    ekranı geldi" dedi; Ü275'teki isteği "ilk kez gösterildikten sonra"
+    idi. Damga artık yalnızca gün.
 
     Yarım saniyelik gecikme bilerek: sayfa daha çizilirken açılan bir
     tam ekran, "bir şey ters gitti" gibi duruyor. Kısa bir bekleme onu
@@ -91,7 +94,7 @@ export function SeriSahnesi({
   */
   useEffect(() => {
     const anahtar = "looply:seri-gosterildi";
-    const damga = `${new Date().toDateString()}:${gun}`;
+    const damga = new Date().toDateString();
 
     try {
       if (window.localStorage.getItem(anahtar) === damga) return;
@@ -110,7 +113,7 @@ export function SeriSahnesi({
     }, 500);
 
     return () => window.clearTimeout(zamanlayici);
-  }, [gun]);
+  }, []);
 
   // Sahne açıkken arka plan kaymasın: parmak hareketi altındaki sayfayı
   // kaydırırsa oyuncu sahne kapanınca bambaşka bir yerde buluyor kendini.

@@ -30,8 +30,21 @@ import { OdulAcilisi } from "./odul-acilisi";
 
 export type CarkDilimi = { baslik: string };
 
+/**
+ * Ü278: çıkan kuponun açılma bilgisi.
+ *
+ * 🔴 Kazanınca ekran "Ödüllerim ekranından kasada gösterebilirsin"
+ * diyordu; Ü269'dan beri her ödül kafenin aktivasyon süresi kadar
+ * bekliyor. Ürün sahibi Ödüllerim'de kuponu kasada gösterilebilirler
+ * arasında aradı, bulamadı: *"hesabıma gelmedi"*. Oyun ekranı bunu
+ * doğru anlatıyordu, çark anlatamıyordu çünkü sonuç açılma zamanını
+ * taşımıyordu. Misafir çarkında kupon yok — alan boş.
+ */
+export type KazanilanKupon = { id: string; aktiflesme: string; ertelendi: boolean };
+
 export type CevirmeCevabi =
-  { ok: true; dilim: number; baslik: string } | { ok: false; hata: string };
+  | { ok: true; dilim: number; baslik: string; kupon?: KazanilanKupon }
+  | { ok: false; hata: string };
 
 /** Dönüş süresi (ms) — animasyon ve sonucun açılması bu süreye bağlı. */
 const DONUS_MS = 4600;
@@ -75,8 +88,11 @@ export function Cark({
   kilitli?: boolean;
   /** Çevirmeden önce altta duran açıklama. */
   altMetin: string;
-  /** Kazandıktan sonra ne yapması gerektiği — misafirde "hesap aç". */
-  kazandiMetni: React.ReactNode;
+  /**
+   * Kazandıktan sonra ne yapması gerektiği — misafirde "hesap aç".
+   * Ü278: işlev olabilir; kuponun ne zaman açılacağı sonuçla geliyor.
+   */
+  kazandiMetni: React.ReactNode | ((kupon: KazanilanKupon | null) => React.ReactNode);
   /**
    * Sahnede mi çiziliyor (Ü59)?
    *
@@ -89,9 +105,11 @@ export function Cark({
   donusBildir?: (donuyor: boolean) => void;
 }) {
   const [aci, setAci] = useState(0);
-  const [sonuc, setSonuc] = useState<{ baslik: string; dilim: number } | null>(
-    null,
-  );
+  const [sonuc, setSonuc] = useState<{
+    baslik: string;
+    dilim: number;
+    kupon: KazanilanKupon | null;
+  } | null>(null);
   const [hata, setHata] = useState<string | null>(null);
   const [donuyor, setDonuyor] = useState(false);
   const [bekliyor, basla] = useTransition();
@@ -131,7 +149,7 @@ export function Cark({
       // Sonucu animasyon bitmeden yazmıyoruz: yazsaydık çark hâlâ
       // dönerken "kazandın" görünür ve dönüşün bir anlamı kalmazdı.
       window.setTimeout(() => {
-        setSonuc({ baslik: c.baslik, dilim: c.dilim });
+        setSonuc({ baslik: c.baslik, dilim: c.dilim, kupon: c.kupon ?? null });
         setDonuyor(false);
         donusBildir?.(false);
         setAnimSrc(null);
@@ -247,7 +265,9 @@ export function Cark({
               verdiği Lottie örneğindeki hareket, kütüphanesiz. */}
           <OdulAcilisi
             baslik={sonuc.baslik}
-            altMetin={kazandiMetni}
+            altMetin={
+              typeof kazandiMetni === "function" ? kazandiMetni(sonuc.kupon) : kazandiMetni
+            }
             koyuZemin={koyuZemin}
           />
         </div>

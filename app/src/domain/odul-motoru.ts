@@ -267,20 +267,51 @@ export function karar(opts: {
  * sunucu çoğu zaman vermiyordu. Kararı: *"görünürse kesin"* — zar paket
  * görünmeden atılıyor, görünen paketi alan kuponu kesin alıyor.
  *
- * ── Oran ────────────────────────────────────────────────────
+ * ── 🔴 Oran — Ü281: bütçe ve kalabalık belirliyor ───────────
  *
- * Bugünkü aralığın **ortası** (%33,5): tur sonundaki zar skorla %22'den
- * %45'e çıkıyordu ama paket skor daha 500'deyken çıkıyor ve son skoru
- * bilmiyor. Ürün sahibi "ödül sıklığı bugünkü gibi kalsın" dedi; ortası
- * o sözün en yakın karşılığı. Bıkkınlık (aynı oyundan son kazanımlar)
- * aynen uygulanıyor.
+ * Ü275'te oran sabitti (%33,5, eski aralığın ortası). Ürün sahibi
+ * sıklığın *"tamamen günlük kafe bütçesine, oyuncu miktarına ve yaptığı
+ * skorlara"* bağlı olmasını, en yoğun saatlere doğru bütçe kalmasını
+ * istedi. Oran artık:
+ *
+ *     kalan bütçe ÷ (günün kalanında beklenen fırsat × ortalama ödül)
+ *
+ * %2 ile %90 arasında, bıkkınlıkla çarpılıyor. Bütçe büyük ve kafe
+ * tenhaysa yükseliyor, bütçe dar ve kafe kalabalıksa düşüyor; beklenen
+ * fırsat kafenin öğrenilmiş saat profilinden geldiği için sabah gelen ile
+ * akşam kalabalığı eşit şans görüyor ve para kalabalığı izliyor
+ * (`domain/yogunluk.ts`). Simülasyon ve sınırlar testte.
  *
  * ⚠️ Skorun ödüle etkisi KAYBOLMADI, yer değiştirdi: hangi ödülün
- * çıkacağı hâlâ son skordan (`kesinSecim`).
+ * çıkacağı hâlâ son skordan (`kesinSecim`); kalabalığın içinde eşiği
+ * geçen tur sayısı da şansı belirliyor.
  */
-export function paketSansi(sonKazanim: number): number {
-  return ((EN_AZ_SANS + EN_COK_SANS) / 2) * bikkinlikKatsayisi(sonKazanim);
+export function paketSansi(opts: {
+  /** Günün kalan bütçesi (happy hour'da pencerenin kalan havuzu). */
+  kalanKurus: number;
+  /** Günün (ya da pencerenin) kalanında beklenen fırsat — `yogunluk.kalanFirsat`. */
+  kalanFirsat: number;
+  /** Bu oyuncuya çıkabilecek ödüllerin ortalama değeri. */
+  ortalamaOdulKurus: number;
+  sonKazanim: number;
+}): number {
+  if (opts.kalanKurus <= 0 || opts.ortalamaOdulKurus <= 0) return 0;
+  const taban = opts.kalanKurus / (Math.max(1, opts.kalanFirsat) * opts.ortalamaOdulKurus);
+  return (
+    Math.max(EN_AZ_PAKET_SANSI, Math.min(EN_COK_PAKET_SANSI, taban)) *
+    bikkinlikKatsayisi(opts.sonKazanim)
+  );
 }
+
+/**
+ * Ü281: paket şansının sınırları.
+ *
+ * Tavan %90: bütçe bol, kafe tenha olsa bile her tur paket vermiyor —
+ * paket bir sürpriz olarak kalıyor. Taban %2: kalabalık ve dar bütçede de
+ * kapı tamamen kapanmıyor; bütçe kapısı (`dagitilabilir`) yine en üstte.
+ */
+export const EN_AZ_PAKET_SANSI = 0.02;
+export const EN_COK_PAKET_SANSI = 0.9;
 
 /**
  * Söz verilmiş paketin hangi ödüle döneceği — zar YOK, yalnızca seçim.

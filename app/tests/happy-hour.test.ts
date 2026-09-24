@@ -504,6 +504,273 @@ describe("haftalık program (Ü104)", () => {
     assert.ok(ilk >= 0);
   });
 
+  /** İstanbul saatiyle şu anki dakika (0–1439). Türkiye 2016'dan beri UTC+3. */
+  const simdiDakika = () => {
+    const d = new Date();
+    return ((d.getUTCHours() + 3) % 24) * 60 + d.getUTCMinutes();
+  };
+
+  test("🔴 program bakım işi beklemeden açılıyor — ödül kararı programa bakıyor (Ü277)", async (t) => {
+    /**
+     * Ürün sahibi: *"panel göstermelik mi, gerçekten oyunculara yansıyor
+     * mu?"* Program yalnızca bakım köprüsüyle açılıyordu ve köprü ancak
+     * belli ekranlar açılınca koşuyordu. Program satırı doğrudan yazılıyor
+     * (`programKur`'un kendi açmasını devre dışı bırakmak için) ve
+     * `programlariUygula` HİÇ çağrılmıyor.
+     */
+    const dk = simdiDakika();
+    if (dk < 10 || dk > 1380) {
+      t.skip("gece yarısına çok yakın — pencere günü aşardı");
+      return;
+    }
+    await yoneticiSorgu(`DELETE FROM happy_hours WHERE cafe_id = $1`, [kafeA]);
+    await yoneticiSorgu(`DELETE FROM happy_hour_plans WHERE cafe_id = $1`, [kafeA]);
+    await yoneticiSorgu(
+      `INSERT INTO happy_hour_plans
+         (id, cafe_id, weekday, start_minute, duration_min, pool_kurus, created_by)
+       VALUES ($1, $2, $3, $4, 60, 20000, $5)`,
+      [`hhp_test_${Date.now()}`, kafeA, happy.istanbulHaftaGunu(new Date()), dk - 10, yoneticiA],
+    );
+
+    const p = await happy.acikPencere(kafeA);
+    assert.ok(p, "program vardı ama ödül kararı pencere görmedi — bakım işini bekliyor");
+    assert.equal(p?.havuzKurus, 20000);
+  });
+
+  test("bugünün programı kaydedilince pencere hemen açılıyor, panel görüyor (Ü277)", async (t) => {
+    const dk = simdiDakika();
+    if (dk > 1380) {
+      t.skip("gece yarısına çok yakın");
+      return;
+    }
+    await yoneticiSorgu(`DELETE FROM happy_hours WHERE cafe_id = $1`, [kafeA]);
+    await yoneticiSorgu(`DELETE FROM happy_hour_plans WHERE cafe_id = $1`, [kafeA]);
+
+    const s = await happy.programKur({
+      cafeId: kafeA,
+      haftaGunu: happy.istanbulHaftaGunu(new Date()),
+      baslangicDakika: dk,
+      sureDakika: 60,
+      havuzKurus: 15000,
+      aktorId: yoneticiA,
+    });
+    assert.ok(s.ok, s.ok === false ? s.hata : "");
+    assert.equal(s.ok && s.bugun, "acildi", "bugünün programı kaydedildi ama pencere açılmadı");
+
+    const bugunku = await happy.bugunkuler(kafeA);
+    assert.equal(bugunku.filter((x) => !x.iptalMi).length, 1, "panel bugünkü pencereyi görmüyor");
+  });
+
+  test("program yeniden kaydedilince başlamamış eski pencere iptal, yenisi açılıyor (Ü277)", async (t) => {
+    const dk = simdiDakika();
+    if (dk > 1440 - 240) {
+      t.skip("günün sonuna çok yakın");
+      return;
+    }
+    await yoneticiSorgu(`DELETE FROM happy_hours WHERE cafe_id = $1`, [kafeA]);
+    await yoneticiSorgu(`DELETE FROM happy_hour_plans WHERE cafe_id = $1`, [kafeA]);
+    const gun = happy.istanbulHaftaGunu(new Date());
+    const kur = (bas: number) =>
+      happy.programKur({
+        cafeId: kafeA,
+        haftaGunu: gun,
+        baslangicDakika: bas,
+        sureDakika: 60,
+        havuzKurus: 10000,
+        aktorId: yoneticiA,
+      });
+
+    assert.ok((await kur(dk + 60)).ok);
+    assert.ok((await kur(dk + 150)).ok);
+
+    const satirlar = await withBypass("test: bugünkü pencereler", (db) =>
+      db.all<{ cancelled_at: Date | null }>(
+        `SELECT cancelled_at FROM happy_hours
+          WHERE cafe_id = $1 AND business_date = $2 AND plan_id IS NOT NULL`,
+        [kafeA, isGunu()],
+      ),
+    );
+    assert.equal(satirlar.length, 2);
+    assert.equal(satirlar.filter((x) => x.cancelled_at === null).length, 1, "iki canlı pencere kaldı");
+  });
+
+  /*
+    🔴 Ü279: kafenin son kaydı geçerli — bugünün satırına yazılan saat
+    bugün de açılıyor. Ürün sahibi Perşembe 14:43'te Perşembe satırına
+    14:00–17:00 yazdı; sabahki pencere yapıldığı için Ü278'in "günde bir
+    program penceresi" kuralı yeni saati bugün açmadı ve "neden açılmadı"
+    dedi. Kalan korumalar: süren pencereyle çakışmama ve günde en fazla
+    `GUNLUK_EN_FAZLA` pencere.
+  */
+  const canliSayisi = () =>
+    withBypass("test: canlı pencereler", (db) =>
+      db.one<{ n: string }>(
+        `SELECT count(*)::text AS n FROM happy_hours
+          WHERE cafe_id = $1 AND business_date = $2 AND cancelled_at IS NULL`,
+        [kafeA, isGunu()],
+      ),
+    ).then((r) => Number(r?.n ?? 0));
+
+  test("🔴 bugünkü happy hour bittiyse bugünün yeni saati bugün de açılıyor (Ü279)", async (t) => {
+    const dk = simdiDakika();
+    if (dk < 130 || dk > 1440 - 200) {
+      t.skip("günün başına ya da sonuna çok yakın");
+      return;
+    }
+    await yoneticiSorgu(`DELETE FROM happy_hours WHERE cafe_id = $1`, [kafeA]);
+    await yoneticiSorgu(`DELETE FROM happy_hour_plans WHERE cafe_id = $1`, [kafeA]);
+    const gun = happy.istanbulHaftaGunu(new Date());
+
+    // Sabahki program yapılıp bitmiş: pencere satırı doğrudan yazılıyor.
+    const eskiPlan = `hhp_test_bitti_${Date.now()}`;
+    await yoneticiSorgu(
+      `INSERT INTO happy_hour_plans
+         (id, cafe_id, weekday, start_minute, duration_min, pool_kurus, created_by)
+       VALUES ($1, $2, $3, $4, 60, 10000, $5)`,
+      [eskiPlan, kafeA, gun, dk - 120, yoneticiA],
+    );
+    await yoneticiSorgu(
+      `INSERT INTO happy_hours
+         (id, cafe_id, business_date, starts_at, ends_at, pool_kurus, created_by, plan_id)
+       VALUES ($1, $2, $3, now() - interval '120 minutes', now() - interval '60 minutes',
+               10000, $4, $5)`,
+      [`hh_test_bitti_${Date.now()}`, kafeA, isGunu(), yoneticiA, eskiPlan],
+    );
+
+    // Ürün sahibinin yaptığı: bugünün satırına şu anı kapsayan saat.
+    const s = await happy.programKur({
+      cafeId: kafeA,
+      haftaGunu: gun,
+      baslangicDakika: dk - 10,
+      sureDakika: 60,
+      havuzKurus: 10000,
+      aktorId: yoneticiA,
+    });
+    assert.ok(s.ok);
+    assert.equal(s.ok && s.bugun, "ikinci", "bugünün yeni saati bugün açılmadı");
+    assert.ok(await happy.acikPencere(kafeA), "yeni pencere şu an açık değil");
+    assert.equal(await canliSayisi(), 2);
+  });
+
+  test("süren pencereyle çakışan saat bugün açılmıyor, çakışmayan açılıyor (Ü279)", async (t) => {
+    const dk = simdiDakika();
+    if (dk < 10 || dk > 1440 - 200) {
+      t.skip("günün başına ya da sonuna çok yakın");
+      return;
+    }
+    await yoneticiSorgu(`DELETE FROM happy_hours WHERE cafe_id = $1`, [kafeA]);
+    await yoneticiSorgu(`DELETE FROM happy_hour_plans WHERE cafe_id = $1`, [kafeA]);
+    const gun = happy.istanbulHaftaGunu(new Date());
+    const kur = (bas: number) =>
+      happy.programKur({
+        cafeId: kafeA,
+        haftaGunu: gun,
+        baslangicDakika: bas,
+        sureDakika: 60,
+        havuzKurus: 10000,
+        aktorId: yoneticiA,
+      });
+
+    const ilk = await kur(dk - 10);
+    assert.equal(ilk.ok && ilk.bugun, "acildi");
+
+    // Süren pencere dk-10 … dk+50; dk+30 onunla çakışıyor.
+    const cakisan = await kur(dk + 30);
+    assert.equal(cakisan.ok && cakisan.bugun, "cakisiyor", "çakışan saat bugün açıldı");
+    assert.equal(await canliSayisi(), 1);
+
+    const sonra = await kur(dk + 120);
+    assert.equal(sonra.ok && sonra.bugun, "ikinci", "çakışmayan saat bugün açılmadı");
+    assert.equal(await canliSayisi(), 2);
+
+    // Bakım işi de fazladan açmıyor.
+    await happy.programlariUygula();
+    assert.equal(await canliSayisi(), 2);
+  });
+
+  test("günde en fazla iki happy hour — programdan açılan da sayılıyor (Ü279)", async (t) => {
+    const dk = simdiDakika();
+    if (dk < 210 || dk > 1440 - 200) {
+      t.skip("günün başına ya da sonuna çok yakın");
+      return;
+    }
+    await yoneticiSorgu(`DELETE FROM happy_hours WHERE cafe_id = $1`, [kafeA]);
+    await yoneticiSorgu(`DELETE FROM happy_hour_plans WHERE cafe_id = $1`, [kafeA]);
+    // Bugün iki pencere yapılmış (elle açılmış gibi, plan yok). Her biri
+    // bir saat — şema 1–4 saat dışını reddediyor (`happy_hours_sure`).
+    for (const [bas, bit] of [
+      ["200", "140"],
+      ["130", "70"],
+    ]) {
+      await yoneticiSorgu(
+        `INSERT INTO happy_hours
+           (id, cafe_id, business_date, starts_at, ends_at, pool_kurus, created_by)
+         VALUES ($1, $2, $3, now() - ($4 || ' minutes')::interval,
+                 now() - ($5 || ' minutes')::interval, 10000, $6)`,
+        [`hh_test_sinir_${bas}_${Date.now()}`, kafeA, isGunu(), bas, bit, yoneticiA],
+      );
+    }
+
+    const s = await happy.programKur({
+      cafeId: kafeA,
+      haftaGunu: happy.istanbulHaftaGunu(new Date()),
+      baslangicDakika: dk + 30,
+      sureDakika: 60,
+      havuzKurus: 10000,
+      aktorId: yoneticiA,
+    });
+    assert.equal(s.ok && s.bugun, "sinir", "üçüncü happy hour açıldı");
+    assert.equal(await canliSayisi(), 2);
+  });
+
+  test("saati bugün için geçmiş yeni program 'geçti' diyor (Ü279)", async (t) => {
+    const dk = simdiDakika();
+    if (dk < 130) {
+      t.skip("günün başına çok yakın");
+      return;
+    }
+    await yoneticiSorgu(`DELETE FROM happy_hours WHERE cafe_id = $1`, [kafeA]);
+    await yoneticiSorgu(`DELETE FROM happy_hour_plans WHERE cafe_id = $1`, [kafeA]);
+    const s = await happy.programKur({
+      cafeId: kafeA,
+      haftaGunu: happy.istanbulHaftaGunu(new Date()),
+      baslangicDakika: dk - 120,
+      sureDakika: 60,
+      havuzKurus: 10000,
+      aktorId: yoneticiA,
+    });
+    assert.equal(s.ok && s.bugun, "gecti");
+    assert.equal(await canliSayisi(), 0);
+  });
+
+  test("kafenin elle kapattığı program penceresi yeniden açılmıyor (Ü277)", async (t) => {
+    const dk = simdiDakika();
+    if (dk < 10 || dk > 1380) {
+      t.skip("gece yarısına çok yakın");
+      return;
+    }
+    await yoneticiSorgu(`DELETE FROM happy_hours WHERE cafe_id = $1`, [kafeA]);
+    await yoneticiSorgu(`DELETE FROM happy_hour_plans WHERE cafe_id = $1`, [kafeA]);
+    const s = await happy.programKur({
+      cafeId: kafeA,
+      haftaGunu: happy.istanbulHaftaGunu(new Date()),
+      baslangicDakika: dk - 10,
+      sureDakika: 60,
+      havuzKurus: 10000,
+      aktorId: yoneticiA,
+    });
+    assert.ok(s.ok);
+    const acik = await happy.acikPencere(kafeA);
+    assert.ok(acik, "pencere açılmadı");
+
+    const kapat = await happy.pencereKapat({ cafeId: kafeA, pencereId: acik!.id, aktorId: yoneticiA });
+    assert.ok(kapat.ok);
+
+    assert.equal(await happy.acikPencere(kafeA), null, "elle kapatılan pencere yeniden açıldı");
+    await happy.programlariUygula();
+    assert.equal(await happy.acikPencere(kafeA), null, "bakım işi kapatılan pencereyi açtı");
+  });
+
   test("saati geçmiş program bugün için atlanıyor", async () => {
     // ⚠️ Akşam 20:00'de "öğlen 14:00'te happy hour vardı" diye pencere
     // açmak kimseye ödül dağıtmaz, yalnızca raporu kirletir.

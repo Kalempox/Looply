@@ -44,10 +44,18 @@ export function HaftalikProgram({
   programlar,
   enKisaSaat,
   enUzunSaat,
+  bugun,
 }: {
   programlar: ProgramSatiri[];
   enKisaSaat: number;
   enUzunSaat: number;
+  /**
+   * Ü278: bugünün haftagünü (İstanbul, sunucuda hesaplanıyor — tarayıcının
+   * saat dilimi karışmasın). Ürün sahibi Perşembe günü Cuma satırına saat
+   * yazdı ve "şu an bu saatin içindeyiz, niye açılmadı" dedi; yedi
+   * satırın hangisinin bugün olduğu hiçbir yerde yazmıyordu.
+   */
+  bugun: number;
 }) {
   return (
     <div className="grid gap-2">
@@ -55,6 +63,7 @@ export function HaftalikProgram({
         <GunSatiri
           key={g.no}
           gun={g}
+          bugunMu={g.no === bugun}
           mevcut={programlar.find((p) => p.haftaGunu === g.no) ?? null}
           enKisaSaat={enKisaSaat}
           enUzunSaat={enUzunSaat}
@@ -66,11 +75,13 @@ export function HaftalikProgram({
 
 function GunSatiri({
   gun,
+  bugunMu,
   mevcut,
   enKisaSaat,
   enUzunSaat,
 }: {
   gun: { no: number; ad: string };
+  bugunMu: boolean;
   mevcut: ProgramSatiri | null;
   enKisaSaat: number;
   enUzunSaat: number;
@@ -91,7 +102,14 @@ function GunSatiri({
 
       <div className="flex flex-wrap items-end gap-3">
         <div className="min-w-[7rem] flex-1">
-          <div className="font-display text-[15px] font-bold">{gun.ad}</div>
+          <div className="flex items-center gap-2 font-display text-[15px] font-bold">
+            {gun.ad}
+            {bugunMu && (
+              <span className="rounded-full bg-vurgu px-2 py-0.5 font-body text-[11px] font-semibold text-white">
+                bugün
+              </span>
+            )}
+          </div>
           <div className="mt-0.5 text-[12px] text-yazi-sonuk">
             {mevcut
               ? `${saatYaz(mevcut.baslangicDakika)} · ${mevcut.sureDakika / 60} saat · ${(

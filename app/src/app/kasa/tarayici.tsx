@@ -1,6 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore, useTransition } from "react";
+import {
+  useCallback,
+  useEffect,
+  useEffectEvent,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  useTransition,
+} from "react";
 import { cozEylemi, onaylaEylemi, geriAlEylemi } from "./actions";
 import type { KasaGorunumu, OnaySonucu } from "@/domain/kupon";
 
@@ -9,10 +17,10 @@ import type { KasaGorunumu, OnaySonucu } from "@/domain/kupon";
  *
  * ── Ü19: iki yol, tek kupon ─────────────────────────────────
  *
- * QR birincil. Ama tarayıcıda kamera ile QR okuma her yerde yok:
- * `BarcodeDetector` Chrome/Android'de var, Safari/iOS'te **yok**. Bu yüzden
- * 6 haneli kod bir "yedek" değil, bazı cihazlarda **tek yol**. İkisi de
- * eşit görünürlükte duruyor; kamera yoksa ekran bunu söylüyor, sessizce
+ * QR birincil, 6 haneli kod her zaman yanında. `BarcodeDetector`
+ * Chrome/Android'de var, Safari/iOS'te **yok** — Ü283'ten beri orada kare
+ * jsQR ile çözülüyor (`lib/karekod-oku.ts`), iPhone da kamerayla okuyor.
+ * Kameraya hiç erişilemeyen tarayıcıda ekran bunu söylüyor, sessizce
  * bozulmuş gibi durmuyor.
  *
  * ── Neden geçerlilik burada ─────────────────────────────────
@@ -24,7 +32,11 @@ import type { KasaGorunumu, OnaySonucu } from "@/domain/kupon";
  */
 
 /**
- * Tarayıcı kamerayla QR okuyabiliyor mu?
+ * Tarayıcı kameraya erişebiliyor mu?
+ *
+ * Ü283'e kadar soru "`BarcodeDetector` var mı" idi ve iPhone'da düğme hiç
+ * çıkmıyordu. Okuyucu artık her tarayıcıda var (`okuyucuKur`); gereken
+ * yalnızca kamera — o da güvenli bağlantıda (HTTPS) açılıyor.
  *
  * `useEffect` + `setState` yerine `useSyncExternalStore`: yetenek sorgusu
  * sunucuda cevaplanamıyor (orada `window` yok) ama bir *durum* da değil —
@@ -32,7 +44,7 @@ import type { KasaGorunumu, OnaySonucu } from "@/domain/kupon";
  * `lib/cihaz.ts` aynı deseni kullanıyor.
  */
 const aboneOl = () => () => {};
-const istemcide = () => "BarcodeDetector" in window;
+const istemcide = () => !!navigator.mediaDevices?.getUserMedia;
 const sunucuda = () => false;
 
 function useKameraDestegi(): boolean {
@@ -61,7 +73,8 @@ export function KasaTarayici() {
         return;
       }
       setAsama({ tur: "bulundu", gorunum: g });
-      setTutar(g.tip === "percent" ? String(Math.round(g.tavanKurus / 100)) : "");
+      // Ü277: ürüne bağlı yüzdede indirim kesin — tutar sorulmuyor.
+      setTutar(g.tip === "percent" && !g.urunAdi ? String(Math.round(g.tavanKurus / 100)) : "");
     });
     setGirdi("");
   }, []);
@@ -71,7 +84,7 @@ export function KasaTarayici() {
       basla(async () => {
         const sonuc: OnaySonucu = await onaylaEylemi(
           g.kuponId,
-          g.tip === "percent" ? Number(tutar) || 0 : undefined,
+          g.tip === "percent" && !g.urunAdi ? Number(tutar) || 0 : undefined,
         );
         if (!sonuc.ok) {
           setAsama({ tur: "hata", mesaj: sonuc.hata });
@@ -204,7 +217,7 @@ function Giris({
 
       {!kameraVar && (
         <p className="mt-5 text-center text-[12px] leading-relaxed text-yazi-sonuk">
-          Bu tarayıcı kamerayla QR okuyamıyor. Müşterinin ekranındaki altı haneli kodu gir —
+          Bu tarayıcı kameraya erişemiyor. Müşterinin ekranındaki altı haneli kodu gir —
           aynı kuponu açar.
         </p>
       )}
@@ -212,70 +225,131 @@ function Giris({
   );
 }
 
+/** Kameradan kaç milisaniyede bir kare okunuyor — saniyede ~7 kare. */
+const TARAMA_ARALIGI_MS = 150;
+
+/** Bir kareden karekodun değeri; okunamazsa `null`. */
+type Okuyucu = (video: HTMLVideoElement) => Promise<string | null>;
+
+type BarkodSinifi = {
+  new (secenek: { formats: string[] }): {
+    detect(kaynak: HTMLVideoElement): Promise<{ rawValue: string }[]>;
+  };
+  getSupportedFormats(): Promise<string[]>;
+};
+
 /**
- * Kamera ile QR okuma.
+ * Okuyucuyu kur — Ü283.
  *
- * `BarcodeDetector` yalnızca destekleyen tarayıcılarda çağrılıyor; burası
- * hiç açılmıyorsa kod girişi zaten tek yol olarak duruyor.
+ * Tarayıcının kendi dedektörü karekodu okuyabiliyorsa o (Chrome/Android).
+ * Yoksa (Safari/iPhone) kamera karesinin ortası tuvale çizilip jsQR ile
+ * çözülüyor; jsQR yalnızca burada, gerektiğinde yükleniyor.
+ */
+async function okuyucuKur(): Promise<Okuyucu> {
+  const Dedektor = (window as unknown as { BarcodeDetector?: BarkodSinifi }).BarcodeDetector;
+  if (Dedektor) {
+    try {
+      if ((await Dedektor.getSupportedFormats()).includes("qr_code")) {
+        const dedektor = new Dedektor({ formats: ["qr_code"] });
+        return async (video) => (await dedektor.detect(video))[0]?.rawValue || null;
+      }
+    } catch {
+      // Dedektör var ama çalışmıyor — yedek okuyucuya geçiliyor.
+    }
+  }
+
+  const { kareCoz, ortaKare } = await import("@/lib/karekod-oku");
+  const tuval = document.createElement("canvas");
+  const baglam = tuval.getContext("2d", { willReadFrequently: true });
+  if (!baglam) throw new Error("tuval açılamadı");
+
+  return async (video) => {
+    if (!video.videoWidth || !video.videoHeight) return null;
+    const k = ortaKare(video.videoWidth, video.videoHeight);
+    if (tuval.width !== k.hedef) {
+      tuval.width = k.hedef;
+      tuval.height = k.hedef;
+    }
+    baglam.drawImage(video, k.sx, k.sy, k.kenar, k.kenar, 0, 0, k.hedef, k.hedef);
+    return kareCoz(baglam.getImageData(0, 0, k.hedef, k.hedef).data, k.hedef, k.hedef);
+  };
+}
+
+/**
+ * Kamera ile QR okuma — okuyucu tarayıcıya göre seçiliyor (`okuyucuKur`).
+ * Kamera hiç açılmıyorsa kod girişi zaten tek yol olarak duruyor.
  */
 function Kamera({ bulundu, kapat }: { bulundu: (d: string) => void; kapat: () => void }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [hata, setHata] = useState<string | null>(null);
+  // Üst bileşen her çizimde yeni `bulundu` veriyor. Efekt ona bağlıyken
+  // kasiyer kod kutusuna her harf yazdığında kamera kapanıp yeniden
+  // açılıyordu (Ü283).
+  const bul = useEffectEvent((deger: string) => bulundu(deger));
 
   useEffect(() => {
     let durduruldu = false;
     let akis: MediaStream | null = null;
+    let zamanlayici: ReturnType<typeof setTimeout> | undefined;
 
     (async () => {
       try {
         akis = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "environment" },
+          video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } },
         });
-        if (durduruldu) return;
-        if (videoRef.current) {
-          videoRef.current.srcObject = akis;
-          await videoRef.current.play();
+        // İzin beklenirken ekran kapandıysa kamera açık kalmasın.
+        if (durduruldu) {
+          akis.getTracks().forEach((t) => t.stop());
+          return;
         }
-
-        // @ts-expect-error — BarcodeDetector henüz standart tiplerde yok
-        const dedektor = new window.BarcodeDetector({ formats: ["qr_code"] });
+        const video = videoRef.current;
+        if (!video) return;
+        video.srcObject = akis;
+        await video.play();
+        const oku = await okuyucuKur();
 
         const tara = async () => {
-          if (durduruldu || !videoRef.current) return;
+          if (durduruldu) return;
           try {
-            const kodlar = await dedektor.detect(videoRef.current);
-            if (kodlar.length > 0 && kodlar[0].rawValue) {
-              bulundu(kodlar[0].rawValue);
+            const deger = await oku(video);
+            if (deger && !durduruldu) {
+              bul(deger);
               return;
             }
           } catch {
             // Tek karede okuyamamak normal — döngü devam ediyor.
           }
-          requestAnimationFrame(tara);
+          zamanlayici = setTimeout(tara, TARAMA_ARALIGI_MS);
         };
-        requestAnimationFrame(tara);
+        tara();
       } catch {
-        setHata("Kameraya erişilemedi. Kodu elle girebilirsin.");
+        if (!durduruldu) setHata("Kameraya erişilemedi. Kodu elle girebilirsin.");
       }
     })();
 
     return () => {
       durduruldu = true;
+      clearTimeout(zamanlayici);
       akis?.getTracks().forEach((t) => t.stop());
     };
-  }, [bulundu]);
+  }, []);
 
   return (
     <div className="mb-5">
       {hata ? (
         <p className="rounded-lg border border-tehlike/60 bg-yuzey px-4 py-3 text-[14px] text-tehlike">{hata}</p>
       ) : (
-        <video
-          ref={videoRef}
-          className="w-full rounded-lg border border-cizgi bg-cukur"
-          playsInline
-          muted
-        />
+        <>
+          <video
+            ref={videoRef}
+            className="w-full rounded-lg border border-cizgi bg-cukur"
+            playsInline
+            muted
+          />
+          <p className="mt-2 text-center text-[12px] text-yazi-sonuk">
+            Karekodu görüntünün ortasına getir.
+          </p>
+        </>
       )}
       <button
         type="button"
@@ -320,7 +394,11 @@ function Sonuc({
       {/* Kasiyer TL değerini GÖRÜR — oyuncu görmez (E9). */}
       <div className="mt-5 flex items-baseline justify-between border-t border-cizgi pt-4">
         <span className="etiket-caps text-yazi-sonuk">
-          {gorunum.tip === "percent" ? `%${gorunum.yuzde} · en fazla` : "Değer"}
+          {gorunum.tip === "percent"
+            ? gorunum.urunAdi
+              ? `%${gorunum.yuzde} · ${gorunum.urunAdi}`
+              : `%${gorunum.yuzde} · en fazla`
+            : "Değer"}
         </span>
         <span className="font-data text-2xl font-bold text-odul-koyu tabular">
           {(gorunum.tavanKurus / 100).toLocaleString("tr-TR")} TL
@@ -335,7 +413,9 @@ function Sonuc({
         </span>
       </div>
 
-      {gorunum.tip === "percent" && (
+      {/* Ü277: yalnızca ürünsüz ESKİ yüzde ödülünde tutar soruluyor; ürüne
+          bağlı yüzdede indirim kesin, yukarıda yazıyor. */}
+      {gorunum.tip === "percent" && !gorunum.urunAdi && (
         <label className="mt-5 block">
           <span className="mb-2 block etiket-caps text-yazi-sonuk">
             Adisyondaki indirim (TL)

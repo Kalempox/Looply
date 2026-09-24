@@ -11,7 +11,8 @@ import * as pencere from "./kullanim-penceresi";
 import * as cark from "./cark";
 import * as kampanya from "./kampanya";
 import * as motor from "./odul-motoru";
-import { kanitSeviyesi } from "./katalog";
+import * as yogunluk from "./yogunluk";
+import { kanitSeviyesi, urundenDeger } from "./katalog";
 import { idIleBul, odulKilidiBitis, takmaAdIle } from "./player";
 
 /**
@@ -608,8 +609,8 @@ export async function anlikOdulVer(
  *   · kafe açık (Ü90 · Ü274)
  *   · oyuncu bugünkü oyun ödülünü almamış (çark ayrı — Ü275)
  *   · günlük adedi dolmamış, kanıtı yeten bir aday var
- *   · bütçe en ucuz adaya yetiyor (`butce.dagitilabilirIle`)
- *   · zar tuttu (`motor.paketSansi`)
+ *   · bütçe en ucuz adaya yetiyor (`butce.kalanlarIle`)
+ *   · zar tuttu — şans `paketSansiIle` (Ü281: bütçe ve kalabalık)
  *
  * Hiçbiri kupon ÜRETMİYOR — o, paket teslim edilince `anlikOdulVer`
  * (`garanti`) ile oluyor. Arada bütçe dolabilir; o zaman ekran bunu
@@ -630,26 +631,78 @@ export async function odulSozuVer(
     an?: Date;
   },
 ): Promise<boolean> {
-  if (await acil.durduruldu(acil.ANAHTARLAR.kupon)) return false;
-  if (!(await butce.kafeAcikMi(opts.cafeId, opts.an)).acik) return false;
+  const sans = await paketSansiIle(db, opts);
+  return sans > 0 && paketZari(opts.tohum) < sans;
+}
+
+/**
+ * Bu tur için paket şansı (0..1) — Ü281. Kapılardan biri kapalıysa 0.
+ *
+ * `odulSozuVer` zarı bununla karşılaştırıyor; panel ("şu an bir oyuncunun
+ * şansı") ve testler de AYNI fonksiyondan okuyor — ekranda görünen şans
+ * ile kararı veren şans ayrışamaz.
+ *
+ * Şans: kalan bütçe ÷ (günün kalanında beklenen fırsat × ortalama ödül),
+ * %2–%90, bıkkınlıkla çarpılıyor (`motor.paketSansi`). Beklenen fırsat
+ * kafenin öğrenilmiş saat profilinden (`domain/yogunluk.ts`). Happy hour
+ * havuzundan ikinci ödülde bütçe pencerenin kalan havuzu, fırsat da
+ * pencerenin kalan süresi.
+ */
+export async function paketSansiIle(
+  db: Db,
+  opts: {
+    playerId: string | null;
+    cafeId: string;
+    oyunId: string;
+    kanitSeviyesi: number;
+    an?: Date;
+  },
+): Promise<number> {
+  if (await acil.durduruldu(acil.ANAHTARLAR.kupon)) return 0;
+  if (!(await butce.kafeAcikMi(opts.cafeId, opts.an)).acik) return 0;
 
   const u = await anlikUygunluk(db, { playerId: opts.playerId, cafeId: opts.cafeId });
-  if (!u.uygun) return false;
+  if (!u.uygun) return 0;
   const uygunlar = u.uygunlar.filter((a) => a.min_proof_level <= opts.kanitSeviyesi);
-  if (uygunlar.length === 0) return false;
+  if (uygunlar.length === 0) return 0;
 
-  const enUcuz = Math.min(...uygunlar.map((a) => Number(a.cost_kurus)));
-  const kalan = await butce.dagitilabilirIle(db, {
+  const degerler = uygunlar.map((a) => Number(a.cost_kurus));
+  const enUcuz = Math.min(...degerler);
+  const havuzdan = u.pencereden && u.pencere ? u.pencere : null;
+  const kalanlar = await butce.kalanlarIle(db, {
     cafeId: opts.cafeId,
     an: opts.an,
-    ekHavuzKurus: u.pencereden && u.pencere ? u.pencere.kalanKurus : undefined,
+    ekHavuzKurus: havuzdan ? havuzdan.kalanKurus : undefined,
   });
-  if (enUcuz > kalan) return false;
+  if (!kalanlar || enUcuz > kalanlar.dagitilabilir) return 0;
+
+  const an = opts.an ?? new Date();
+  let kalanKurus: number;
+  let kalanFirsat: number;
+  if (havuzdan) {
+    kalanKurus = havuzdan.kalanKurus;
+    kalanFirsat = await yogunluk.pencereFirsatIle(db, { cafeId: opts.cafeId, bitis: havuzdan.bitis, an });
+  } else {
+    const [acilis, kapanis] = await Promise.all([
+      ayar.sayiOku(opts.cafeId, ayar.ANAHTARLAR.acilisSaati),
+      ayar.sayiOku(opts.cafeId, ayar.ANAHTARLAR.kapanisSaati),
+    ]);
+    // Aynı istemcide sıralı — `pg` bir istemcide eşzamanlı sorguyu bırakıyor.
+    const profil = await yogunluk.profilIle(db, { cafeId: opts.cafeId, acilis, kapanis, an });
+    const bugunSimdiye = await yogunluk.bugunkuFirsatIle(db, { cafeId: opts.cafeId, an });
+    kalanKurus = kalanlar.gunlukKalan;
+    kalanFirsat = yogunluk.kalanFirsat({ profil, an, bugunSimdiye, acilis, kapanis });
+  }
 
   const sonKazanim = opts.playerId
     ? await ayniOyundanKazanim(db, opts.playerId, opts.cafeId, opts.oyunId)
     : 0;
-  return paketZari(opts.tohum) < motor.paketSansi(sonKazanim);
+  return motor.paketSansi({
+    kalanKurus,
+    kalanFirsat,
+    ortalamaOdulKurus: degerler.reduce((t, d) => t + d, 0) / degerler.length,
+    sonKazanim,
+  });
 }
 
 /**
@@ -922,6 +975,12 @@ export type KasaGorunumu =
       yuzde: number | null;
       /** Yüzdeli kuponda tavan; ürün ve tutar ödülünde tutarın kendisi. */
       tavanKurus: number;
+      /**
+       * Ü277: ödülün bağlı olduğu ürün. Yüzde ödülü ürüne bağlıysa indirim
+       * **kesin** (fiyat × oran): kasiyere tutar sorulmuyor. Ürünsüz eski
+       * yüzde ödülünde null — orada kasiyer adisyondaki tutarı giriyor.
+       */
+      urunAdi: string | null;
       oyuncuKodu: string;
       sonKullanim: Date;
       gecerli: boolean;
@@ -929,6 +988,26 @@ export type KasaGorunumu =
       sebep?: string;
     }
   | { bulundu: false; sebep: string };
+
+/**
+ * Ü277: kasada düşülen değer — ürüne bağlı yüzdede fiyat × oran, kuponun
+ * ayırdığı tutarla (tavan) sınırlı; başka her kuponda tavanın kendisi.
+ *
+ * Ü277'den sonra kurulan ödülde ikisi zaten eşit: değer fiyattan
+ * hesaplanıyor, kupon onu ayırıyor. Önce kurulanlarda değer elle
+ * yazılmıştı ("50 TL'lik üründe %10" 40 TL kayıtlı). O kuponlarda tavanı
+ * düşmek bütçeyi gerçek indirimin katları kadar eksiltirdi. Ekran (`coz`)
+ * ve kayıt (`onayla`) aynı hesabı kullanıyor.
+ */
+export function kasaDegeri(k: {
+  tavanKurus: number;
+  tip: string | null;
+  yuzde: number | null;
+  urunFiyatKurus: number | null;
+}): number {
+  if (k.tip !== "percent" || k.yuzde === null || k.urunFiyatKurus === null) return k.tavanKurus;
+  return Math.min(k.tavanKurus, urundenDeger("percent", k.urunFiyatKurus, k.yuzde));
+}
 
 /**
  * Kasiyerin girdiği QR jetonunu veya 6 haneli kodu çözer.
@@ -950,18 +1029,22 @@ export async function coz(cafeId: string, girdi: string): Promise<KasaGorunumu> 
       title: string | null;
       reward_type: string | null;
       percent: number | null;
+      urun_adi: string | null;
+      urun_fiyat: string | null;
       usable_days: number[] | null;
       usable_from_hour: number | null;
       usable_to_hour: number | null;
       alias: string | null;
     }>(
       `SELECT c.id, c.status, c.activates_at, c.expires_at, c.reserved_kurus,
-              r.title, r.reward_type, r.percent,
+              r.title, r.reward_type, r.percent, p.name AS urun_adi,
+              p.price_kurus AS urun_fiyat,
               r.usable_days, r.usable_from_hour, r.usable_to_hour,
               (SELECT code FROM player_aliases a
                 WHERE a.cafe_id = c.cafe_id AND a.player_id = c.player_id) AS alias
          FROM coupons c
          LEFT JOIN rewards r ON r.id = c.reward_id
+         LEFT JOIN products p ON p.id = r.product_id
         WHERE c.qr_token = $1 OR upper(c.code) = upper($1)
         LIMIT 1`,
       [temiz],
@@ -999,7 +1082,12 @@ export async function coz(cafeId: string, girdi: string): Promise<KasaGorunumu> 
       sebep = pencere.retCumlesi(kuponPenceresi(r));
     }
 
-    const tutar = Number(r.reserved_kurus);
+    const tutar = kasaDegeri({
+      tavanKurus: Number(r.reserved_kurus),
+      tip: r.reward_type,
+      yuzde: r.percent,
+      urunFiyatKurus: r.urun_fiyat === null ? null : Number(r.urun_fiyat),
+    });
 
     return {
       bulundu: true as const,
@@ -1009,6 +1097,7 @@ export async function coz(cafeId: string, girdi: string): Promise<KasaGorunumu> 
       tip: (r.reward_type as "product" | "percent" | "amount") ?? "product",
       yuzde: r.percent,
       tavanKurus: tutar,
+      urunAdi: r.urun_adi,
       oyuncuKodu: r.alias ?? "—",
       sonKullanim: r.expires_at,
       gecerli,
@@ -1050,13 +1139,19 @@ export async function onayla(opts: {
       budget_period_id: string | null;
       player_id: string;
       reward_type: string | null;
+      product_id: string | null;
+      percent: number | null;
+      urun_fiyat: string | null;
       usable_days: number[] | null;
       usable_from_hour: number | null;
       usable_to_hour: number | null;
     }>(
       `SELECT c.reserved_kurus, c.budget_period_id, c.player_id, r.reward_type,
+              r.product_id, r.percent, p.price_kurus AS urun_fiyat,
               r.usable_days, r.usable_from_hour, r.usable_to_hour
-         FROM coupons c LEFT JOIN rewards r ON r.id = c.reward_id
+         FROM coupons c
+         LEFT JOIN rewards r ON r.id = c.reward_id
+         LEFT JOIN products p ON p.id = r.product_id
         WHERE c.id = $1
           AND c.status IN ('active', 'pending')
           AND c.activates_at <= now()
@@ -1107,11 +1202,25 @@ export async function onayla(opts: {
       return { ok: false as const, hata: "Bu hesapta geçici ödül kilidi var." };
     }
 
-    // Yüzdeli kuponda gerçekleşen tutar kasiyerden gelir ama tavanla sınırlı.
+    /*
+      Ürünsüz (eski) yüzdeli kuponda gerçekleşen tutar kasiyerden gelir ama
+      tavanla sınırlı (Ü17).
+
+      🔴 Ü277: ürüne bağlı yüzdede indirim KESİN — fiyat × oran, tavanla
+      sınırlı (`kasaDegeri`). Kasiyerden gelen tutara bakılmıyor: ekran
+      onu hiç sormuyor ve arayüzü atlayıp tutar gönderen biri de değeri
+      değiştirememeli.
+    */
+    const serbestTutar = kupon.reward_type === "percent" && kupon.product_id === null;
     const dusulen =
-      kupon.reward_type === "percent" && opts.gerceklesenKurus != null
+      serbestTutar && opts.gerceklesenKurus != null
         ? Math.max(0, Math.min(Math.trunc(opts.gerceklesenKurus), tavan))
-        : tavan;
+        : kasaDegeri({
+            tavanKurus: tavan,
+            tip: kupon.reward_type,
+            yuzde: kupon.percent,
+            urunFiyatKurus: kupon.urun_fiyat === null ? null : Number(kupon.urun_fiyat),
+          });
 
     const geriAlmaBitis = new Date(Date.now() + GERI_ALMA_SANIYE * 1000);
 

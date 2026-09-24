@@ -392,6 +392,117 @@ describe("konum doğrulaması (K2)", () => {
 });
 
 /* ═══════════════════════════════════════════════════════════
+   Masa oturumu konumla yaşıyor (Ü279)
+   ═══════════════════════════════════════════════════════════
+
+   Ürün sahibi: "oturum dolmamalı, orada konum hep takip edilmeli,
+   insanları tekrar karekod okutmaya zorlamamalıyız." Karekod ziyaret
+   başında bir kez; oturum iş günü sonunda kapanıyor; "hâlâ kafede mi"
+   sorusunu taze konum cevaplıyor — kafeden çıkan kazanamıyor.
+   ═══════════════════════════════════════════════════════════ */
+
+describe("masa oturumu konumla yaşıyor (Ü279)", () => {
+  let p = "";
+  // ~40 m kuzey — en dar makul yarıçapın (40) içinde.
+  const YAKIN = KAFE_LAT + 0.00036;
+
+  before(async () => {
+    const { oyuncu } = await kaydet({
+      telefon: yeniTelefon(),
+      eposta: benzersizEposta(),
+      ad: "Canli",
+      soyad: "Oturum",
+      dogumYili: 1990,
+      pazarlamaIzni: false,
+    });
+    p = oyuncu.id;
+    await masa.ac({ cafeId: kafeA, tableId: masaA, playerId: p });
+  });
+
+  after(async () => {
+    await yoneticiSorgu(`DELETE FROM table_sessions WHERE player_id = $1`, [p]);
+    await yoneticiSorgu(`DELETE FROM player_consents WHERE player_id = $1`, [p]);
+    await yoneticiSorgu(`DELETE FROM audit_log WHERE target_id = $1`, [p]);
+    await yoneticiSorgu(`DELETE FROM players WHERE id = $1`, [p]);
+  });
+
+  test("🔴 oturum 3 saatte dolmuyor — iş günü sonuna kadar açık", async () => {
+    const o = await masa.aktif(p);
+    assert.ok(o, "oturum açılmadı");
+    assert.ok(
+      o.bitis.getTime() >= masa.oturumBitisi().getTime() - 5_000,
+      `oturum ${o.bitis.toISOString()}'te bitiyor — gün sonundan önce`,
+    );
+  });
+
+  test("oturum bitişi: sabah okutanın gece yarısı, gece okutanın en az 3 saat sonra", () => {
+    assert.equal(
+      masa.oturumBitisi(new Date("2026-09-24T09:00:00+03:00")).toISOString(),
+      new Date("2026-09-25T00:00:00+03:00").toISOString(),
+    );
+    assert.equal(
+      masa.oturumBitisi(new Date("2026-09-24T23:30:00+03:00")).toISOString(),
+      new Date("2026-09-25T02:30:00+03:00").toISOString(),
+    );
+  });
+
+  test("kafede okunan konum oturumu uzatıyor — karekod yeniden sorulmuyor", async () => {
+    await yoneticiSorgu(
+      `UPDATE table_sessions SET expires_at = now() + interval '10 minutes' WHERE player_id = $1`,
+      [p],
+    );
+    const s = await masa.konumDogrula(p, YAKIN, KAFE_LNG, 15);
+    assert.equal(s.durum, "dogrulandi");
+    const o = await masa.aktif(p);
+    assert.ok(
+      o!.bitis.getTime() >= masa.oturumBitisi().getTime() - 5_000,
+      "kafede okunan konum oturumu uzatmadı",
+    );
+  });
+
+  test("🔴 kesin uzak okuma kanıtı düşürüyor — kafeden çıkan kazanamaz", async () => {
+    await masa.konumDogrula(p, YAKIN, KAFE_LNG, 15);
+    assert.equal((await masa.aktif(p))!.kanitMaskesi & masa.K2, masa.K2);
+
+    // ~1 km, ±20 m: her yarıçapın (en çok 500) kesin dışında.
+    const s = await masa.konumDogrula(p, KAFE_LAT + 0.009, KAFE_LNG, 20);
+    assert.equal(s.durum, "uzak");
+    const o = await masa.aktif(p);
+    assert.equal(o!.kanitMaskesi & masa.K2, 0, "kafeden çıkan hâlâ kazanıyor");
+    assert.equal(o!.konumEskidi, false, "uzak okuma 'eskidi' sayıldı");
+  });
+
+  test("hata payı çembere taşan okuma 'belirsiz' — kanıt düşmüyor", async () => {
+    await masa.konumDogrula(p, YAKIN, KAFE_LNG, 15);
+    // ~667 m ama ±660 m: kafede de olabilir (her yarıçap için).
+    const s = await masa.konumDogrula(p, KAFE_LAT + 0.006, KAFE_LNG, 660);
+    assert.equal(s.durum, "belirsiz");
+    assert.equal(
+      (await masa.aktif(p))!.kanitMaskesi & masa.K2,
+      masa.K2,
+      "iç mekânda sıçrayan okuma masadaki oyuncunun kanıtını düşürdü",
+    );
+  });
+
+  test("🔴 eski konum kazandırmıyor, ama 'uzaktasın' da demiyor", async () => {
+    await masa.konumDogrula(p, YAKIN, KAFE_LNG, 15);
+    await yoneticiSorgu(
+      `UPDATE table_sessions SET geo_checked_at = now() - ($2 || ' minutes')::interval
+        WHERE player_id = $1`,
+      [p, String(masa.KONUM_TAZE_DAKIKA + 5)],
+    );
+    const o = await masa.aktif(p);
+    assert.equal(o!.kanitMaskesi & masa.K2, 0, "sabahki okuma akşam hâlâ kazandırıyor");
+    assert.equal(o!.kanitSeviyesi, 1);
+    assert.equal(o!.konumEskidi, true, "ekran 'konumunu doğrula' diyemez");
+
+    // Yeni okuma kanıtı geri getiriyor.
+    await masa.konumDogrula(p, YAKIN, KAFE_LNG, 15);
+    assert.equal((await masa.aktif(p))!.kanitMaskesi & masa.K2, masa.K2);
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════
    Oyuncuya ne olduğunu söylemek (Ü95)
    ═══════════════════════════════════════════════════════════ */
 

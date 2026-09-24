@@ -47,6 +47,8 @@ export type Odul = {
   anlik: boolean;
   kanitSeviyesi: number;
   urunId: string | null;
+  /** Ü277: bağlı ürünün fiyatı — yüzde ödülünün TL karşılığını anlatmak için. */
+  urunFiyatKurus: number | null;
   urunAdi: string | null;
   aktif: boolean;
   /** Ü94: adı değiştirmenin kaç dolaşımdaki kuponu etkileyeceği. */
@@ -60,30 +62,47 @@ export type Odul = {
   pencere: pencere.Pencere;
 };
 
-export type OdulSonucu = { ok: true; id: string } | { ok: false; hata: string };
+export type OdulSonucu =
+  | { ok: true; id: string; /** Ü277: saklanan değer (kuruş). */ degerKurus: number }
+  | { ok: false; hata: string };
 
-/* ── Ödül değerleri (Ü52 → Ü268 · K5) ─────────────────────────
+/* ── Ödül değerleri (Ü52 → Ü268 · K5 → Ü277) ──────────────────
  *
  * Ü52'de kural **en az 25 TL, 5'er artışla, en çok 50 TL** idi ve panel
  * sabit bir listeden seçtiriyordu. Ü268'de ürün sahibi iki şey istedi:
  *
  *   · *"25 ile üst sınır arasında istediğimi yazabilmeliyim"* → basamak
- *     kalktı, tutar serbest. ⚠️ Yine de **tam TL**: "27,50 TL indirim"
- *     gibi kuruşlu bir ödül kasada anlamsız ve Ü52'nin bu gerekçesi
- *     hâlâ geçerli.
+ *     kalktı, tutar serbest, tam TL.
  *   · *"Üst sınırı kafe belirlesin, bir sınır olmasın, en az 50 olsun"*
  *     → üst sınır `ayar.odulUstSinir`, kafenin ayarı.
  *
- * Alt sınır sabit ve veritabanında da duruyor (göç 0048).
+ * ── 🔴 Ü277: değer ürünün fiyatından, alt sınır kalktı ──────
+ *
+ * Ürün sahibi panelde ürün ödülü eklerken fiyatın ayrıca sorulmasını
+ * "saçma" buldu — ürünün fiyatı Ürünler'de zaten yazılı. Yüzde ödülünde
+ * de hem oran hem "en fazla indirim" soruluyordu. Artık:
+ *
+ *   ürün  → değer ürünün fiyatı
+ *   yüzde → fiyat × oran; **ürün seçmek zorunlu** (ürün sahibinin kararı)
+ *   tutar → elle yazılan tutar, tam TL (Ü52'nin "27,50" gerekçesi burada
+ *           hâlâ geçerli)
+ *
+ * Hesaplanan değer 25 TL'nin altına düşebiliyor (15 TL'lik çay, 60 TL'lik
+ * kahvede %20 = 12 TL) ve kuruşlu olabiliyor. Sorulunca: *"alt sınır
+ * kalksın"* — yalnızca kafenin üst sınırı geçerli (göç 0052).
+ *
+ * ⚠️ Ürün fiyatı panelde sonradan değiştirilemiyor (Ü94, `urun.ts` ·
+ * `adDegistir`), bu yüzden ödülde saklanan değer ürünün fiyatından
+ * kaymıyor. Fiyat düzenleme bir gün gelirse bağlı ödüllerin değeri de
+ * güncellenmeli.
  */
 
-export const ODUL_EN_AZ = 25_00;
 /**
  * Kafe hiç ayarlamadıysa üst sınır — Ü52'nin eski tavanı. Vitrin
  * simülasyonu da bu aralığı gösteriyor.
  */
 export const ODUL_EN_COK = 50_00;
-/** Tam TL — kuruşlu ödül yok. */
+/** Elle yazılan tutarda tam TL — kuruşlu indirim kasada anlamsız (Ü52). */
 export const ODUL_ADIM = 1_00;
 
 /**
@@ -94,12 +113,22 @@ export const ODUL_ADIM = 1_00;
  * üst sınır ekranda görünür ama hiçbir şeyi değiştirmezdi.
  */
 export function odulDegeriGecerliMi(kurus: number, ustSinirKurus: number): boolean {
-  return (
-    Number.isInteger(kurus) &&
-    kurus % ODUL_ADIM === 0 &&
-    kurus >= ODUL_EN_AZ &&
-    kurus <= ustSinirKurus
-  );
+  return Number.isInteger(kurus) && kurus > 0 && kurus <= ustSinirKurus;
+}
+
+/**
+ * Ürünün fiyatından türeyen ödül değeri — Ü277.
+ *
+ * Yüzdede kuruşa yuvarlanıyor: 55 TL'de %15 = 8,25 TL. Kasada müşterinin
+ * adisyonundan düşülen tutar bu, bütçeden rezerve edilen de bu.
+ */
+export function urundenDeger(tip: "product" | "percent", fiyatKurus: number, yuzde = 0): number {
+  return tip === "product" ? fiyatKurus : Math.round((fiyatKurus * yuzde) / 100);
+}
+
+/** 1250 → "12,50" · 1200 → "12" */
+function tlYaz(kurus: number): string {
+  return (kurus / 100).toLocaleString("tr-TR", { maximumFractionDigits: 2 });
 }
 
 /**
@@ -158,6 +187,7 @@ export async function listele(cafeId: string): Promise<Odul[]> {
       min_proof_level: number;
       product_id: string | null;
       urun_adi: string | null;
+      urun_fiyat: string | null;
       active: boolean;
       acik_kupon: string;
       daily_limit: number | null;
@@ -168,7 +198,7 @@ export async function listele(cafeId: string): Promise<Odul[]> {
     }>(
       `SELECT r.id, r.reward_type, r.title, r.description, r.cost_kurus, r.percent,
               r.points_price, r.kind, r.min_proof_level, r.product_id,
-              p.name AS urun_adi, r.active,
+              p.name AS urun_adi, p.price_kurus AS urun_fiyat, r.active,
               (SELECT count(*) FROM coupons c
                 WHERE c.reward_id = r.id AND c.status IN ('pending','active')) AS acik_kupon,
               r.daily_limit, r.usable_days, r.usable_from_hour, r.usable_to_hour,
@@ -194,6 +224,7 @@ export async function listele(cafeId: string): Promise<Odul[]> {
     kanitSeviyesi: r.min_proof_level,
     urunId: r.product_id,
     urunAdi: r.urun_adi,
+    urunFiyatKurus: r.urun_fiyat === null ? null : Number(r.urun_fiyat),
     aktif: r.active,
     acikKupon: Number(r.acik_kupon),
     gunlukLimit: r.daily_limit,
@@ -216,7 +247,12 @@ export async function ekle(opts: {
   tip: OdulTipi;
   baslik: string;
   aciklama?: string;
-  maliyetKurus: number;
+  /**
+   * Yalnızca TUTAR ödülünde — ve ürünsüz eski ürün ödülünde — okunuyor
+   * (Ü277). Ürün seçildiyse değer ürünün fiyatından hesaplanıyor ve bu
+   * alan yok sayılıyor: istemciden gelen bir sayı ürünün fiyatını ezmemeli.
+   */
+  maliyetKurus?: number;
   yuzde?: number;
   puanFiyati: number;
   anlik: boolean;
@@ -227,15 +263,6 @@ export async function ekle(opts: {
 
   if (baslik.length < 2) return { ok: false, hata: "Ödül adı en az iki harf olmalı." };
   if (baslik.length > 60) return { ok: false, hata: "Ödül adı en fazla 60 karakter." };
-
-  // Ü268 · K5: tutar serbest, tam TL, 25 ile kafenin üst sınırı arasında.
-  const ustSinir = await ayar.sayiOku(opts.cafeId, ayar.ANAHTARLAR.odulUstSinir);
-  if (!odulDegeriGecerliMi(opts.maliyetKurus, ustSinir)) {
-    return {
-      ok: false,
-      hata: `Ödül değeri ${ODUL_EN_AZ / 100} ile ${ustSinir / 100} TL arasında, tam TL olmalı.`,
-    };
-  }
 
   if (opts.tip === "percent") {
     if (!Number.isInteger(opts.yuzde) || (opts.yuzde ?? 0) < 1 || (opts.yuzde ?? 0) > 100) {
@@ -251,6 +278,17 @@ export async function ekle(opts: {
     };
   }
 
+  // Ü277: yüzde hep bir ürüne bağlı — TL karşılığı fiyat × oran.
+  if (opts.tip === "percent" && !opts.urunId) {
+    return {
+      ok: false,
+      hata: "Yüzde ödülünde ürünü seç — indirimin TL karşılığı ürünün fiyatından hesaplanıyor.",
+    };
+  }
+
+  // Ü268 · K5: üst sınır kafenin. Ü277: alt sınır yok.
+  const ustSinir = await ayar.sayiOku(opts.cafeId, ayar.ANAHTARLAR.odulUstSinir);
+
   /**
    * Ü52: puanla ödül alma kalktı; her ödül **oyunlardan ve çarktan
    * düşebilen** ödül. Bu yüzden `kind` her zaman `instant` ve puan
@@ -263,9 +301,34 @@ export async function ekle(opts: {
   const puanFiyati = 0;
 
   return withCafe(opts.cafeId, async (db) => {
+    let fiyat: number | null = null;
     if (opts.urunId) {
-      const urun = await db.one(`SELECT 1 FROM products WHERE id = $1 AND active`, [opts.urunId]);
+      const urun = await db.one<{ price_kurus: string }>(
+        `SELECT price_kurus FROM products WHERE id = $1 AND active`,
+        [opts.urunId],
+      );
       if (!urun) return { ok: false as const, hata: "Seçilen ürün bulunamadı." };
+      fiyat = Number(urun.price_kurus);
+    }
+
+    // Ü277: ürün ve yüzde ödülünde değer ürünün fiyatından; tutar ödülünde
+    // (ve ürünsüz eski ürün ödülünde) elle yazılan tutar.
+    const elle = fiyat === null || opts.tip === "amount";
+    const deger = elle
+      ? (opts.maliyetKurus ?? 0)
+      : urundenDeger(opts.tip as "product" | "percent", fiyat as number, opts.yuzde);
+
+    if (elle && (!Number.isInteger(deger) || deger <= 0 || deger % ODUL_ADIM !== 0)) {
+      return { ok: false as const, hata: "Tutar sıfırdan büyük ve tam TL olmalı." };
+    }
+    if (deger <= 0) {
+      return { ok: false as const, hata: "Ödülün değeri sıfır çıkıyor — oranı ya da ürünü kontrol et." };
+    }
+    if (!odulDegeriGecerliMi(deger, ustSinir)) {
+      return {
+        ok: false as const,
+        hata: `Bu ödül ${tlYaz(deger)} TL ediyor; kafenin ödül üst sınırı ${tlYaz(ustSinir)} TL. Üst sınırı "Açılma ve geçerlilik" kutusundan yükseltebilirsin.`,
+      };
     }
 
     const id = newId("rwd");
@@ -282,10 +345,10 @@ export async function ekle(opts: {
         baslik,
         opts.aciklama?.trim() || null,
         puanFiyati,
-        opts.maliyetKurus,
+        deger,
         opts.tip === "percent" ? opts.yuzde : null,
         opts.urunId ?? null,
-        kanitSeviyesi(opts.maliyetKurus),
+        kanitSeviyesi(deger),
       ],
     );
 
@@ -298,14 +361,15 @@ export async function ekle(opts: {
       targetId: id,
       detail: {
         tip: opts.tip,
-        maliyetKurus: opts.maliyetKurus,
+        maliyetKurus: deger,
+        urunId: opts.urunId ?? null,
         puanFiyati,
         anlik: opts.anlik,
         yuzde: opts.yuzde ?? null,
       },
     });
 
-    return { ok: true as const, id };
+    return { ok: true as const, id, degerKurus: deger };
   });
 }
 

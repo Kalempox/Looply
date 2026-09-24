@@ -191,6 +191,30 @@ function dikeyKoru(t: Top): void {
   t.vx = t.vx < 0 ? -DIKEY_ESI_YATAY : DIKEY_ESI_YATAY;
 }
 
+/**
+ * Bir adımın kaç parçada yürüneceği — Ü280.
+ *
+ * 🔴 Ürün sahibi: *"sekme oyununda top arada blokların içinden geçiyor."*
+ * Ölçüldü: 300 rastgele oyunun 345.199 karesinin 111'inde topun merkezi
+ * bloğun dolu kısmına 100 birimden (tek adımın olağan payı) derin
+ * giriyordu, en derini 222 — yarısından çoğu üçgende, örnekler duvar
+ * dibindeki bloklarda. Top adımda 220 birim ilerliyor; çarpışma ancak
+ * iç içe geçtikten sonra görülüyor ve eski çözüm topu "hızı kadar geri"
+ * itiyordu. Duvar yansıması ya da yanlış seçilen eksen topu bir bloğun
+ * içine geri bırakabiliyordu.
+ *
+ * Adım dört parçada yürünüyor (her parça ≤ 55 birim) ve çarpışan top
+ * **parçanın başına dönüyor** — hiç içeri girmeden yansıyor. Dört, ikinin
+ * kuvveti: `v · j / 4` ikili kayan noktada TAM, determinizm bozulmuyor.
+ * Kare sayısı değişmiyor (kayıt adım başına bir kare).
+ */
+const ALT_ADIM = 4;
+
+/** `v`nin `j`. parçası — parçaların toplamı tam olarak `v`. Saf tam sayı. */
+function parca(v: number, j: number): number {
+  return Math.trunc((v * j) / ALT_ADIM) - Math.trunc((v * (j - 1)) / ALT_ADIM);
+}
+
 /** Hücrenin içinde bloğun kapladığı pay — kenarda boşluk kalıyor. */
 const BLOK_PAY = 60;
 
@@ -473,97 +497,112 @@ function simule(durum: SekmeDurumu, aci: number, kayit: AtisKaresi[] | null): At
       }
       hareketli = true;
 
-      t.x += t.vx;
-      t.y += t.vy;
+      // Ü280: adım `ALT_ADIM` parçada yürünüyor — bkz. sabitin notu.
+      for (let j = 1; j <= ALT_ADIM; j++) {
+        /** Parçanın başı — hiçbir blokla iç içe olmadığı bilinen yer. */
+        const oncekiX = t.x;
+        const oncekiY = t.y;
+        t.x += parca(t.vx, j);
+        t.y += parca(t.vy, j);
 
-      // Duvarlar — yansıma, aşan mesafe geri veriliyor.
-      if (t.x < TOP_R) {
-        t.x = TOP_R + (TOP_R - t.x);
-        t.vx = -t.vx;
-      } else if (t.x > GENISLIK - TOP_R) {
-        t.x = GENISLIK - TOP_R - (t.x - (GENISLIK - TOP_R));
-        t.vx = -t.vx;
-      }
-      // Tavan.
-      if (t.y < TOP_R) {
-        t.y = TOP_R + (TOP_R - t.y);
-        t.vy = -t.vy;
-      }
+        // Duvarlar — yansıma, aşan mesafe geri veriliyor.
+        if (t.x < TOP_R) {
+          t.x = TOP_R + (TOP_R - t.x);
+          t.vx = -t.vx;
+        } else if (t.x > GENISLIK - TOP_R) {
+          t.x = GENISLIK - TOP_R - (t.x - (GENISLIK - TOP_R));
+          t.vx = -t.vx;
+        }
+        // Tavan.
+        if (t.y < TOP_R) {
+          t.y = TOP_R + (TOP_R - t.y);
+          t.vy = -t.vy;
+        }
 
-      // Zemin — top eve döndü.
-      if (t.y >= YUKSEKLIK - TOP_R) {
-        t.canli = false;
-        if (yeniFirlatici < 0) yeniFirlatici = t.x;
-        continue;
-      }
-
-      for (let i = 0; i < nesneler.length; i++) {
-        const n = nesneler[i];
-
-        if (n.tur === "blok") {
-          const eksen = carpismaEkseni(t.x, t.y, n);
-          if (!eksen) continue;
-          if (eksen === "x") {
-            t.vx = -t.vx;
-            t.x += t.vx;
-          } else if (eksen === "y") {
-            t.vy = -t.vy;
-            t.y += t.vy;
-          } else {
-            // 45°'lik yüzey: bileşen takası. Saf tam sayı.
-            const [nvx, nvy] = eksen === "/" ? [-t.vy, -t.vx] : [t.vy, t.vx];
-            t.vx = nvx;
-            t.vy = nvy;
-            t.x += t.vx;
-            t.y += t.vy;
-          }
-          if (!degisti) {
-            nesneler = nesneler.map((m) => ({ ...m }));
-            degisti = true;
-          }
-          // ⚠️ Kopyalamadan SONRA okunuyor: `n` kopyalamadan önceki
-          // diziye bakıyor ve ona yazmak kaydedilmiş kareyi bozardı.
-          const vurulan = nesneler[i];
-          if (vurulan.tur !== "blok") break;
-          vurulan.can -= 1;
-          skor += 5;
-          if (vurulan.can <= 0) {
-            nesneler.splice(i, 1);
-            skor += 15;
-            i--;
-          }
+        // Zemin — top eve döndü.
+        if (t.y >= YUKSEKLIK - TOP_R) {
+          t.canli = false;
+          if (yeniFirlatici < 0) yeniFirlatici = t.x;
           break;
         }
 
-        const m = nesneMerkezi(n);
-        const dx = t.x - m.x;
-        const dy = t.y - m.y;
-        if (dx * dx + dy * dy > m.r * m.r) continue;
+        for (let i = 0; i < nesneler.length; i++) {
+          const n = nesneler[i];
 
-        if (n.tur === "top") {
-          if (!degisti) {
-            nesneler = nesneler.map((q) => ({ ...q }));
-            degisti = true;
+          if (n.tur === "blok") {
+            const eksen = carpismaEkseni(t.x, t.y, n);
+            if (!eksen) continue;
+            /*
+              🔴 Ü280: top parçanın BAŞINA dönüyor, sonra yansıyor.
+
+              Eskiden hız çevrilip top "hızı kadar geri" itiliyordu; iç
+              içe geçmiş top bu itmeyle başka bir bloğun ya da aynı bloğun
+              içine düşebiliyordu. Parçanın başı hiçbir blokla iç içe
+              değil (bir önceki parça ya çarpışmasızdı ya da aynı yolla
+              geri alındı) — top ekranda bloğa hiç girmiyor.
+            */
+            t.x = oncekiX;
+            t.y = oncekiY;
+            if (eksen === "x") {
+              t.vx = -t.vx;
+            } else if (eksen === "y") {
+              t.vy = -t.vy;
+            } else {
+              // 45°'lik yüzey: bileşen takası. Saf tam sayı.
+              const [nvx, nvy] = eksen === "/" ? [-t.vy, -t.vx] : [t.vy, t.vx];
+              t.vx = nvx;
+              t.vy = nvy;
+            }
+            if (!degisti) {
+              nesneler = nesneler.map((m) => ({ ...m }));
+              degisti = true;
+            }
+            // ⚠️ Kopyalamadan SONRA okunuyor: `n` kopyalamadan önceki
+            // diziye bakıyor ve ona yazmak kaydedilmiş kareyi bozardı.
+            const vurulan = nesneler[i];
+            if (vurulan.tur !== "blok") break;
+            vurulan.can -= 1;
+            skor += 5;
+            if (vurulan.can <= 0) {
+              nesneler.splice(i, 1);
+              skor += 15;
+              i--;
+            }
+            break;
           }
-          kazanilanTop += 1;
-          nesneler.splice(i, 1);
-          i--;
-        } else {
-          // Ödül paketi — dokunmak topluyor, sekme YOK.
-          if (!degisti) {
-            nesneler = nesneler.map((q) => ({ ...q }));
-            degisti = true;
+
+          const m = nesneMerkezi(n);
+          const dx = t.x - m.x;
+          const dy = t.y - m.y;
+          if (dx * dx + dy * dy > m.r * m.r) continue;
+
+          if (n.tur === "top") {
+            if (!degisti) {
+              nesneler = nesneler.map((q) => ({ ...q }));
+              degisti = true;
+            }
+            kazanilanTop += 1;
+            nesneler.splice(i, 1);
+            i--;
+          } else {
+            // Ödül paketi — dokunmak topluyor, sekme YOK.
+            if (!degisti) {
+              nesneler = nesneler.map((q) => ({ ...q }));
+              degisti = true;
+            }
+            nesneler.splice(i, 1);
+            i--;
           }
-          nesneler.splice(i, 1);
-          i--;
         }
+
+        /* Ü243: 15°'lik pay çarpışmadan sonra da korunuyor.
+           Tablodan gelen hızlar zaten sınırın üstünde, yani bu çağrı
+           yalnızca çarpışma bileşenleri takas ettiğinde iş yapıyor. */
+        dikeyKoru(t);
       }
 
-      /* Ü243: 15°'lik pay çarpışmadan sonra da korunuyor.
-         Tablodan gelen hızlar zaten sınırın üstünde, yani bu çağrı
-         yalnızca çarpışma bileşenleri takas ettiğinde iş yapıyor. */
-      dikeyKoru(t);
-
+      // Eve dönen top bu karede çizilmiyor (eskisi gibi).
+      if (!t.canli) continue;
       if (kare) kare.push({ x: t.x, y: t.y });
     }
 

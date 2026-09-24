@@ -143,11 +143,16 @@ function sekmeOyna(
 const odulVar = (d: SekmeDurumu) => sekme.odulVar!(d);
 const odulTeslim = (d: SekmeDurumu) => sekme.odulTeslim!(d);
 
-/** Zarı "evet" çıkan bir tohum — sert şartları ayrı sınamak için. */
+/**
+ * Zarı "evet" çıkan bir tohum — sert şartları ayrı sınamak için.
+ *
+ * Ü281: şans artık bütçe ve kalabalıkla değişiyor; zarı şansın TABANININ
+ * altında kalan tohum, kapılar açıkken her durumda "evet".
+ */
 function sansliTohum(): string {
   for (let i = 0; i < 10_000; i++) {
     const t = `paket-tohum-${TABAN}-${i}`;
-    if (kupon.paketZari(t) < motor.paketSansi(0)) return t;
+    if (kupon.paketZari(t) < motor.EN_AZ_PAKET_SANSI) return t;
   }
   throw new Error("şanslı tohum bulunamadı");
 }
@@ -300,23 +305,40 @@ describe("paket kararı (odulSozuVer)", () => {
     }
   });
 
-  test("zar tohumdan anahtarlı: aynı tur hep aynı cevap, oran paketSansi", () => {
+  test("zar tohumdan anahtarlı ve düzgün dağılıyor", () => {
     const t = `sabit-${TABAN}`;
     assert.equal(kupon.paketZari(t), kupon.paketZari(t), "aynı tohum farklı zar verdi");
 
+    // Zar düzgünse "zar < x" oranı x'e yakın — şans ne olursa olsun
+    // karar o şansla verilmiş olur.
     const N = 4_000;
     let evet = 0;
-    for (let i = 0; i < N; i++) if (kupon.paketZari(`oran-${TABAN}-${i}`) < motor.paketSansi(0)) evet++;
+    for (let i = 0; i < N; i++) if (kupon.paketZari(`oran-${TABAN}-${i}`) < 0.3) evet++;
     const oran = evet / N;
-    assert.ok(
-      Math.abs(oran - motor.paketSansi(0)) < 0.03,
-      `zar oranı ${oran.toFixed(3)}, beklenen ${motor.paketSansi(0).toFixed(3)}`,
-    );
+    assert.ok(Math.abs(oran - 0.3) < 0.03, `zar oranı ${oran.toFixed(3)}, beklenen 0,300`);
+  });
+
+  test("🔴 şans bütçe ve kalabalıkla değişiyor (Ü281)", () => {
+    const sans = (kalanKurus: number, kalanFirsat: number, sonKazanim = 0) =>
+      motor.paketSansi({ kalanKurus, kalanFirsat, ortalamaOdulKurus: 40_00, sonKazanim });
+
+    // Ürün sahibi: "günlük limit 10.000 ise farklı, 20.000 ise farklı."
+    assert.ok(sans(20_000_00, 600) > sans(10_000_00, 600), "büyük bütçe şansı artırmıyor");
+    // Kalabalık şansı kısıyor — bütçe daha çok kişiye bölünüyor.
+    assert.ok(sans(10_000_00, 1_200) < sans(10_000_00, 300), "kalabalık şansı kısmıyor");
+    // Tam hesap: 10.000 TL, 1.000 fırsat, ortalama 40 TL → %25.
+    assert.ok(Math.abs(sans(10_000_00, 1_000) - 0.25) < 1e-9);
+    // Sınırlar: bol bütçede tavan, dar bütçede taban.
+    assert.equal(sans(1_000_000_00, 10), motor.EN_COK_PAKET_SANSI);
+    assert.equal(sans(100_00, 10_000), motor.EN_AZ_PAKET_SANSI);
+    // Bütçe yoksa sıfır — taban kapıyı açmıyor.
+    assert.equal(sans(0, 10), 0);
   });
 
   test("bıkkınlık paketin şansını kısıyor", () => {
-    assert.ok(motor.paketSansi(2) < motor.paketSansi(0));
-    assert.ok(motor.paketSansi(0) > 0.3 && motor.paketSansi(0) < 0.4, "oran bugünkü aralığın ortası değil");
+    const sans = (sonKazanim: number) =>
+      motor.paketSansi({ kalanKurus: 5_000_00, kalanFirsat: 500, ortalamaOdulKurus: 40_00, sonKazanim });
+    assert.ok(sans(2) < sans(0));
   });
 });
 
@@ -344,13 +366,18 @@ describe("girişli oyuncu: paket → karar → kesin kupon", () => {
     assert.equal(erken.izin, false);
     assert.equal(await sozuOku(b.oturumId), null, "doğrulanamayan soru turun şansını yaktı");
 
+    // Ü281: kararın şansı bütçe ve kalabalıktan — panelle aynı fonksiyon.
+    const sans = await withBypass("test: şans", (db) =>
+      kupon.paketSansiIle(db, { playerId: p, cafeId: kafe, oyunId: "sekme", kanitSeviyesi: 2, an: KAFE_ACIK }),
+    );
+    assert.ok(sans > 0, "kapılar açıkken şans sıfır");
     const ilk = await oyun.odulSor({
       playerId: p,
       oturumId: b.oturumId,
       girdiler: tur.girdiler,
       an: KAFE_ACIK,
     });
-    assert.equal(ilk.izin, kupon.paketZari(b.tohum) < motor.paketSansi(0), "karar zardan gelmiyor");
+    assert.equal(ilk.izin, kupon.paketZari(b.tohum) < sans, "karar zardan gelmiyor");
     assert.equal(await sozuOku(b.oturumId), ilk.izin, "karar yazılmadı");
 
     const ikinci = await oyun.odulSor({
@@ -429,6 +456,9 @@ describe("girişli oyuncu: paket → karar → kesin kupon", () => {
     assert.ok(cevap.ok);
     if (!cevap.ok) return;
     assert.equal(cevap.kupon, null, "alınmayan paket için kupon verildi");
+    // Kaçan paket sonuçta söylenmiyor — Ü280'de eklenen "Ödül paketini
+    // kaçırdın" satırını ürün sahibi kaldırttı: *"bu yazmasın"*.
+    assert.equal(cevap.odulYok, null, "kaçan paket sonuçta söylendi");
   });
 });
 
@@ -448,13 +478,16 @@ describe("misafir: paket kararı çerezde, zar yenilenemiyor", () => {
     const tur = sekmeOyna(bas.tohum, odulVar);
     assert.ok(odulVar(tur.durum));
 
+    const sans = await withBypass("test: misafir şansı", (db) =>
+      kupon.paketSansiIle(db, { playerId: null, cafeId: kafe, oyunId: "sekme", kanitSeviyesi: 2, an: KAFE_ACIK }),
+    );
     const ilk = await misafir.odulSor({
       acikOyunCerezi: bas.cerez,
       konumCerezi,
       girdiler: tur.girdiler,
       an: KAFE_ACIK,
     });
-    assert.equal(ilk.izin, kupon.paketZari(bas.tohum) < motor.paketSansi(0));
+    assert.equal(ilk.izin, kupon.paketZari(bas.tohum) < sans);
     assert.ok(ilk.cerez, "karar çereze yazılmadı");
 
     // Yeni çerezle: karar okunuyor, yeni çerez yok.

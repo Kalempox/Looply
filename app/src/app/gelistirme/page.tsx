@@ -66,8 +66,9 @@ type Kupon = {
  *
  * Karekod zincirinin iki ucu var ve ikisi de kamerasız denenebiliyordu:
  * kafe karekodu zaten bir adres (yukarıdaki kısayollar), kasa ekranı da
- * **6 haneli kod** kabul ediyor — iOS Safari'de `BarcodeDetector`
- * olmadığı için elle giriş bir yedek değil, birinci sınıf yol.
+ * **6 haneli kod** kabul ediyor — kamerasız her cihazda elle giriş bir
+ * yedek değil, birinci sınıf yol. (iPhone Ü283'ten beri kamerayla da
+ * okuyor.)
  *
  * Eksik olan tek şey o kodu **bulmaktı**: oyuncunun telefonunu açıp
  * Ödüllerim → kupon → kodu okumak gerekiyordu. Test ederken bu, akışın

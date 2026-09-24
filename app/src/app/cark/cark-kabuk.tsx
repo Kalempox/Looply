@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { CarkSahnesi } from "@/components/cark-sahnesi";
+import { beklemeMetni } from "@/domain/bekleme-metni";
+import { konumuTazele } from "@/app/oyna/konum-takibi";
 import { carkiCevir } from "./actions";
 
 /**
@@ -24,6 +26,7 @@ export function GunlukCark({
   kapaliMetin,
   otomatikAc,
   aralikSaat,
+  konumTakibi = false,
 }: {
   dilimler: { baslik: string }[];
   acik: boolean;
@@ -32,11 +35,20 @@ export function GunlukCark({
   aralikSaat: number;
   /** Ü96: karekodu yeni okutan oyuncuda sahne kendiliğinden açılıyor. */
   otomatikAc?: boolean;
+  /**
+   * Ü279: kafede (masa oturumu, konumu işaretli kafe) — çevirmeden önce
+   * "kafedesin" okuması taze değilse bir kez okunur. Butikte hak
+   * kasiyerden geliyor, konum hiç sorulmuyor.
+   */
+  konumTakibi?: boolean;
 }) {
   return (
     <CarkSahnesi
       dilimler={dilimler}
-      cevir={carkiCevir}
+      cevir={async () => {
+        if (konumTakibi) await konumuTazele({ sor: true, zamanAsimiMs: 5_000 });
+        return carkiCevir();
+      }}
       kilitli={!acik}
       kapaliMetin={kapaliMetin}
       otomatikAc={otomatikAc}
@@ -45,14 +57,29 @@ export function GunlukCark({
       /* ⚠️ "24 saatte bir" sabit yazılıydı; Ü158'den beri süre kafenin
          ayarı. Kafe 6 saat yazdığında ekran yalan söylüyordu. */
       altMetin={`Çark ${aralikSaat} saatte bir açılıyor. Çıkan ödül doğrudan hesabına işlenir.`}
-      kazandiMetni={
-        <>
-          Ödülün hesabına işlendi.{" "}
-          <Link href="/oduller" className="font-semibold underline">
-            Ödüllerim
-          </Link>{" "}
-          ekranından kasada gösterebilirsin.
-        </>
+      /* 🔴 Ü278: "Ödüllerim ekranından kasada gösterebilirsin" sabit
+         yazılıydı. Ü269'dan beri her ödül kafenin aktivasyon süresi kadar
+         bekliyor; ürün sahibi kuponu kasada gösterilebilirler arasında
+         aradı ve "hesabıma gelmedi" dedi. Oyun ekranının dili: bekleme
+         cümlesi (Ü97 — saat yazmadan) ve kuponun durduğu yer. */
+      kazandiMetni={(kupon) =>
+        kupon?.ertelendi ? (
+          <>
+            {beklemeMetni(kupon.id, new Date(kupon.aktiflesme))} Kuponun hesabında —{" "}
+            <Link href="/oduller" className="font-semibold underline">
+              Ödüllerim
+            </Link>{" "}
+            ekranında &ldquo;Yakında açılıyor&rdquo; altında.
+          </>
+        ) : (
+          <>
+            Ödülün hesabına işlendi.{" "}
+            <Link href="/oduller" className="font-semibold underline">
+              Ödüllerim
+            </Link>{" "}
+            ekranından kasada gösterebilirsin.
+          </>
+        )
       }
     />
   );

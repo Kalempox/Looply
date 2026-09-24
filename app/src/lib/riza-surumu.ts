@@ -32,7 +32,7 @@
  * `v1-<tarih>` olacak ve o an, mevcut rızaların yenilenip yenilenmeyeceği
  * ayrıca kararlaştırılmalı.
  */
-export const RIZA_SURUMU = "v0-taslak-2026-09-13";
+export const RIZA_SURUMU = "v0-taslak-2026-09-24";
 
 /** Sürüm etiketindeki `YYYY-MM-DD`. */
 export function rizaTarihiIso(surum: string = RIZA_SURUMU): string {

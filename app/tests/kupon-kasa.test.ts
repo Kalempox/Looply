@@ -9,6 +9,8 @@ import { normalizePhone } from "@/lib/crypto";
 import * as masa from "@/domain/masa";
 import * as butce from "@/domain/butce";
 import * as katalog from "@/domain/katalog";
+import * as urun from "@/domain/urun";
+import { newId } from "@/lib/ids";
 import * as kupon from "@/domain/kupon";
 import * as motor from "@/domain/odul-motoru";
 import * as ayar from "@/domain/ayar";
@@ -162,16 +164,20 @@ before(async () => {
     anlik: false,
     aktorId: yoneticiA,
   });
-  yuzdeOdulId = await ekle({
-    cafeId: kafeA,
-    tip: "percent",
-    baslik: "KTEST Yüzde indirim",
-    maliyetKurus: 40_00,
-    yuzde: 20,
-    puanFiyati: 15,
-    anlik: false,
-    aktorId: yoneticiA,
-  });
+  /*
+    ⚠️ Ü277'den beri yeni yüzde ödülü ürüne bağlı ve indirimi kesin
+    (fiyat × oran). Bu satır ESKİ, ürünsüz yüzde ödülünü temsil ediyor:
+    veritabanında hâlâ duruyorlar ve kasada tutar girilerek
+    bozduruluyorlar (Ü17). `katalog.ekle` artık onları üretmediği için
+    doğrudan yazılıyor.
+  */
+  yuzdeOdulId = newId("rwd");
+  await yoneticiSorgu(
+    `INSERT INTO rewards (id, cafe_id, kind, reward_type, title, points_price, cost_kurus,
+                          percent, min_proof_level)
+     VALUES ($1, $2, 'instant', 'percent', 'KTEST Yüzde indirim', 0, 4000, 20, 2)`,
+    [yuzdeOdulId, kafeA],
+  );
 
   oyuncuId = (
     await kaydet({
@@ -232,6 +238,8 @@ after(async () => {
   );
   await yoneticiSorgu(`DELETE FROM budget_ledger WHERE cafe_id = $1`, [kafeA]);
   await yoneticiSorgu(`DELETE FROM rewards WHERE title LIKE 'KTEST %'`);
+  // Ü277: ürüne bağlı yüzde testi kendi ürününü açıyor — kafenin menüsünde kalmasın.
+  await yoneticiSorgu(`DELETE FROM products WHERE name LIKE 'KTEST %'`);
   await yoneticiSorgu(`DELETE FROM points_ledger WHERE player_id = $1`, [oyuncuId]);
   await yoneticiSorgu(`DELETE FROM xp_ledger WHERE player_id = $1`, [oyuncuId]);
   await yoneticiSorgu(`DELETE FROM player_badges WHERE player_id = $1`, [oyuncuId]);
@@ -989,6 +997,101 @@ describe("yüzdeli kuponda tutar kayıttan sınırlanır (Ü17)", () => {
     });
     assert.ok(sonuc.ok);
     assert.equal(sonuc.dusulenKurus, 40_00, "tavanın üstü kabul edildi");
+  });
+
+  /**
+   * Ü277 — yüzde ödülü ürüne bağlıysa indirim kesin: fiyat × oran. Kasa
+   * ekranı tutar sormuyor; arayüzü atlayıp tutar gönderen biri de değeri
+   * değiştiremiyor.
+   */
+  test("🔴 ürüne bağlı yüzdede kasiyerin tutarı yok sayılır — indirim kesin (Ü277)", async () => {
+    const u = await urun.ekle({
+      cafeId: kafeA,
+      ad: `KTEST Latte ${randomInt(1_000_000)}`,
+      fiyatKurus: 60_00,
+      aktorId: yoneticiA,
+    });
+    assert.ok(u.ok, u.ok === false ? u.hata : "");
+    const r = await katalog.ekle({
+      cafeId: kafeA,
+      tip: "percent",
+      baslik: "KTEST Lattede %20",
+      yuzde: 20,
+      puanFiyati: 0,
+      anlik: true,
+      urunId: u.ok ? u.urun.id : "",
+      aktorId: yoneticiA,
+    });
+    assert.ok(r.ok, r.ok === false ? r.hata : "");
+    assert.equal(r.ok && r.degerKurus, 12_00, "60 TL × %20 12 TL etmedi");
+
+    const s = await kuponAl(r.ok ? r.id : "");
+    const g = await kupon.coz(kafeA, s.kod);
+    assert.ok(g.bulundu);
+    assert.equal(g.bulundu && g.urunAdi, u.ok ? u.urun.ad : "", "kasa ekranı ürünü söylemiyor");
+    assert.equal(g.bulundu && g.tavanKurus, 12_00);
+
+    const onay = await kupon.onayla({
+      cafeId: kafeA,
+      kuponId: s.kuponId,
+      staffId: kasiyerA,
+      gerceklesenKurus: 5_00,
+    });
+    assert.ok(onay.ok, onay.ok === false ? onay.hata : "");
+    assert.equal(onay.ok && onay.dusulenKurus, 12_00, "kasiyerin tutarı kesin indirimi değiştirdi");
+  });
+
+  /*
+    🔴 Ü277'den ÖNCE kurulmuş ürünlü yüzde ödülü: form değeri elle
+    alıyordu ve "50 TL'lik üründe %10" 40 TL kayıtlı kalabiliyordu
+    (geliştirme veritabanında 13 ödül böyleydi). Kasa ayrılan tutarı
+    düşseydi bütçe gerçek indirimin sekiz katı eksilirdi.
+  */
+  test("🔴 değeri elle yazılmış eski ürünlü yüzdede kasa fiyat × oranı düşer (Ü277)", async () => {
+    const u = await urun.ekle({
+      cafeId: kafeA,
+      ad: `KTEST Çay ${randomInt(1_000_000)}`,
+      fiyatKurus: 50_00,
+      aktorId: yoneticiA,
+    });
+    assert.ok(u.ok, u.ok === false ? u.hata : "");
+    const odulId = newId("rwd");
+    await yoneticiSorgu(
+      `INSERT INTO rewards (id, cafe_id, kind, reward_type, title, points_price, cost_kurus,
+                            percent, product_id, min_proof_level)
+       VALUES ($1, $2, 'instant', 'percent', 'KTEST Eski çayda %10', 0, 4000, 10, $3, 2)`,
+      [odulId, kafeA, u.ok ? u.urun.id : ""],
+    );
+
+    const s = await kuponAl(odulId);
+    const g = await kupon.coz(kafeA, s.kod);
+    assert.ok(g.bulundu);
+    assert.equal(g.bulundu && g.tavanKurus, 5_00, "kasa ekranı eski elle yazılmış değeri gösteriyor");
+
+    const onay = await kupon.onayla({ cafeId: kafeA, kuponId: s.kuponId, staffId: kasiyerA });
+    assert.ok(onay.ok, onay.ok === false ? onay.hata : "");
+    assert.equal(onay.ok && onay.dusulenKurus, 5_00, "bütçeden gerçek indirim yerine ayrılan tutar düştü");
+  });
+
+  test("kasa değeri: ürünlü yüzde tavanı aşmaz, başka tipte tavanın kendisi", () => {
+    // 279 TL × %10 = 27,90 TL ama kupon 25 TL ayırmış — tavan kazanır.
+    assert.equal(
+      kupon.kasaDegeri({ tavanKurus: 25_00, tip: "percent", yuzde: 10, urunFiyatKurus: 279_00 }),
+      25_00,
+    );
+    assert.equal(
+      kupon.kasaDegeri({ tavanKurus: 40_00, tip: "percent", yuzde: 10, urunFiyatKurus: 50_00 }),
+      5_00,
+    );
+    // Ürünsüz eski yüzde ve öbür tipler: tavan olduğu gibi.
+    assert.equal(
+      kupon.kasaDegeri({ tavanKurus: 40_00, tip: "percent", yuzde: 20, urunFiyatKurus: null }),
+      40_00,
+    );
+    assert.equal(
+      kupon.kasaDegeri({ tavanKurus: 30_00, tip: "product", yuzde: null, urunFiyatKurus: 120_00 }),
+      30_00,
+    );
   });
 
   test("ürün ödülünde girilen tutar dikkate alınmaz — değer kayıttan gelir", async () => {

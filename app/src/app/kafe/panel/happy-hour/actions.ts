@@ -3,6 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { kafeYoneticisiGerekli } from "@/domain/yetki";
 import * as happy from "@/domain/happy";
+import { istanbulDakikasi } from "@/lib/tarih";
+
+/** `happy.istanbulHaftaGunu` sırası: 0 = Pazar. */
+const GUN_ADI = ["Pazar", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi"];
 
 export type HappyDurumu = { hata?: string; bilgi?: string };
 
@@ -127,7 +131,11 @@ export async function programEylemi(
     });
     revalidatePath("/kafe/panel/happy-hour");
     return sonuc.ok
-      ? { bilgi: "Bu günün programı kaldırıldı." }
+      ? {
+          bilgi: sonuc.bugunSuruyor
+            ? "Bu günün programı kaldırıldı. Bugünkü happy hour şu an sürüyor ve bitene kadar devam eder."
+            : "Bu günün programı kaldırıldı.",
+        }
       : { hata: sonuc.hata };
   }
 
@@ -146,7 +154,31 @@ export async function programEylemi(
   });
 
   revalidatePath("/kafe/panel/happy-hour");
-  return sonuc.ok
-    ? { bilgi: "Program kaydedildi. O gün geldiğinde pencere kendiliğinden açılacak." }
-    : { hata: sonuc.hata };
+  if (!sonuc.ok) return { hata: sonuc.hata };
+
+  /*
+    Ü277: ürün sahibi *"pencere kendiliğinden açılacaktan kastı ne?"* diye
+    sordu — "pencere" bizim iç sözcüğümüz. Cümle artık ne olacağını
+    söylüyor: hangi gün, hangi saatte, ne kadar, oyuncuya ne kazandırıyor.
+  */
+  const saatYazi = `${String(saat).padStart(2, "0")}:${String(dakika).padStart(2, "0")}`;
+  // Bugünün penceresi saati gelmeden de yazılıyor (Ü277) — "açıldı" demek
+  // saati henüz gelmemiş pencerede yanlış olurdu.
+  const baslamadi = saat * 60 + dakika > istanbulDakikasi(new Date());
+  // Ü279: kafenin son kaydı geçerli — bugünün satırı bugün de açılıyor;
+  // açılmadıysa neden açılmadığı söyleniyor.
+  const bugunMesaji: Record<happy.BugunSonucu, string> = {
+    acildi: baslamadi ? ` Bugün ${saatYazi}'te başlayacak.` : " Bugünkü happy hour şu an açık.",
+    ikinci: baslamadi
+      ? ` Bugün ikinci happy hour ${saatYazi}'te başlayacak.`
+      : " Bugün ikinci happy hour şu an açık.",
+    gecti: " Bugün için saati geçti — yeni saat gelecek haftadan geçerli.",
+    sinir: ` Bugün en fazla ${happy.GUNLUK_EN_FAZLA} happy hour açılabiliyor — yeni saat gelecek haftadan geçerli.`,
+    cakisiyor:
+      " Bugünkü happy hour sürüyor ve yeni saat onunla çakışıyor — yeni saat gelecek haftadan geçerli.",
+  };
+  const ek = sonuc.bugun ? bugunMesaji[sonuc.bugun] : "";
+  return {
+    bilgi: `Kaydedildi. Her ${GUN_ADI[haftaGunu]} ${saatYazi}'te happy hour kendiliğinden başlar ve ${sureSaat} saat sürer — senin bir şey yapman gerekmez. Bu sürede bugünkü oyun ödülünü almış oyuncu havuzdan ikinci bir ödül kazanabilir.${ek}`,
+  };
 }

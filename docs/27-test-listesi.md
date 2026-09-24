@@ -8,9 +8,9 @@
 > `31` butik işletme · `32` butik kasiyeri · `33` platform. Bu liste
 > hepsini **tek sırada** topluyor.
 
-**Son güncelleme:** 2026-09-24 · Ü276'ya kadar olan her değişiklik içinde.
+**Son güncelleme:** 2026-09-24 · Ü277'ye kadar olan her değişiklik içinde.
 
-📍 **Şu an buradasın: 2.1** — 1. bölüm bitti.
+📍 **Şu an buradasın: 1.3** — 1. bölüm **🔗 Etki** yöntemiyle yeniden (Ü277).
 
 ---
 
@@ -49,9 +49,23 @@ Doğrulama kodları geliştirmede **ekranda sarı kutuda** görünür.
   Ödüller → **Aktivasyon saati 1**. Ya da kupon kazanınca bana yaz, açılma
   saatini öne çekerim.
 
+### 0.4 · ⚠️ Otomatik testler ve senin verin
+Otomatik test takımı seninle **aynı veritabanını** kullanıyor ve Kafe A'nın
+konumunu, yarıçapını, oyun anahtarlarını, bütçesini ve happy hour
+pencerelerini değiştiriyor. 24 Eylül 04:37'deki koşuda Kafe A'da kapalı
+oyunlar vardı (senin 1.8'den olmalı); koşu onları geri açtı ve kaydını sildi.
+**Sen test ederken takımı çalıştırmıyorum**; yalnızca
+tip denetimi ve lint.
+
 ---
 
 ## 1 · Kafe paneli — kurulum (Kafe A · bilgisayar)
+
+> **Ü277 · yöntem:** Düğmenin çalışması yetmiyor; panelde yapılan her
+> şeyin **gerçekten işlediği** sınanıyor. Her adımda **🔗 Etki** satırı
+> var: oyuncunun telefonunda neyin değişmesi gerektiği ve benim
+> veritabanında neye bakacağım. Adımı bitirince yaz — kaydı ve etkisini
+> kontrol edip sonucu söylerim.
 
 ### 1.1 · Giriş
 **Yap:** `/kafe/giris` → **Yetkili cep telefonu** kutusuna `05320000001` → ekrandaki 6 haneli kod.
@@ -64,76 +78,148 @@ Doğrulama kodları geliştirmede **ekranda sarı kutuda** görünür.
 Hour · Şubeler.
 🔴 Bir durak tıklanınca açılmıyorsa.
 
-### 1.3 · Konum — 🔴 bunsuz kimse ödül kazanamaz
-**Yap:** Konum → **Konumu güncelle** (tarayıcı izin ister) → Yarıçap
-**200** → **Yarıçapı kaydet**. Bunu, oynayacağın yerde yap: konum paneli
-açtığın cihazdan okunur.
-✅ Enlem/boylam bulunduğun yeri gösterir; kayıt "±X m" doğruluğunu yazar.
-✅ Bilgisayardan okunan kaba konum (±100 m'den kötü) **kaydedilmez**;
-ekran "telefondan kaydet" der (Ü274).
-🔴 İzin reddedilince sayfa bozuluyorsa.
+### 1.3 · Konum — 🔴 bunsuz kimse ödül kazanamaz (Ü274 · Ü278)
+İki yol var; biri yeter.
+
+**Yap (telefon, kafenin içinde):** Konum → **Konumu güncelle** (izin ver).
+✅ Kayıt "±X m" doğruluğunu yazar (telefonda genelde ±5–20 m).
+
+**Yap (bilgisayar):** Google Haritalar'da kafenin binasının üstüne **sağ
+tıkla** → en üstteki sayılara tıkla (kopyalanır) → Konum sayfasındaki
+**Google Haritalar'dan koordinat** alanına yapıştır → **Haritada gör ↗**
+ile noktayı kontrol et → **Bu koordinatı kaydet**.
+✅ Yapıştırınca enlem/boylam ve "Haritada gör" çıkar; düğme ancak geçerli
+koordinatta açılır.
+✅ Reddedilir ve sebebini söyler: kısa link (`maps.app.goo.gl`) · "41.04,
+28.98" gibi kaba koordinat · ters sıra ("28.98380, 41.03690") · Türkiye
+dışı.
+✅ Bilgisayarın kendi okuması ±100 m'den kötüyse (ör. "±5 km") kaydedilmez;
+"Yine de kaydet" düğmesi **yok**, bu alana yönlendirir. Bilgisayarda GPS
+yok; konum Wi-Fi'den ya da internet adresinden tahmin ediliyor.
+
+Sonra: Yarıçap **200** → **Yarıçapı kaydet**. Kayıtlı konumun yanındaki
+**Haritada gör ↗** kafenin binasını göstermeli.
+🔗 **Etki:** Oyuncu kafede "Konumumu doğrula" deyince **"Doğrulandı · X m"**;
+200 m dışında reddedilir (bölüm 3). Ben: kafenin koordinatı, yarıçapı ve
+denetim izinde hangi yoldan girildiği (`konum_elle_girildi` /
+`konum_isaretlendi`).
+🔴 İzin reddedilince sayfa bozuluyorsa; ters ya da kaba koordinat
+kaydedilebiliyorsa; "Haritada gör" başka bir yeri gösteriyorsa.
 
 ### 1.4 · Ürünler
-**Yap:** Ürünler → bir ürün ve fiyatı ekle.
+**Yap:** Ürünler → bir ürün ve fiyatı ekle (ör. "Filtre Kahve", 60 TL).
 ✅ Listeye düşer.
+🔗 **Etki:** Ürün, ödül formunda **fiyatıyla** listelenir (1.5). Ben: ürün
+ve fiyatı kayıtta mı.
 
-### 1.5 · Ödüller ve kupon zamanlaması (Ü268 · Ü269)
-**Yap:** Ödüller.
+### 1.5 · Ödüller — değer ürünün fiyatından (Ü268 · Ü269 · Ü277)
+**Yap:** Ödüller → **Yeni ödül**, üç tipi sırayla dene:
+- **Ürün:** ürünü seç → fiyat **sorulmaz**; "Bu ödül 60 TL değerinde —
+  ürünün fiyatı" yazar.
+- **Yüzde:** ürünü seç, oranı yaz (20) → **yalnızca oran** sorulur;
+  "Filtre Kahve 60 TL × %20 = 12 TL indirim" yazar.
+- **Tutar:** TL yaz (ör. 30) → "Bu ödül 30 TL indirim".
+
+✅ Ürün kutusunda her ürün fiyatıyla yazar ("Filtre Kahve — 60 TL").
+✅ Alt sınır yok: 12 TL'lik yüzde ya da 15 TL'lik ürün eklenebilir. Üst
+sınırı aşan ödülde kırmızı uyarı çıkar ve **Ödülü ekle** kapanır.
+✅ Listede yüzde ödülü "%20 = 12 TL" ve altında "Filtre Kahve · 60 TL".
+✅ Eski ödüller de kurala uydu (Ü278, göç 0053): "testte yüzde 10 indirim"
+"%10 = 5 TL", "ize amreicano yüzde 10" "%10 = 27,9 TL"; "Ice Americano" 120 TL
+(yayında değil).
 ✅ Hiçbir ödülde **"Masada 5 dakika"** yazmıyor — her ödül yalnızca konum
 doğrulaması ister.
-✅ **Yeni ödül**: değer **sayı kutusu**, altında "25 ile *üst sınır* TL
-arası, tam TL". 27 kaydedilir; 24, 27,5 ve üst sınırın 1 fazlası kaydedilmez.
-✅ **Açılma ve geçerlilik** kutusunda: **Aktivasyon saati** (1–48) ·
-**Kupon kaç gün geçerli** (1–30) · **Ödül üst sınırı** (en az 50, yukarısı
-serbest). "Gecikmeli açılma eşiği" alanı **yok**.
-✅ Üstteki kart **"Açılma süresi: 12 saat"**; ödül satırları da kafenin
-saatini yazar ("6 saat sonra açılır").
-🔴 Bir ödül hemen açılıyor diye yazıyorsa; 49'luk üst sınır ya da tavanı
-aşan ödül kaydedilebiliyorsa.
+✅ **Açılma ve geçerlilik:** Aktivasyon saati (1–48) · Kupon kaç gün
+geçerli (1–30) · Ödül üst sınırı (en az 50). "Gecikmeli açılma eşiği"
+alanı **yok**; üstteki kart **"Açılma süresi: 12 saat"**.
+✅ **Şans çarkı** kartı boş değil: çarktaki ödüller ve her birinin çıkma
+ihtimali (%) yazar.
+🔗 **Etki:** Yeni ödül oyuncunun **çarkında** dilim olur ve oyunun ödül
+paketinden çıkabilir. Kazanılan kupon **aktivasyon saati** kadar sonra
+açılır (Ödüllerim'de "bekliyor"). Kasada ürüne bağlı yüzde kuponunda
+kasiyere tutar **sorulmaz**, indirim ödülün değeridir (6.6). Ben: ödülün
+kayıtlı değeri (ürün = fiyat, yüzde = fiyat × oran) ve çark dilimleri.
+🔴 Ürün seçince yine fiyat soruyorsa; yüzde "en fazla indirim" soruyorsa;
+TL karşılığı yanlışsa; tavanı aşan ödül kaydedilebiliyorsa.
 
 ### 1.6 · Bütçe
-**Yap:** Bütçe → **Bu dönemin bütçesi (TL)**.
+**Yap:** Bütçe → **Bu dönemin bütçesi (TL)**. Önce alt sınırın altında bir
+tutar dene, sonra geçerli bir tutar kaydet.
 ✅ Alt sınırın altı reddedilir — alt sınır günde 1.500 TL × dönemin gün
 sayısı (tam haftada 10.500 TL); kutunun altındaki ipucu tam rakamı yazar.
 ✅ **Şu an dağıtılabilir** dolu. Bütçe güne yayılır; sabah erken ya da gece
 yarısından hemen sonra küçük görünmesi normal.
 ✅ **Açılış / Kapanış** burada (0.3).
+✅ **Yoğun saatlerin ve bugünkü dağıtım** (Ü281): açık saatlerin grafiği,
+en yoğun üç saat vurgulu ("en yoğun 16:00–19:00 · günün kalabalığının
+%X'i"), bu saate kadar açılan / dağıtılan, bugün 500'ü geçen tur ve
+**şu an paket şansı**. Az veride "öğreniliyor" der ve bütçe düz açılır.
+✅ "500'ü geçen tur" kutusundaki **bugün beklenen ~N**, üstteki sayıdan hiç
+küçük olmaz (bugün kalabalıksa beklenen de artar).
+🔗 **Etki:** Bütçe biterse oyunda ödül paketi hiç çıkmaz, çark ödül
+vermez (5.3); kafe kapalıyken de öyle. Ben: dönemin tutarı kayıtta mı.
 
 ### 1.7 · Karekod (Ü270)
 **Yap:** Karekod → **Yazdır**.
 ✅ Ortada mutlu Loopy, altında `kafe-a-y85kuahv`. Yazdırma sayfası aynı kodu
 gösterir.
 ✅ Paneli `localhost` ile açsan bile karekod **192.168.1.175** adresini
-taşır (telefonla okutunca 2.1 çalışır).
+taşır.
+🔗 **Etki:** Telefonla okutunca Kafe A açılır (2.1).
 🔴 Ekrandaki kod ile yazdırılan farklıysa.
 
 ### 1.8 · Oyunlar
-**Yap:** Oyunlar → bir oyunun anahtarını kapat.
+**Yap:** Oyunlar → bir oyunun anahtarını kapat. Hangisi olduğunu bana yaz.
 ✅ Hepsini kapatmaya çalışınca: "En az bir oyun açık kalmalı…"
-✅ Kapattığın oyun 2.3'te oyuncu listesinde görünmez. **Sonra tekrar aç** —
-4. bölümde dokuzu da lazım.
+🔗 **Etki:** Kapattığın oyun oyuncunun listesinde **yok**, adres çubuğuna
+yazılsa da açılmaz (2.3). **Sonra tekrar aç** — 4. bölümde dokuzu da
+lazım. Ben: oyun kafede kapalı mı, açınca geri geldi mi.
 🔴 Kapalı oyun "Bugünün oyunu" olarak çıkıyorsa.
 
 ### 1.9 · Personel ve kasa cihazı
 **Yap:** Personel → kasiyer ekle (**Adı** + 4 haneli **PIN**). Sonra
 **kasada kullanacağın telefon/tabletten** paneli aç → Personel → **Cihaz
 adı** ("Kasa tableti") → kaydet. Cihaz kimliği o tarayıcıda tutuluyor.
+🔗 **Etki:** O cihazda `/kasa/giris` PIN'i kabul eder (6.2). Ben: kasiyer
+ve cihaz kayıtta mı.
 🔴 Kayıtsız bir cihazda `/kasa/giris` PIN'i kabul ediyorsa.
 
-### 1.10 · Happy Hour
-**Yap:** Happy Hour → bir saat aralığı tanımla.
-✅ Kaydedilir. ⚠️ Pencere gece yarısını aşamıyor (bilinen sınır).
-🔴 Pencere dışında happy hour ödülü çıkıyorsa (5.8).
+### 1.10 · Happy Hour (Ü277)
+**Yap:** Happy Hour sayfasını aç. Sonra **Haftalık program** → bir günün
+satırına saat, süre ve havuz yaz → Kaydet. Bugünün satırında mavi
+**"bugün"** etiketi var (Ü278).
+✅ **Bugünün pencereleri** kartında bugünkü programın penceresi hiçbir
+ekranı açmadan duruyor: saati gelmediyse "sırada", geldiyse "açık".
+(24 Eylül: Perşembe 04:00 programından 04:00–07:00 kendiliğinden açıldı.)
+✅ Kayıt mesajı ne olacağını söyler: "Kaydedildi. Her Perşembe 14:00'te
+happy hour kendiliğinden başlar ve 3 saat sürer — senin bir şey yapman
+gerekmez …". Bugünün satırıysa sonuna bugünü ekler: "Bugün 14:00'te
+başlayacak" · "şu an açık" · bugünkü sürüyor ya da yapıldıysa "yeni saat
+gelecek haftadan geçerli".
+✅ Kafenin son kaydı geçerli (Ü279): bugünün satırına yazılan saat **bugün
+de** açılır — bugünkü happy hour yapılmışsa mesaj "Bugün ikinci happy hour
+… başlayacak / şu an açık" der. Açılmazsa nedenini söyler: saati geçti ·
+süren happy hour ile çakışıyor · günde en fazla 2 happy hour.
+🔗 **Etki:** Pencere açıkken bugünkü oyun ödülünü **almış** oyuncu
+havuzdan **ikinci** bir ödül kazanabilir (5.8). Kafenin elle kapattığı
+pencere o gün yeniden açılmaz. Ben: pencere kayıtta mı, ikinci ödül
+havuzdan mı düştü.
+🔴 Program saati geldiği hâlde pencere yoksa; bugünün satırına yazılan
+saat bugün açılmıyor ve nedenini söylemiyorsa; aynı gün 2'den fazla
+pencere varsa; pencere dışında happy hour ödülü çıkıyorsa.
 
 ### 1.11 · Çark
 **Yap:** Çark → dilimleri, yüzdeleri ve **çark üst sınırını** gör.
-✅ Ödüller sayfasındaki **"Çarka giren"** kartı, çark üst sınırının
-altındaki yayında ödüllerin sayısını gösterir.
+✅ Ödüller sayfasındaki **Şans çarkı** kartı aynı dilimleri aynı
+yüzdelerle gösterir.
+🔗 **Etki:** Oyuncunun çarkında aynı dilimler var (5.6). Ben: çekilişin
+kullandığı tablo ile ekrandaki yüzdeler aynı mı.
 🔴 Günlük adedi dolmuş ödül çarkta görünmeye devam ediyorsa.
 
 ### 1.12 · Kampanyalar
 **Yap:** Kampanyalar → bir kampanya oluştur, yayınla.
-✅ Oyuncunun **/firsatlar** ekranında görünür (5.9).
+🔗 **Etki:** Oyuncunun **/firsatlar** ekranında görünür (5.9). Ben:
+kampanya yayında mı.
 
 ### 1.13 · Şubeler
 **Yap:** Şubeler → ikinci şube aç.
@@ -204,6 +290,22 @@ girilmez.
 **Yap:** 200 m'den uzakta dene (yapamazsan atla, not düş).
 ✅ Reddedilir. 🔴 Kabul ediyorsa yarıçap çalışmıyor.
 
+### 3.4 · Masa oturumu dolmuyor, konum takip ediliyor (Ü279)
+**Yap:** Karekodu okut, konumu doğrula, sonra uygulamayı açık bırakıp
+kafede dolaş; bir süre sonra oyun başlat.
+✅ Karekod **bir kez**: 3 saat sonra "Masa oturumun doldu" **çıkmaz**,
+oturum gece yarısına kadar sürer.
+✅ Uygulama açıkken konum birkaç dakikada bir sessizce yenilenir (izin
+verdiysen); oyun ve çark başlamadan önce de. Şerit "Doğrulandı · X m"
+kalır.
+✅ Kafeden çıkınca (yarıçap dışı) şerit "Kafeden X m uzaktasın" der ve
+oyun **kazandırmaz**; geri gelince kendiliğinden düzelir.
+✅ Uygulamayı 15 dakikadan uzun kapalı tutup açınca şerit "konumunu
+doğrula" der (uzaktasın değil) ve birkaç saniyede yenilenir.
+🔗 **Etki:** Ben: oturumun bitişi, son konum okumasının zamanı ve mesafesi.
+🔴 Kafedeyken "oturum doldu" / "karekodu tekrar okut" çıkıyorsa; kafeden
+çıkmışken oyun kazandırıyorsa.
+
 ---
 
 ## 4 · Oyunlar — dokuzu da
@@ -223,6 +325,7 @@ Yılan · Bıçak Ustası · Tuğla Kırıcı** (bugünkü Blok Kırıcı eskide
 | 4.7 | Çık düğmesi çalışıyor | tur bitmeden çıkılamıyor |
 | 4.8 | **Akıcı** (Ü275): Blok Kırıcı'da toplar, Tuğla Kırıcı'da top ve duvar, Bıçak'ta kütük, Yılan'da gövde takılmadan akıyor | takılma, donma — **hangi oyun, ne yaparken** yaz |
 | 4.9 | **Görseller keskin** (Ü276): oyun kartlarındaki sahneler ve çark/seri kartındaki görseller telefonda bulanık değil, eskisiyle aynı | bulanık ya da değişmiş görsel — hangi kart |
+| 4.10 | **Blok Kırıcı'da top bloğun içinden geçmiyor** (Ü280): üçgen ve duvar dibindeki bloklarda da sekiyor | top bloğun içine girip karşıya geçiyorsa — hangi blok, hangi açı |
 
 Oyuna özel: **2048** sayılar karoyu doldurmalı · **Renkli Çizgiler**
 hızlı kaydırınca çizgi kopmamalı · **Renkli Tüpler** kuraldışı dökme hak
@@ -238,6 +341,9 @@ ya da düzgün biter. 🔴 "doğrulanamadı" ile reddediliyorsa.
 **Yap:** Konumu doğrulanmış hesapla **skor 500+** yap. Ödül nesnesi
 (paket / altın yem / ödüllü blok) çıkarsa **al**.
 ✅ Paketi alınca tur sonunda kupon **kesin** çıkar ve **bekler** (Ü269).
+✅ Paketi **alamadan** tur biterse kupon çıkmaz ve sonuç ekranı bunu
+**söylemez** (ürün sahibinin kararı); günün oyun ödülü hakkı yanmaz,
+sonraki turlarda paket yeniden çıkabilir.
 ✅ **Çarktan kazanmış olsan da** oyundan ödül alabilirsin — çark ve oyun
 ayrı haklar (günde 1 çark + 1 oyun ödülü).
 🔴 Paketi aldın ve kupon çıkmadıysa (ekranda sebep de yoksa); skor 500'ün
@@ -245,15 +351,19 @@ altında kupon çıkıyorsa; konumsuz (K1) oturuma kupon çıkıyorsa.
 
 ### 5.2 · Paket her turda çıkmaz
 **Yap:** 500'ü geçen 10 tur oyna.
-✅ Paket turların yaklaşık **üçte birinde** çıkar. Çıkmayan turda kupon da
-yok — ekran kazandırmayan bir paket göstermiyor.
+✅ Paketin sıklığı **bütçeye ve kalabalığa** bağlı (Ü281): bol bütçe ve tenha
+kafede sık (en çok %90), dar bütçe ve kalabalıkta seyrek. O anki değer
+Bütçe → **Şu an paket şansı**. Çıkmayan turda kupon da yok — ekran
+kazandırmayan bir paket göstermiyor.
 ✅ Bugünkü oyun ödülünü aldıktan sonra paket hiç çıkmaz (Yılan'da altın
 yem sıradan elma gibi görünür).
-🔴 Her turda çıkıyorsa, ya da paket çıkıp kupon gelmiyorsa.
+🔴 Şans %90'ın üstündeymiş gibi her turda çıkıyorsa; paket alındığı hâlde
+kupon gelmiyorsa.
 
 ### 5.3 · 🔴 Bütçe temposu — "havuz 2 saatte boşalmamalı"
-Kafe açılırken bütçenin **%10'u** hazır, kalanı açılıştan kapanışa
-doğrusal açılıyor; kapalıyken sıfır.
+Kafe açılırken bütçenin **%10'u** hazır, kalanı **kafenin yoğunluk
+profiline göre** açılıyor (Ü281): akşam yoğun kafede para akşama kalıyor.
+Profil yoksa düz çizgi. Kapalıyken sıfır.
 **Yap:** Bütçeyi alt sınırda tut, ardı ardına kupon kazanmaya çalış, Bütçe
 ekranını izle.
 ✅ Bir noktada ödül çıkmaz; saat ilerleyince yeniden çıkar.
@@ -276,6 +386,10 @@ yeniden düşmez. Oynarken sayfa kaymaz, aşağı çekince yenilenmez.
 **Yap:** `/cark` → çevir.
 ✅ Varsayılan **24 saatte bir** (kafe 1–168 saat ayarlıyor). Çıkan ödül de
 **bekler**. iPhone'da Loopy'nin arkası saydam (siyah kutu yok).
+✅ Kazanınca sonuç kartı bunu söyler (Ü278): bekleme cümlesi + "Kuponun
+hesabında — Ödüllerim ekranında 'Yakında açılıyor' altında". Kupon
+Ödüllerim'de **Yakında açılıyor** bölümündedir, "Kasada gösterebilirsin"de
+değil. 🔴 "Kasada gösterebilirsin" derse.
 ✅ Kafe **kapalıyken** ya da çark bekleme süresindeyken **ana ekranda çark
 kartı hiç yoktur** (Ü275). Misafire çark hiç gösterilmez (Ü274).
 🔴 Süre dolmadan ikinci kez çevrilebiliyorsa.
@@ -283,6 +397,9 @@ kartı hiç yoktur** (Ü275). Misafire çark hiç gösterilmez (Ü274).
 ### 5.6b · Ana ekran (Ü275)
 ✅ Günlük seri tam ekran **günde bir kez** gelir; kapatınca ana ekranda seri
 kartı **kalmaz** (seri sayısı Profil'de).
+✅ Günün ilk oyunundan dönünce seri bir artar ama sahne **ikinci kez
+açılmaz** (Ü278 — önce açılıyordu). Güncellemeden sonraki ilk açılışta bir
+kez daha gelebilir; eski damga farklı biçimdeydi.
 ✅ Aşağı kaydırınca üstteki kafe şeridi ve alttaki Oyna/Ödüllerim/Profil
 şeridi **çekilir**, yukarı kaydırınca geri gelir. Kaydırma takılmaz.
 
@@ -307,6 +424,10 @@ yerine bir bekleme cümlesi (bilerek, Ü97).
 ✅ Açılınca kullanılabilir olur ve "yeni açıldı" diye kutlanır.
 
 ### 6.2 · Kasa girişi
+**Önce:** Kasada kullanacağın cihazı **o cihazın kendisinden** kaydet —
+aynı adresle (`…:3001`), aynı tarayıcıda, gizli sekme olmadan: panele gir →
+Personel → **Bu cihazı kaydet**. Bilgisayardan yapılan kayıt telefonu
+tanıtmaz (Ü283).
 **Yap:** Kayıtlı cihazdan (1.9) `/kasa/giris` → PIN `1234`.
 ✅ **"Kupon onayı"** ekranı: tarayıcı + bugünün özeti. Başka iş yok.
 🔴 Kayıtsız cihazda PIN kabul ediliyorsa.
@@ -318,8 +439,9 @@ yerine bir bekleme cümlesi (bilerek, Ü97).
 ### 6.4 · Okut
 - **Android/Chrome:** müşterinin kupon karekodunu kameraya tut → kupon
   bilgisi gelir.
-- **iPhone/Safari:** kamera okumuyor (bilinen eksik) — ekran bunu söyler,
-  **6 karakterli** kodu elle gir.
+- **iPhone/Safari (Ü283):** **QR okut** → kamera izni ver → kuponu
+  görüntünün ortasına getir → kupon bilgisi gelir. 6 karakterli kod alanı
+  da hep duruyor.
 🔴 Ekran boş kamerada donuyorsa; elle giriş alanı yoksa.
 
 ### 6.5 · Açılmadan önce
@@ -329,6 +451,9 @@ yerine bir bekleme cümlesi (bilerek, Ü97).
 ### 6.6 · Onayla
 **Yap:** Açılmış kuponu onayla.
 ✅ "Kullanıldı"; müşterinin ekranında da kapanır; bütçeden düşer.
+✅ Ürüne bağlı yüzde kuponunda (Ü277) ekranda "%20 · Filtre Kahve" ve
+indirimin TL'si yazar; kasiyere **tutar sorulmaz**.
+🔗 **Etki:** Ben: kuponun düştüğü tutar ödülün değeri mi.
 
 ### 6.7 · 🔴 İkinci kez
 **Yap:** Aynı kuponu tekrar okut.

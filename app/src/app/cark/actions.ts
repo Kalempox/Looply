@@ -6,6 +6,7 @@ import * as cark from "@/domain/cark";
 import * as carkHakki from "@/domain/cark-hakki";
 import { carkOduluVer } from "@/domain/kupon";
 import { log } from "@/lib/log";
+import type { CevirmeCevabi } from "@/components/cark";
 
 /**
  * Kayıtlı oyuncunun günlük çarkı (Ü49).
@@ -22,9 +23,7 @@ import { log } from "@/lib/log";
  * Masa oturumundan okunuyor. Parametre olarak alınsaydı oyuncu, bütçesi
  * dolu başka bir kafenin kimliğini geçebilirdi.
  */
-export async function carkiCevir(): Promise<
-  { ok: true; dilim: number; baslik: string } | { ok: false; hata: string }
-> {
+export async function carkiCevir(): Promise<CevirmeCevabi> {
   const o = await oturum.oku();
   if (!o || o.rol !== "oyuncu") return { ok: false, hata: "Oturumun kapanmış. Tekrar gir." };
 
@@ -129,5 +128,16 @@ export async function carkiCevir(): Promise<
    * `/oyna` ve `/oduller` zaten `force-dynamic`; oraya gidildiğinde yeni
    * kupon görünüyor. Tazelenecek bir önbellek yok.
    */
-  return { ok: true, dilim: secim.indeks, baslik: kupon.baslik };
+  return {
+    ok: true,
+    dilim: secim.indeks,
+    baslik: kupon.baslik,
+    // Ü278: ekran "kasada gösterebilirsin" demesin — kupon kafenin
+    // aktivasyon süresi kadar bekliyor (Ü269).
+    kupon: {
+      id: kupon.kuponId,
+      aktiflesme: kupon.aktiflesme.toISOString(),
+      ertelendi: kupon.ertelendi,
+    },
+  };
 }

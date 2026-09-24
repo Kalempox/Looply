@@ -5,8 +5,10 @@ import { Avatar } from "@/components/avatar";
 /* Ü222: kafenin kendi karekodunda masa adı kafe adına eşit — künye
    kuralı tek yerde (`masaKunyesi`), burada da o basılıyor. */
 import { masaKunyesi } from "@/components/ui";
+import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { konumBildir, konumReddedildi, demoKafedeSay } from "./actions";
+import { konumBildir, konumReddedildi, demoKafedeSay, type KonumCevabi } from "./actions";
+import { KonumTakibi } from "./konum-takibi";
 
 /**
  * Durum şeridi — ekranın en üstünde, her zaman görünür.
@@ -57,6 +59,27 @@ export function DurumSeridi({
 }) {
   const [bekliyor, basla] = useTransition();
   const [gecici, setGecici] = useState<string | null>(null);
+  const router = useRouter();
+
+  /*
+    Ü279: masa oturumu varken konum sayfa açık kaldıkça sessizce
+    tazeleniyor. Sonuç şeritte görünenden farklıysa (kafeye dönüldü, ya da
+    kafeden çıkıldı) sayfa tazeleniyor — şerit, kartlar ve "kazandırır"
+    bilgisi birlikte değişsin.
+  */
+  const takip =
+    durum.tur === "dogrulandi" ||
+    durum.tur === "konum_bekliyor" ||
+    durum.tur === "uzak" ||
+    durum.tur === "konum_kapali";
+  const takipSonucu = (c: KonumCevabi) => {
+    if (
+      (c.durum === "dogrulandi" && durum.tur !== "dogrulandi") ||
+      (c.durum === "uzak" && durum.tur !== "uzak")
+    ) {
+      router.refresh();
+    }
+  };
 
   function konumIste() {
     if (!navigator.geolocation) {
@@ -67,15 +90,17 @@ export function DurumSeridi({
     navigator.geolocation.getCurrentPosition(
       (p) =>
         basla(async () => {
-          const c = await konumBildir(p.coords.latitude, p.coords.longitude);
+          const c = await konumBildir(p.coords.latitude, p.coords.longitude, p.coords.accuracy);
           setGecici(
             c.durum === "uzak"
               ? `Kafeden ${c.mesafeM} metre uzaktasın`
-              : c.durum === "kafe_konumu_yok"
-                ? "Bu kafe konumunu henüz işaretlememiş — kazanım açılamıyor"
-                : c.durum === "olmadi"
-                  ? "Konum doğrulanamadı"
-                  : null,
+              : c.durum === "belirsiz"
+                ? "Konum net okunamadı — pencereye yakın bir yerde tekrar dene"
+                : c.durum === "kafe_konumu_yok"
+                  ? "Bu kafe konumunu henüz işaretlememiş — kazanım açılamıyor"
+                  : c.durum === "olmadi"
+                    ? "Konum doğrulanamadı"
+                    : null,
           );
         }),
       () => {
@@ -102,6 +127,7 @@ export function DurumSeridi({
     /* Ü275: düz renk (bulanık cam kaydırmayı takıltıyordu) ve aşağı
        kaydırınca yukarı çekiliyor — `.serit-ust`, bkz. `SeritGizleyici`. */
     <div className={`serit-ust sticky top-0 z-10 -mx-5 mb-5 border-b bg-yuzey px-5 py-1.5 ${stil}`}>
+      {takip && <KonumTakibi degisti={takipSonucu} />}
       <div className="flex items-center gap-3">
         <Nokta tur={durum.tur} />
 

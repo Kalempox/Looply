@@ -4,6 +4,7 @@ import { newId } from "@/lib/ids";
 import { istanbulDakikasi, isGunu, gunEkle, gunFarki } from "@/lib/tarih";
 import { log } from "@/lib/log";
 import * as ayar from "./ayar";
+import * as yogunluk from "./yogunluk";
 
 /**
  * Kafe bütçesi — Ü6, Ü7, Ü25, E3, E10.
@@ -92,8 +93,22 @@ export const KAPANIS_PAYI_DK = 30;
  * ⚠️ **Pencere gece yarısını aşamıyor.** Gece 02:00'ye kadar açık bir kafe
  * kapanışını 23 yazmak zorunda ve yarım geceden sonrası kapalı sayılıyor.
  * Bilinen sınır; `docs/23` maddesinde duruyor.
+ *
+ * ── 🔴 Ü281: bütçe kafenin YOĞUNLUĞUNA göre açılıyor ────────
+ *
+ * Ürün sahibi: *"en yoğun olduğu saat akşam 7 ile 10 — bu saatlere doğru
+ * miktarda bütçe kalmalı; bu saat her kafede farklı."* Düz çizgi akşam
+ * yoğun kafede bütçenin çoğunu öğleden sonraya açıyordu. `paylar`
+ * (kafenin öğrenilmiş profili, `domain/yogunluk.ts`) verilince açılan
+ * pay, günün **beklenen fırsatının** o ana kadar geçen kısmı. Verilmezse
+ * ya da profil düzse sonuç eski düz çizginin birebir aynısı.
  */
-export function tempoOrani(an: Date, acilisSaati: number, kapanisSaati: number): number {
+export function tempoOrani(
+  an: Date,
+  acilisSaati: number,
+  kapanisSaati: number,
+  paylar?: readonly number[],
+): number {
   const simdi = istanbulDakikasi(an);
   const bas = acilisSaati * 60;
   const bit = kapanisSaati * 60;
@@ -103,7 +118,7 @@ export function tempoOrani(an: Date, acilisSaati: number, kapanisSaati: number):
   if (simdi >= bit + KAPANIS_PAYI_DK) return 0; // kapandı, payı da bitti
   if (simdi >= bit) return 1; // kapanış payı: gün tamamen açık
 
-  const gecen = (simdi - bas) / (bit - bas);
+  const gecen = paylar ? yogunluk.birikimliPay(paylar, an) : (simdi - bas) / (bit - bas);
   return ILK_PAY + (1 - ILK_PAY) * gecen;
 }
 
@@ -306,7 +321,10 @@ export async function durum(
       ayar.sayiOku(cafeId, ayar.ANAHTARLAR.acilisSaati),
       ayar.sayiOku(cafeId, ayar.ANAHTARLAR.kapanisSaati),
     ]);
-    const oran = tempoOrani(an ?? new Date(), bas, bit);
+    // Ü281: panel de dağıtımla AYNI profili kullanıyor — ekranda görünen
+    // "şu an dağıtılabilir" ile kuponun gördüğü tavan ayrışmasın.
+    const profil = await yogunluk.profilIle(db, { cafeId, acilis: bas, kapanis: bit, an });
+    const oran = tempoOrani(an ?? new Date(), bas, bit, profil.paylar);
     const tempoTavani = Math.floor(donem.taahhutKurus * oran);
 
     return {
@@ -498,7 +516,7 @@ async function kalanHesapla(
   // tempo tavanı ise günün o saatine kadar açılmış payı sınırlıyor.
   const ek = Math.max(0, opts.ekHavuzKurus ?? 0);
   const gunlukKalan = donem.taahhutKurus + ek - kullanilan;
-  const tempoTavani = await tempoTavaniHesapla(opts.cafeId, donem.taahhutKurus, opts.an);
+  const tempoTavani = await tempoTavaniHesapla(db, opts.cafeId, donem.taahhutKurus, opts.an);
   const tempoKalan = tempoTavani + ek - kullanilan;
   return {
     donem,
@@ -517,6 +535,7 @@ async function kalanHesapla(
  * iki küçük sorgu ve yalnızca kupon üretiminde çalışıyor.
  */
 async function tempoTavaniHesapla(
+  db: Db,
   cafeId: string,
   taahhutKurus: number,
   an?: Date,
@@ -525,7 +544,26 @@ async function tempoTavaniHesapla(
     ayar.sayiOku(cafeId, ayar.ANAHTARLAR.acilisSaati),
     ayar.sayiOku(cafeId, ayar.ANAHTARLAR.kapanisSaati),
   ]);
-  return Math.floor(taahhutKurus * tempoOrani(an ?? new Date(), bas, bit));
+  // Ü281: tavan kafenin yoğunluk profiline göre açılıyor.
+  const profil = await yogunluk.profilIle(db, { cafeId, acilis: bas, kapanis: bit, an });
+  return Math.floor(taahhutKurus * tempoOrani(an ?? new Date(), bas, bit, profil.paylar));
+}
+
+/**
+ * Ü281: şans hesabının iki girdisi — günün kalanı ve şu an dağıtılabilir.
+ *
+ * `gunlukKalan` şansın payı (günün kalanında beklenen fırsata bölünüyor),
+ * `dagitilabilir` kapı (en ucuz ödül sığmıyorsa paket hiç çıkmıyor).
+ * İkisi aynı hesaptan (`kalanHesapla`) — ayrışamazlar.
+ */
+export async function kalanlarIle(
+  db: Db,
+  opts: { cafeId: string; gun?: string; an?: Date; ekHavuzKurus?: number },
+): Promise<{ gunlukKalan: number; dagitilabilir: number } | null> {
+  const k = await kalanHesapla(db, opts);
+  return k
+    ? { gunlukKalan: Math.max(0, k.gunlukKalan), dagitilabilir: Math.max(0, k.dagitilabilir) }
+    : null;
 }
 
 /** Kasada onaylandı — rezerve edilen tutarın gerçekleşen kısmı kalıcı düşer (Faz 7). */

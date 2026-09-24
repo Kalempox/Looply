@@ -8,7 +8,8 @@ import {
   IsletmeUyari,
 } from "@/components/isletme";
 import { SayiKarti, IKON } from "@/components/gosterge";
-import { KonumOkuyucu, YaricapAyari } from "./kontroller";
+import { haritaLinki } from "@/lib/koordinat";
+import { KonumOkuyucu, KoordinatGirisi, YaricapAyari } from "./kontroller";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Kafe konumu · Looply" };
@@ -56,9 +57,18 @@ export default async function KonumSayfasi() {
 
       <Bolum
         baslik="Konumu işaretle"
-        alt="Kafenin içindeyken bu düğmeye bas. Telefonun konumu kafenin konumu olarak kaydedilir."
+        alt="Kafenin içindeyken telefondan bu düğmeye bas. Telefonun konumu kafenin konumu olarak kaydedilir."
       >
         <KonumOkuyucu kayitli={konum.var} />
+      </Bolum>
+
+      {/* Ü278: bilgisayarda GPS yok ve tarayıcının tahmini ±5 km yanıldı.
+          Kafe sahibinin bilgisayarda da kesin bir yolu olsun. */}
+      <Bolum
+        baslik="Bilgisayardan: Google Haritalar'dan koordinat"
+        alt="Telefon elinde değilse kafenin koordinatını haritadan kopyalayıp yapıştır."
+      >
+        <KoordinatGirisi />
       </Bolum>
 
       {konum.var && (
@@ -83,7 +93,16 @@ export default async function KonumSayfasi() {
             />
           </div>
           <p className="mt-3 font-data text-[11px] text-yazi-sonuk tabular">
-            Boylam {konum.lng!.toFixed(5)}
+            Boylam {konum.lng!.toFixed(5)} ·{" "}
+            {/* Ü278: kayıtlı noktayı gözle kontrol — kafenin binasında mı. */}
+            <a
+              href={haritaLinki(konum.lat!, konum.lng!)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-body font-semibold underline"
+            >
+              Haritada gör ↗
+            </a>
           </p>
           <p className="mt-2 text-[13px] leading-relaxed text-yazi-sonuk">
             Oyuncu bu noktanın{" "}

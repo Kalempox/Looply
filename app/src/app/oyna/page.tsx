@@ -11,6 +11,7 @@ import * as seri from "@/domain/seri";
 import * as challenge from "@/domain/challenge";
 import * as oyunSecimi from "@/domain/oyun-secimi";
 import { withBypass } from "@/db/context";
+import { isGunu } from "@/lib/tarih";
 import * as happy from "@/domain/happy";
 import { BiletYuzeyi, KoyuKart, SiraJetonu } from "@/components/oyuncu";
 import { GecisKarti } from "@/components/gecis-karti";
@@ -353,18 +354,28 @@ function seridBelirle(
 ): SeritDurumu {
   // ⚠️ Ü95: "masa yok" iki ayrı şey. Oturumu dolan oyuncuya ne olduğunu ve
   // ne yapacağını söylüyoruz; hiç okutmayana yalnızca ne yapacağını.
+  // Ü279: oturum artık iş günü sonunda kapanıyor. Önceki günden kalan
+  // oturum "doldu" değil — yeni gün, yeni ziyaret; hiç okutmamış gibi.
   if (!masa) {
-    return dolan
+    const bugunBasi = new Date(`${isGunu()}T00:00:00+03:00`);
+    return dolan && dolan.bitis > bugunBasi
       ? { tur: "oturum_doldu", kafe: dolan.cafeAdi, masa: dolan.masaAdi }
       : { tur: "disarida" };
   }
 
   const ortak = { kafe: masa.cafeAdi, masa: masa.masaAdi };
 
-  // Kazanılmış kanıt her şeyin önünde: kafe konumunu sonradan silse bile
-  // bu oyuncu doğrulanmış kalıyor, kanıt biti geri alınmıyor (AL-2).
+  // Kanıt her şeyin önünde: kafe konumunu sonradan silse bile bu oyuncu
+  // doğrulanmış kalıyor. Ü279: K2 artık yalnızca TAZE okumayla maskede
+  // (`masa.aktif`) — kafeden çıkan kazanamaz.
   if (masa.kanitMaskesi & masaOturumu.K2) {
     return { tur: "dogrulandi", ...ortak, mesafeM: masa.mesafeM };
+  }
+
+  // Ü279: kafede doğrulanmıştı, okuma eskidi. "Uzaktasın" demek yanlış
+  // olurdu — büyük ihtimalle hâlâ masada; takip birazdan tazeler.
+  if (masa.konumEskidi) {
+    return { tur: "konum_bekliyor", ...ortak };
   }
 
   // ⚠️ Ü95: doğrulanmamış oyuncuda kafenin konumu YOKSA, doğrulama

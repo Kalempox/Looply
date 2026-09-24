@@ -3,6 +3,7 @@ import { kafeYoneticisiGerekli } from "@/domain/yetki";
 import * as katalog from "@/domain/katalog";
 import * as urun from "@/domain/urun";
 import * as ayar from "@/domain/ayar";
+import * as carkAgirlik from "@/domain/cark-agirlik";
 import {
   IsletmeSayfa,
   IsletmeBaslik,
@@ -32,7 +33,7 @@ export const metadata = { title: "Ödül kataloğu · Looply" };
  */
 export default async function OdullerSayfasi() {
   const o = await kafeYoneticisiGerekli();
-  const [oduller, urunler, carkSinirKurus, ertelemeSaat, gecerlilikGun, ustSinirKurus] =
+  const [oduller, urunler, carkSinirKurus, ertelemeSaat, gecerlilikGun, ustSinirKurus, cark] =
     await Promise.all([
     katalog.listele(o.cafeId),
     urun.listele(o.cafeId, false),
@@ -45,6 +46,10 @@ export default async function OdullerSayfasi() {
     ayar.sayiOku(o.cafeId, ayar.ANAHTARLAR.gecerlilikGunu),
     // Ü268 · K5: ödül üst sınırı kafenin ayarı — form tutarı bununla sınırlıyor.
     ayar.sayiOku(o.cafeId, ayar.ANAHTARLAR.odulUstSinir),
+    // Ü277: çark kartı boş görünüyordu — çarktaki ödüller ve ihtimalleri.
+    // Çekilişin kullandığı AYNI tablo (`cark-agirlik.durum`); panel kendi
+    // hesabını yapsaydı ekrandaki yüzde ile gerçek ihtimal ayrışırdı.
+    carkAgirlik.durum(o.cafeId),
   ]);
 
   // Çarkın dönebilmesi için sınırın altında en az bir anlık ödül gerekiyor;
@@ -171,7 +176,7 @@ export default async function OdullerSayfasi() {
           </summary>
           <div className="border-t border-cizgi px-5 py-5">
             <OdulEkleme
-              urunler={urunler.map((u) => ({ id: u.id, ad: u.ad }))}
+              urunler={urunler.map((u) => ({ id: u.id, ad: u.ad, fiyatKurus: u.fiyatKurus }))}
               ustSinirTl={ustSinirKurus / 100}
             />
           </div>
@@ -199,9 +204,36 @@ export default async function OdullerSayfasi() {
           <span>
             <span className="block text-[15px] font-semibold">Şans çarkı</span>
             <span className="mt-0.5 block text-[12px] leading-relaxed text-yazi-sonuk">
-              Hangi ödül çarkta olacak ve yüzde kaç ihtimalle çıkacak —
-              hepsi çarkın kendi sayfasında.
+              Çarktaki ödüller ve çıkma ihtimalleri. Düzenlemek için çarkın
+              sayfasına geç.
             </span>
+            {/* Ü277: kart boş görünüyordu ("şans çarkı yazan yer boş").
+                Dilimler çekilişin kullandığı tablodan, en olası üstte. */}
+            {cark.satirlar.length === 0 ? (
+              <span className="mt-3 block text-[13px] text-yazi-sonuk">
+                Çarkta ödül yok — çark dönmez. Çark üst sınırının altında
+                yayında bir ödül olmalı.
+              </span>
+            ) : (
+              <span className="mt-3 block space-y-1.5">
+                {[...cark.satirlar]
+                  .sort((a, b) => b.yuzde - a.yuzde)
+                  .slice(0, 8)
+                  .map((d) => (
+                    <span key={d.odulId} className="flex items-baseline justify-between gap-3 text-[13px]">
+                      <span className="min-w-0 truncate">{d.baslik}</span>
+                      <span className="shrink-0 font-data font-bold tabular">
+                        %{d.yuzde.toLocaleString("tr-TR", { maximumFractionDigits: 1 })}
+                      </span>
+                    </span>
+                  ))}
+                {cark.satirlar.length > 8 && (
+                  <span className="block text-[12px] text-yazi-sonuk">
+                    +{cark.satirlar.length - 8} ödül daha
+                  </span>
+                )}
+              </span>
+            )}
           </span>
           <span className="flex items-center justify-between gap-3">
             <span className="font-data text-[13px] font-bold tabular">
@@ -371,6 +403,7 @@ function OdulSatiri({
           {odul.urunAdi && (
             <span className="mt-0.5 block truncate text-[12px] text-yazi-sonuk">
               {odul.urunAdi}
+              {odul.urunFiyatKurus !== null && ` · ${tlYaz(odul.urunFiyatKurus)} TL`}
             </span>
           )}
         </span>
@@ -381,8 +414,12 @@ function OdulSatiri({
         <span
           className={`inline-block rounded-full px-2.5 py-0.5 font-data text-[12px] font-bold tabular ${t.kutu}`}
         >
+          {/* Ü277: ürüne bağlı yüzde "fiyat × oran = TL" — tavan değil,
+              kesin indirim. Ürünsüz eski yüzde ödülünde değer hâlâ tavan (↑). */}
           {odul.tip === "percent"
-            ? `%${odul.yuzde} · ↑${tlYaz(odul.maliyetKurus)} TL`
+            ? odul.urunFiyatKurus !== null
+              ? `%${odul.yuzde} = ${tlYaz(odul.maliyetKurus)} TL`
+              : `%${odul.yuzde} · ↑${tlYaz(odul.maliyetKurus)} TL`
             : `${tlYaz(odul.maliyetKurus)} TL`}
         </span>
       </div>

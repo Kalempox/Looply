@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { kafeYoneticisiGerekli } from "@/domain/yetki";
 import { konumBelirle } from "@/domain/cafe";
 import * as ayar from "@/domain/ayar";
+import { koordinatCoz } from "@/lib/koordinat";
 
 export type KonumDurumu = { hata?: string; bilgi?: string };
 
@@ -17,12 +18,47 @@ export type KonumDurumu = { hata?: string; bilgi?: string };
 export async function konumKaydet(lat: number, lng: number): Promise<KonumDurumu> {
   const o = await kafeYoneticisiGerekli();
 
-  const sonuc = await konumBelirle({ cafeId: o.cafeId, lat, lng, aktorId: o.ozneId });
+  const sonuc = await konumBelirle({ cafeId: o.cafeId, lat, lng, aktorId: o.ozneId, kaynak: "cihaz" });
   if (!sonuc.ok) return { hata: sonuc.hata };
 
   revalidatePath("/kafe/panel");
   revalidatePath("/kafe/panel/konum");
   return { bilgi: "Kafenin konumu kaydedildi. Oyuncular artık doğrulayabilir." };
+}
+
+/**
+ * Google Haritalar'dan yapıştırılan koordinatı kaydeder — Ü278.
+ *
+ * Ham metin sunucuda **yeniden** çözülüyor: ekranın önizlemesi yalnızca
+ * kolaylık. Ekranı atlayıp istek gönderen biri de aynı kuraldan (kaba
+ * koordinat, ters sıra, hizmet alanı dışı) geçiyor.
+ *
+ * `cafeId` oturumdan — `konumKaydet` ile aynı sebep.
+ */
+export async function konumElleKaydet(
+  _onceki: KonumDurumu,
+  form: FormData,
+): Promise<KonumDurumu> {
+  const o = await kafeYoneticisiGerekli();
+
+  const c = koordinatCoz(String(form.get("koordinat") ?? "").slice(0, 2000));
+  if (!c.ok) return { hata: c.hata };
+
+  const sonuc = await konumBelirle({
+    cafeId: o.cafeId,
+    lat: c.lat,
+    lng: c.lng,
+    aktorId: o.ozneId,
+    kaynak: "elle",
+  });
+  if (!sonuc.ok) return { hata: sonuc.hata };
+
+  revalidatePath("/kafe/panel");
+  revalidatePath("/kafe/panel/konum");
+  return {
+    bilgi:
+      "Kafenin konumu kaydedildi. Kafede bir kez telefonla \"Konumumu doğrula\" de — birkaç metre çıkmalı.",
+  };
 }
 
 export type YaricapDurumu = { hata?: string; bilgi?: string };
