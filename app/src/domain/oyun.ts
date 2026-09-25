@@ -102,6 +102,14 @@ export function cihazVekili(playerId: string): Buffer {
  * bir kez, cihaz ve kafe başına. Sonraki oyunlar oynanır ve puan kazandırır
  * ama ziyaret tekrar sayılmaz.
  *
+ * 🔴 Ü292: skor ve bitiş şartı KALKTI. Ürün sahibi: *"her gelen müşteri
+ * 1 sn bile oynasa sayılmalı."* Eskiden ziyaret ancak 500'ü geçen oyunun
+ * sonunda sayılıyordu; kafede oynayıp 497'de kalan müşteri raporda hiç
+ * yoktu. Şimdi şart iki: kafede olmak (K2) ve günün ilk ziyareti. Oyun
+ * **başlarken** işaretleniyor (`basla`) — yarıda bırakılan oyun da sayılır.
+ * Davet zincirinin "asgari etkileşim" şartı ayrı: o hâlâ eşiği geçen oyun
+ * istiyor (`davetNiteliginde`).
+ *
  * `current_date` DEĞİL: o, veritabanı sunucusunun (UTC) günü. `business_date`
  * İstanbul takvimiyle yazılıyor ve ikisi gece 00:00–03:00 arasında AYRIŞIYOR —
  * kontrol yanlış güne bakar, aynı gün ikinci kez nitelikli işaretlenir ve
@@ -109,9 +117,9 @@ export function cihazVekili(playerId: string): Buffer {
  */
 async function nitelikliMi(
   db: Db,
-  opts: { playerId: string; cafeId: string | null; kazandirir: boolean; basarili: boolean },
+  opts: { playerId: string; cafeId: string | null; kazandirir: boolean },
 ): Promise<boolean> {
-  if (!opts.kazandirir || !opts.basarili || !opts.cafeId) return false;
+  if (!opts.kazandirir || !opts.cafeId) return false;
 
   const varMi = await db.one(
     `SELECT 1 FROM play_sessions
@@ -121,6 +129,18 @@ async function nitelikliMi(
     [opts.cafeId, cihazVekili(opts.playerId), isGunu()],
   );
   return !varMi;
+}
+
+/**
+ * Davet zincirinin "asgari etkileşim" şartı — Ü292.
+ *
+ * Ziyaret artık 1 saniyelik oyunla da sayılıyor (`nitelikliMi`); davet
+ * ödülü (XP) o kadar ucuza verilmiyor. Davet edilen kafede (K2) eşiği
+ * geçen bir oyun oynamalı — Ü292'den önce bu şart `is_qualified`in
+ * içindeydi, kural ayrılınca buraya taşındı (bkz. `davet.ts` başı).
+ */
+function davetNiteliginde(o: { basarili: boolean; kazandirir: boolean }): boolean {
+  return o.basarili && o.kazandirir;
 }
 
 /**
@@ -606,12 +626,25 @@ export async function basla(opts: {
   const oturumId = newId("oyn");
   const tohum = randomToken(16);
 
-  await withBypass("oyun oturumu açma", (db) =>
-    db.query(
+  await withBypass("oyun oturumu açma", async (db) => {
+    /*
+      🔴 Ü292: ziyaret oyun BAŞLARKEN sayılıyor — "1 sn bile oynasa".
+      Oyuncu satırı kilitleniyor (`bitir` ile aynı gerekçe): aynı anda
+      açılan iki oyun ikisi de "bugün ziyaret yok" görür ve günde-bir
+      benzersizlik kısıtı ikincisinde patlardı.
+    */
+    await db.query(`SELECT id FROM players WHERE id = $1 FOR UPDATE`, [opts.playerId]);
+    const nitelikli = await nitelikliMi(db, {
+      playerId: opts.playerId,
+      cafeId: masa?.cafeId ?? null,
+      kazandirir,
+    });
+
+    await db.query(
       `INSERT INTO play_sessions
          (id, cafe_id, table_id, player_id, device_id_hash, game_id, seed,
-          table_session_id, proof_mask, proof_level, business_date, status)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'open')`,
+          table_session_id, proof_mask, proof_level, business_date, status, is_qualified)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'open',$12)`,
       [
         oturumId,
         masa?.cafeId ?? null,
@@ -624,9 +657,10 @@ export async function basla(opts: {
         masa?.kanitMaskesi ?? 0,
         masa?.kanitSeviyesi ?? 0,
         isGunu(),
+        nitelikli,
       ],
-    ),
-  );
+    );
+  });
 
   // Davet zinciri: "oyunu gerçekten oynadı" şartının ilk yarısı.
   // Hata oyunu engellememeli — davet yan iş.
@@ -682,11 +716,11 @@ export type BitirSonucu =
    */
   teklif: { teklifId: string; yuzde: number; urunAdi: string; gecerliSaat: number } | null;
       /**
-       * Bu oturum "kafeye yapılan sayılabilir ziyaret" olarak işaretlendi mi?
+       * Bu oturum "kafeye yapılan sayılabilir ziyaret" olarak işaretli mi?
        *
-       * Ekranda gösterilmiyor; davet zincirinin niteliklenme şartı bu (Faz 9,
-       * Ü20). Değeri burada taşınıyor ki işlem kapandıktan sonra çağrılan
-       * davet adımı oturumu ikinci kez okumak zorunda kalmasın.
+       * Ekranda gösterilmiyor. Ü292'ye kadar davet zincirinin niteliklenme
+       * şartı buydu; artık değil — ziyaret 1 saniyelik oyunla da sayılıyor,
+       * davet eşiği geçen oyun istiyor (`davetNiteliginde`).
        */
       nitelikliOldu: boolean;
       /** Oturumun kafesi — kafe dışında null. */
@@ -781,9 +815,12 @@ export async function bitir(opts: {
 
     if (!sonuc.gecerli) {
       await db.query(
+        // Ü292: ziyaret başlarken işaretlenmişti; geçersiz kayıt onu
+        // geri alıyor — o gün sıradaki geçerli oyun sayılır.
         `UPDATE play_sessions
             SET status = 'rejected', ended_at = now(), duration_ms = $2,
-                claimed_score = $3, input_log = $4, reject_reason = $5
+                claimed_score = $3, input_log = $4, reject_reason = $5,
+                is_qualified = false
           WHERE id = $1`,
         [oturum.id, yas, iddia, JSON.stringify(sanitize(opts.girdiler)), sonuc.sebep.slice(0, 200)],
       );
@@ -819,7 +856,8 @@ export async function bitir(opts: {
       await db.query(
         `UPDATE play_sessions
             SET status = 'rejected', ended_at = now(), duration_ms = $2,
-                claimed_score = $3, input_log = $4, reject_reason = $5
+                claimed_score = $3, input_log = $4, reject_reason = $5,
+                is_qualified = false
           WHERE id = $1 AND status = 'open'`,
         [
           oturum.id,
@@ -840,28 +878,35 @@ export async function bitir(opts: {
     /* Ü234: işaret artık kapıyı açmıyor — tek ölçü skor. */
     const basarili = basariliMi(sonuc.skor);
 
-    const nitelikli = await nitelikliMi(db, {
+    /*
+      Ü292: ziyaret oyun başlarken işaretlendi (`basla`). Burada yalnızca
+      eksik kalan tamamlanıyor — kural değişmeden önce açılmış oturum ya
+      da bir sebeple işaretlenmemiş günün ilk ziyareti. `OR`: başlarken
+      verilen işaret sonda geri alınmıyor.
+    */
+    const nitelikliEk = await nitelikliMi(db, {
       playerId: opts.playerId,
       cafeId: oturum.cafe_id,
       kazandirir,
-      basarili,
     });
 
-    await db.query(
+    const guncel = await db.one<{ is_qualified: boolean }>(
       `UPDATE play_sessions
           SET status = 'completed', ended_at = now(), duration_ms = $2,
               server_score = $3, claimed_score = $4, input_log = $5,
-              is_qualified = $6
-        WHERE id = $1 AND status = 'open'`,
+              is_qualified = is_qualified OR $6
+        WHERE id = $1 AND status = 'open'
+      RETURNING is_qualified`,
       [
         oturum.id,
         yas,
         sonuc.skor,
         iddia,
         JSON.stringify(sanitize(opts.girdiler)),
-        nitelikli,
+        nitelikliEk,
       ],
     );
+    const nitelikli = guncel?.is_qualified === true;
 
     // Ü109: bonuslu oyun kafeye göre. Aynı işlemin içinden okunuyor ki
     // az önce yazılmış bir ayar değişikliği de görülsün.
@@ -935,7 +980,8 @@ export async function bitir(opts: {
     if (sonuc.ok) {
       try {
         await davet.ilerlet(opts.playerId, "game_completed");
-        if (sonuc.nitelikliOldu && sonuc.cafeId) {
+        // Ü292: davet ziyaretten ayrıldı — eşiği geçen oyun istiyor.
+        if (sonuc.cafeId && davetNiteliginde(sonuc)) {
           await davet.niteliklendir({ inviteeId: opts.playerId, cafeId: sonuc.cafeId });
         }
       } catch (err) {
@@ -1140,11 +1186,11 @@ export async function misafirOyunuYaz(opts: {
     // "iki yol aynı kuraldan geçmeli".
     const bonusMu = (await oyunSecimi.gununOyunuIle(db, opts.cafeId)).id === oyun.id;
 
+    // Ü292: misafirin oyunu da skorundan bağımsız ziyaret — `basla` ile aynı kural.
     const nitelikli = await nitelikliMi(db, {
       playerId: opts.playerId,
       cafeId: opts.cafeId,
       kazandirir,
-      basarili: opts.basarili,
     });
 
     const oturumId = newId("oyn");
@@ -1217,7 +1263,8 @@ export async function misafirOyunuYaz(opts: {
   try {
     await davet.ilerlet(opts.playerId, "game_started");
     await davet.ilerlet(opts.playerId, "game_completed");
-    if (sonuc.nitelikliOldu) {
+    // Ü292: davet eşiği geçen oyun istiyor — ziyaretin kendisi yetmiyor.
+    if (davetNiteliginde({ basarili: opts.basarili, kazandirir: sonuc.kazandirir })) {
       await davet.niteliklendir({ inviteeId: opts.playerId, cafeId: opts.cafeId });
     }
   } catch (err) {

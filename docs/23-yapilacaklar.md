@@ -6,7 +6,7 @@
 > Yan dosyalar: neyin **var** olduğu → `21-looply-kapsam-haritasi.md` ·
 > demoda neyin **yapılabildiği** → `22-demo-yapilabilirlik.md`
 
-**Son güncelleme:** 2026-09-24 · **Kararlar:** Ü76 – Ü159, **Ü186 – Ü242**, **Ü259 – Ü289**
+**Son güncelleme:** 2026-09-24 · **Kararlar:** Ü76 – Ü159, **Ü186 – Ü242**, **Ü259 – Ü292**
 
 > ⚠️ **BU LİSTEDE İKİ BOŞLUK VAR.**
 >
@@ -39,9 +39,210 @@
 okutulan karekodun LAN sunucusuna gitmesi tam da bu davranış sayesinde
 çalışıyor.
 
+## ⬅️ Ü292 · Ziyaret 1 saniyelik oyunla sayılıyor · kasada kampanya adı · kampanya türü · test verisi temizlendi — 2026-09-25
+
+✅ Commitlendi (2026-09-25) — Ü290 ve Ü291 ile birlikte.
+
+Ürün sahibinin Ü291 bulgularına cevabı: *"1×500 değil de ortalama hesabı
+350 TL yapalım"* · kasada kampanya kuponu *"ismiyle düzelt"* · *"her gelen
+müşteri 1 sn bile oynasa sayılmalı"* · kampanya satırları ve simülasyon
+verisi *"düzelt"* · "Verilen ürün" bulgusunu *"anlamadım"* (sade anlatıldı,
+düzeltme sorulu) · *"commitle, ardından teste devam edelim"*.
+
+### Ortalama hesap
+- [x] Kafe A ortalama adisyonu 500 → **350 TL** (panelin kendi yazma yolu,
+  `ayar.sayiYaz`; denetim izi Kafe A yöneticisi adına — ürün sahibinin
+  isteğiyle). Rapor'un tahmini cirosu artık ziyaret × 350 TL.
+
+### Ziyaret oyun başlarken sayılıyor
+- [x] `oyun.basla`: kafede (K2) başlatılan günün ilk oyunu `is_qualified`
+  — skor ve bitiş şart değil. Oyuncu satırı kilitleniyor (aynı anda açılan
+  iki oyun günde-bir kısıtını patlatmasın). `bitir` işareti geri almıyor
+  (`is_qualified OR …`), eksikse tamamlıyor; geçersiz kayıt (`rejected`)
+  geri alıyor — o gün sıradaki geçerli oyun sayılır. Misafir yolu aynı kural.
+- [x] 🔴 **Davet ayrıldı:** davet zinciri hâlâ kafede eşiği geçen oyun
+  istiyor (`oyun.davetNiteliginde`). Ziyaret şartı gevşedi diye bir
+  saniyelik oyun davet edene XP yazdırmıyor.
+- [x] Rapor: "oynandı" = başlatılmış, reddedilmemiş oyun (yarıda bırakılan
+  dahil) — gelen kişi, oynanan oyun, yeni/tekrar, masa, saat ve defter aynı
+  tanımdan (`rapor.oynandi`). Metinler: "birkaç saniye bile oynasa sayılır,
+  skoru önemli değil" · "oyun başlatan herkes" · "yarıda bırakılanlar
+  dahil". Defterde sayılmayan satır sebebini yazıyor ("sayılmadı · konum
+  doğrulanmadı" — `rapor.sayimCumlesi`); Ü268'de kalkan "masada 5 dk
+  kaldı" yazısı gitti. CSV aynı adlarla.
+- [x] Sayılan ziyaret **kişi başına günde bir** (`count(DISTINCT (player,
+  gün))`) — raporun özeti, getiri, defter ve panel aynı sayıyor. Satır
+  saymak demo tohumunun iki cihaz izli oturumunu iki kez sayıyordu (son 7
+  gün: 10 ziyaret, 8 kişi-gün).
+- [x] Göç `0057_ziyaret_oyun_baslarken.sql`: geçmişte hiç sayılmamış
+  (kafe, cihaz, gün) için kafede başlatılmış ilk oyun işaretlendi — işaretli
+  oturum 42 → 64.
+- ⚠️ Faturanın "nitelikli oyuncu"su bu sayı: kafe artık bir saniyelik oyunu
+  da ödüyor.
+
+### Kasada kampanya kuponu adıyla
+- [x] `kupon.coz` ve `onayla` kampanyayı okuyor: başlık "%20 · Filtre Kahve
+  Test" (oyuncunun cüzdanındakiyle aynı), etiket "Kampanya · %20", tutar
+  fiyat × yüzde, en fazla kampanyanın tavanı (`kasaDegeri`). Eskiden kasa
+  "Ödül · Değer 46 TL" diyordu ve tavanın kendisini düşüyordu.
+
+### Kampanya türü
+- [x] Rapor "Kampanya sonuçları": tür ("upsell · N saat" / "kampanya"),
+  "en fazla" tutarı ve tarih aralığı; CSV'de Tür ve En fazla sütunları.
+  Kampanyalar listesinde upsell rozeti.
+
+### Test verisi temizlendi
+- [x] **Yedek:** `cafeplay_yedek_0925` (konteynerde tam kopya) ve
+  `C:\tmp\cafemasa-yedek\cafeplay-2026-09-25-temizlik-oncesi.dump`
+  (`pg_dump -Fc`, 9,4 MB). Geri dönüş: sunucu durdurulur, `cafeplay` adı
+  değiştirilir, yedek `cafeplay` yapılır.
+- [x] Silinen: arayüzden hiç giriş yapmamış ve parolası olmayan **15.840
+  oyuncu** — testler ve simülasyon `kaydet`i doğrudan çağırıyor; arayüzden
+  geçen her kayıt oturum açıyor ve oturumlar hiç silinmiyor (23 Ağustos'tan
+  beri), yani ölçü güvenilir. İzleri: 4.719 oyun, 3.571 kupon (787 olay,
+  470 bütçe satırı), 1.036 masa oturumu, 5.761 takma ad, 31.668 rıza, 1.196
+  puan, 1.723 XP, 1.507 rozet, 248 teklif, 6 çark hakkı, 15.821 denetim
+  satırı; ayrıca kuponu olmayan 275 bütçe satırı.
+- [x] Tohum oyuncusu (05321234567, 23 Ağustos, iki kafede takma adı ve
+  kuponu var) kiracı yalıtımı testlerinin dayanağıydı — yedekten geri
+  yüklendi (1 oyuncu, 2 rıza, 2 takma ad, 2 kupon, 2 puan satırı).
+- Kalan: arayüzden girilmiş 17 hesap (ürün sahibinin ve demo hesabı dahil)
+  + tohum oyuncusu. Bugünün sayıları değişmedi. Açık kupon yükü 215 kupon /
+  5.607,9 TL → 15 kupon / 350,9 TL. Bütçenin "şu ana kadar açılan"ı geçmiş
+  kalabalığa bakıyor; sahte kalabalık gidince yavaşladı (671 → ~440 TL).
+- Geçmiş bütçe dönemlerinde kupona bağlanmamış "reserve" satırları
+  duruyor; hiçbir ekran geçmiş dönemi göstermiyor.
+
+### "Verilen ürün" — sorulu
+- Rapor kasada bedava verilen ürünü sayması gerekirken "bir ürüne bağlı
+  ödül"ü sayıyor: menüdeki ürüne bağlanmadan kurulan eski "Ücretsiz filtre
+  kahve" hiç sayılmıyor (tüm zamanda 24 bedava ürün onayı, rapor 1).
+  Düzeltme ürün sahibine soruldu.
+
+### Testler
+- `oyun-motoru`: 🔴 kafede başlatılan oyun bitmeden ziyaret · konumu
+  doğrulanmamış oyun ziyaret değil · reddedilen oyun ziyareti geri alıyor ·
+  🔴 davet bir saniyelik oyunla niteliklenmiyor, eşiği geçenle ilerliyor.
+  `rapor`: 🔴 yarıda bırakılan sayılıyor, reddedilen sayılmıyor, defter
+  sebebi yazıyor. `kampanya-teslim`: 🔴 kasa kampanya kuponunu adıyla
+  gösteriyor, indirimi fiyattan düşüyor.
+- A/B: dört kural (başlarken ziyaret, kasada ad, davet eşiği, yarım oyun)
+  eski hâline çevrilince ilgili testler düşüyor.
+- Tam takım geçici kopyada 883: 852 geçti, 7 atlandı (gece saatine bağlı);
+  kiracı yalıtımı dosyası tohum oyuncusu silindiği için kurulumda durdu →
+  oyuncu geri yüklenince 23/23. Sonradan: rapor + panel 115/115.
+
+---
+
+## ⬅️ Ü291 · Dolan masa oturumu konumla geri geliyor · uçtan uca test · rapor denetimi — 2026-09-25
+
+✅ Commitlendi (2026-09-25, Ü292 ile).
+
+Ürün sahibi: *"yine kafe oturumun doldu uyarısı aldım; hem kafe saat olarak
+açık hem de konum olarak yakınım, konumla düzeltme de çıkmadı — bunu
+düzelt."*
+
+- [x] **Sebep:** son konum okuması 24 Eylül 23:35'teydi (45 m); oturum
+  02:35'te doldu (gece yarısına yakın okumada bitiş "gün sonu" değil
+  "okuma + 3 saat"). Telefon o sırada kasada kullanılıyordu, oyuncu ekranı
+  açık değildi ve konum tazelenmedi. Dolan oturumda şerit yalnızca
+  "karekodu tekrar okut" diyordu; konumla devam etmenin yolu yoktu.
+- [x] **Düzeltme:** `masa.konumDogrula` açık oturum yoksa **bugün**
+  (İstanbul) dolan en son oturuma bakıyor. Okuma o kafenin çemberindeyse
+  oturum geri açılıyor: aynı satır (aynı ziyaret), K1 aynı günün
+  karekodundan, K2 bu okumadan, bitiş yine `oturumBitisi`. Uzak ya da
+  belirsiz okuma dolmuş oturuma hiçbir şey yazmıyor. Dünden kalan oturum
+  geri gelmiyor: yeni gün yeni ziyaret, karekod okutulur (Ü279). Sınır tek
+  yerde, `masa.bugununBasi`; şerit de onu kullanıyor.
+- [x] Şerit: *"Masa oturumun doldu — Kafe A · kafedeysen konumunla devam
+  et"* ve **Devam et** düğmesi. Konum izni daha önce verildiyse şerit bu
+  durumda da sessizce okuyor ve kendiliğinden "Doğrulandı"ya dönüyor.
+  Uzaksa: "Kafeden X metre uzaktasın — karekodu okut". Oyun ve çark
+  öncesi konum tazelemesi aynı yoldan geçtiği için oyun başlatınca da
+  geri geliyor.
+- Kafe saatleri şarta konmadı: açık oturum kapanışta kesilmiyor, karekod
+  da saate bakmıyor; kapalı kafede zaten ödül çıkmıyor (Ü274).
+- **Testler** (`masa`): 🔴 kafede okunan konum dolan oturumu karekodsuz
+  geri getiriyor (aynı oturum, K1+K2, gün sonuna uzuyor) · uzak/belirsiz
+  okuma getirmiyor · 🔴 dünden kalan oturum gelmiyor. A/B: eski davranışta
+  ilk test *"kafedeki oyuncuya yine karekod soruluyor"* diye düşüyor. Tam
+  takım geçici kopyada 877 test: 869 geçti, 0 düştü, 8 atlandı (gece
+  saatine bağlı olanlar).
+
+### Uçtan uca test — 25 Eylül 02:50–03:05 (demo hesabı, kod P-8V37)
+
+- [x] Blok Kırıcı 640 → sayılan ziyaret (K1+K2+K3). Paket: "Tatlıda %10
+  indirim" 63QHSU 25 TL (14:59'da açılır) ve kampanya kuponu GVXNG4 24 TL.
+  Anlık teklif QTRCCA (%20 · Filtre Kahve Test) 46 TL alındı, 03:01'de
+  kasada onaylandı. Kasada ayrıca DEMO05 (Tatlıda %10, 25 TL) ve DEMO06
+  (Ice Americano, 30 TL) onaylandı. V94EY6 okutulmadı.
+- [x] Panel: oynayan 1 · dağıtılan 3 kupon 95 TL · kullanılan 3 kupon
+  101 TL. Bütçe: açık kuponlarda 49 · kasada harcanan 46 (yalnız QTRCCA
+  bugünün bütçesinden) · bugün kalan 1.905. Rapor (bugün): her bölüm
+  defterle birebir.
+
+### Bulgular — cevaplar Ü292'de
+
+- 🔴 **Rapor "Verilen ürün" eksik sayıyor:** ödül tipine değil ürüne bağlı
+  olmaya bakıyor (`product_id IS NOT NULL`). Kafe A'da tüm zamanda 24
+  bedava ürün onayı var, kural 1 sayıyor; ürünsüz eski "Ücretsiz filtre
+  kahve" hiç sayılmıyor.
+- 🔴 **Kasada kampanya kuponu adıyla görünmüyor:** başlık "Ödül", tip
+  "ürün"; kasiyer "%20 · Filtre Kahve Test" görmüyor (`kupon.coz`
+  kampanyayı okumuyor).
+- **Ürünsüz yüzde ödülü** ("Tatlıda %10", 1 Eylül, Ü277'den önce): sistem
+  tatlının fiyatını bilmiyor. Kasada tutar kutusu tavanla (25 TL) dolu
+  geliyor; 6 onayın 6'sında 25 TL yazılmış. Açık 82 kupon (+6 "Tatlıda
+  %20").
+- Rapor metni "sayılan ziyaret"e "oyunu tamamlayan" diyor, kural 500
+  eşiği (demo hesabının 24 Eylül Düşen 497'si sayılmadı). "Sayıldı mı"
+  sütunu sayılmayanda sebebi değil kanıt kademesini yazıyor ("masada 5 dk
+  kaldı").
+- Kampanya sonuçlarında aynı ürüne iki kampanya aynı adla görünüyor:
+  anlık teklif ile normal kampanya ayırt edilemiyor.
+- Çark: demo hesabı 24 Eylül 14:18'de çevirdi → 25 Eylül 14:18'de
+  açılıyor (24 saat). Ana ekranda çark kartı beklerken hiç görünmüyor;
+  çark sayfası 13 saat sonra da "az önce çevirdin" diyor.
+- Son 7/30 gün görünümü eski simülasyon verisiyle bozuk: 934 oyun
+  masasız, `business_date` başlangıç gününden günlerce ayrışıyor, takma
+  adı olmayan oyuncular (P-????), kuponu olmayan 275 bütçe "commit" satırı
+  (6.875 TL, 15–24 Eylül).
+
+---
+
+## ⬅️ Ü290 · Kasada geri alma kalktı · test uçtan uca · işletme girişine şifre (yapılacak) — 2026-09-25
+
+✅ Commitlendi (2026-09-25, Ü292 ile).
+
+- [x] **Geri alma kalktı.** Ürün sahibi: *"geri alma olmamalı."* Kasada onay
+  kesin; "Geri al · N sn" düğmesi ve `geriAlEylemi` kaldırıldı. Bulgu: geri
+  alma kuponu İPTAL ediyordu (`undone`, kasada "geri alınmış" diye
+  reddediliyordu) ama kasa *"kupon kullanılmadı sayılıyor"* diyor, test
+  listesi *"yeniden kullanılabilir"* bekliyordu. Kafe A'da hiç geri alma
+  yapılmamıştı. `kupon.geriAl` ve testi ileride destek/düzeltme için
+  duruyor, ekranda karşılığı yok.
+- [x] Bütçe'de "Kasada harcanan" kartının alt yazısı "bugünün bütçesinden
+  verilenlerden": dün verilen kupon bugün onaylanınca bu kart değişmez
+  (dünün bütçesinden düşer); onay defteri ve panelin "Kullanılan kupon"u
+  değişir.
+- **Test yaklaşımı değişti:** ürün sahibi *"müşteri gibi telefondan
+  yaptığımız her şey panele ve veritabanına doğru düşüyor mu — a'dan z'ye"*.
+  Her adım: önce panelin sayıları ölçülüyor, telefonda eylem, panelde
+  beklenen fark, veritabanında kayıt.
+- **Yapılacak — işletme girişine şifre:** ürün sahibi *"burada şifre de
+  sormalı, unutma"*. Şu an numara + SMS kodu. Öneri: numara + şifre, sonra
+  SMS kodu (iki adım); mevcut yöneticiler ilk girişte kodla şifre belirler;
+  başvuruda şifre; "şifremi unuttum" kodla. Kasiyer PIN'i değişmez.
+  Zamanlaması ürün sahibine soruldu.
+- Paneldeki "attı": yönetici oturumu 12 saat (Ü36) — 24 Eylül 14:43'te
+  açılan oturum 02:43'te bitti. Ekrandaki 05301111111 kayıtlı bir numara
+  değildi; Kafe A yöneticisi 05320000001.
+
+---
+
 ## ⬅️ Ü289 · Kasa onay defteri · bugün çıkan ödüller ayrı · açık kupon yükü · panelde dağıtılan — 2026-09-25
 
-⚠️ **Commitlenmedi.**
+✅ Commitlendi — `00a8042` (2026-09-25).
 
 Ürün sahibi: *"tüm onaylarda ürün, saat, dakika ve hangi kasiyer olduğu
 yazmalı"* · *"bunlar hangi ödüllerin çıktığı değil ki — 2.000 TL limit var
@@ -80,10 +281,15 @@ yüklenirse?"* · *"panel özetinde dağıtılan yazmıyor, sadece kullanılan"*
   🔴 **Karar (2026-09-25): "silmeyelim, senin önerinle ilerleyelim."**
   Kasa kayıtları silinmiyor. Açık iş: saklama süresi avukatla netleşince
   oyuncu bağını anonimleştiren iş; tablolar büyürse aylık bölümleme.
-- **Açık, sorulacak:** yığılmayı algoritmayla sınırlamak (ürün sahibi:
-  *"bunu algoritmamızı değiştirerek çözebilir miyiz?"*) — seçenekler
-  sunuldu: dolaşımdaki kupon tavanı, kuponu kullanım gününe bağlamak,
-  geçerliliği kısaltmak.
+- 🔴 **Karar — yığılma için algoritma DEĞİŞMİYOR (2026-09-25).** Seçenekler
+  sunuldu (dolaşım tavanı, kuponu kullanım gününe bağlamak, geçerliliği
+  kısaltmak). Ürün sahibi önce sordu: *"müşteri kuponu unutursa,
+  unuttuklarıyla biriktirdiklerini nasıl ayırt edeceksin?"* — edemezdik:
+  açık kupon açık kupondur; dolaşım tavanı unutulan kuponla 7 gün
+  tıkanırdı. Kararı: *"kafe günlük 2.000'i gözden çıkardıysa, ilk 3 gün
+  harcanmayınca 4. gün 6.000 çıkmasını da kabul etmiş olur; günlük 2.000
+  ise 2.000 dağıtalım."* Günlük bütçe = o gün gözden çıkarılan tutar; yük
+  tablosu yalnızca görünürlük için.
 
 **Testler:** `kupon-kasa` +1 (onay defterinde ödül, saat, kasiyer).
 **Doğrulama:** tsc · eslint · tam takım geçici kopyada 874 test: 866
@@ -93,7 +299,7 @@ geçti, 0 düştü, 8 atlandı (saate bağlı) · `next build` · 3001 açık.
 
 ## ⬅️ Ü288 · Bütçe ayarı en üstte, çalışma saatleri Panel'de — 2026-09-25
 
-⚠️ **Commitlenmedi.**
+✅ Commitlendi — `00a8042` (2026-09-25).
 
 Ürün sahibi: *"günlük bütçe ayarlama kısmı sayfanın üstünde, kafe
 sahibinin kolayca bakıp anlayacağı yerde olmalı; güne özel değiştir
@@ -127,7 +333,7 @@ olmalı — ben zor buluyorum, müşteri hiç bulamaz."*
 
 ## ⬅️ Ü287 · Haftalık bütçe planı — 2026-09-25
 
-⚠️ **Commitlenmedi.** Göç 0056 asıl veritabanında.
+✅ Commitlendi — `00a8042` (2026-09-25). Göç 0056 asıl veritabanında.
 
 Ürün sahibi: *"her gün bütçe belirlemek zorunda kalmasın; tüm hafta için
 bütçe belirleme olsun, otomatik; o günü özel olarak değiştirebilsin ya da
@@ -163,7 +369,7 @@ günler dahil hepsini değiştirsin**.
 
 ## ⬅️ Ü286 · Kasa uyarısı PIN'in kafesini söylüyor · bütçe her gün kendiliğinden açılıyor · rapor günü İstanbul'da — 2026-09-25
 
-⚠️ **Commitlenmedi.**
+✅ Commitlendi — `00a8042` (2026-09-25).
 
 Ürün sahibi: *"'en yakın kafeye X m uzaktasın' değil — bu PIN'in geçerli
 olduğu kafeden uzaktasın demeli"* · *"her gün her gün bütçe belirlemek
@@ -279,7 +485,7 @@ telefonundan giriş yapamaz. Önemli olan PIN ve konum."* **G11 değişti.**
 
 ## ⬅️ Ü283 · iPhone kasada kamerayla kupon okuyor — 2026-09-24
 
-⚠️ **Commitlenmedi.**
+✅ Commitlendi — `5f5e5c4` (2026-09-24).
 
 Ürün sahibi: *"iPhone'da kamera kuponu okumuyor — bu düzelmeli, diğerlerini
 ona göre test edeceğim."*
@@ -355,7 +561,7 @@ sınırına ulaştın dedi — ilk oyundan itibaren hiç ödül kazanamadım."*
 
 ## ⬅️ Ü281 · Bütçe kafenin kalabalığını izliyor — yoğun saate para kalıyor — 2026-09-24
 
-⚠️ **Commitlenmedi.**
+✅ Commitlendi — `5f5e5c4` (2026-09-24).
 
 Ürün sahibi: *"ödül sıklığı tamamen günlük kafe bütçesine, oyuncu
 miktarına ve yaptığı skorlara bağlı değişmeli — günlük limit 10.000 ise
@@ -447,7 +653,7 @@ sahibinin 1.6'sında.
 
 ## ⬅️ Ü280 · Blok Kırıcı'da top bloğun içinden geçmiyor — 2026-09-24
 
-⚠️ **Commitlenmedi.**
+✅ Commitlendi — `5f5e5c4` (2026-09-24).
 
 Ürün sahibi: *"oyunları bayağı oynadım, bir türlü ödül kazanamadım · sekme
 oyununda top arada blokların içinden geçiyor."* Kaçan paket kararı:
@@ -491,7 +697,7 @@ testi 20:00'den sonra kendini atlıyor) · derlenmiş pakette "kaçırdın" yok.
 
 ## ⬅️ Ü279 · Masa oturumu konumla yaşıyor · happy hour'da kafenin son kaydı geçerli — 2026-09-24
 
-⚠️ **Commitlenmedi.**
+✅ Commitlendi — `5f5e5c4` (2026-09-24).
 
 Ürün sahibi: *"masa oturumun doldu ne anlama geliyor, oturum dolmamalı,
 orada konum hep takip edilmeli, insanları tekrar karekod okutmaya
@@ -575,7 +781,7 @@ sahibinin 3.x ve 1.10'unda.
 
 ## ⬅️ Ü278 · Konum bilgisayardan da kesin · eski ürünlü ödüller kurala uydu — 2026-09-24
 
-⚠️ **Commitlenmedi.**
+✅ Commitlendi — `5f5e5c4` (2026-09-24).
 
 ### Konum: Google Haritalar'dan koordinat
 
@@ -675,7 +881,7 @@ yarıçap 200. Çark · seri · program düzeltmeleri: tsc · eslint · derlenmi
 
 ## ⬅️ Ü277 · Panel gerçekten işliyor mu — ödül değeri üründen · çark kartı · happy hour kendiliğinden — 2026-09-24
 
-⚠️ **Commitlenmedi.**
+✅ Commitlendi — `5f5e5c4` (2026-09-24).
 
 Ürün sahibi 1. bölümü test ederken: *"ödül tipi ürün de seçsem fiyat
 soruyor ama o saçma oluyor · yüzde indirimde hem indirim oranı hem en

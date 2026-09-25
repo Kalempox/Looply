@@ -54,6 +54,16 @@ export function oturumBitisi(an: Date = new Date()): Date {
   const enAz = new Date(an.getTime() + OTURUM_SAAT * 3_600_000);
   return gunSonu > enAz ? gunSonu : enAz;
 }
+
+/**
+ * Ü291: İstanbul'da bugünün başı — "bu ziyaret" ile "yeni ziyaret"in
+ * sınırı. Bugün dolan oturum bu ziyaretin oturumu: ekran "masa oturumun
+ * doldu" diyor ve kafede okunan konum onu karekodsuz geri getiriyor
+ * (`konumDogrula`). Dünden kalan oturum yeni ziyaret — karekod okutulur.
+ */
+export function bugununBasi(an: Date = new Date()): Date {
+  return new Date(`${isGunu(an)}T00:00:00+03:00`);
+}
 /**
  * Ü131: kafe panelden değiştirmediyse geçerli olan yarıçap.
  *
@@ -377,6 +387,21 @@ export type KonumSonucu =
  *   dardı, gün boyu oturumda değil.
  * - Hata payı (`dogrulukM`, tarayıcının `coords.accuracy`si) çembere
  *   taşıyan uzak okuma `belirsiz`: hiçbir şey değişmiyor.
+ *
+ * ── 🔴 Ü291: bugün dolan oturum konumla geri geliyor ────────
+ *
+ * Ürün sahibi 23:35'te kafede doğrulandı, telefonu kasada kullandı ve
+ * uygulamaya 02:50'de döndü: oturum 02:35'te dolmuştu (son okuma + 3
+ * saat). Kafe açık, kendisi 45 m uzakta — ekran yine de *"masa oturumun
+ * doldu, karekodu tekrar okut"* dedi ve konumla devam etmenin yolu yoktu.
+ * Ürün sahibi: *"hem kafe saat olarak açık hem de konum olarak yakınım,
+ * bunu düzelt."*
+ *
+ * Açık oturum yoksa **bugün** (İstanbul, `bugununBasi`) dolan en son
+ * oturuma bakılıyor. Okuma o kafenin çemberindeyse oturum yeniden
+ * açılıyor: K1 aynı günün karekodundan, K2 bu okumadan. Uzak ya da
+ * belirsiz okuma dolmuş oturuma hiçbir şey yazmıyor. Dünden kalan oturum
+ * geri gelmiyor — yeni gün yeni ziyaret, karekod okutulur (Ü279).
  */
 export async function konumDogrula(
   playerId: string,
@@ -385,19 +410,32 @@ export async function konumDogrula(
   dogrulukM?: number,
 ): Promise<KonumSonucu> {
   return withBypass("konum doğrulama", async (db) => {
-    const r = await db.one<{
+    type Satir = {
       id: string;
       cafe_id: string;
       c_lat: number | null;
       c_lng: number | null;
       proof_mask: number;
-    }>(
+    };
+    const acik = await db.one<Satir>(
       `SELECT ts.id, ts.cafe_id, c.lat AS c_lat, c.lng AS c_lng, ts.proof_mask
          FROM table_sessions ts JOIN cafes c ON c.id = ts.cafe_id
         WHERE ts.player_id = $1 AND ts.expires_at > now()
         ORDER BY ts.last_seen_at DESC LIMIT 1`,
       [playerId],
     );
+    // Ü291: açık oturum yoksa bugün dolan — ekrandaki "masa oturumun doldu".
+    const r =
+      acik ??
+      (await db.one<Satir>(
+        `SELECT ts.id, ts.cafe_id, c.lat AS c_lat, c.lng AS c_lng, ts.proof_mask
+           FROM table_sessions ts JOIN cafes c ON c.id = ts.cafe_id
+          WHERE ts.player_id = $1 AND ts.expires_at <= now() AND ts.expires_at > $2
+            AND c.status = 'approved'
+          ORDER BY ts.expires_at DESC LIMIT 1`,
+        [playerId, bugununBasi()],
+      ));
+    const doldu = !acik;
 
     if (!r) return { durum: "oturum_yok" as const };
     if (r.c_lat == null || r.c_lng == null) return { durum: "kafe_konumu_yok" as const };
@@ -413,6 +451,13 @@ export async function konumDogrula(
       return { durum: "belirsiz" as const, mesafeM: mesafe };
     }
 
+    // Ü291: dolmuş oturum yalnızca kafedeki okumayla geri geliyor; uzak
+    // okuma ona hiçbir şey yazmıyor.
+    if (doldu && !yakin) {
+      log.info("dolan oturum geri gelmedi — uzak", { mesafeM: mesafe });
+      return { durum: "uzak" as const, mesafeM: mesafe };
+    }
+
     const maske = yakin ? r.proof_mask | K2 : r.proof_mask & ~K2;
 
     await db.query(
@@ -425,7 +470,10 @@ export async function konumDogrula(
     );
 
     // Koordinat loglanmıyor (docs/08 §7.1) — yalnızca sonuç
-    log.info("konum dogrulandi", { yakin, mesafeM: mesafe });
+    log.info(doldu ? "dolan oturum konumla geri geldi" : "konum dogrulandi", {
+      yakin,
+      mesafeM: mesafe,
+    });
 
     return yakin
       ? ({ durum: "dogrulandi", mesafeM: mesafe } as const)

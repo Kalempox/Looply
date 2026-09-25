@@ -11,7 +11,6 @@ import * as seri from "@/domain/seri";
 import * as challenge from "@/domain/challenge";
 import * as oyunSecimi from "@/domain/oyun-secimi";
 import { withBypass } from "@/db/context";
-import { isGunu } from "@/lib/tarih";
 import * as happy from "@/domain/happy";
 import { BiletYuzeyi, KoyuKart, SiraJetonu } from "@/components/oyuncu";
 import { GecisKarti } from "@/components/gecis-karti";
@@ -356,9 +355,10 @@ function seridBelirle(
   // ne yapacağını söylüyoruz; hiç okutmayana yalnızca ne yapacağını.
   // Ü279: oturum artık iş günü sonunda kapanıyor. Önceki günden kalan
   // oturum "doldu" değil — yeni gün, yeni ziyaret; hiç okutmamış gibi.
+  // Ü291: bugün dolan oturumu kafede okunan konum geri getiriyor — sınır
+  // `konumDogrula` ile aynı yerden.
   if (!masa) {
-    const bugunBasi = new Date(`${isGunu()}T00:00:00+03:00`);
-    return dolan && dolan.bitis > bugunBasi
+    return dolan && dolan.bitis > masaOturumu.bugununBasi()
       ? { tur: "oturum_doldu", kafe: dolan.cafeAdi, masa: dolan.masaAdi }
       : { tur: "disarida" };
   }

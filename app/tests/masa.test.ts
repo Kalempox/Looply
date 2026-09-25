@@ -503,6 +503,92 @@ describe("masa oturumu konumla yaşıyor (Ü279)", () => {
 });
 
 /* ═══════════════════════════════════════════════════════════
+   Bugün dolan oturum konumla geri geliyor (Ü291)
+   ═══════════════════════════════════════════════════════════
+
+   Ürün sahibi 23:35'te doğrulandı, uygulamaya 02:50'de döndü: oturum
+   02:35'te dolmuştu. Kafe açık, kendisi 45 m uzakta — ekran yine de
+   "karekodu tekrar okut" dedi. "Konumla düzeltme de çıkmadı, bunu düzelt."
+   ═══════════════════════════════════════════════════════════ */
+
+describe("bugün dolan oturum konumla geri geliyor (Ü291)", () => {
+  let p = "";
+  const YAKIN = KAFE_LAT + 0.00036;
+
+  /** Gece yarısından hemen sonra "bugün dolmuş" oturum kurulamaz. */
+  const gunBasiYakin = () => Date.now() - masa.bugununBasi().getTime() < 5 * 60_000;
+  const doldur = (ifade: string) =>
+    yoneticiSorgu(`UPDATE table_sessions SET expires_at = ${ifade} WHERE player_id = $1`, [p]);
+
+  before(async () => {
+    const { oyuncu } = await kaydet({
+      telefon: yeniTelefon(),
+      eposta: benzersizEposta(),
+      ad: "Donen",
+      soyad: "Oturum",
+      dogumYili: 1990,
+      pazarlamaIzni: false,
+    });
+    p = oyuncu.id;
+    await masa.ac({ cafeId: kafeA, tableId: masaA, playerId: p });
+  });
+
+  after(async () => {
+    await yoneticiSorgu(`DELETE FROM table_sessions WHERE player_id = $1`, [p]);
+    await yoneticiSorgu(`DELETE FROM player_consents WHERE player_id = $1`, [p]);
+    await yoneticiSorgu(`DELETE FROM audit_log WHERE target_id = $1`, [p]);
+    await yoneticiSorgu(`DELETE FROM players WHERE id = $1`, [p]);
+  });
+
+  test("🔴 kafede okunan konum dolan oturumu karekodsuz geri getiriyor", async (t) => {
+    if (gunBasiYakin()) {
+      t.skip("gece yarısına çok yakın");
+      return;
+    }
+    const once = await masa.aktif(p);
+    await doldur(`now() - interval '2 minutes'`);
+    assert.equal(await masa.aktif(p), null, "dolmuş oturum hâlâ aktif");
+
+    const s = await masa.konumDogrula(p, YAKIN, KAFE_LNG, 15);
+    assert.equal(s.durum, "dogrulandi", "kafedeki oyuncuya yine karekod soruluyor");
+
+    const o = await masa.aktif(p);
+    assert.ok(o, "oturum geri gelmedi");
+    assert.equal(o.id, once!.id, "aynı ziyaret — yeni oturum açılmamalı");
+    assert.equal(o.kanitMaskesi & (masa.K1 | masa.K2), masa.K1 | masa.K2);
+    assert.ok(
+      o.bitis.getTime() >= masa.oturumBitisi().getTime() - 5_000,
+      "geri gelen oturum yine hemen doluyor",
+    );
+  });
+
+  test("uzak ya da belirsiz okuma dolan oturumu geri getirmiyor", async (t) => {
+    if (gunBasiYakin()) {
+      t.skip("gece yarısına çok yakın");
+      return;
+    }
+    await doldur(`now() - interval '2 minutes'`);
+
+    // ~1 km, ±20 m: kesin dışarıda.
+    const uzak = await masa.konumDogrula(p, KAFE_LAT + 0.009, KAFE_LNG, 20);
+    assert.equal(uzak.durum, "uzak");
+    // ~667 m ±660 m: kafede de olabilir — ama kanıt değil.
+    const belirsiz = await masa.konumDogrula(p, KAFE_LAT + 0.006, KAFE_LNG, 660);
+    assert.equal(belirsiz.durum, "belirsiz");
+
+    assert.equal(await masa.aktif(p), null, "kafeden uzaktaki oyuncunun oturumu geri geldi");
+  });
+
+  test("🔴 dünden kalan oturum konumla geri gelmiyor — yeni gün, karekod", async () => {
+    await doldur(`'${new Date(masa.bugununBasi().getTime() - 60_000).toISOString()}'::timestamptz`);
+
+    const s = await masa.konumDogrula(p, YAKIN, KAFE_LNG, 15);
+    assert.equal(s.durum, "oturum_yok", "dünkü ziyaret karekodsuz bugüne taşındı");
+    assert.equal(await masa.aktif(p), null);
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════
    Oyuncuya ne olduğunu söylemek (Ü95)
    ═══════════════════════════════════════════════════════════ */
 

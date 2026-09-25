@@ -39,7 +39,7 @@ Doğrulama kodları geliştirmede **ekranda sarı kutuda** görünür.
 | Kafe B yöneticisi | `/kafe/giris` | **Yetkili cep telefonu** `05320000002` + ekrandaki kod |
 | Moda Butik yöneticisi | `/kafe/giris` | **Yetkili cep telefonu** `05320000003` + ekrandaki kod |
 | Boş Test Kafe yöneticisi | `/kafe/giris` | **Yetkili cep telefonu** `05320000077` + ekrandaki kod |
-| Kasiyer | `/kasa/giris` | **PIN `1234`** — yalnızca **kayıtlı cihazda** (1.9) |
+| Kasiyer | `/kasa/giris` | **PIN `1234`** (tohum kasiyeri) ya da 1.9'da verdiğin PIN — kafenin içinden, herhangi bir cihazdan (Ü285) |
 | Platform yöneticisi | `/platform/giris` | `05310000001` + ekrandaki kod |
 | Platform desteği | `/platform/giris` | `05310000002` + ekrandaki kod |
 
@@ -68,6 +68,29 @@ tip denetimi ve lint.
 > var: oyuncunun telefonunda neyin değişmesi gerektiği ve benim
 > veritabanında neye bakacağım. Adımı bitirince yaz — kaydı ve etkisini
 > kontrol edip sonucu söylerim.
+
+### 1.0 · Panel ana sayfası — her nokta (Ü288 · Ü289)
+**Yap:** Panel'i aç ve yukarıdan aşağı in.
+1. **Üst şerit:** şube seçici, uyarı çanı, gün seçici. ‹ ile 24 Eylül'e
+   geç → başlık "24 Eylül özeti"; › bugünde durur, ileri gidilmez.
+2. **Çalışma saatlerin:** saatler büyük yazılı; değiştir → **Saatleri
+   kaydet** → "Çalışma saatleri … kaydedildi". Bütçe sayfasındaki satır da
+   yeni saati gösterir.
+3. **Özet kartları:** Bugün oynayan · **Dağıtılan kupon** (TL + adet) ·
+   **Kullanılan kupon** (TL + adet, düne göre değişim) · Yeni müşteri (az
+   kişide "—") · Bugün beklenen. 24 Eylül'de son kart "O gün gelen" olur.
+4. **Durum kartları:** eksik kurulum kırmızı kenarla, hepsi tamamsa yeşil.
+5. **Upsell · son 7 gün:** kampanya varsa huni; yoksa bölüm hiç çıkmaz.
+6. **Son 7 gün / Bu ay** tabloları ve **7 günlük grafik:** bu ayın
+   sayıları son 7 günden küçük olamaz.
+7. **Bütçe kartı · Personel · Kasiyer:** bütçe bugünün tutarını gösterir;
+   sayaçlar Personel sayfasıyla tutar; her kart kendi sayfasına gider.
+8. **Kurulum ve yönetim:** 11 kart, her biri kendi sayfasına; eksik olan
+   kırmızı kenarlı.
+🔗 **Etki:** Ben: kartlardaki sayıları veritabanından sayarım. ⚠️ Kafe
+A'nın verisinin çoğu test oyuncusu — sayıların tutarlılığına bakıyoruz.
+🔴 Kart ile sayfa arasında aynı sayı farklıysa; bir kart yanlış sayfaya
+gidiyorsa.
 
 ### 1.1 · Giriş
 **Yap:** `/kafe/giris` → **Yetkili cep telefonu** kutusuna `05320000001` → ekrandaki 6 haneli kod.
@@ -234,6 +257,8 @@ kullandığı tablo ile ekrandaki yüzdeler aynı mı.
 
 ### 1.12 · Kampanyalar
 **Yap:** Kampanyalar → bir kampanya oluştur, yayınla.
+✅ Upsell kampanyasının satırında **upsell · N saat** rozeti var (Ü292);
+aynı ürüne iki kampanya artık ayırt ediliyor.
 🔗 **Etki:** Oyuncunun **/firsatlar** ekranında görünür (5.9). Ben:
 kampanya yayında mı.
 
@@ -245,6 +270,25 @@ kampanya yayında mı.
 ### 1.14 · Telefondan panel
 **Yap:** Aynı paneli telefondan aç, bütün duraklara gir.
 🔴 Bir durak telefondan açılamıyorsa.
+
+### 1.15 · Rapor — ziyaret, kampanya, defter (Ü291 · Ü292)
+**Yap:** Rapor → **Bugün**.
+✅ Tahmini ciro = ziyaret × **350 TL**.
+✅ "Sayılan ziyaret" açıklaması: *"konumu doğrulanan ve oyun oynayan
+müşteri — birkaç saniye bile oynasa sayılır"*. Gelen kişi "oyun başlatan
+herkes", oynanan oyun "yarıda bırakılanlar dahil".
+✅ Kampanya sonuçlarında her satırda tür (**upsell · 1 saat** /
+**kampanya**), "en fazla X TL" ve tarih aralığı.
+✅ Doğrulama defterinde sayılmayan satır sebebini yazar ("sayılmadı · konum
+doğrulanmadı").
+✅ **Son 7 gün / Son 30 gün:** yalnızca senin ve demo hesabının kayıtları
+(test verisi temizlendi); "P-????" satırı yok.
+**Yap (telefon):** Kafede bir oyuna gir, birkaç saniye sonra çık.
+🔗 **Etki:** Rapor (bugün) → o gün ilk ziyaretinse Sayılan ziyaret +1,
+oynanan oyun +1; defterde satırın "sayıldı". Ben: oyunun ziyaret işareti
+başlarken mi yazıldı.
+🔴 Yarıda bırakılan oyun ziyaret sayılmıyorsa; kafe dışındayken (konum
+doğrulanmadan) sayılıyorsa.
 
 ---
 
@@ -321,6 +365,20 @@ doğrula" der (uzaktasın değil) ve birkaç saniyede yenilenir.
 🔗 **Etki:** Ben: oturumun bitişi, son konum okumasının zamanı ve mesafesi.
 🔴 Kafedeyken "oturum doldu" / "karekodu tekrar okut" çıkıyorsa; kafeden
 çıkmışken oyun kazandırıyorsa.
+
+### 3.5 · Oturum dolduysa konumla devam (Ü291)
+**Yap:** Oturumu bugün dolmuş bir hesapla kafede uygulamayı aç (senin
+hesabının oturumu 25 Eylül 02:35'te doldu).
+✅ Şerit "Masa oturumun doldu — Kafe A · kafedeysen konumunla devam et"
+ve **Devam et** düğmesi. Konum izni verdiysen birkaç saniyede kendiliğinden
+"Doğrulandı"ya döner; vermediysen **Devam et** → izin → "Doğrulandı · X m".
+Karekod sorulmaz.
+✅ Kafeden uzaktaysan: "Kafeden X metre uzaktasın — karekodu okut".
+✅ Dünden kalan oturumda şerit "Kafe dışındasın" der — yeni gün, karekod.
+🔗 **Etki:** Ben: aynı oturum satırı geri açıldı mı (yeni satır yok),
+bitişi gece yarısı, kanıt K1+K2.
+🔴 Kafedeyken yine yalnızca "karekodu tekrar okut" çıkıyorsa; kafeden
+uzakken **Devam et** oturumu açıyorsa.
 
 ---
 
@@ -477,6 +535,8 @@ kasası açılıyorsa.
 ✅ "Kullanıldı"; müşterinin ekranında da kapanır; bütçeden düşer.
 ✅ Ürüne bağlı yüzde kuponunda (Ü277) ekranda "%20 · Filtre Kahve" ve
 indirimin TL'si yazar; kasiyere **tutar sorulmaz**.
+✅ **Kampanya kuponu** (Ü292) başlığı "%20 · Filtre Kahve Test", altında
+"Kampanya · %20" ve TL — eskiden yalnızca "Ödül" yazıyordu.
 🔗 **Etki:** Ben: kuponun düştüğü tutar ödülün değeri mi.
 
 ### 6.7 · 🔴 İkinci kez
@@ -484,9 +544,9 @@ indirimin TL'si yazar; kasiyere **tutar sorulmaz**.
 ✅ Reddedilir, sebebini söyler. 🔴 **Kabul ediliyorsa kritik** — iki kez
 bedava ürün.
 
-### 6.8 · Geri alma (60 saniye)
-✅ 60 sn içinde geri alınır, kupon yeniden kullanılabilir olur; 60 sn sonra
-alınamaz.
+### 6.8 · Onay kesin — geri alma yok (Ü290)
+✅ Onaydan sonra ekranda yalnızca "Kupon onaylandı · X TL" ve **Sıradaki**
+var; "Geri al" düğmesi yok (ürün sahibi: *"geri alma olmamalı"*).
 
 ### 6.9 · Reddedilmesi gerekenler — her birinde **sebep** yazmalı
 | Dene | ✅ Beklenen |

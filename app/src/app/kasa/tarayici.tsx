@@ -9,7 +9,7 @@ import {
   useSyncExternalStore,
   useTransition,
 } from "react";
-import { cozEylemi, onaylaEylemi, geriAlEylemi } from "./actions";
+import { cozEylemi, onaylaEylemi } from "./actions";
 import type { KasaGorunumu, OnaySonucu } from "@/domain/kupon";
 
 /**
@@ -55,7 +55,7 @@ type Asama =
   | { tur: "bos" }
   | { tur: "bulundu"; gorunum: Extract<KasaGorunumu, { bulundu: true }> }
   | { tur: "hata"; mesaj: string }
-  | { tur: "onaylandi"; kuponId: string; baslik: string; kurus: number; bitis: number };
+  | { tur: "onaylandi"; baslik: string; kurus: number };
 
 export function KasaTarayici() {
   const [asama, setAsama] = useState<Asama>({ tur: "bos" });
@@ -90,13 +90,7 @@ export function KasaTarayici() {
           setAsama({ tur: "hata", mesaj: sonuc.hata });
           return;
         }
-        setAsama({
-          tur: "onaylandi",
-          kuponId: g.kuponId,
-          baslik: g.baslik,
-          kurus: sonuc.dusulenKurus,
-          bitis: sonuc.geriAlmaBitis.getTime(),
-        });
+        setAsama({ tur: "onaylandi", baslik: g.baslik, kurus: sonuc.dusulenKurus });
       });
     },
     [tutar],
@@ -133,19 +127,7 @@ export function KasaTarayici() {
         <Onaylandi
           baslik={asama.baslik}
           kurus={asama.kurus}
-          bitis={asama.bitis}
-          geriAl={() =>
-            basla(async () => {
-              const c = await geriAlEylemi(asama.kuponId);
-              setAsama(
-                c.ok
-                  ? { tur: "hata", mesaj: "Onay geri alındı. Kupon kullanılmadı sayılıyor." }
-                  : { tur: "hata", mesaj: c.hata ?? "Geri alınamadı." },
-              );
-            })
-          }
           kapat={() => setAsama({ tur: "bos" })}
-          bekliyor={bekliyor}
         />
       )}
     </div>
@@ -394,11 +376,14 @@ function Sonuc({
       {/* Kasiyer TL değerini GÖRÜR — oyuncu görmez (E9). */}
       <div className="mt-5 flex items-baseline justify-between border-t border-cizgi pt-4">
         <span className="etiket-caps text-yazi-sonuk">
-          {gorunum.tip === "percent"
-            ? gorunum.urunAdi
-              ? `%${gorunum.yuzde} · ${gorunum.urunAdi}`
-              : `%${gorunum.yuzde} · en fazla`
-            : "Değer"}
+          {/* Ü292: kampanya kuponunun başlığı ürünü zaten söylüyor. */}
+          {gorunum.kampanyaMi
+            ? `Kampanya · %${gorunum.yuzde}`
+            : gorunum.tip === "percent"
+              ? gorunum.urunAdi
+                ? `%${gorunum.yuzde} · ${gorunum.urunAdi}`
+                : `%${gorunum.yuzde} · en fazla`
+              : "Değer"}
         </span>
         <span className="font-data text-2xl font-bold text-odul-koyu tabular">
           {(gorunum.tavanKurus / 100).toLocaleString("tr-TR")} TL
@@ -470,32 +455,22 @@ function Kirmizi({ mesaj, kapat }: { mesaj: string; kapat: () => void }) {
   );
 }
 
-/* ── Onaylandı + geri alma ─────────────────────────────────── */
+/* ── Onaylandı ─────────────────────────────────────────────── */
 
+/**
+ * Onay kesin — Ü290. Ürün sahibi: *"geri alma olmamalı."* Önce 60 saniyelik
+ * bir "Geri al" vardı ve geri alınan kupon iptal oluyordu; kasa ise
+ * "kullanılmadı sayılıyor" diyordu.
+ */
 function Onaylandi({
   baslik,
   kurus,
-  bitis,
-  geriAl,
   kapat,
-  bekliyor,
 }: {
   baslik: string;
   kurus: number;
-  bitis: number;
-  geriAl: () => void;
   kapat: () => void;
-  bekliyor: boolean;
 }) {
-  const [kalan, setKalan] = useState(() => Math.max(0, Math.round((bitis - Date.now()) / 1000)));
-
-  useEffect(() => {
-    const t = setInterval(() => {
-      setKalan(Math.max(0, Math.round((bitis - Date.now()) / 1000)));
-    }, 500);
-    return () => clearInterval(t);
-  }, [bitis]);
-
   return (
     <div className="rounded-2xl border-2 border-vurgu bg-cukur px-6 py-8 text-center">
       <div className="text-4xl leading-none" aria-hidden>
@@ -507,25 +482,10 @@ function Onaylandi({
         {(kurus / 100).toLocaleString("tr-TR")} TL
       </p>
 
-      {kalan > 0 ? (
-        <button
-          type="button"
-          onClick={geriAl}
-          disabled={bekliyor}
-          className="mt-6 w-full rounded-lg border border-tehlike py-4 font-display text-[16px] text-tehlike disabled:opacity-45"
-        >
-          Geri al · {kalan} sn
-        </button>
-      ) : (
-        <p className="mt-6 font-data text-[11px] text-yazi-sonuk">
-          Geri alma süresi doldu
-        </p>
-      )}
-
       <button
         type="button"
         onClick={kapat}
-        className="mt-3 w-full rounded-lg bg-vurgu py-5 font-display text-[18px] font-bold text-white"
+        className="mt-6 w-full rounded-lg bg-vurgu py-5 font-display text-[18px] font-bold text-white"
       >
         Sıradaki
       </button>

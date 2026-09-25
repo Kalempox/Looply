@@ -138,7 +138,9 @@ export const SKOR_ESIKLERI = [
 export const KUPON_ESIGI = 500;
 
 /**
- * Tur "başarılı" mı — kupon, tam puan ve nitelikli ziyaret bunun ardında.
+ * Tur "başarılı" mı — kupon, tam puan ve davetin niteliklenmesi bunun
+ * ardında. Ziyaret sayımı değil: Ü292'den beri kafede başlatılan her oyun
+ * ziyaret sayılıyor ("1 sn bile oynasa").
  *
  * Eşiğin altında kalan tur boşa gitmiyor: katılım puanı ve XP yine yazılıyor
  * (Ü48), skor liderliğe giriyor, seri bozulmuyor.

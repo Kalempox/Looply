@@ -3,7 +3,7 @@ import { test, before, after, describe } from "node:test";
 import assert from "node:assert/strict";
 import { withBypass } from "@/db/context";
 import { closePools } from "@/db/pool";
-import { kampanyaKuponuVer, upsellKuponuVer } from "@/domain/kupon";
+import { kampanyaKuponuVer, upsellKuponuVer, coz, onayla } from "@/domain/kupon";
 import * as upsell from "@/domain/upsell";
 import * as odul from "@/domain/odul";
 import { kaydet } from "@/domain/player";
@@ -371,6 +371,52 @@ describe("kampanya kuponu envanterde", () => {
       !JSON.stringify(kupon).includes(String(TAVAN_KURUS)),
       "kupon çıktısında TL değeri sızmış (E9)",
     );
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════
+   Kampanya kuponu kasada (Ü292)
+   ═══════════════════════════════════════════════════════════
+
+   Ürün sahibi QTRCCA'yı okuttu; kasa "Ödül · Değer 46 TL" dedi — neyin
+   indirimi olduğu yazmıyordu. "Bunu ismiyle düzelt."
+   ═══════════════════════════════════════════════════════════ */
+
+describe("kampanya kuponu kasada (Ü292)", () => {
+  test("🔴 kasa kampanya kuponunu adıyla gösteriyor, indirimi fiyattan düşüyor", async () => {
+    await kuponlariTemizle();
+    // Tavan fiyat × yüzdeden büyük: kasa gerçek indirimi (100 TL × %20 =
+    // 20 TL) düşmeli, kampanyanın "en fazla"sını (30 TL) değil.
+    await kampanyaAyarla({ max_discount_kurus: 30_00 });
+    try {
+      const sonuc = await withBypass("test: kasa", (db) =>
+        kampanyaKuponuVer(db, { playerId: oyuncu2, cafeId: kafeA, kanitSeviyesi: 2, an: KAFE_ACIK }),
+      );
+      assert.ok(sonuc?.ok, "kupon üretilemedi");
+      // Erteleme atlanıyor — kasa yalnızca açılmış kuponu onaylar.
+      await yoneticiSorgu(
+        `UPDATE coupons SET status = 'active', activates_at = now() - interval '1 minute'
+          WHERE id = $1`,
+        [sonuc.kuponId],
+      );
+      const kod = await withBypass("test: kod", (db) =>
+        db.one<{ code: string }>(`SELECT code FROM coupons WHERE id = $1`, [sonuc.kuponId]),
+      );
+
+      const g = await coz(kafeA, kod!.code);
+      assert.ok(g.bulundu && g.gecerli, "kupon kasada geçersiz");
+      assert.equal(g.baslik, `%${YUZDE} · TEST KMP Latte`, "kasa kampanya kuponunu 'Ödül' diye gösteriyor");
+      assert.equal(g.kampanyaMi, true);
+      assert.equal(g.tip, "percent");
+      assert.equal(g.urunAdi, "TEST KMP Latte");
+      assert.equal(g.tavanKurus, 20_00, "kasa indirimi fiyattan hesaplamıyor");
+
+      const o = await onayla({ cafeId: kafeA, kuponId: sonuc.kuponId, staffId: yoneticiA });
+      assert.ok(o.ok, "onay reddedildi");
+      assert.equal(o.dusulenKurus, 20_00, "ekranda görünen ile bütçeden düşülen farklı");
+    } finally {
+      await kampanyaAyarla({ max_discount_kurus: TAVAN_KURUS });
+    }
   });
 });
 

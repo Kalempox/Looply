@@ -95,6 +95,9 @@ export default async function KampanyalarSayfasi() {
                             Rozetlerde sayı önde, ne olduğu altında.
                           */}
                           <span className="mt-2 flex flex-wrap gap-1.5">
+                            {/* Ü292: aynı ürüne iki kampanya aynı adla
+                                görünüyordu — upsell ayrı işaretleniyor. */}
+                            {k.hemen && <Kunye deger="upsell" etiket={`${k.gecerliSaat} saat`} />}
                             <Kunye
                               deger={`${(k.tavanKurus / 100).toLocaleString("tr-TR")} TL`}
                               etiket="en fazla"

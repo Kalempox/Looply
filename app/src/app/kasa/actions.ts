@@ -9,7 +9,7 @@ import * as kupon from "@/domain/kupon";
 /**
  * Kasa eylemleri.
  *
- * Üçünde de `cafeId` **kasiyer oturumundan** geliyor (değişmez kural #3).
+ * İkisinde de `cafeId` **kasiyer oturumundan** geliyor (değişmez kural #3).
  * Formdan gelseydi, bir kasiyer başka kafenin kuponunu onaylayabilirdi.
  *
  * `staffId` de oturumdan: `redeemed_by_staff_id` NOT NULL ve o alan
@@ -40,13 +40,6 @@ export async function onaylaEylemi(
 
   revalidatePath("/kasa");
   return sonuc;
-}
-
-export async function geriAlEylemi(kuponId: string): Promise<{ ok: boolean; hata?: string }> {
-  const o = await kasiyerGerekli();
-  const sonuc = await kupon.geriAl({ cafeId: o.cafeId, kuponId, staffId: o.ozneId });
-  revalidatePath("/kasa");
-  return sonuc.ok ? { ok: true } : { ok: false, hata: sonuc.hata };
 }
 
 export async function cikisEylemi(): Promise<void> {

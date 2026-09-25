@@ -11,6 +11,7 @@ import { kaydet } from "@/domain/player";
 import { normalizePhone } from "@/lib/crypto";
 import * as masa from "@/domain/masa";
 import * as oyunDomain from "@/domain/oyun";
+import * as davet from "@/domain/davet";
 import * as seri from "@/domain/seri";
 import * as xp from "@/domain/xp";
 import {
@@ -2088,6 +2089,131 @@ describe("kafe dışında kazanım yok (Ü3, Ü14)", () => {
     assert.ok(cevap.basarili, "düşen turu eşiği geçemedi — test kurulumu");
     assert.ok((cevap.puan?.yazilan ?? 0) > 0 || oncekiPuan >= GUNLUK_TAVAN);
     assert.ok(cevap.xp > 0);
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════
+   Ziyaret oyun başlarken sayılıyor (Ü292)
+   ═══════════════════════════════════════════════════════════
+
+   Ürün sahibi: "her gelen müşteri 1 sn bile oynasa sayılmalı." Demo
+   hesabının Düşen'i 497'de kaldı ve o gün ziyaret sayılmadı. Davet ise
+   hâlâ eşiği geçen oyun istiyor — bir saniyelik oyun XP yazdırmamalı.
+   ═══════════════════════════════════════════════════════════ */
+
+describe("ziyaret oyun başlarken sayılıyor (Ü292)", () => {
+  const acilanlar: string[] = [];
+  const yeni = async () => {
+    const id = await yeniOyuncu();
+    acilanlar.push(id);
+    return id;
+  };
+  const isaretli = async (oturumId: string) =>
+    (
+      await withBypass("test: ziyaret işareti", (db) =>
+        db.one<{ is_qualified: boolean }>(`SELECT is_qualified FROM play_sessions WHERE id = $1`, [
+          oturumId,
+        ]),
+      )
+    )?.is_qualified;
+
+  after(async () => {
+    const q = acilanlar;
+    await yoneticiSorgu(
+      `DELETE FROM referral_events WHERE referral_id IN
+         (SELECT id FROM referrals WHERE referrer_id = ANY($1) OR invitee_id = ANY($1))`,
+      [q],
+    );
+    await yoneticiSorgu(
+      `DELETE FROM audit_log WHERE target_id IN
+         (SELECT id FROM referrals WHERE referrer_id = ANY($1) OR invitee_id = ANY($1))`,
+      [q],
+    );
+    await yoneticiSorgu(`DELETE FROM referrals WHERE referrer_id = ANY($1) OR invitee_id = ANY($1)`, [q]);
+    await yoneticiSorgu(`DELETE FROM referral_codes WHERE player_id = ANY($1)`, [q]);
+    await yoneticiSorgu(
+      `DELETE FROM coupon_events WHERE coupon_id IN (SELECT id FROM coupons WHERE player_id = ANY($1))`,
+      [q],
+    );
+    await yoneticiSorgu(`DELETE FROM coupons WHERE player_id = ANY($1)`, [q]);
+    for (const t of ["play_sessions", "points_ledger", "xp_ledger", "player_badges", "table_sessions", "player_aliases", "player_consents"]) {
+      await yoneticiSorgu(`DELETE FROM ${t} WHERE player_id = ANY($1)`, [q]);
+    }
+    await yoneticiSorgu(`DELETE FROM audit_log WHERE target_id = ANY($1) OR actor_id = ANY($1)`, [q]);
+    await yoneticiSorgu(`DELETE FROM players WHERE id = ANY($1)`, [q]);
+  });
+
+  test("🔴 kafede başlatılan oyun bitmeden ziyaret sayılıyor", async () => {
+    const p = await yeni();
+    await dogrulanmisOturum(p);
+    const b = await oyunDomain.basla({ playerId: p, oyunId: "blok" });
+    assert.ok(b.ok);
+    assert.equal(await isaretli(b.oturumId), true, "oyun başladı ama ziyaret sayılmadı");
+
+    // Hiç hamle yapmadan çıkan oyuncu (skor 0): ziyaret sonda geri alınmıyor.
+    const c = await oyunDomain.bitir({ playerId: p, oturumId: b.oturumId, girdiler: [], iddiaEdilenSkor: 0 });
+    assert.ok(c.ok);
+    assert.equal(c.basarili, false);
+    assert.equal(c.nitelikliOldu, true, "eşiğin altında kalan oyun ziyareti düşürdü");
+    assert.equal(await isaretli(b.oturumId), true);
+
+    // Günde bir kez: aynı gün ikinci oyun ikinci ziyaret değil.
+    const ikinci = await oyunDomain.basla({ playerId: p, oyunId: "blok" });
+    assert.ok(ikinci.ok);
+    assert.equal(await isaretli(ikinci.oturumId), false, "aynı gün ikinci ziyaret sayıldı");
+  });
+
+  test("konumu doğrulanmamış oyuncunun oyunu ziyaret değil", async () => {
+    const p = await yeni();
+    await masa.ac({ cafeId: kafeA, tableId: masaA, playerId: p }); // yalnızca karekod (K1)
+    const b = await oyunDomain.basla({ playerId: p, oyunId: "blok" });
+    assert.ok(b.ok);
+    assert.equal(b.kazandirir, false);
+    assert.equal(await isaretli(b.oturumId), false, "konumu doğrulanmayan ziyaret sayıldı");
+  });
+
+  test("reddedilen oyun ziyareti geri alıyor — sıradaki geçerli oyun sayılır", async () => {
+    const p = await yeni();
+    await dogrulanmisOturum(p);
+    const b = await oyunDomain.basla({ playerId: p, oyunId: "blok" });
+    assert.ok(b.ok);
+    const c = await oyunDomain.bitir({ playerId: p, oturumId: b.oturumId, girdiler: [null], iddiaEdilenSkor: 0 });
+    assert.equal(c.ok, false, "bozuk kayıt reddedilmedi — test kurulumu");
+    assert.equal(await isaretli(b.oturumId), false, "reddedilen oyun ziyaret olarak kaldı");
+
+    const sonraki = await oyunDomain.basla({ playerId: p, oyunId: "blok" });
+    assert.ok(sonraki.ok);
+    assert.equal(await isaretli(sonraki.oturumId), true, "reddedilenden sonra ziyaret hiç sayılmadı");
+  });
+
+  test("🔴 davet bir saniyelik oyunla niteliklenmiyor, eşiği geçen oyunla ilerliyor", async () => {
+    const davetci = await yeni();
+    const davetli = await yeni();
+    const kod = await davet.kodAl(davetci);
+    const refId = await davet.ziyaret({ kod });
+    assert.ok(refId);
+    assert.equal(await davet.bagla({ referralId: refId, inviteeId: davetli, yeniHesap: true }), true);
+    await dogrulanmisOturum(davetli);
+    const durum = async () =>
+      (
+        await withBypass("test: davet durumu", (db) =>
+          db.one<{ status: string }>(`SELECT status FROM referrals WHERE id = $1`, [refId]),
+        )
+      )?.status;
+
+    const b = await oyunDomain.basla({ playerId: davetli, oyunId: "blok" });
+    assert.ok(b.ok);
+    const kisa = await oyunDomain.bitir({ playerId: davetli, oturumId: b.oturumId, girdiler: [], iddiaEdilenSkor: 0 });
+    assert.ok(kisa.ok);
+    assert.equal(kisa.nitelikliOldu, true, "ziyaret sayılmalı");
+    assert.equal(await durum(), "game_completed", "bir saniyelik oyun daveti niteliklendirmeye götürdü");
+
+    const { cevap } = await tamOyun(davetli, "dusen");
+    assert.ok(cevap.ok && cevap.basarili, "düşen turu eşiği geçemedi — test kurulumu");
+    assert.ok(
+      ["qualified", "rewarded", "rejected"].includes((await durum()) ?? ""),
+      "eşiği geçen oyun daveti niteliklendirmeye götürmedi",
+    );
   });
 });
 

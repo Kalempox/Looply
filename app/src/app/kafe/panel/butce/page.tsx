@@ -139,7 +139,7 @@ export default async function ButceSayfasi() {
             <SayiKarti
               etiket="Kasada harcanan"
               deger={`${tlYaz(d.harcananKurus)} TL`}
-              alt="fiilen ödediğin"
+              alt="bugünün bütçesinden verilenlerden"
               ikon={IKON.onay}
               alan="para"
               seri={yedi.map((g) => g.harcananKurus)}

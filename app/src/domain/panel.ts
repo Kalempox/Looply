@@ -80,8 +80,11 @@ export async function ozet(cafeId: string, bugun = isGunu()): Promise<PanelOzeti
 
   return withCafe(cafeId, async (db) => {
     // Ziyaret ve kupon ayrı tablolarda; iki sorgu tek geçişte birleşiyor.
+    // Ü292: kişi başına günde bir ziyaret — raporla aynı sayım
+    // (`rapor.ozet`). Satır saymak, aynı kişinin iki cihaz izli oturumunu
+    // iki ziyaret sayıyordu (demo tohumunda oldu).
     const ziyaretler = await db.all<{ gun: string; n: string }>(
-      `SELECT business_date::text AS gun, count(*) AS n
+      `SELECT business_date::text AS gun, count(DISTINCT player_id) AS n
          FROM play_sessions
         WHERE is_qualified AND business_date >= $1::date AND business_date <= $2::date
         GROUP BY business_date`,

@@ -224,10 +224,13 @@ export default async function RaporSayfasi({
               "1 nitelikli oturum / cihaz / kafe / GÜN" (S3) — aynı müşteri
               ertesi gün geldiğinde yeniden sayılıyor. Fatura bu sayıdan
               kesildiği için yanlış tanım, yanlış faturaya dönüşür. */}
+          {/* Ü292: ürün sahibi — "her gelen müşteri 1 sn bile oynasa
+              sayılmalı." Skor ve bitiş şart değil; şart kafede olmak. */}
           <p className="mt-3 text-[13px] leading-relaxed text-yazi-sonuk">
             Kafeye gelip{" "}
-            <strong className="text-yazi">konumu doğrulanan</strong> ve oyunu{" "}
-            <strong className="text-yazi">tamamlayan</strong> müşteri. Aynı
+            <strong className="text-yazi">konumu doğrulanan</strong> ve{" "}
+            <strong className="text-yazi">oyun oynayan</strong> müşteri —
+            birkaç saniye bile oynasa sayılır, skoru önemli değil. Aynı
             müşteri günde bir kez sayılır — ertesi gün yine gelirse yeniden
             sayılır.
           </p>
@@ -254,14 +257,14 @@ export default async function RaporSayfasi({
           <SayiKarti
             etiket="Gelen kişi"
             deger={String(ozet.tekilOyuncu)}
-            alt="oyunu tamamlayan herkes"
+            alt="oyun başlatan herkes"
             ikon={IKON.kisi}
             alan="kisi"
           />
           <SayiKarti
             etiket="Oynanan oyun"
             deger={String(ozet.toplamOyun)}
-            alt="aynı kişi birden çok oynayabilir"
+            alt="yarıda bırakılanlar dahil"
             ikon={IKON.masa}
             alan="masa"
           />
@@ -485,6 +488,10 @@ export default async function RaporSayfasi({
                 <div className="flex items-center gap-3">
                   <span className="flex-1 text-[15px] font-semibold">
                     {k.urunAdi} · %{k.yuzde}
+                    {/* Ü292: aynı ürüne iki kampanya aynı adla görünüyordu. */}
+                    <span className="ml-2 text-[12px] font-normal text-yazi-sonuk">
+                      {k.upsell ? `upsell · ${k.gecerliSaat} saat` : "kampanya"}
+                    </span>
                   </span>
                   {k.durum === "active" ? (
                     <Rozet tur="onayli">yayında</Rozet>
@@ -495,6 +502,10 @@ export default async function RaporSayfasi({
                   )}
                 </div>
                 <div className="mt-1 font-data text-[12px] text-yazi-sonuk tabular">
+                  en fazla {tl(k.tavanKurus)} TL · {kisaGun(k.baslangic)} –{" "}
+                  {kisaGun(k.bitis)}
+                </div>
+                <div className="mt-0.5 font-data text-[12px] text-yazi-sonuk tabular">
                   {k.verilen} verildi · {k.kullanilan} kullanıldı ·{" "}
                   {tl(k.kullanilanKurus)} TL
                 </div>
@@ -631,7 +642,7 @@ export default async function RaporSayfasi({
                         <Rozet tur="onayli">sayıldı</Rozet>
                       ) : (
                         <span className="text-[12px] text-yazi-sonuk">
-                          {kanitCumlesi(z.kanitSeviyesi)}
+                          {rapor.sayimCumlesi(z)}
                         </span>
                       )}
                     </td>
@@ -768,12 +779,13 @@ function geriGun(iso: string): string {
   return d.toISOString().slice(0, 10);
 }
 
-/** E6'nın kademesini kafenin diliyle anlatır — "K2" kimseye bir şey söylemez. */
-function kanitCumlesi(seviye: number): string {
-  if (seviye >= 4) return "fiş kodu girdi";
-  if (seviye === 3) return "masada 5 dk kaldı";
-  if (seviye === 2) return "konumu doğrulandı";
-  return "karekod okuttu";
+/** "24 Eyl" — kampanya satırındaki tarih aralığı. */
+function kisaGun(d: Date): string {
+  return d.toLocaleDateString("tr-TR", {
+    day: "numeric",
+    month: "short",
+    timeZone: "Europe/Istanbul",
+  });
 }
 
 /**

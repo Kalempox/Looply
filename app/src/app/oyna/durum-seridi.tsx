@@ -46,6 +46,10 @@ export type SeritDurumu =
    * söylemiyor ve hiçbir düğme göstermiyordu. Oyuncu hâlâ masada oturuyor
    * olabilir. Veritabanında 245 dolmuş oturuma karşılık 1 aktif oturum
    * vardı — bu, kenar durum değil olağan durum.
+   *
+   * 🔴 Ü291: bugün dolan oturum kafede okunan konumla geri geliyor
+   * (`masa.konumDogrula`). Şerit bu durumda da konumu sessizce okuyor ve
+   * "Devam et" düğmesi gösteriyor — karekod yalnızca kafeden uzaksan.
    */
   | { tur: "oturum_doldu"; kafe: string; masa: string };
 
@@ -71,7 +75,10 @@ export function DurumSeridi({
     durum.tur === "dogrulandi" ||
     durum.tur === "konum_bekliyor" ||
     durum.tur === "uzak" ||
-    durum.tur === "konum_kapali";
+    durum.tur === "konum_kapali" ||
+    // Ü291: bugün dolan oturum kafede okunan konumla kendiliğinden döner.
+    durum.tur === "oturum_doldu";
+  const doldu = durum.tur === "oturum_doldu";
   const takipSonucu = (c: KonumCevabi) => {
     if (
       (c.durum === "dogrulandi" && durum.tur !== "dogrulandi") ||
@@ -91,15 +98,17 @@ export function DurumSeridi({
       (p) =>
         basla(async () => {
           const c = await konumBildir(p.coords.latitude, p.coords.longitude, p.coords.accuracy);
+          // Ü291: dolmuş oturumda konum tutmazsa tek yol karekod — söyle.
+          const karekod = doldu ? " — karekodu okut" : "";
           setGecici(
             c.durum === "uzak"
-              ? `Kafeden ${c.mesafeM} metre uzaktasın`
+              ? `Kafeden ${c.mesafeM} metre uzaktasın${karekod}`
               : c.durum === "belirsiz"
                 ? "Konum net okunamadı — pencereye yakın bir yerde tekrar dene"
                 : c.durum === "kafe_konumu_yok"
                   ? "Bu kafe konumunu henüz işaretlememiş — kazanım açılamıyor"
                   : c.durum === "olmadi"
-                    ? "Konum doğrulanamadı"
+                    ? `Konum doğrulanamadı${karekod}`
                     : null,
           );
         }),
@@ -147,8 +156,8 @@ export function DurumSeridi({
             <>
               <div className="etiket-caps truncate">Masa oturumun doldu</div>
               <div className="text-[11px] leading-tight text-yazi-sonuk">
-                {masaKunyesi(durum.kafe, durum.masa)} — karekodu tekrar okut, kaldığın
-                yerden devam et
+                {gecici ??
+                  `${masaKunyesi(durum.kafe, durum.masa)} — kafedeysen konumunla devam et`}
               </div>
             </>
           ) : (
@@ -207,7 +216,8 @@ export function DurumSeridi({
         {/* Masası olmayan oyuncunun tek yolu karekodu okutmak. Canlıda
             bunun ekranda bir düğmesi yok — kamera oyuncunun elinde. Demoda
             masa listesi başlangıç sayfasında duruyor, kısayolu oraya. */}
-        {demoKapisi && (durum.tur === "disarida" || durum.tur === "oturum_doldu") && (
+        {/* Ü291: dolmuş oturumda yerini "Devam et" aldı — şerit dar. */}
+        {demoKapisi && durum.tur === "disarida" && (
           <Link
             href="/"
             className="etiket-caps shrink-0 rounded border border-odul px-2.5 py-1.5 text-odul-koyu"
@@ -217,7 +227,10 @@ export function DurumSeridi({
           </Link>
         )}
 
-        {(durum.tur === "konum_bekliyor" || durum.tur === "konum_kapali" || durum.tur === "uzak") && (
+        {(durum.tur === "konum_bekliyor" ||
+          durum.tur === "konum_kapali" ||
+          durum.tur === "uzak" ||
+          doldu) && (
           <div className="flex shrink-0 items-center gap-1.5">
             <button
               type="button"
@@ -225,12 +238,19 @@ export function DurumSeridi({
               disabled={bekliyor}
               className="etiket-caps rounded border border-current px-2.5 py-1 disabled:opacity-50"
             >
-              {bekliyor ? "…" : durum.tur === "konum_bekliyor" ? "Doğrula" : "Tekrar"}
+              {bekliyor
+                ? "…"
+                : doldu
+                  ? "Devam et"
+                  : durum.tur === "konum_bekliyor"
+                    ? "Doğrula"
+                    : "Tekrar"}
             </button>
 
             {/* Demo kısayolu — kafenin kendi koordinatını kullanır, kural
-                gevşemez. Canlıda hiç render edilmiyor. */}
-            {demoKapisi && (
+                gevşemez. Canlıda hiç render edilmiyor. Dolmuş oturumda
+                yok: kısayol açık oturumun kafesini okuyor (Ü291). */}
+            {demoKapisi && !doldu && (
               <button
                 type="button"
                 onClick={() =>

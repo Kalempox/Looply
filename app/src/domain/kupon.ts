@@ -977,6 +977,11 @@ export type KasaGorunumu =
        * yüzde ödülünde null — orada kasiyer adisyondaki tutarı giriyor.
        */
       urunAdi: string | null;
+      /**
+       * Ü292: kafenin yüzde kampanyasından mı (ödül değil)? Kasa etiketi
+       * "Kampanya · %20" diyor; başlık zaten ürünü söylüyor.
+       */
+      kampanyaMi: boolean;
       oyuncuKodu: string;
       sonKullanim: Date;
       gecerli: boolean;
@@ -994,6 +999,11 @@ export type KasaGorunumu =
  * yazılmıştı ("50 TL'lik üründe %10" 40 TL kayıtlı). O kuponlarda tavanı
  * düşmek bütçeyi gerçek indirimin katları kadar eksiltirdi. Ekran (`coz`)
  * ve kayıt (`onayla`) aynı hesabı kullanıyor.
+ *
+ * Ü292: kampanya kuponu da buradan geçiyor — yüzde ve ürün kampanyadan,
+ * tavan kampanyanın "en fazla" tutarı. Eskiden tavanın kendisi
+ * düşülüyordu: 100 TL'lik üründe %20, en fazla 30 TL diye kurulan
+ * kampanya kasada 30 TL yazıyordu.
  */
 export function kasaDegeri(k: {
   tavanKurus: number;
@@ -1027,20 +1037,34 @@ export async function coz(cafeId: string, girdi: string): Promise<KasaGorunumu> 
       percent: number | null;
       urun_adi: string | null;
       urun_fiyat: string | null;
+      kampanya_mi: boolean;
       usable_days: number[] | null;
       usable_from_hour: number | null;
       usable_to_hour: number | null;
       alias: string | null;
     }>(
+      /*
+        🔴 Ü292: kampanya kuponu `rewards`a hiç uğramıyor (`reward_id`
+        boş, `campaign_id` dolu). Eskiden kasa ona "Ödül · Değer 46 TL"
+        diyordu; kasiyer neyin indirimi olduğunu göremiyordu. Başlık,
+        yüzde ve ürün artık kampanyadan — başlık oyuncunun cüzdanındakiyle
+        aynı biçim (`odul.baslikYaz`): "%20 · Filtre Kahve".
+      */
       `SELECT c.id, c.status, c.activates_at, c.expires_at, c.reserved_kurus,
-              r.title, r.reward_type, r.percent, p.name AS urun_adi,
-              p.price_kurus AS urun_fiyat,
+              COALESCE(r.title, '%' || kmp.percent || ' · ' || kp.name) AS title,
+              COALESCE(r.reward_type, CASE WHEN kmp.id IS NOT NULL THEN 'percent' END) AS reward_type,
+              COALESCE(r.percent, kmp.percent) AS percent,
+              COALESCE(p.name, kp.name) AS urun_adi,
+              COALESCE(p.price_kurus, kp.price_kurus) AS urun_fiyat,
+              kmp.id IS NOT NULL AS kampanya_mi,
               r.usable_days, r.usable_from_hour, r.usable_to_hour,
               (SELECT code FROM player_aliases a
                 WHERE a.cafe_id = c.cafe_id AND a.player_id = c.player_id) AS alias
          FROM coupons c
          LEFT JOIN rewards r ON r.id = c.reward_id
          LEFT JOIN products p ON p.id = r.product_id
+         LEFT JOIN percentage_campaigns kmp ON kmp.id = c.campaign_id
+         LEFT JOIN products kp ON kp.id = kmp.product_id
         WHERE c.qr_token = $1 OR upper(c.code) = upper($1)
         LIMIT 1`,
       [temiz],
@@ -1094,6 +1118,7 @@ export async function coz(cafeId: string, girdi: string): Promise<KasaGorunumu> 
       yuzde: r.percent,
       tavanKurus: tutar,
       urunAdi: r.urun_adi,
+      kampanyaMi: r.kampanya_mi,
       oyuncuKodu: r.alias ?? "—",
       sonKullanim: r.expires_at,
       gecerli,
@@ -1142,12 +1167,19 @@ export async function onayla(opts: {
       usable_from_hour: number | null;
       usable_to_hour: number | null;
     }>(
-      `SELECT c.reserved_kurus, c.budget_period_id, c.player_id, r.reward_type,
-              r.product_id, r.percent, p.price_kurus AS urun_fiyat,
+      // Ü292: kampanya kuponu `coz` ile aynı yoldan — ekranda görünen
+      // tutar ile düşülen tutar aynı hesaptan çıkmalı (`kasaDegeri`).
+      `SELECT c.reserved_kurus, c.budget_period_id, c.player_id,
+              COALESCE(r.reward_type, CASE WHEN kmp.id IS NOT NULL THEN 'percent' END) AS reward_type,
+              COALESCE(r.product_id, kmp.product_id) AS product_id,
+              COALESCE(r.percent, kmp.percent) AS percent,
+              COALESCE(p.price_kurus, kp.price_kurus) AS urun_fiyat,
               r.usable_days, r.usable_from_hour, r.usable_to_hour
          FROM coupons c
          LEFT JOIN rewards r ON r.id = c.reward_id
          LEFT JOIN products p ON p.id = r.product_id
+         LEFT JOIN percentage_campaigns kmp ON kmp.id = c.campaign_id
+         LEFT JOIN products kp ON kp.id = kmp.product_id
         WHERE c.id = $1
           AND c.status IN ('active', 'pending')
           AND c.activates_at <= now()
@@ -1273,11 +1305,13 @@ export async function onayla(opts: {
 /**
  * Onayı geri alır — 60 saniye içinde.
  *
- * Yanlış kuponu onaylamak sahada olacak bir şey. Geri alma penceresi
- * olmasaydı kasiyerin tek çaresi işletmeciyi aramak olurdu.
+ * ⚠️ Ü290: **kasadan kaldırıldı.** Ürün sahibi: *"geri alma olmamalı"* —
+ * kasada onay kesin. Ekranda ve kasa eylemlerinde karşılığı yok; fonksiyon
+ * ve testi, ileride bir destek/düzeltme yolu gerekirse diye duruyor.
  *
  * Bütçe tarafında iki satır yazılıyor: `undo` harcamayı iptal ediyor,
- * `release` kalan rezervasyonu çözüyor (göç 0013).
+ * `release` kalan rezervasyonu çözüyor (göç 0013) — kupon iptal oluyor,
+ * yeniden kullanılamıyor.
  */
 export async function geriAl(opts: {
   cafeId: string;

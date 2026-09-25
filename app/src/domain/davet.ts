@@ -28,15 +28,15 @@ import { yazIle as xpYaz } from "./xp";
  * anında bağlanıyor (`bagla`), kayıt yalnızca OTP'den geçiyor ve mevcut
  * hesap "yeni" sayılmıyor.
  *
- * Ortadaki dördü tek bir şeye indi: **`play_sessions.is_qualified`**. O bayrak
- * zaten "kafeye yapılan sayılabilir ziyaret" demek — konumu doğrulanmış (K2)
- * masa oturumunda, başarıyla tamamlanmış, gün başına cihaz ve kafe bazında
- * tek. Ayrı bir "asgari etkileşim" tanımı uydurmak, aynı kuralın ikinci ve
- * er ya da geç ayrışacak bir kopyasını üretirdi.
+ * Ortadaki dördü tek bir şarta indi: **kafede (K2) eşiği geçen, tamamlanmış
+ * oyun** (`oyun.davetNiteliginde`). Ü292'ye kadar bu şart
+ * `play_sessions.is_qualified`in kendisiydi — o bayrak "kafeye yapılan
+ * sayılabilir ziyaret" demekti ve başarılı oyun istiyordu. Ürün sahibi
+ * ziyareti "1 sn bile oynasa" diye genişletince iki kural ayrıldı: ziyaret
+ * oyun başlarken sayılıyor, davet hâlâ asgari etkileşim istiyor. Aksi hâlde
+ * bir saniyelik oyun davet edene XP yazdırırdı.
  *
- * Bu ayrıca satış tarafıyla aynı dili konuşuyor: kafeye satılan birim de
- * nitelikli oyuncu (Ü29). **Davet ancak kafeye gerçek bir müşteri getirdiyse
- * sayılıyor.**
+ * **Davet ancak kafeye gerçek bir müşteri getirdiyse sayılıyor.**
  *
  * ── Ödül: XP, kafe bazında ──────────────────────────────────
  *
@@ -290,7 +290,8 @@ export type NitelikSonucu =
 /**
  * Davet edilen kafede niteliklendi — davetin kaderi burada belirleniyor.
  *
- * Oyun bitişinde `is_qualified` işaretlendiğinde çağrılıyor. Sinyaller
+ * Oyun bitişinde, kafede eşiği geçen oyunda çağrılıyor (Ü292 —
+ * `is_qualified` artık ziyaret, davet şartı değil). Sinyaller
  * toplanıyor, fraud motoru karar veriyor, XP yazılıyor ya da ret gerekçesi
  * deftere düşüyor.
  *

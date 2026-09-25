@@ -169,6 +169,52 @@ describe("nitelikli oyuncu sayımı (Ü29)", () => {
     const gecen = rapor.gecenHafta(bugun);
     assert.equal(gecen.bitis, aralik.baslangic);
   });
+
+  test("🔴 yarıda bırakılan oyun sayılıyor, reddedilen sayılmıyor (Ü292)", async () => {
+    // Ürün sahibi: "her gelen müşteri 1 sn bile oynasa sayılmalı."
+    const once = await rapor.ozet(kafeA, aralik);
+    const yeni = async (ad: string) => {
+      const p = (
+        await kaydet({
+          telefon: yeniTelefon(),
+          eposta: benzersizEposta(),
+          ad,
+          soyad: "Testi",
+          dogumYili: 1990,
+          pazarlamaIzni: false,
+        })
+      ).oyuncu.id;
+      oyuncular.push(p);
+      return { p, kod: await takmaAd(kafeA, p) };
+    };
+    const yarim = await yeni("Yarim");
+    const red = await yeni("Red");
+    const konumsuz = await yeni("Konumsuz");
+    const yaz = (p: string, ek: string, durum: string, maske: number, nitelikli: boolean) =>
+      yoneticiSorgu(
+        `INSERT INTO play_sessions
+           (id, cafe_id, table_id, player_id, device_id_hash, game_id, seed,
+            proof_mask, proof_level, business_date, status, is_qualified)
+         VALUES ($1,$2,$3,$4,decode(md5($4),'hex'),'blok','tohum',$5,$6,$7,$8,$9)`,
+        [`oyn_rapor_${p}_${ek}`, kafeA, cokMasa, p, maske, maske >= 3 ? 2 : 1, bugun, durum, nitelikli],
+      );
+    await yaz(yarim.p, "yarim", "open", 3, true); // başladı, bitmedi — ziyaret
+    await yaz(red.p, "red", "rejected", 3, false); // geçersiz kayıt
+    await yaz(konumsuz.p, "konumsuz", "open", 1, false); // yalnızca karekod
+
+    const sonra = await rapor.ozet(kafeA, aralik);
+    assert.equal(sonra.nitelikliOyuncu - once.nitelikliOyuncu, 1, "yarıda bırakılan ziyaret sayılmadı");
+    assert.equal(sonra.tekilOyuncu - once.tekilOyuncu, 2, "gelen kişi yarım oyunu ya da reddedileni yanlış saydı");
+    assert.equal(sonra.toplamOyun - once.toplamOyun, 2, "oynanan oyun yarım oyunu ya da reddedileni yanlış saydı");
+
+    const defter = await rapor.ziyaretler(kafeA, aralik, 1000);
+    const satir = (kod: string) => defter.find((z) => z.kod === kod);
+    assert.equal(satir(yarim.kod)?.nitelikli, true, "yarım oyun defterde yok");
+    assert.equal(satir(red.kod), undefined, "reddedilen oyun defterde");
+    const k = satir(konumsuz.kod);
+    assert.ok(k, "konumu doğrulanmayan oyuncu defterde yok");
+    assert.equal(rapor.sayimCumlesi(k), "sayılmadı · konum doğrulanmadı");
+  });
 });
 
 /* ═══════════════════════════════════════════════════════════
@@ -244,9 +290,10 @@ describe("mahremiyet eşiği (Ü30)", () => {
 
     const dolu = await withBypass("test — dolu saatler", (db) =>
       db.all<{ saat: string }>(
+        // Ü292: raporla aynı tanım — yarıda bırakılan oyun da "dolu" saat.
         `SELECT DISTINCT extract(hour FROM started_at AT TIME ZONE 'Europe/Istanbul')::int AS saat
            FROM play_sessions
-          WHERE cafe_id = $1 AND status = 'completed'
+          WHERE cafe_id = $1 AND status <> 'rejected'
             AND business_date >= $2 AND business_date < $3`,
         [kafeA, aralik.baslangic, aralik.bitis],
       ),

@@ -150,6 +150,17 @@ function gunYaz(gun: string): string {
  */
 export const esikVarsayilan = () => !demoOrtami();
 
+/**
+ * Ü292: "oynandı" — başlatılmış ve reddedilmemiş oyun, yarıda bırakılan
+ * dahil. Ürün sahibi: *"her gelen müşteri 1 sn bile oynasa sayılmalı."*
+ * Eskiden yalnızca tamamlanan oyun sayılıyordu: kafede oynayıp bitirmeyen
+ * müşteri "gelen kişi"de de defterde de yoktu. Reddedilen (geçersiz kayıt,
+ * hile) sayılmıyor. Raporun her bölümü aynı tanımdan okuyor.
+ */
+function oynandi(tablo = ""): string {
+  return `${tablo ? `${tablo}.` : ""}status <> 'rejected'`;
+}
+
 /** Eşiğin altındaki sayıyı gizler (Ü30). */
 function gizle(sayi: number, esikAcik: boolean): number | null {
   if (!esikAcik) return sayi;
@@ -162,6 +173,9 @@ export type RaporOzeti = {
   /**
    * Ü29: satılan birim. Raporun baş sayısı.
    *
+   * Ü292: kafede (K2) başlatılan her oyun ziyaret — skor ve bitiş şart
+   * değil (`oyun.nitelikliMi`).
+   *
    * ⚠️ Adı "oyuncu" ama **saydığı şey ziyaret**: benzersizlik indeksi
    * `(cafe_id, device_id_hash, business_date) WHERE is_qualified`, yani
    * kural "1 nitelikli oturum / cihaz / kafe / **gün**" (S3). Aynı kişi
@@ -171,8 +185,9 @@ export type RaporOzeti = {
    * tanım doğrudan yanlış faturaya dönüşüyordu.
    */
   nitelikliOyuncu: number;
-  /** Kaç farklı oyuncu geldi — nitelikli olmayanlar dahil. */
+  /** Kaç farklı oyuncu oyun başlattı — konumu doğrulanmayanlar dahil. */
   tekilOyuncu: number;
+  /** Başlatılan oyun — yarıda bırakılan dahil, reddedilen hariç (Ü292). */
   toplamOyun: number;
   /** Dağıtılan kuponların bütçeye bağladığı tutar. */
   kazanilanIndirimKurus: number;
@@ -220,18 +235,22 @@ async function ozetIle(db: Db, aralik: Aralik, esikAcik: boolean): Promise<Rapor
     tekrar: string;
   }>(
     `SELECT
-       (SELECT count(*) FROM play_sessions
+       -- Ü292: kişi başına günde bir — getiri ve defterle aynı sayım.
+       -- Satır saymak, aynı kişinin iki cihaz izli oturumunu iki kez
+       -- sayıyordu (demo tohumunda oldu: 10 ziyaret, 8 kişi-gün).
+       (SELECT count(DISTINCT (player_id, business_date)) FROM play_sessions
          WHERE is_qualified AND business_date >= $1 AND business_date < $2)   AS nitelikli,
        (SELECT count(DISTINCT player_id) FROM play_sessions
-         WHERE status = 'completed' AND business_date >= $1
+         WHERE ${oynandi()} AND business_date >= $1
            AND business_date < $2)                                            AS tekil,
        (SELECT count(*) FROM play_sessions
-         WHERE status = 'completed' AND business_date >= $1
+         WHERE ${oynandi()} AND business_date >= $1
            AND business_date < $2)                                            AS oyun,
        -- ── Yeni ve tekrar gelen (Ü44)
        --
-       -- Ayrım tek soruya iniyor: bu oyuncunun bu kafedeki İLK tamamlanmış
-       -- oyunu bu dönemin içinde mi, öncesinde mi. min(business_date)
+       -- Ayrım tek soruya iniyor: bu oyuncunun bu kafedeki İLK oyunu
+       -- (Ü292: yarıda bırakılan dahil) bu dönemin içinde mi, öncesinde
+       -- mi. min(business_date)
        -- oyuncu başına bir kez hesaplanıyor; dönem içinde iki kez gelen
        -- kişi iki kez sayılmıyor.
        --
@@ -241,15 +260,15 @@ async function ozetIle(db: Db, aralik: Aralik, esikAcik: boolean): Promise<Rapor
        -- başka kafedeki geçmişi buraya sızmıyor (G1).
        (SELECT count(*) FILTER (WHERE ilk >= $1::date)
           FROM (SELECT player_id, min(business_date) AS ilk
-                  FROM play_sessions WHERE status = 'completed'
+                  FROM play_sessions WHERE ${oynandi()}
                  GROUP BY player_id) g
          WHERE g.ilk < $2::date)                                              AS yeni,
        (SELECT count(DISTINCT ps.player_id) FROM play_sessions ps
-         WHERE ps.status = 'completed'
+         WHERE ${oynandi("ps")}
            AND ps.business_date >= $1 AND ps.business_date < $2
            AND EXISTS (SELECT 1 FROM play_sessions o
                         WHERE o.player_id = ps.player_id
-                          AND o.status = 'completed'
+                          AND ${oynandi("o")}
                           AND o.business_date < $1))                          AS tekrar,
        (SELECT count(*) FROM coupons
          WHERE issued_at >= ($1::date::timestamp AT TIME ZONE 'Europe/Istanbul') AND issued_at < ($2::date::timestamp AT TIME ZONE 'Europe/Istanbul'))                AS kupon_verilen,
@@ -320,7 +339,7 @@ export async function ziyaretler(
          LEFT JOIN player_aliases a
                 ON a.cafe_id = ps.cafe_id AND a.player_id = ps.player_id
          LEFT JOIN cafe_tables t ON t.id = ps.table_id
-        WHERE ps.status = 'completed'
+        WHERE ${oynandi("ps")}
           AND ps.business_date >= $1 AND ps.business_date < $2
         GROUP BY a.code, ps.player_id, ps.business_date
         ORDER BY min(ps.started_at) DESC
@@ -338,6 +357,20 @@ export async function ziyaretler(
     nitelikli: r.is_qualified,
     oyunSayisi: Number(r.oyun),
   }));
+}
+
+/**
+ * Defterde sayılmayan satırın sebebi — Ü292.
+ *
+ * Sütun eskiden sebebi değil kanıt kademesini yazıyordu ("masada 5 dk
+ * kaldı" — o kural Ü268'de kalkmıştı bile). Ürün sahibi 497'de kalan
+ * oyunun neden sayılmadığını okuyamadı. Ü292'den beri ziyaretin tek şartı
+ * kafede olmak (K2); sayılmayan satırın sebebi o. Ekran ve CSV aynı
+ * cümleyi yazıyor.
+ */
+export function sayimCumlesi(z: { nitelikli: boolean; kanitSeviyesi: number }): string {
+  if (z.nitelikli) return "sayıldı";
+  return z.kanitSeviyesi >= 2 ? "sayılmadı" : "sayılmadı · konum doğrulanmadı";
 }
 
 /* ── Masa hareketi ─────────────────────────────────────────── */
@@ -361,7 +394,7 @@ export async function masaHareketi(
               count(*) AS oyun
          FROM play_sessions ps
          JOIN cafe_tables t ON t.id = ps.table_id
-        WHERE ps.status = 'completed'
+        WHERE ${oynandi("ps")}
           AND ps.business_date >= $1 AND ps.business_date < $2
         GROUP BY t.label
         ORDER BY count(*) DESC`,
@@ -429,7 +462,7 @@ export async function saatlikDagilim(
               count(DISTINCT ps.player_id) AS oyuncu,
               count(DISTINCT (ps.table_id, ps.business_date)) AS masa
          FROM play_sessions ps
-        WHERE ps.status = 'completed'
+        WHERE ${oynandi("ps")}
           AND ps.business_date >= $1 AND ps.business_date < $2
         GROUP BY 1 ORDER BY 1`,
       [aralik.baslangic, aralik.bitis],
@@ -484,6 +517,17 @@ export type KampanyaSonucu = {
   urunAdi: string;
   yuzde: number;
   durum: string;
+  /**
+   * Ü292: upsell mi (bu ziyarette kullanılan teklif) — normal kampanya mı.
+   * Aynı ürüne iki kampanya ("Filtre Kahve · %20") raporda ayırt
+   * edilemiyordu; tür, "en fazla" tutarı ve tarih artık satırda.
+   */
+  upsell: boolean;
+  /** Upsell teklifinin kaç saat geçerli olduğu. */
+  gecerliSaat: number;
+  tavanKurus: number;
+  baslangic: Date;
+  bitis: Date;
   verilen: number;
   kullanilan: number;
   kullanilanKurus: number;
@@ -498,11 +542,17 @@ export async function kampanyaSonuclari(
       urun_adi: string;
       percent: number;
       status: string;
+      instant: boolean;
+      offer_hours: number;
+      max_discount_kurus: string;
+      starts_at: Date;
+      ends_at: Date;
       verilen: string;
       kullanilan: string;
       tutar: string;
     }>(
       `SELECT p.name AS urun_adi, pc.percent, pc.status,
+              pc.instant, pc.offer_hours, pc.max_discount_kurus, pc.starts_at, pc.ends_at,
               count(k.id) FILTER (WHERE k.issued_at >= ($1::date::timestamp AT TIME ZONE 'Europe/Istanbul')
                                     AND k.issued_at < ($2::date::timestamp AT TIME ZONE 'Europe/Istanbul')) AS verilen,
               count(k.id) FILTER (WHERE k.status = 'redeemed'
@@ -524,6 +574,11 @@ export async function kampanyaSonuclari(
     urunAdi: r.urun_adi,
     yuzde: r.percent,
     durum: r.status,
+    upsell: r.instant,
+    gecerliSaat: r.offer_hours,
+    tavanKurus: Number(r.max_discount_kurus),
+    baslangic: r.starts_at,
+    bitis: r.ends_at,
     verilen: Number(r.verilen),
     kullanilan: Number(r.kullanilan),
     kullanilanKurus: Number(r.tutar),
@@ -847,9 +902,10 @@ export async function disaAktar(
     ["Looply raporu", `${aralik.baslangic} — ${aralik.bitis}`],
     [],
     ["ÖZET"],
-    ["Nitelikli oyuncu", String(o.nitelikliOyuncu)],
-    ["Tekil oyuncu", String(o.tekilOyuncu)],
-    ["Tamamlanan oyun", String(o.toplamOyun)],
+    // Ü292: ekrandaki adlar. Faturadaki adı parantezde — ikisi aynı sayı.
+    ["Sayılan ziyaret (nitelikli oyuncu)", String(o.nitelikliOyuncu)],
+    ["Gelen kişi", String(o.tekilOyuncu)],
+    ["Oynanan oyun (yarıda bırakılan dahil)", String(o.toplamOyun)],
     ["Verilen kupon", String(o.kuponVerilen)],
     ["Kasada kullanılan kupon", String(o.kuponKullanilan)],
     ["Kazanılan indirim (TL)", tl(o.kazanilanIndirimKurus)],
@@ -868,10 +924,12 @@ export async function disaAktar(
       .map((s) => [`${s.saat}:00`, say(s.oyuncu), String(Math.round(s.oran * 100))]),
     [],
     ["KAMPANYA SONUÇLARI"],
-    ["Ürün", "Yüzde", "Durum", "Verilen", "Kullanılan", "Kasada (TL)"],
+    ["Ürün", "Yüzde", "Tür", "En fazla (TL)", "Durum", "Verilen", "Kullanılan", "Kasada (TL)"],
     ...kampanyalar.map((k) => [
       k.urunAdi,
       `%${k.yuzde}`,
+      k.upsell ? `upsell · ${k.gecerliSaat} saat` : "kampanya",
+      tl(k.tavanKurus),
       k.durum,
       String(k.verilen),
       String(k.kullanilan),
@@ -879,12 +937,12 @@ export async function disaAktar(
     ]),
     [],
     ["DOĞRULAMA DEFTERİ"],
-    ["Müşteri", "Zaman", "Masa", "Kanıt", "Oyun"],
+    ["Müşteri", "Zaman", "Masa", "Sayıldı mı", "Oyun"],
     ...defter.map((z) => [
       z.kod,
       zaman(z.zaman),
       z.masa ?? "—",
-      z.nitelikli ? "nitelikli" : `K${z.kanitSeviyesi}`,
+      sayimCumlesi(z),
       String(z.oyunSayisi),
     ]),
     [],
