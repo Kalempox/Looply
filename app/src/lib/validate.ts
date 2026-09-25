@@ -91,7 +91,67 @@ export const epostaSemasi = z
       return false;
     }
   }, "Geçerli bir e-posta adresi girin")
+  .superRefine((a, ctx) => {
+    const oneri = epostaYazimOnerisi(a);
+    if (oneri) ctx.addIssue({ code: "custom", message: `Adresi kontrol et — ${oneri} mi demek istedin?` });
+  })
   .transform(normalizeEmail);
+
+/**
+ * Sık yapılan alan adı yazım hataları — Ü294.
+ *
+ * Ürün sahibi: *"olmayan ya da olmayacak gmaili kabul etmemeli."* Bir
+ * adresin gerçekten var olduğunu yalnızca oraya giden kod kanıtlar
+ * (yukarıdaki not) — ama "gmail.con" ya da "gmial.com" hiçbir zaman
+ * e-posta almıyor: yazan kişi kodu hiç göremez, ekran ise ona bir şey
+ * söylemez.
+ *
+ * ⚠️ Liste dar ve **tam eşleşme**. Benzerlik ölçüsüyle (bir harf farkı)
+ * yakalamak gerçek sağlayıcıları da reddederdi: "mail.com" ve "ymail.com"
+ * "gmail.com"a bir harf uzak ve ikisi de gerçek adres.
+ */
+const YAZIM_HATALARI: Record<string, string> = {
+  "gmail.con": "gmail.com",
+  "gmail.co": "gmail.com",
+  "gmail.cm": "gmail.com",
+  "gmail.om": "gmail.com",
+  "gmail.comm": "gmail.com",
+  "gmail.com.tr": "gmail.com",
+  "gmial.com": "gmail.com",
+  "gmai.com": "gmail.com",
+  "gmal.com": "gmail.com",
+  "gamil.com": "gmail.com",
+  "gnail.com": "gmail.com",
+  "gmaill.com": "gmail.com",
+  "gmali.com": "gmail.com",
+  "gmil.com": "gmail.com",
+  "gmeil.com": "gmail.com",
+  "hotmail.con": "hotmail.com",
+  "hotmial.com": "hotmail.com",
+  "hotmal.com": "hotmail.com",
+  "hotmai.com": "hotmail.com",
+  "homail.com": "hotmail.com",
+  "hotamil.com": "hotmail.com",
+  "hotmil.com": "hotmail.com",
+  "outlok.com": "outlook.com",
+  "outlook.con": "outlook.com",
+  "otlook.com": "outlook.com",
+  "outllook.com": "outlook.com",
+  "yahoo.con": "yahoo.com",
+  "yaho.com": "yahoo.com",
+  "yahooo.com": "yahoo.com",
+  "icloud.con": "icloud.com",
+  "iclod.com": "icloud.com",
+  "icoud.com": "icloud.com",
+  "yandex.con": "yandex.com",
+};
+
+/** "ali@gmial.com" → "ali@gmail.com"; tanınan bir yazım hatası yoksa `null`. */
+export function epostaYazimOnerisi(adres: string): string | null {
+  const [ad, alan] = adres.trim().toLowerCase().split("@");
+  const dogru = alan ? YAZIM_HATALARI[alan] : undefined;
+  return ad && dogru ? `${ad}@${dogru}` : null;
+}
 
 /**
  * İşletmenin aranacak telefonu — Ü126.

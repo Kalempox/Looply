@@ -5,7 +5,7 @@ import { headers, cookies } from "next/headers";
 import { z } from "zod";
 import { kodIste, kodDogrula } from "@/domain/otp";
 import type { KayitAlani } from "./alanlar";
-import { sifirlamaKoduIste, sifirla } from "@/domain/parola-sifirlama";
+import { sifirlamaKoduIste, sifirla, adresMaskele } from "@/domain/parola-sifirlama";
 import { kaydet, telefonlaBul } from "@/domain/player";
 import * as oturum from "@/domain/session";
 import * as masaOturumu from "@/domain/masa";
@@ -122,14 +122,18 @@ function istekHatasi(durum: string, ek?: Date): string {
     case "eposta_yok":
       /*
         Ü170: kod e-postaya gidiyor ve bu hesapta adres yok — Ü169
-        öncesinde açılmış hesaplar böyle.
+        öncesinde açılmış hesaplar böyle. Bu durum yalnızca numara
+        ZATEN KAYITLIYKEN doğuyor: yeni numarada kod formdaki adrese
+        gidiyor.
 
-        ⚠️ Cümle "e-postan kayıtlı değil" diyor, "hesabın yok"
-        demiyor: ikisi farklı ve karıştırmak insanı yanlış yere
-        götürür — hesabı olan biri yeniden kayıt olmaya çalışırdı.
-        Parola hâlâ çalıştığı için doğru yönlendirme parolayla giriş.
+        🔴 Ü294: ürün sahibi "Hesap aç"ta tohum hesabının numarasını
+        (05321234567) yazdı ve *"gmaili doğru da girsem yanlış da girsem
+        'bu hesapta kayıtlı e-posta yok' diyor, bu hata neden?"* diye
+        sordu. Cümle kayıt yapmaya çalışan birine "hesap"tan söz
+        ediyordu ama asıl olanı söylemiyordu: numara zaten kayıtlı ve
+        formdaki adres bu yüzden hiç kullanılmıyor.
       */
-      return "Bu hesapta kayıtlı e-posta yok, kod gönderilemiyor. Parolanla giriş yapabilirsin.";
+      return "Bu numarayla zaten bir hesap var. Giriş yap sekmesinden parolanla gir.";
     default:
       return "Kod gönderilemedi. Biraz sonra tekrar dene.";
   }
@@ -372,7 +376,16 @@ export async function kodGonder(_onceki: Durum, form: FormData): Promise<Durum> 
   return {
     adim: "kod",
     sekme: "kayit",
-    bilgi: "Doğrulama kodu gönderildi. 3 dakika geçerli.",
+    /*
+      Ü294: numara kayıtlıysa kod formdaki adrese değil hesabın kendi
+      adresine gitti (hesap devralmayı önleyen kural, `otp.hedefAdres`).
+      Söylenmezse kişi yazdığı adreste kodu arar ve bulamaz. Adres
+      maskeli — şifre sıfırlama ekranıyla aynı biçim (`adresMaskele`).
+    */
+    bilgi:
+      mevcut?.eposta
+        ? `Bu numarayla zaten bir hesabın var. Giriş kodunu hesabında kayıtlı adrese (${adresMaskele(mevcut.eposta)}) gönderdik — 3 dakika geçerli.`
+        : "Doğrulama kodu gönderildi. 3 dakika geçerli.",
     gelistirmeKodu: sonuc.gelistirmeKodu,
     degerler,
     hatirla,

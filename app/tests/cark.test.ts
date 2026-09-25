@@ -303,6 +303,30 @@ describe("çark · günlük sınır", () => {
  * Ölçülen şey iddianın kendisi: çevirmeden önce ve sonra defterdeki
  * rezerve toplamı, kuponun tutarı kadar artmalı.
  */
+describe("çark · bekleme cümlesi (Ü293)", () => {
+  // Ürün sahibi: "küçük ve tatlı bir mesajla, şu kadar saat sonra tekrar
+  // bekleriz gibi." Eskiden 13 saat sonra da "az önce çevirdin" yazıyordu.
+  const an = new Date("2026-09-25T04:00:00+03:00");
+  const sonra = (dk: number) => new Date(an.getTime() + dk * 60_000);
+
+  test("süre yukarı yuvarlanıyor — söylenen saatte çark hazır", () => {
+    assert.equal(cark.beklemeSuresi(sonra(10 * 60 + 5), an), "11 saat sonra");
+    assert.equal(cark.beklemeSuresi(sonra(120), an), "2 saat sonra");
+    assert.equal(cark.beklemeSuresi(sonra(61), an), "2 saat sonra");
+    assert.equal(cark.beklemeSuresi(sonra(59), an), "59 dakika sonra");
+    assert.equal(cark.beklemeSuresi(sonra(1), an), "birazdan");
+    assert.equal(cark.beklemeSuresi(sonra(-5), an), "birazdan");
+  });
+
+  test("cümle büyük harfle başlıyor, 'az önce' demiyor", () => {
+    assert.equal(cark.beklemeCumlesi(sonra(0.5), an), "Birazdan yine seni bekliyor.");
+    assert.equal(cark.beklemeCumlesi(sonra(11 * 60), an), "11 saat sonra yine seni bekliyor.");
+    const metin = cark.durumMetni({ acik: false, sebep: "sure", sonrakiAn: sonra(600), dilimler: [] });
+    assert.ok(metin.startsWith(cark.BEKLEME_BASLIGI), metin);
+    assert.ok(!/az önce/.test(metin), "13 saat sonra da 'az önce' diyor");
+  });
+});
+
 describe("çark · günlük bütçeye dahil (Ü123)", () => {
   async function rezerveToplam(id: string): Promise<number> {
     return withBypass("test: bütçe defteri", async (db) => {

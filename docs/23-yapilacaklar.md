@@ -6,7 +6,7 @@
 > Yan dosyalar: neyin **var** olduğu → `21-looply-kapsam-haritasi.md` ·
 > demoda neyin **yapılabildiği** → `22-demo-yapilabilirlik.md`
 
-**Son güncelleme:** 2026-09-24 · **Kararlar:** Ü76 – Ü159, **Ü186 – Ü242**, **Ü259 – Ü292**
+**Son güncelleme:** 2026-09-24 · **Kararlar:** Ü76 – Ü159, **Ü186 – Ü242**, **Ü259 – Ü294**
 
 > ⚠️ **BU LİSTEDE İKİ BOŞLUK VAR.**
 >
@@ -38,6 +38,100 @@
 ⚠️ U3 test sırasında **bilerek** değiştirilmedi: yerel testte telefonla
 okutulan karekodun LAN sunucusuna gitmesi tam da bu davranış sayesinde
 çalışıyor.
+
+## ⬅️ Ü294 · "Hesap aç"ta kayıtlı numara açıkça söyleniyor · e-posta yazım hatası reddediliyor — 2026-09-25
+
+✅ Commitlendi (2026-09-25) — Ü293 ile birlikte.
+
+Ürün sahibi: *"yeni hesap oluşturmada 'bu hesapta kayıtlı e-posta yok, kod
+gönderilemiyor' diyor; gmaili doğru da girsem yanlış da girsem böyle
+diyor. Zaten olmayan veya olmayacak gmaili kabul etmemeli, veya telefonu —
+ama bu hata neden?"* · İşletme girişine şifre: *"böyle yapalım"* —
+uçtan uca testler bitince.
+
+- **Sebep:** yazılan numara 05321234567 — tohum oyuncusunun (Ü292'de
+  yedekten geri yüklenen; e-postası ve parolası yok). "Hesap aç" kayıtlı
+  numarayı **girişe** çeviriyor ve kodu formdaki adrese değil hesabın kendi
+  adresine gönderiyor (`otp.hedefAdres` — formdaki adrese güvenmek hesap
+  devralmanın en kısa yoluydu). Hesapta adres olmayınca `eposta_yok`, ekran
+  da kayıt yapan birine "bu hesapta kayıtlı e-posta yok" diyordu; formdaki
+  adres hiç kullanılmadığı için doğru ya da yanlış yazmak sonucu
+  değiştirmiyordu. Geliştirme defterinde 04:21–04:22 arası dört deneme.
+- [x] Adressiz kayıtlı numarada: *"Bu numarayla zaten bir hesap var. Giriş
+  yap sekmesinden parolanla gir."*
+- [x] Adresli kayıtlı numarada kod yine hesabın adresine gidiyor ama ekran
+  bunu söylüyor: *"Bu numarayla zaten bir hesabın var. Giriş kodunu
+  hesabında kayıtlı adrese (a•••@gmail.com) gönderdik"* — eskiden
+  "Doğrulama kodu gönderildi" deyip kişiyi formdaki adreste aratıyordu.
+  Maskeli adres şifre sıfırlamayla aynı biçim (`adresMaskele`); hesap
+  sayımı ödünleşimi Ü168'de kabul edilmişti.
+- [x] E-posta şemasına dar bir yazım hatası listesi (`epostaYazimOnerisi`):
+  "gmail.con", "gmial.com", "hotmial.com"… reddediliyor, doğrusu
+  öneriliyor ("gmail.com mi demek istedin?"). Tam eşleşme — benzerlik
+  ölçüsü "mail.com", "ymail.com" gibi gerçek sağlayıcıları da reddederdi.
+- Açıklandı: adresin gerçekten var olduğunu yalnızca oraya giden kod
+  kanıtlar. Geliştirmede kod ekranda (sarı kutu) göründüğü için her adres
+  "çalışıyor" görünüyor; canlıda kod yalnızca gerçek kutuya düşer, olmayan
+  adresle hesap açılamaz.
+- 🔴 **Telefon doğrulanmıyor — bilinen açık, ürün sahibinin kararı:** Ü170'ten
+  beri kod e-postaya gidiyor; telefon yalnızca biçim olarak (Türkiye cep)
+  sınanıyor, sahipliği sınanmıyor. Ürün sahibi: *"SMS entegrasyonu
+  yapmayacağız şimdilik — devletten onay 1 yıl sürüyor, başvuru yaptık.
+  Onun yerine Resend'i halletmeliyiz, ama en son."*
+- **Yapılacak (testlerden sonra) — Resend:** adaptör hazır
+  (`posta/index.ts`, `EPOSTA_SAGLAYICI=resend`, `RESEND_API_KEY`,
+  `EPOSTA_GONDEREN`; canlıda `console` açılışta reddediliyor). Eksik: Resend
+  hesabı, gönderen alan adının doğrulanması (DNS), API anahtarı, gerçek bir
+  kutuya deneme gönderimi.
+- Uçtan uca doğrulama (04:34–04:37, yeni hesap P-QVNN, 05329990011): hesap
+  e-posta ve parolayla açıldı; masa oturumu kayıtta açıldı (45 m, K1+K2);
+  85 puanlık Düşen ziyaret sayıldı, 0 puanlık Yılan sayılmadı (günde bir);
+  çark ödülü TYNGZV ve kampanya kuponu 9MDXCT 12 saat sonra açılıyor; upsell
+  5XM3BM alındı ve 04:37'de kasada 46 TL onaylandı. Panel: 3 oynayan,
+  1 yeni müşteri, dağıtılan 7 kupon 212 TL, kullanılan 4 kupon 147 TL;
+  bütçe: kasada harcanan 92 TL, bugün kalan 1.788 TL. Misafirken oynanan
+  tur hesaba geçmedi: iki oyun da kayıttan sonra oynanmış (günlükte
+  "misafir talebi" yok) — o yol ayrıca denenecek.
+- Testler (`kimlik`): 🔴 e-posta almayan yazım hatası reddediliyor,
+  öneriyle · gerçek sağlayıcılar reddedilmiyor. Kimlik + parola sıfırlama
+  geçici kopyada 74/74.
+
+---
+
+## ⬅️ Ü293 · Çark beklerken küçük ve tatlı bir kart · "Tatlıda %10" kasada aynı — 2026-09-25
+
+✅ Commitlendi (2026-09-25) — Ü294 ile birlikte.
+
+Ürün sahibi: çark beklerken ana ekranda ne zaman açılacağı yazsın mı →
+*"evet ama küçük ve tatlı bir mesajla — şu kadar saat sonra tekrar
+bekleriz gibi ama daha tatlı"* · "Tatlıda %10" için kasada tatlının
+fiyatı sorulsun mu → *"hayır"* · Ü291–Ü292 testleri: *"hepsini başarıyla
+gerçekleştirdim"*.
+
+- [x] Ana ekranda bekleyen çark için küçük, sakin kart: çark resmi +
+  **"Çark kahve molasında"** + "11 saat sonra yine seni bekliyor."
+  (`cark.BEKLEME_BASLIGI`, `beklemeCumlesi`). Yalnızca bekleme süresinde;
+  kafe kapalıyken, ödül yokken ya da dağıtım durdurulmuşken Ü275 geçerli —
+  hiçbir şey çizilmiyor. Dokunulacak bir şey yok: kilitli çarka götürmek
+  hayal kırıklığı olurdu.
+- [x] Çark sayfası ve çevirme denemesi aynı cümleyi söylüyor: "Çark kahve
+  molasında — 11 saat sonra yine seni bekliyor." Eskiden 13 saat sonra da
+  "Çarkı az önce çevirdin" diyordu. Süre yukarı yuvarlanıyor (söylenen
+  saatte çark hazır); bir saatin altında dakika, bir dakikanın altında
+  "birazdan". Emoji yok — oyuncu ekranlarının hiçbirinde yok.
+- Karar: menüdeki ürüne bağlanmamış eski yüzde ödülünde ("Tatlıda %10")
+  kasa değişmiyor — tutar kutusu tavanla (25 TL) dolu gelmeye devam.
+- İşletme girişine şifre: öneri uçtan uca testler bitince; ürün sahibine
+  yeniden soruldu.
+- Uçtan uca doğrulama (04:06): ürün sahibinin hesabı "Devam et" ile aynı
+  oturum satırından geri açıldı (bitiş 26 Eylül 00:00, 45 m, K1+K2); 9
+  saniyelik Yılan (10 puan) ziyaret sayıldı; Rapor bugün 2 ziyaret, 700 TL
+  tahmini ciro. Upsell teklifi gösterildi ama alınmadı, kasada onay yok —
+  kasadaki kampanya adı kayıttan doğrulanamadı (sıradaki test).
+- Testler (`cark`): süre yukarı yuvarlanıyor · cümle büyük harfle
+  başlıyor, "az önce" demiyor. Çark dosyaları geçici kopyada 51/51.
+
+---
 
 ## ⬅️ Ü292 · Ziyaret 1 saniyelik oyunla sayılıyor · kasada kampanya adı · kampanya türü · test verisi temizlendi — 2026-09-25
 

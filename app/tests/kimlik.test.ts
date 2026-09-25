@@ -56,6 +56,7 @@ import {
   decryptPII,
   hashOtp,
 } from "@/lib/crypto";
+import { dogrula, epostaSemasi } from "@/lib/validate";
 import { yoneticiSorgu, benzersizEposta } from "./_yardim";
 
 /**
@@ -1546,6 +1547,26 @@ describe("e-posta adresi", () => {
   test("düz metin adres şifreli alandan geri okunuyor", () => {
     const adres = normalizeEmail("Buse@Ornek.com");
     assert.equal(decryptPII(encryptPII(adres)), "buse@ornek.com");
+  });
+
+  test("🔴 e-posta almayan yazım hatası reddediliyor, öneriyle (Ü294)", () => {
+    // Ürün sahibi: "olmayan ya da olmayacak gmaili kabul etmemeli."
+    for (const [yanlis, dogru] of [
+      ["buse@gmail.con", "buse@gmail.com"],
+      ["Buse@Gmial.com", "buse@gmail.com"],
+      ["buse@hotmial.com", "buse@hotmail.com"],
+    ]) {
+      const r = dogrula(epostaSemasi, yanlis);
+      assert.equal(r.ok, false, `kabul edildi: ${yanlis}`);
+      assert.match(r.ok ? "" : Object.values(r.hatalar).join(" "), new RegExp(`${dogru} mi demek istedin`));
+    }
+  });
+
+  test("gerçek sağlayıcılar yazım hatası sayılmıyor — tam eşleşme", () => {
+    // "mail.com" ve "ymail.com" gmail.com'a bir harf uzak ama gerçek adres.
+    for (const adres of ["buse@gmail.com", "buse@mail.com", "buse@ymail.com", "buse@gmx.com", "buse@ornek.com.tr"]) {
+      assert.equal(dogrula(epostaSemasi, adres).ok, true, `reddedildi: ${adres}`);
+    }
   });
 });
 

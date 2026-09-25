@@ -155,6 +155,11 @@ export default async function OynaSayfasi() {
 
         {/* Ü275: çark kullanılamıyorken kart HİÇ yok (aşağıdaki not). */}
         {carkDurumu?.acik && <CarkKarti durum={carkDurumu} aralikSaat={carkAralik} />}
+        {/* Ü293: bekleyen çark küçük ve tatlı bir cümleyle; kafe kapalıyken
+            ya da ödül yokken yine hiçbir şey yok (Ü275). */}
+        {carkDurumu && !carkDurumu.acik && carkDurumu.sebep === "sure" && (
+          <CarkBekliyor sonrakiAn={carkDurumu.sonrakiAn} />
+        )}
 
         {lider && (
           <LiderKarti
@@ -779,6 +784,37 @@ function SeriKarti({ seri: s }: { seri: seri.Seri }) {
  * olduğu yer burasıydı: iki koyu kart arasında hangisinin tıklanacağı
  * belirsizdi. Şimdi çark, çarkın kasasının rengini (gül) taşıyor.
  */
+/**
+ * Bekleyen çark — Ü293.
+ *
+ * Ürün sahibi, çarkı çevrilmiş demo hesabında ana ekranda çark kartını
+ * göremeyince *"günlük çarkım verilmedi mi, süresi mi dolmadı"* diye
+ * sordu: Ü275'ten beri kullanılamayan çark ana ekrandan tamamen
+ * kalkıyordu. Kararı: *"küçük ve tatlı bir mesajla, şu kadar saat sonra
+ * tekrar bekleriz gibi."*
+ *
+ * ⚠️ Küçük ve sakin: dokunulacak bir şey yok, tıklanınca kilitli bir
+ * çarka gitmek hayal kırıklığı olurdu. Yalnızca beklemede; kafe kapalı
+ * ya da ödül yokken Ü275 geçerli — hiçbir şey çizilmiyor.
+ */
+function CarkBekliyor({ sonrakiAn }: { sonrakiAn: Date }) {
+  return (
+    <section className="mb-10">
+      <div className="flex items-center gap-3 rounded-2xl border border-cizgi bg-yuzey px-4 py-3">
+        <span aria-hidden className="shrink-0">
+          <KartResmi ad="cark" boy={44} />
+        </span>
+        <p className="min-w-0 text-[13px] leading-snug">
+          <span className="block font-display font-bold" style={{ color: RENK.pembe.ana }}>
+            {cark.BEKLEME_BASLIGI}
+          </span>
+          <span className="block text-yazi-sonuk">{cark.beklemeCumlesi(sonrakiAn)}</span>
+        </p>
+      </div>
+    </section>
+  );
+}
+
 function CarkKarti({
   durum,
   aralikSaat,

@@ -317,6 +317,13 @@ aldıysan kupon **Ödüllerim**'de, bekliyor).
 ✅ **"Google / Apple ile devam et" yok.**
 ✅ 1.8'de kapattığın oyun listede yok (sonra tekrar aç).
 🔴 Kodu doğru girdiğin hâlde **"E-posta adresi eksik"** diyorsa.
+✅ **Kayıtlı numarayla** "Hesap aç" (Ü294): e-postası olan hesapta *"Bu
+numarayla zaten bir hesabın var. Giriş kodunu hesabında kayıtlı adrese
+(a•••@…) gönderdik"*; e-postası olmayan eski hesapta *"Bu numarayla zaten
+bir hesap var. Giriş yap sekmesinden parolanla gir."* Tohum numarası
+05321234567 böyle bir hesap — **yeni hesap için kullanma**.
+✅ Yazım hatalı adres (`…@gmail.con`, `…@gmial.com`) reddedilir: *"gmail.com
+mi demek istedin?"*
 
 ### 2.4 · Çıkış ve beni hatırla
 **Yap:** Normal sekmede çık → parolayla gir, bir kez **Beni hatırla**
@@ -464,8 +471,10 @@ yeniden düşmez. Oynarken sayfa kaymaz, aşağı çekince yenilenmez.
 hesabında — Ödüllerim ekranında 'Yakında açılıyor' altında". Kupon
 Ödüllerim'de **Yakında açılıyor** bölümündedir, "Kasada gösterebilirsin"de
 değil. 🔴 "Kasada gösterebilirsin" derse.
-✅ Kafe **kapalıyken** ya da çark bekleme süresindeyken **ana ekranda çark
-kartı hiç yoktur** (Ü275). Misafire çark hiç gösterilmez (Ü274).
+✅ Kafe **kapalıyken** ana ekranda çark kartı hiç yoktur (Ü275). **Bekleme
+süresinde** küçük bir kart: *"Çark kahve molasında — 11 saat sonra yine
+seni bekliyor."* (Ü293); çark sayfası da aynı cümleyi söyler, "az önce
+çevirdin" demez. Misafire çark hiç gösterilmez (Ü274).
 🔴 Süre dolmadan ikinci kez çevrilebiliyorsa.
 
 ### 5.6b · Ana ekran (Ü275)

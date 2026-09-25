@@ -374,11 +374,41 @@ export function durumMetni(d: CarkDurumu): string {
       : "Ödül dağıtımı geçici olarak durduruldu.";
   }
 
-  const kalan = Math.max(0, d.sonrakiAn.getTime() - Date.now());
-  const saat = Math.ceil(kalan / 3_600_000);
-  return saat <= 1
-    ? "Çarkı az önce çevirdin. Bir saat içinde yeniden açılıyor."
-    : `Çarkı az önce çevirdin. ${saat} saat sonra yeniden açılıyor.`;
+  return `${BEKLEME_BASLIGI} — ${beklemeSuresi(d.sonrakiAn)} yine seni bekliyor.`;
+}
+
+/**
+ * Bekleyen çarkın başlığı — Ü293.
+ *
+ * Ürün sahibi: *"küçük ve tatlı bir mesajla — şu kadar saat sonra tekrar
+ * bekleriz gibi, ama daha tatlı."* Eskiden çark sayfası 13 saat sonra da
+ * "Çarkı az önce çevirdin" diyordu; ana ekranda ise hiçbir şey yoktu
+ * (Ü275) ve oyuncu çarkının verilmediğini sandı. Ana ekrandaki küçük kart,
+ * çark sayfası ve çevirme denemesi aynı cümleyi söylüyor.
+ *
+ * Emoji yok: oyuncu ekranlarının hiçbirinde yok, telefona göre farklı
+ * çiziliyor. Sıcaklığı kartın yanındaki çark resmi veriyor.
+ */
+export const BEKLEME_BASLIGI = "Çark kahve molasında";
+
+/**
+ * Çarkın yeniden açılmasına ne kadar kaldığı — Ü293. "11 saat sonra",
+ * "25 dakika sonra", "birazdan".
+ *
+ * Yukarı yuvarlanıyor: söylenen sürede dönen oyuncu çarkı hazır bulmalı,
+ * bir de "20 dakika daha" duymamalı.
+ */
+export function beklemeSuresi(sonrakiAn: Date, an: Date = new Date()): string {
+  const dk = Math.ceil(Math.max(0, sonrakiAn.getTime() - an.getTime()) / 60_000);
+  if (dk <= 1) return "birazdan";
+  if (dk < 60) return `${dk} dakika sonra`;
+  return `${Math.ceil(dk / 60)} saat sonra`;
+}
+
+/** Ana ekrandaki kartın cümlesi: "11 saat sonra yine seni bekliyor." */
+export function beklemeCumlesi(sonrakiAn: Date, an?: Date): string {
+  const s = beklemeSuresi(sonrakiAn, an);
+  return `${s.charAt(0).toLocaleUpperCase("tr-TR")}${s.slice(1)} yine seni bekliyor.`;
 }
 
 /**
